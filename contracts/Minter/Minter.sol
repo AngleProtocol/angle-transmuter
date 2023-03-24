@@ -5,8 +5,8 @@ pragma solidity ^0.8.12;
 import "./MinterStorage.sol";
 
 /// @title Minter
-/// @author Angle Labs
-/// @dev Inspired from https://github.com/FraxFinance/frax-solidity/blob/master/src/hardhat/contracts/Frax/FraxAMOMinter.sol
+/// @author Angle Labs, Inc.
+/// @notice Minter contract that rules several minting modules for Angle Protocol stablecoins
 contract Minter is IMinter, MinterStorage {
     using SafeERC20 for IERC20;
 
@@ -19,6 +19,14 @@ contract Minter is IMinter, MinterStorage {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
 
+    // ================================== MODIFIER =================================
+
+    /// @notice Checks whether `module` is actually a module
+    modifier onlyModule(address module) {
+        if (isModule[module] != 1) revert NotModule();
+        _;
+    }
+
     // =============================== VIEW FUNCTIONS ==============================
 
     /// @inheritdoc IMinter
@@ -26,52 +34,61 @@ contract Minter is IMinter, MinterStorage {
         return moduleList;
     }
 
+    function checkModule(address module) external view returns (bool) {
+        return isModule[module] >= 1;
+    }
+
     /// @inheritdoc IMinter
     function debt(IERC20 token) external view returns (uint256) {
-        return debts[msg.sender][token];
+        return moduleTokenData[msg.sender][token].debt;
     }
 
     /// @inheritdoc IMinter
     function debt(address module, IERC20 token) external view returns (uint256) {
-        return debts[module][token];
+        return moduleTokenData[module][token].debt;
     }
 
     /// @inheritdoc IMinter
-    function isTrusted(address admin) external view returns (bool) {
-        return isTrustedForModule[msg.sender][admin] == 1 || accessControlManager.isGovernorOrGuardian(msg.sender);
+    function currentUsage(address module, IERC20 token) external view returns (uint256) {
+        return usage[module][token][block.timestamp / (1 days)];
     }
 
     // ========================== PERMISSIONLESS FUNCTIONS =========================
 
     /// @inheritdoc IMinter
     function repayDebtFor(address[] memory moduleList, IERC20[] memory tokens, uint256[] memory amounts) external {
-        if (tokens.length != moduleList.length || tokens.length != amounts.length || tokens.length == 0)
+        uint256 tokensLength = tokens.length;
+        if (tokensLength != moduleList.length || tokensLength != amounts.length || tokensLength == 0)
             revert IncompatibleLengths();
 
-        for (uint256 i = 0; i < tokens.length; i++) {
-            // @dev tokens are not burned here
+        for (uint256 i; i < tokensLength; ++i) {
+            // Tokens are not burned here
             tokens[i].safeTransferFrom(msg.sender, address(this), amounts[i]);
             // Keep track of the changed debt
-            debts[moduleList[i]][tokens[i]] -= amounts[i];
+            moduleTokenData[moduleList[i]][tokens[i]].debt -= amounts[i];
+            emit DebtModified(moduleList[i], tokens[i], amounts[i], false);
         }
     }
 
     // =========================== ONLY MODULE FUNCTIONS ===========================
 
     /// @inheritdoc IMinter
-    function borrow(IERC20[] memory tokens, bool[] memory isStablecoin, uint256[] memory amounts) external {
-        if (isModule[msg.sender] != 1) revert NotTrusted();
-        if (tokens.length != isStablecoin.length || tokens.length != amounts.length || tokens.length == 0)
+    function borrow(
+        IERC20[] memory tokens,
+        bool[] memory isStablecoin,
+        uint256[] memory amounts
+    ) external onlyModule(msg.sender) {
+        uint256 tokensLength = tokens.length;
+        if (tokensLength != isStablecoin.length || tokensLength != amounts.length || tokensLength == 0)
             revert IncompatibleLengths();
 
-        for (uint256 i = 0; i < tokens.length; i++) {
-            // Keeping track of the changed debt and making sure you aren't lending more than the borrow cap
-            if (debts[msg.sender][tokens[i]] + amounts[i] > borrowCaps[msg.sender][tokens[i]])
-                revert BorrowCapReached();
-            debts[msg.sender][tokens[i]] += amounts[i];
-            // Minting the token to the module or simply transferring collateral to it
-            if (isStablecoin[i]) IAgToken(address(tokens[i])).mint(address(msg.sender), amounts[i]);
-            else tokens[i].transfer(address(msg.sender), amounts[i]);
+        for (uint256 i; i < tokensLength; ++i) {
+            uint256 amount = _increaseModuleTokenDebt(msg.sender, tokens[i], amounts[i]);
+            if (amount > 0) {
+                // Minting the token to the module if it's a stablecoin otherwise simply transferring collateral to it
+                if (isStablecoin[i]) IAgToken(address(tokens[i])).mint(address(msg.sender), amount);
+                else tokens[i].transfer(address(msg.sender), amount);
+            }
         }
     }
 
@@ -81,23 +98,27 @@ contract Minter is IMinter, MinterStorage {
         bool[] memory isStablecoin,
         uint256[] memory amounts,
         address[] memory to
-    ) external {
-        if (isModule[msg.sender] != 1) revert NotTrusted();
+    ) external onlyModule(msg.sender) {
+        uint256 tokensLength = tokens.length;
         if (
-            tokens.length != isStablecoin.length ||
-            tokens.length != amounts.length ||
-            tokens.length != to.length ||
-            tokens.length == 0
+            tokensLength != isStablecoin.length ||
+            tokensLength != amounts.length ||
+            tokensLength != to.length ||
+            tokensLength == 0
         ) revert IncompatibleLengths();
 
-        for (uint256 i = 0; i < tokens.length; i++) {
-            // Burn the agToken from the AMO or simply transfer it to this address
-            if (isStablecoin[i])
-                IAgToken(address(tokens[i])).burnSelf(amounts[i], address(msg.sender));
-                // Transfer the collateral to the AMO
-            else tokens[i].safeTransferFrom(address(msg.sender), to[i], amounts[i]);
+        for (uint256 i; i < tokensLength; ++i) {
+            uint256 currentDebt = moduleTokenData[msg.sender][tokens[i]].debt;
+            amounts[i] = amounts[i] > currentDebt ? currentDebt : amounts[i];
+            // Burn the token from the module if it's a stablecoin or simply transfer it to this contract
+            if (isStablecoin[i]) IAgToken(address(tokens[i])).burnSelf(amounts[i], address(msg.sender));
+            else {
+                to[i] = to[i] == address(0) ? address(this) : to[i];
+                tokens[i].safeTransferFrom(address(msg.sender), to[i], amounts[i]);
+            }
             // Keep track of the changed debt
-            debts[msg.sender][tokens[i]] -= amounts[i];
+            moduleTokenData[msg.sender][tokens[i]].debt = currentDebt - amounts[i];
+            emit DebtModified(msg.sender, tokens[i], amounts[i], false);
         }
     }
 
@@ -113,9 +134,7 @@ contract Minter is IMinter, MinterStorage {
     }
 
     /// @inheritdoc IMinter
-    function remove(address module) public onlyGovernor {
-        if (address(module) == address(0)) revert ZeroAddress();
-        if (isModule[module] != 1) revert NonExistent();
+    function remove(address module) public onlyGovernor onlyModule(module) {
         if (tokens[module].length > 0) revert SupportedTokensNotRemoved();
         // Removing the whitelisting first
         delete isModule[module];
@@ -123,7 +142,7 @@ contract Minter is IMinter, MinterStorage {
         // Deletion from `moduleList`
         address[] memory list = moduleList;
         uint256 amoListLength = list.length;
-        for (uint256 i = 0; i < amoListLength - 1; i++) {
+        for (uint256 i; i < amoListLength - 1; ++i) {
             if (list[i] == module) {
                 // Replace the `amo` to remove with the last of the list
                 moduleList[i] = moduleList[amoListLength - 1];
@@ -137,55 +156,45 @@ contract Minter is IMinter, MinterStorage {
     }
 
     /// @inheritdoc IMinter
-    function setBorrowCap(address module, IERC20 token, uint256 borrowCap) public onlyGovernor {
-        if (address(token) == address(0) || module == address(0)) revert ZeroAddress();
-
-        uint256 oldBorrowCap = borrowCaps[module][token];
-        if (oldBorrowCap == borrowCap) revert InvalidParam();
-
-        if (borrowCaps[module][token] == 0) {
-            if (isModule[module] != 1) add(module);
-            tokens[module].push(token);
-            borrowCaps[module][token] = borrowCap;
-            ICurveModule(module).setToken(token);
-            emit RightOnTokenAdded(module, token);
-        } else {
-            if (debts[module][token] > borrowCap) revert TokenDebtNotRepaid();
-            if (borrowCap == 0) {
-                // Resetting borrow cap
-                delete borrowCaps[module][token];
-
-                // Deletion from `amoTokens[amo]` loop
-                IERC20[] memory list = tokens[module];
-                uint256 amoTokensLength = list.length;
-                for (uint256 i = 0; i < amoTokensLength - 1; i++) {
-                    if (list[i] == token) {
-                        // Replace the `amo` to remove with the last of the list
-                        tokens[module][i] = tokens[module][amoTokensLength - 1];
-                        break;
-                    }
-                }
-                // Removing the last element in an array
-                tokens[module].pop();
-                ICurveModule(module).removeToken(token);
-
-                emit RightOnTokenRemoved(module, token);
-            } else {
-                borrowCaps[module][token] = borrowCap;
-            }
-        }
-        emit BorrowCapUpdated(module, token, borrowCap);
+    function transferDebt(
+        address moduleFrom,
+        address moduleTo,
+        IERC20 token,
+        uint256 amount
+    ) external onlyGovernor onlyModule(moduleFrom) onlyModule(moduleTo) {
+        amount = _increaseModuleTokenDebt(moduleTo, token, amount);
+        moduleTokenData[moduleFrom][token].debt -= amount;
+        emit DebtModified(moduleFrom, token, amount, false);
     }
 
     /// @inheritdoc IMinter
-    function setMinter(address minter) external onlyGovernor {
-        if (minter == address(0)) revert ZeroAddress();
-        address[] memory list = moduleList;
-        uint256 length = list.length;
-        for (uint256 i = 0; i < length; i++) {
-            ICurveModule(list[i]).setMinter(minter);
+    function setBorrowCap(address module, IERC20 token, uint256 borrowCap) public onlyGovernor onlyModule(module) {
+        if (address(token) == address(0)) revert ZeroAddress();
+        ModuleTokenData storage params = moduleTokenData[module][token];
+        uint256 oldBorrowCap = params.borrowCap;
+        if (oldBorrowCap == borrowCap) revert InvalidParam();
+
+        if (oldBorrowCap == 0) {
+            tokens[module].push(token);
+            emit RightOnTokenAdded(module, token);
+        } else {
+            if (params.debt > borrowCap) revert TokenDebtNotRepaid();
+            if (borrowCap == 0) {
+                // Deletion from `tokens[module]` array
+                IERC20[] memory list = tokens[module];
+                uint256 moduleTokensLength = list.length;
+                for (uint256 i; i < moduleTokensLength - 1; ++i) {
+                    if (list[i] == token) {
+                        tokens[module][i] = tokens[module][moduleTokensLength - 1];
+                        break;
+                    }
+                }
+                tokens[module].pop();
+                emit RightOnTokenRemoved(module, token);
+            }
         }
-        emit MinterUpdated(minter);
+        params.borrowCap = borrowCap;
+        emit BorrowCapUpdated(module, token, borrowCap);
     }
 
     /// @inheritdoc IMinter
@@ -199,5 +208,35 @@ contract Minter is IMinter, MinterStorage {
     function recoverERC20(address tokenAddress, address to, uint256 amountToRecover) external onlyGovernor {
         IERC20(tokenAddress).safeTransfer(to, amountToRecover);
         emit Recovered(tokenAddress, to, amountToRecover);
+    }
+
+    /// @inheritdoc IMinter
+    function setDailyBorrowCap(
+        address module,
+        IERC20 token,
+        uint256 dailyBorrowCap
+    ) external onlyGuardian onlyModule(module) {
+        moduleTokenData[module][token].dailyBorrowCap = dailyBorrowCap;
+        emit DailyBorrowCapUpdated(module, token, dailyBorrowCap);
+    }
+
+    // ============================= INTERNAL FUNCTION =============================
+
+    /// @notice Increases the debt of `module` for `token` by `amount` after performing all the necessary checks on
+    /// the amount with respect to the caps
+    function _increaseModuleTokenDebt(address module, IERC20 token, uint256 amount) internal returns (uint256) {
+        ModuleTokenData memory params = moduleTokenData[module][token];
+        if (params.debt + amount > params.borrowCap) {
+            amount = params.borrowCap > params.debt ? params.borrowCap - params.debt : 0;
+        }
+        uint256 day = block.timestamp / (1 days);
+        uint256 dailyUsage = usage[module][token][day];
+        if (dailyUsage + amount > params.dailyBorrowCap) {
+            amount = params.dailyBorrowCap > dailyUsage ? params.dailyBorrowCap - dailyUsage : 0;
+        }
+        moduleTokenData[module][token].debt = params.debt + amount;
+        usage[module][token][day] = dailyUsage + amount;
+        emit DebtModified(module, token, amount, true);
+        return amount;
     }
 }

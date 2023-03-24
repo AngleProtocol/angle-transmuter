@@ -14,6 +14,7 @@
     "no-empty-blocks": "off",
     "not-rely-on-time": "off",
     "compiler-version": "off",
+    "no-global-import": "off",
     "private-vars-leading-underscore": "warn",
     "reentrancy": "warn",
     "reason-string": "off",
