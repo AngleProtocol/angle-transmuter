@@ -99,7 +99,9 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         uint256[2] memory balances = curvePool.get_balances();
         uint256 _decimalsOtherToken = decimalsOtherToken;
         uint256 _indexAgToken = indexAgToken;
-        uint256 otherTokenBalance = otherToken.balanceOf(address(this));
+        // Borrowing as much as possible
+        uint256 otherTokenBalance = otherToken.balanceOf(address(this)) +
+            minter.getModuleBorrowingPower(address(this), otherToken, false);
 
         // Handle decimals
         if (_decimalsOtherToken > 18) {
@@ -145,20 +147,17 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         (isOtherTokenDepegged, addLiquidity, amountAgToken, amountOtherToken) = currentState();
         if (isOtherTokenDepegged) {
             // TODO: in this case we don't repay the debt, but should we do something particular beyond or just wait
+            // How do we repay debt in this case
+            // TODO: cross communication between modules
             _removeAll();
         } else {
-            uint256[] memory amounts = new uint256[](1);
-            IERC20[] memory tokens = new IERC20[](1);
-            bool[] memory isStablecoin = new bool[](1);
-            tokens[0] = IERC20(agToken);
-            isStablecoin[0] = true;
+            minter.borrowSingle(otherToken, false, type(uint256).max);
             if (addLiquidity) {
                 uint256 agTokenBalance = agToken.balanceOf(address(this));
                 amountAgToken = amountAgToken > agTokenBalance ? amountAgToken - agTokenBalance : 0;
                 if (amountAgToken > 0) {
-                    amounts[0] = amountAgToken;
-                    minter.borrow(tokens, isStablecoin, amounts);
-                    agTokenBalance = agToken.balanceOf(address(this));
+                    uint256 amountBorrowed = minter.borrowSingle(agToken, true, amountAgToken);
+                    agTokenBalance += amountBorrowed;
                     amountAgToken = amountAgToken > agTokenBalance ? agTokenBalance : amountAgToken;
                 }
                 if (amountAgToken > 0 || amountOtherToken > 0) {
@@ -171,9 +170,7 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
                     _unstakeLPTokens();
                     _curvePoolWithdraw(amountAgToken, 0);
                     _stakeLPTokens();
-                    amounts[0] = agToken.balanceOf(address(this));
-                    address[] memory to = new address[](1);
-                    minter.repay(tokens, isStablecoin, amounts, to);
+                    minter.repaySingle(agToken, true, agToken.balanceOf(address(this)), address(0));
                 } else if (amountOtherToken > 0) _stakeLPTokens();
             }
         }
@@ -215,7 +212,7 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
     // ====================== Restricted Governance Functions ======================
 
     function pushSurplus(address to) external onlyGovernor {
-        // TODO better think of cross-communication between AMOs
+        // TODO better think of cross-communication between modules
         if (to == address(0)) revert ZeroAddress();
         int256 agTokenProfit = estimateProfit();
         if (agTokenProfit > 0) {
@@ -235,14 +232,9 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
     }
 
     // For when we receive EUROC after a swap -> we want to have them first in the contract and then adjust to add everything at the same time
-    function forceBorrowOtherToken(uint256 amount) external onlyGovernor {
-        uint256[] memory amounts = new uint256[](1);
-        IERC20[] memory tokens = new IERC20[](1);
-        bool[] memory isStablecoin = new bool[](1);
-        amounts[0] = amount;
-        tokens[0] = otherToken;
-        isStablecoin[0] = false;
-        minter.borrow(tokens, isStablecoin, amounts);
+    function forceBorrowToken(uint256 amount, bool isStablecoin) external onlyGovernor {
+        IERC20 token = isStablecoin ? agToken : otherToken;
+        minter.borrowSingle(token, isStablecoin, amount);
     }
 
     function forceWithdrawBothTokens(
@@ -475,5 +467,6 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
 TODO Setters:
 - for thresholds
 - for gauges and stuff
+- for oracles and reward handler
     */
 }

@@ -32,6 +32,12 @@ interface IMinter {
     /// @notice Returns the amount of `token` borrowed during the current day by `module`
     function currentUsage(address module, IERC20 token) external view returns (uint256);
 
+    function getModuleBorrowingPower(
+        address module,
+        IERC20 token,
+        bool isStablecoin
+    ) external view returns (uint256 amount);
+
     // ========================== PERMISSIONLESS FUNCTIONS =========================
 
     /// @notice Lets someone reimburse the debt of a module on behalf of this module
@@ -48,7 +54,13 @@ interface IMinter {
     /// @param tokens Addresses of tokens to mint or transfer to the module
     /// @param isStablecoin Boolean array giving the info whether tokens should be minted or transferred
     /// @param amounts Amounts of tokens to mint/transfer to the module
-    function borrow(IERC20[] memory tokens, bool[] memory isStablecoin, uint256[] memory amounts) external;
+    function borrow(
+        IERC20[] memory tokens,
+        bool[] memory isStablecoin,
+        uint256[] memory amounts
+    ) external returns (uint256[] memory);
+
+    function borrowSingle(IERC20 token, bool isStablecoin, uint256 amount) external returns (uint256);
 
     /// @notice Repay a debt to the minter
     /// @param tokens Addresses of each tokens to burn or transfer from the module
@@ -59,7 +71,9 @@ interface IMinter {
         bool[] memory isStablecoin,
         uint256[] memory amounts,
         address[] memory to
-    ) external;
+    ) external returns (uint256[] memory);
+
+    function repaySingle(IERC20 token, bool isStablecoin, uint256 amount, address to) external returns (uint256);
 
     // ============================= GOVERNOR FUNCTIONS ============================
 

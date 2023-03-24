@@ -53,6 +53,14 @@ contract Minter is IMinter, MinterStorage {
         return usage[module][token][block.timestamp / (1 days)];
     }
 
+    function getModuleBorrowingPower(
+        address module,
+        IERC20 token,
+        bool isStablecoin
+    ) external view returns (uint256 amount) {
+        return _getModuleBorrowingPower(module, token, isStablecoin);
+    }
+
     // ========================== PERMISSIONLESS FUNCTIONS =========================
 
     /// @inheritdoc IMinter
@@ -77,19 +85,24 @@ contract Minter is IMinter, MinterStorage {
         IERC20[] memory tokens,
         bool[] memory isStablecoin,
         uint256[] memory amounts
-    ) external onlyModule(msg.sender) {
+    ) external onlyModule(msg.sender) returns (uint256[] memory) {
         uint256 tokensLength = tokens.length;
         if (tokensLength != isStablecoin.length || tokensLength != amounts.length || tokensLength == 0)
             revert IncompatibleLengths();
+        uint256[] memory borrowedAmounts = new uint256[](tokensLength);
 
         for (uint256 i; i < tokensLength; ++i) {
-            uint256 amount = _increaseModuleTokenDebt(msg.sender, tokens[i], amounts[i]);
-            if (amount > 0) {
-                // Minting the token to the module if it's a stablecoin otherwise simply transferring collateral to it
-                if (isStablecoin[i]) IAgToken(address(tokens[i])).mint(address(msg.sender), amount);
-                else tokens[i].transfer(address(msg.sender), amount);
-            }
+            borrowedAmounts[i] = _borrow(tokens[i], isStablecoin[i], amounts[i]);
         }
+        return borrowedAmounts;
+    }
+
+    function borrowSingle(
+        IERC20 token,
+        bool isStablecoin,
+        uint256 amount
+    ) external onlyModule(msg.sender) returns (uint256) {
+        return _borrow(token, isStablecoin, amount);
     }
 
     /// @inheritdoc IMinter
@@ -98,7 +111,7 @@ contract Minter is IMinter, MinterStorage {
         bool[] memory isStablecoin,
         uint256[] memory amounts,
         address[] memory to
-    ) external onlyModule(msg.sender) {
+    ) external onlyModule(msg.sender) returns (uint256[] memory) {
         uint256 tokensLength = tokens.length;
         if (
             tokensLength != isStablecoin.length ||
@@ -106,20 +119,21 @@ contract Minter is IMinter, MinterStorage {
             tokensLength != to.length ||
             tokensLength == 0
         ) revert IncompatibleLengths();
+        uint256[] memory repaidAmounts = new uint256[](tokensLength);
 
         for (uint256 i; i < tokensLength; ++i) {
-            uint256 currentDebt = moduleTokenData[msg.sender][tokens[i]].debt;
-            amounts[i] = amounts[i] > currentDebt ? currentDebt : amounts[i];
-            // Burn the token from the module if it's a stablecoin or simply transfer it to this contract
-            if (isStablecoin[i]) IAgToken(address(tokens[i])).burnSelf(amounts[i], address(msg.sender));
-            else {
-                to[i] = to[i] == address(0) ? address(this) : to[i];
-                tokens[i].safeTransferFrom(address(msg.sender), to[i], amounts[i]);
-            }
-            // Keep track of the changed debt
-            moduleTokenData[msg.sender][tokens[i]].debt = currentDebt - amounts[i];
-            emit DebtModified(msg.sender, tokens[i], amounts[i], false);
+            repaidAmounts[i] = _repay(tokens[i], isStablecoin[i], amounts[i], to[i]);
         }
+        return repaidAmounts;
+    }
+
+    function repaySingle(
+        IERC20 token,
+        bool isStablecoin,
+        uint256 amount,
+        address to
+    ) external onlyModule(msg.sender) returns (uint256) {
+        return _repay(token, isStablecoin, amount, to);
     }
 
     // ============================= GOVERNOR FUNCTIONS ============================
@@ -162,9 +176,13 @@ contract Minter is IMinter, MinterStorage {
         IERC20 token,
         uint256 amount
     ) external onlyGovernor onlyModule(moduleFrom) onlyModule(moduleTo) {
-        amount = _increaseModuleTokenDebt(moduleTo, token, amount);
-        moduleTokenData[moduleFrom][token].debt -= amount;
-        emit DebtModified(moduleFrom, token, amount, false);
+        uint256 borrowingPower = _getModuleBorrowingPower(moduleTo, token, true);
+        amount = amount > borrowingPower ? borrowingPower : amount;
+        if (amount > 0) {
+            _increaseModuleTokenDebt(moduleTo, token, amount);
+            moduleTokenData[moduleFrom][token].debt -= amount;
+            emit DebtModified(moduleFrom, token, amount, false);
+        }
     }
 
     /// @inheritdoc IMinter
@@ -222,21 +240,56 @@ contract Minter is IMinter, MinterStorage {
 
     // ============================= INTERNAL FUNCTION =============================
 
-    /// @notice Increases the debt of `module` for `token` by `amount` after performing all the necessary checks on
-    /// the amount with respect to the caps
-    function _increaseModuleTokenDebt(address module, IERC20 token, uint256 amount) internal returns (uint256) {
-        ModuleTokenData memory params = moduleTokenData[module][token];
-        if (params.debt + amount > params.borrowCap) {
-            amount = params.borrowCap > params.debt ? params.borrowCap - params.debt : 0;
+    function _borrow(IERC20 token, bool isStablecoin, uint256 amount) internal returns (uint256 borrowed) {
+        uint256 borrowingPower = _getModuleBorrowingPower(msg.sender, token, isStablecoin);
+        borrowed = amount > borrowingPower ? borrowingPower : amount;
+        if (borrowed > 0) {
+            _increaseModuleTokenDebt(msg.sender, token, borrowed);
+            // Minting the token to the module if it's a stablecoin otherwise simply transferring collateral to it
+            if (isStablecoin) IAgToken(address(token)).mint(address(msg.sender), borrowed);
+            else token.transfer(address(msg.sender), borrowed);
         }
+    }
+
+    function _repay(IERC20 token, bool isStablecoin, uint256 amount, address to) internal returns (uint256) {
+        uint256 currentDebt = moduleTokenData[msg.sender][token].debt;
+        amount = amount > currentDebt ? currentDebt : amount;
+        // Burn the token from the module if it's a stablecoin or simply transfer it to this contract
+        if (isStablecoin) IAgToken(address(token)).burnSelf(amount, address(msg.sender));
+        else {
+            to = to == address(0) ? address(this) : to;
+            token.safeTransferFrom(address(msg.sender), to, amount);
+        }
+        // Keep track of the changed debt
+        moduleTokenData[msg.sender][token].debt = currentDebt - amount;
+        emit DebtModified(msg.sender, token, amount, false);
+        return amount;
+    }
+
+    function _getModuleBorrowingPower(
+        address module,
+        IERC20 token,
+        bool isStablecoin
+    ) internal view returns (uint256 amount) {
+        ModuleTokenData memory params = moduleTokenData[module][token];
+        amount = params.borrowCap > params.debt ? params.borrowCap - params.debt : 0;
         uint256 day = block.timestamp / (1 days);
         uint256 dailyUsage = usage[module][token][day];
         if (dailyUsage + amount > params.dailyBorrowCap) {
             amount = params.dailyBorrowCap > dailyUsage ? params.dailyBorrowCap - dailyUsage : 0;
         }
-        moduleTokenData[module][token].debt = params.debt + amount;
-        usage[module][token][day] = dailyUsage + amount;
+        if (!isStablecoin) {
+            uint256 tokenBalance = token.balanceOf(address(this));
+            amount = amount > tokenBalance ? tokenBalance : amount;
+        }
+    }
+
+    /// @notice Increases the debt of `module` for `token` by `amount` after performing all the necessary checks on
+    /// the amount with respect to the caps
+    function _increaseModuleTokenDebt(address module, IERC20 token, uint256 amount) internal {
+        uint256 day = block.timestamp / (1 days);
+        moduleTokenData[module][token].debt += amount;
+        usage[module][token][day] += amount;
         emit DebtModified(module, token, amount, true);
-        return amount;
     }
 }
