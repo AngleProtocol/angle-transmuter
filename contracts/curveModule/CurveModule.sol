@@ -303,6 +303,40 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         _stakeLPTokens();
     }
 
+    function setRewardHandler(address _rewardHandler) external onlyGovernor {
+        if (_rewardHandler == address(0)) revert ZeroAddress();
+        rewardHandler = _rewardHandler;
+    }
+
+    function addRewardToken(IERC20 _rewardToken) external onlyGovernor {}
+
+    function removeRewardToken(IERC20 _rewardToken) external onlyGovernor {}
+
+    function setOracle(IOracle _oracle) external onlyGovernor {
+        _oracle.read();
+        oracle = _oracle;
+    }
+
+    function setUint64(uint64 param, bytes32 what) external onlyGovernor {
+        // TODO add safety checks and else revert
+        if (what == "D") depositThreshold = param;
+        else if (what == "W") withdrawThreshold = param;
+        else if (what == "O") oracleDeviationThreshold = param;
+    }
+
+    function setConvexStakeData(
+        uint16 _convexPoolId,
+        IConvexBaseRewardPool _convexBaseRewardPool,
+        ILiquidityGauge _stakeGauge,
+        IStakeCurveVault _stakeCurveVault
+    ) external onlyGovernor {
+        // TODO zero address checks
+        stakeCurveVault = _stakeCurveVault;
+        stakeGauge = _stakeGauge;
+        convexBaseRewardPool = _convexBaseRewardPool;
+        convexPoolId = _convexPoolId;
+    }
+
     // ========================== Internal Actions =================================
 
     function _getNavOfInvestedAssets() internal view returns (uint256 amountStablecoin, uint256 amountOtherToken) {
