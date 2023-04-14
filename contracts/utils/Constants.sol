@@ -11,6 +11,7 @@ contract Constants {
     uint256 internal constant _BASE_9 = 1e9;
     uint256 internal constant _BASE_12 = 1e12;
     uint256 internal constant _BASE_18 = 1e18;
+    uint256 internal constant _BASE_27 = 1e27;
 
     // ============================== COMMON ADDRESSES =============================
 

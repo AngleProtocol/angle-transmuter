@@ -11,4 +11,8 @@ interface IOracle {
     /// @dev For instance if the out currency is EUR (and hence agEUR), then the base of the returned
     /// value is 10**18
     function read() external view returns (uint256);
+
+    function readMint() external view returns (uint256);
+
+    function readBurn() external view returns (uint256);
 }
