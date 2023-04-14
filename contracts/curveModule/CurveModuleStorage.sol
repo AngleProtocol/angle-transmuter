@@ -16,7 +16,7 @@ import "../interfaces/external/stakeDAO/ILiquidityGauge.sol";
 import "../interfaces/external/curve/IMetaPool2.sol";
 import "../interfaces/ICurveModule.sol";
 import "../interfaces/IMinter.sol";
-import "../interfaces/ITreasury.sol";
+import "../interfaces/IOracle.sol";
 
 import "../utils/Constants.sol";
 import "../utils/AccessControl.sol";
@@ -27,32 +27,70 @@ import "../utils/AccessControl.sol";
 contract CurveModuleStorage is Initializable, AccessControl, Constants {
     // ================================= REFERENCES ================================
 
-    /// @notice Reference to the `AmoMinter` contract
+    /// @notice Reference to the `Minter` contract
     IMinter public minter;
+
+    /// @notice Address of the Curve pool on which this contract deposits liquidity
+    IMetaPool2 public curvePool;
+
+    /// @notice Address of the agToken
+    IERC20 public agToken;
+
+    /// @notice Address of the other token
+    IERC20 public otherToken;
+
+    /// @notice StakeDAO vault address
+    IStakeCurveVault public stakeCurveVault;
+
+    /// @notice StakeDAO gauge address
+    ILiquidityGauge public stakeGauge;
+
+    /// @notice Address of the Convex contract on which to claim rewards
+    IConvexBaseRewardPool public convexBaseRewardPool;
+
+    /// @notice Oracle contract for the other token
+    IOracle public oracle;
+
+    /// @notice Address of the contract handling liquidations of rewards accumulated
+    address public rewardHandler;
+
+    /// @notice List of reward tokens accruing to this contract
+    IERC20[] public rewardTokens;
 
     // ================================= PARAMETERS ================================
 
-    /// @notice Define the proportion of the AMO controlled by stakeDAO `amo`
-    uint256 public stakeDAOProportion;
+    /// @notice Deviation threshold from which the other token is considered as depegged and liquidity must be pulled
+    uint64 public oracleDeviationThreshold;
+
+    /// @notice Target proportion of `AgToken` in the pool
+    uint64 public depositThreshold;
+
+    /// @notice Limit above which AgToken should be removed from the pool
+    uint64 public withdrawThreshold;
+
+    /// @notice Decimals of the other token
+    uint16 public decimalsOtherToken;
+
+    /// @notice Index of agToken in the Curve pool
+    uint16 public indexAgToken;
+
+    /// @notice ID of the associated Convex pool
+    uint16 public convexPoolId;
+
+    /// @notice Whether permissionless adjust are paused or not
+    uint8 public paused;
+
+    /// @notice Defines the proportion of the LP tokens which should be staked on StakeDAO
+    uint8 public stakeDAOProportion;
 
     // ================================= MAPPINGS ==================================
-
-    /// @notice Maps a token supported by an AMO to the last known balance of it: it is needed to track
-    /// gains and losses made on a specific token
-    mapping(IERC20 => uint256) public lastBalances;
-    /// @notice Maps a token to the loss made on it by the AMO
-    mapping(IERC20 => uint256) public protocolDebts;
-    /// @notice Maps a token to the gain made on it by the AMO
-    mapping(IERC20 => uint256) public protocolGains;
-    /// @notice Whether an address can call permissioned methods
-    mapping(address => uint256) public isTrusted;
 
     uint256[43] private __gapStorage;
 
     // ================================= EVENTS ================================
 
     event Recovered(address tokenAddress, address to, uint256 amountToRecover);
-    event TrustedToggled(address who, bool trusted);
+    event ToggledPause(uint8 pauseStatus);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}

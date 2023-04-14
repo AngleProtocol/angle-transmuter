@@ -6,227 +6,266 @@ import "./CurveModuleStorage.sol";
 
 /// @title CurveModule
 /// @author Angle Labs
-abstract contract CurveModule is ICurveModule, CurveModuleStorage {
+/// @dev Only supports pools with two tokens, one of which is an Angle Protocol stablecoin
+contract CurveModule is ICurveModule, CurveModuleStorage {
     using SafeERC20 for IERC20;
-
-    // ================================= CONSTANTS =================================
-
-    /// @notice Address of the Curve pool on which this contract invests
-    address public immutable mainPool;
-
-    /// @notice Address of the agToken
-    IERC20 public immutable agToken;
-
-    /// @notice Decimals of the other token
-    uint256 public immutable decimalsOtherToken;
-
-    /// @notice Index of agToken in the Curve pool
-    uint256 public immutable indexAgToken;
-
-    /// @notice StakeDAO vault address
-    IStakeCurveVault public immutable vault;
-
-    /// @notice StakeDAO gauge address
-    ILiquidityGauge public immutable gauge;
-
-    /// @notice Address of the Convex contract on which to claim rewards
-    IConvexBaseRewardPool public immutable baseRewardPool;
-
-    /// @notice ID of the pool associated to the AMO on Convex
-    uint256 public immutable poolId;
 
     // ================================= FUNCTIONS =================================
 
-    /// @inheritdoc ICurveModule
-    function initialize(address accessControlManager_, address minter_, address agToken_, address basePool_) external {
-        if (
-            accessControlManager_ == address(0) ||
-            minter_ == address(0) ||
-            agToken_ == address(0) ||
-            basePool_ == address(0)
-        ) revert ZeroAddress();
+    function initialize(
+        address _accessControlManager,
+        address _minter,
+        address _agToken,
+        IMetaPool2 _curvePool,
+        address _stakeCurveVault,
+        address _stakeGauge,
+        address _convexBaseRewardPool,
+        uint16 _convexPoolId
+    ) external initializer {
+        if (_accessControlManager == address(0) || _minter == address(0) || _agToken == address(0))
+            revert ZeroAddress();
 
-        accessControlManager = IAccessControlManager(accessControlManager_);
-        minter = IMinter(minter_);
+        address[2] memory coins = [_curvePool.coins(0), _curvePool.coins(1)];
+        if (coins[0] != _agToken && coins[1] != _agToken) {
+            revert InvalidParam();
+        }
+
+        accessControlManager = IAccessControlManager(_accessControlManager);
+        minter = IMinter(_minter);
+        curvePool = _curvePool;
+        agToken = IERC20(_agToken);
+        uint8 _indexAgToken = coins[0] == _agToken ? 0 : 1;
+        indexAgToken = _indexAgToken;
+        otherToken = IERC20(coins[1 - _indexAgToken]);
+        decimalsOtherToken = uint8(10 ** IERC20Metadata(coins[1 - _indexAgToken]).decimals());
+        stakeCurveVault = IStakeCurveVault(_stakeCurveVault);
+        stakeGauge = ILiquidityGauge(_stakeGauge);
+        convexBaseRewardPool = IConvexBaseRewardPool(_convexBaseRewardPool);
+        convexPoolId = _convexPoolId;
+        _approveMaxSpend(_agToken, address(_curvePool));
+        _approveMaxSpend(coins[1 - _indexAgToken], address(_curvePool));
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(
-        address mainPool_,
-        address agToken_,
-        address vault_,
-        address gauge_,
-        address baseRewardPool_,
-        uint256 poolId_
-    ) initializer {
-        mainPool = mainPool_;
-        agToken = IERC20(agToken_);
-
-        address[2] memory coins = [IMetaPool2(mainPool_).coins(0), IMetaPool2(mainPool_).coins(1)];
-        if (coins[0] != agToken_ && coins[0] != agToken_) {
-            revert InvalidParam();
-        }
-        indexAgToken = coins[0] == agToken_ ? 0 : 1;
-        decimalsOtherToken = 10 ** IERC20Metadata(coins[1 - indexAgToken]).decimals();
-
-        vault = IStakeCurveVault(vault_);
-        gauge = ILiquidityGauge(gauge_);
-        baseRewardPool = IConvexBaseRewardPool(baseRewardPool_);
-        poolId = poolId_;
-    }
+    constructor() initializer {}
 
     // ================================= MODIFIERS =================================
 
-    /// @notice Checks whether the `msg.sender` is trusted
-    modifier onlyTrusted() {
-        if (isTrusted[msg.sender] != 1 || accessControlManager.isGovernorOrGuardian(msg.sender)) revert NotTrusted();
-        _;
-    }
-
-    /// @notice Checks whether the `msg.sender` is the `AMOMinter` contract
-    modifier onlyMinter() {
-        if (msg.sender != address(minter)) revert NotAMOMinter();
+    modifier whenNotPaused() {
+        if (paused > 0) revert Paused();
         _;
     }
 
     // =============================== VIEW FUNCTIONS ==============================
 
-    /// @inheritdoc ICurveModule
-    function balance() external view returns (uint256) {
-        uint256 tokenIdleBalance = agToken.balanceOf(address(this));
-        uint256 netAssets = _getNavOfInvestedAssets();
-        return tokenIdleBalance + netAssets;
+    function nav() public view returns (uint256 amountStablecoin, uint256 amountOtherToken) {
+        (amountStablecoin, amountOtherToken) = _getNavOfInvestedAssets();
+        amountStablecoin += agToken.balanceOf(address(this));
+        amountOtherToken += otherToken.balanceOf(address(this));
     }
 
-    /// @inheritdoc ICurveModule
-    function debt() external view returns (uint256) {
-        return minter.debt(agToken);
-    }
-
-    /// @inheritdoc ICurveModule
-    function getNavOfInvestedAssets() external view returns (uint256) {
+    function getNavOfInvestedAssets() public view returns (uint256, uint256) {
         return _getNavOfInvestedAssets();
     }
 
+    function hasOtherTokenDepegged() external view returns (bool) {
+        return _depegSafeguard();
+    }
+
+    function getRewardTokens() external view returns (IERC20[] memory) {
+        return rewardTokens;
+    }
+
+    function estimateProfit() public view returns (int256 agTokenProfit) {
+        (uint256 amountStablecoin, uint256 amountOtherToken) = nav();
+        agTokenProfit = int256(amountStablecoin) - int256(minter.debt(agToken));
+        int256 otherTokenProfit = int256(amountOtherToken) - int256(minter.debt(otherToken));
+        if (otherTokenProfit > 0) {
+            agTokenProfit += int256(_calcSwap(otherToken, uint256(otherTokenProfit)));
+        } else {
+            agTokenProfit -= int256(_calcSwap(otherToken, uint256(-otherTokenProfit)));
+        }
+    }
+
     /// @notice Returns the current state that is to say how much agToken should be added or removed to reach equilibrium
-    function currentState() public view returns (bool addLiquidity, uint256 delta) {
-        uint256[2] memory balances = IMetaPool2(mainPool).get_balances();
+    /// @return isOtherTokenDepegged
+    /// @return addLiquidity
+    /// @return amountAgToken
+    /// @return amountOtherToken
+    function currentState() public view returns (bool, bool, uint256, uint256) {
+        bool isOtherTokenDepegged = _depegSafeguard();
+        if (isOtherTokenDepegged) return (true, false, 0, 0);
+
+        uint256[2] memory balances = curvePool.get_balances();
+        uint256 _decimalsOtherToken = decimalsOtherToken;
+        uint256 _indexAgToken = indexAgToken;
+        // Borrowing as much as possible
+        uint256 otherTokenBalance = otherToken.balanceOf(address(this)) +
+            minter.getModuleBorrowingPower(address(this), otherToken, false);
 
         // Handle decimals
-        if (decimalsOtherToken > 18) {
-            balances[1 - indexAgToken] = balances[1 - indexAgToken] / 10 ** (decimalsOtherToken - 18);
-        } else if (decimalsOtherToken < 18) {
-            balances[1 - indexAgToken] = balances[1 - indexAgToken] * 10 ** (18 - decimalsOtherToken);
+        if (_decimalsOtherToken > 18) {
+            balances[1 - _indexAgToken] =
+                (balances[1 - _indexAgToken] + otherTokenBalance) /
+                10 ** (_decimalsOtherToken - 18);
+        } else if (_decimalsOtherToken < 18) {
+            balances[1 - _indexAgToken] =
+                (balances[1 - _indexAgToken] + otherTokenBalance) *
+                10 ** (18 - _decimalsOtherToken);
         }
 
-        // First case the module needs to inject agToken
-        if (balances[indexAgToken] < balances[1 - indexAgToken])
-            return (true, balances[1 - indexAgToken] - balances[indexAgToken]);
-        else {
-            uint256 currentDebt = minter.debt(IERC20(agToken));
-            delta = balances[indexAgToken] - balances[1 - indexAgToken];
-            delta = currentDebt > delta ? delta : currentDebt;
-            return (false, delta);
+        uint256 total = balances[0] + balances[1];
+        uint256 _depositThreshold = depositThreshold;
+        uint256 _withdrawThreshold = withdrawThreshold;
+        uint256 amountAgToken;
+        if (balances[_indexAgToken] * _BASE_9 < total * _depositThreshold) {
+            amountAgToken =
+                (balances[1 - _indexAgToken] * _depositThreshold) /
+                (_BASE_9 - _depositThreshold) -
+                balances[_indexAgToken];
+            return (false, true, amountAgToken, otherTokenBalance);
+        } else if (balances[_indexAgToken] * _BASE_9 > total * _withdrawThreshold) {
+            // This is the max theorical amount that can be removed but potentially, we cannot withdraw more than that
+            amountAgToken =
+                balances[_indexAgToken] -
+                (balances[1 - _indexAgToken] * _depositThreshold) /
+                (_BASE_9 - _depositThreshold);
+            return (false, false, amountAgToken, otherTokenBalance);
         }
+        return (false, false, 0, otherTokenBalance);
     }
 
     // ============================ ONLYMINTER FUNCTIONS ===========================
 
     /// @notice Adjusts by automatically minting and depositing, or withdrawing and burning the exact
     /// amount needed to put the Curve pool back at balance
-    /// @return addLiquidity Whether liquidity was added or removed after calling this function
-    /// @return delta How much was added or removed from the Curve pool
-    function adjust() external onlyTrusted returns (bool addLiquidity, uint256 delta) {
-        (addLiquidity, delta) = currentState();
-
-        uint256[] memory amounts = new uint256[](1);
-        IERC20[] memory tokens = new IERC20[](1);
-        bool[] memory isStablecoin = new bool[](1);
-        address[] memory to = new address[](1);
-        amounts[0] = delta;
-        tokens[0] = IERC20(agToken);
-        isStablecoin[0] = true;
-
-        if (addLiquidity) {
-            minter.borrow(tokens, isStablecoin, amounts);
-
-            (uint256 netAssets, uint256 idleAssets) = _report(agToken, delta);
-            // As the `add_liquidity` function on Curve can only deposit the right amount
-            // we can compute directly `lastBalance`
-            lastBalances[agToken] = netAssets + idleAssets;
-
-            _changeAllowance(agToken, address(mainPool), delta);
-            IMetaPool2(mainPool).add_liquidity([delta, 0], 0); // TODO Slippage
-
-            _depositLPToken();
+    function adjust()
+        external
+        whenNotPaused
+        returns (bool isOtherTokenDepegged, bool addLiquidity, uint256 amountAgToken, uint256 amountOtherToken)
+    {
+        (isOtherTokenDepegged, addLiquidity, amountAgToken, amountOtherToken) = currentState();
+        if (isOtherTokenDepegged) {
+            // TODO: in this case we don't repay the debt, but should we do something particular beyond or just wait
+            // How do we repay debt in this case
+            // TODO: cross communication between modules
+            _removeAll();
         } else {
-            _pull(tokens, amounts);
-            minter.repay(tokens, isStablecoin, amounts, to);
+            minter.borrowSingle(otherToken, false, type(uint256).max);
+            if (addLiquidity) {
+                uint256 agTokenBalance = agToken.balanceOf(address(this));
+                amountAgToken = amountAgToken > agTokenBalance ? amountAgToken - agTokenBalance : 0;
+                if (amountAgToken > 0) {
+                    uint256 amountBorrowed = minter.borrowSingle(agToken, true, amountAgToken);
+                    agTokenBalance += amountBorrowed;
+                    amountAgToken = amountAgToken > agTokenBalance ? agTokenBalance : amountAgToken;
+                }
+                if (amountAgToken > 0 || amountOtherToken > 0) {
+                    _curvePoolDeposit(amountAgToken, amountOtherToken);
+                    _stakeLPTokens();
+                }
+            } else {
+                if (amountOtherToken > 0) _curvePoolDeposit(0, amountOtherToken);
+                if (amountAgToken > 0) {
+                    _unstakeLPTokens();
+                    _curvePoolWithdraw(amountAgToken, 0);
+                    _stakeLPTokens();
+                    minter.repaySingle(agToken, true, agToken.balanceOf(address(this)), address(0));
+                } else if (amountOtherToken > 0) _stakeLPTokens();
+            }
         }
     }
 
-    function setMinter(address minter_) external onlyMinter {
-        minter = IMinter(minter_);
-    }
+    function claimRewards() external {
+        ILiquidityGauge _stakeGauge = stakeGauge;
+        // Claim on Stake
+        if (address(_stakeGauge) != address(0)) stakeGauge.claim_rewards(address(this));
+        IConvexBaseRewardPool _convexBaseRewardPool = convexBaseRewardPool;
+        if (address(_convexBaseRewardPool) != address(0)) {
+            // Claim on Convex
+            address[] memory rewardContracts = new address[](1);
+            rewardContracts[0] = address(convexBaseRewardPool);
 
-    function setToken(IERC20 token) external onlyMinter {
-        _setToken(token);
-    }
-
-    function removeToken(IERC20 token) external onlyMinter {
-        _removeToken(token);
+            _CONVEX_CLAIM_ZAP.claimRewards(
+                rewardContracts,
+                new address[](0),
+                new address[](0),
+                new address[](0),
+                0,
+                0,
+                0,
+                0,
+                0
+            );
+        }
+        // Send rewards to the `rewardHandler` contract
+        address _rewardHandler = rewardHandler;
+        if (_rewardHandler != address(0)) {
+            IERC20[] memory _rewardTokens = rewardTokens;
+            uint256 rewardLength = _rewardTokens.length;
+            for (uint256 i; i < rewardLength; ++i) {
+                _rewardTokens[i].safeTransfer(_rewardHandler, _rewardTokens[i].balanceOf(address(this)));
+            }
+        }
     }
 
     // ====================== Restricted Governance Functions ======================
 
-    function pushSurplus(IERC20 token, address to) external onlyTrusted {
+    function pushSurplus(address to) external onlyGovernor {
+        // TODO better think of cross-communication between modules
         if (to == address(0)) revert ZeroAddress();
-        uint256 amountToRecover = protocolGains[token];
+        int256 agTokenProfit = estimateProfit();
+        if (agTokenProfit > 0) {
+            uint256 agTokenBalance = agToken.balanceOf(address(this));
+            uint256 profit = uint256(agTokenProfit);
+            uint256 toRemove = profit > agTokenBalance ? profit - agTokenBalance : 0;
+            if (toRemove > 0) {
+                _unstakeLPTokens();
+                _curvePoolWithdraw(uint256(agTokenProfit), 0);
+                _stakeLPTokens();
+                agTokenBalance = agToken.balanceOf(address(this));
+            }
 
-        IERC20[] memory tokens = new IERC20[](1);
-        uint256[] memory amounts = new uint256[](1);
-        tokens[0] = token;
-        amounts[0] = amountToRecover;
-        uint256 amountAvailable = _pull(tokens, amounts)[0];
-
-        amountToRecover = amountToRecover <= amountAvailable ? amountToRecover : amountAvailable;
-        protocolGains[token] -= amountToRecover;
-        token.transfer(to, amountToRecover);
+            uint256 toSend = profit > agTokenBalance ? agTokenBalance : profit;
+            agToken.safeTransfer(to, toSend);
+        }
     }
 
-    /// @dev Governance is responsible for handling CRV, SDT, and CVX rewards claimed through this function
-    /// @dev Rewards can be used to pay back part of the debt by swapping it for `agToken`
-    /// @dev Currently this implementation only supports the Liquidity gauge associated to the StakeDAO Curve vault
-    /// @dev Should there be any additional reward contract for Convex or for StakeDAO, we should add to the list
-    /// the new contract
-    function claimRewards() external onlyTrusted {
-        // Claim on StakeDAO
-        gauge.claim_rewards(address(this));
-        // Claim on Convex
-        address[] memory rewardContracts = new address[](1);
-        rewardContracts[0] = address(baseRewardPool);
-
-        _CONVEX_CLAIM_ZAP.claimRewards(
-            rewardContracts,
-            new address[](0),
-            new address[](0),
-            new address[](0),
-            0,
-            0,
-            0,
-            0,
-            0
-        );
+    // For when we receive EUROC after a swap -> we want to have them first in the contract and then adjust to add everything at the same time
+    function forceBorrowToken(uint256 amount, bool isStablecoin) external onlyGovernor {
+        IERC20 token = isStablecoin ? agToken : otherToken;
+        minter.borrowSingle(token, isStablecoin, amount);
     }
 
-    function sellRewards(uint256 minAmountOut, bytes memory payload) external onlyTrusted {
-        //solhint-disable-next-line
-        (bool success, bytes memory result) = _ONE_INCH_ROUTER.call(payload);
-        if (!success) _revertBytes(result);
-        // TODO Add safeguard so only rewards tokens are sold
+    function forceWithdrawBothTokens(
+        uint256 amountAgToken,
+        uint256 amountOtherToken,
+        bool repay
+    ) external onlyGovernor {
+        _unstakeLPTokens();
+        _curvePoolWithdraw(amountAgToken, amountOtherToken);
+        _stakeLPTokens();
+        if (repay) {
+            uint256 agTokenBalance = agToken.balanceOf(address(this));
+            uint256 otherTokenBalance = otherToken.balanceOf(address(this));
+            uint256[] memory amounts = new uint256[](2);
+            IERC20[] memory tokens = new IERC20[](2);
+            bool[] memory isStablecoin = new bool[](2);
+            address[] memory to = new address[](2);
+            amounts[0] = agTokenBalance;
+            amounts[1] = otherTokenBalance;
+            tokens[0] = agToken;
+            tokens[1] = otherToken;
+            isStablecoin[0] = true;
+            isStablecoin[1] = false;
+            minter.repay(tokens, isStablecoin, amounts, to);
+        }
+    }
 
-        uint256 amountOut = abi.decode(result, (uint256));
-        if (amountOut < minAmountOut) revert TooSmallAmountOut();
+    function togglePause() external onlyGuardian {
+        uint8 pausedStatus = 1 - paused;
+        paused = pausedStatus;
+        emit ToggledPause(pausedStatus);
     }
 
     function changeAllowance(
@@ -234,23 +273,15 @@ abstract contract CurveModule is ICurveModule, CurveModuleStorage {
         address[] calldata spenders,
         uint256[] calldata amounts
     ) external onlyGovernor {
-        if (tokens.length != spenders.length || tokens.length != amounts.length || tokens.length == 0)
+        uint256 tokensLength = tokens.length;
+        if (tokensLength != spenders.length || tokensLength != amounts.length || tokensLength == 0)
             revert IncompatibleLengths();
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i; i < tokensLength; ++i) {
             _changeAllowance(tokens[i], spenders[i], amounts[i]);
         }
     }
 
-    function toggleTrusted(address trusted) public onlyGovernor {
-        if (trusted == address(0)) revert ZeroAddress();
-        uint256 newValue = 1 - isTrusted[trusted];
-        isTrusted[trusted] = newValue;
-        emit TrustedToggled(trusted, newValue == 1);
-    }
-
-    /// @dev This function is `onlyTrusted` rather than `onlyGovernor` because rewards selling already
-    /// happens through an `onlyTrusted` function
-    function recoverERC20(address tokenAddress, address to, uint256 amountToRecover) external onlyTrusted {
+    function recoverERC20(address tokenAddress, address to, uint256 amountToRecover) external onlyGovernor {
         IERC20(tokenAddress).safeTransfer(to, amountToRecover);
         emit Recovered(tokenAddress, to, amountToRecover);
     }
@@ -264,101 +295,64 @@ abstract contract CurveModule is ICurveModule, CurveModuleStorage {
 
     /// @notice Sets the proportion of the LP tokens that should be staked on StakeDAO with respect
     /// to Convex
-    function setStakeDAOProportion(uint256 _newProp) external onlyTrusted {
-        if (_newProp > _BASE_9) revert IncompatibleValues();
+    function setStakeDAOProportion(uint8 _newProp) external onlyGovernor {
+        if (_newProp > 100) revert IncompatibleValues();
+        if (address(stakeCurveVault) == address(0) || address(stakeGauge) == address(0)) revert InvalidParam();
         stakeDAOProportion = _newProp;
+        _unstakeLPTokens();
+        _stakeLPTokens();
+    }
+
+    function setRewardHandler(address _rewardHandler) external onlyGovernor {
+        if (_rewardHandler == address(0)) revert ZeroAddress();
+        rewardHandler = _rewardHandler;
+    }
+
+    function addRewardToken(IERC20 _rewardToken) external onlyGovernor {}
+
+    function removeRewardToken(IERC20 _rewardToken) external onlyGovernor {}
+
+    function setOracle(IOracle _oracle) external onlyGovernor {
+        _oracle.read();
+        oracle = _oracle;
+    }
+
+    function setUint64(uint64 param, bytes32 what) external onlyGovernor {
+        // TODO add safety checks and else revert
+        if (what == "D") depositThreshold = param;
+        else if (what == "W") withdrawThreshold = param;
+        else if (what == "O") oracleDeviationThreshold = param;
+    }
+
+    function setConvexStakeData(
+        uint16 _convexPoolId,
+        IConvexBaseRewardPool _convexBaseRewardPool,
+        ILiquidityGauge _stakeGauge,
+        IStakeCurveVault _stakeCurveVault
+    ) external onlyGovernor {
+        // TODO zero address checks
+        stakeCurveVault = _stakeCurveVault;
+        stakeGauge = _stakeGauge;
+        convexBaseRewardPool = _convexBaseRewardPool;
+        convexPoolId = _convexPoolId;
     }
 
     // ========================== Internal Actions =================================
 
-    /// @dev Returning an amount here is important as the amounts fed are not comparable to the lp amounts
-    function _pull(
-        IERC20[] memory tokens,
-        uint256[] memory amounts
-    ) internal returns (uint256[] memory amountsAvailable) {
-        (tokens, amounts) = _checkTokensList(tokens, amounts);
-
-        uint256[] memory idleTokens = new uint256[](tokens.length);
-
-        // Check for profit / loss made on each token. This doesn't take into account rewards
-        for (uint256 i = 0; i < tokens.length; i++) {
-            (uint256 netAssets, uint256 idleAssets) = _report(tokens[i], 0);
-            lastBalances[tokens[i]] = netAssets + idleAssets - amounts[i];
-            idleTokens[i] = idleAssets;
-        }
-
-        // We first need to unstake and withdraw the staker(s) LP token to get the Curve LP token
-        // We unstake all from the staker(s) as we don't know how much will be needed to get back `amounts`
-        _withdrawLPToken();
-        amountsAvailable = _curvePoolWithdraw(tokens, amounts, idleTokens);
-        // The leftover Curve LP token balance is staked back
-        _depositLPToken();
-
-        return amountsAvailable;
-    }
-
-    /// @notice Internal version of the `setToken` function
-    function _setToken(IERC20 token) internal virtual {}
-
-    /// @notice Internal version of the `removeToken` function
-    function _removeToken(IERC20 token) internal virtual {}
-
-    /// @notice Gets the net amount of stablecoin owned by this AMO
-    /// @dev The assets are estimated by considering that we burn all our LP tokens and receive in a balanced way `agToken` and `collateral`
-    /// @dev We then consider that the `collateral` is fully tradable at 1:1 against `agToken`
-    function _getNavOfInvestedAssets() internal view returns (uint256 netInvested) {
-        // Should be null at all times because invested on a staking platform
-        uint256 lpTokenOwned = IMetaPool2(mainPool).balanceOf(address(this)); // TODO Remove this line?
-
-        // Staked LP tokens in Convex or StakeDAO vault
-        uint256 stakedLptoken = _convexLPStaked() + _stakeDAOLPStaked();
-        lpTokenOwned = lpTokenOwned + stakedLptoken;
-
-        // Why not using `calc_withdraw_one_coin` directly from the Curve pool?
+    function _getNavOfInvestedAssets() internal view returns (uint256 amountStablecoin, uint256 amountOtherToken) {
+        uint256 lpTokenOwned = _lpTokenBalance();
         if (lpTokenOwned != 0) {
-            uint256 lpSupply = IMetaPool2(mainPool).totalSupply();
-            uint256[2] memory balances = IMetaPool2(mainPool).get_balances();
-            netInvested = _calcRemoveLiquidityStablePool(balances[0], lpSupply, lpTokenOwned);
-            // Here we consider that the `collateral` is tradable 1:1 for `agToken`
-            netInvested += _calcRemoveLiquidityStablePool(balances[1], lpSupply, lpTokenOwned) * _BASE_12;
-        }
-    }
-
-    /// @notice Checks if any gain/loss has been made since last call
-    /// @param token Address of the token to report
-    /// @param amountAdded Amount of new tokens added to the AMO
-    /// @return netAssets Difference between assets and liabilities for the token in this AMO
-    /// @return idleTokens Immediately available tokens in the AMO
-    function _report(
-        IERC20 token,
-        uint256 amountAdded
-    ) internal virtual returns (uint256 netAssets, uint256 idleTokens) {
-        netAssets = _getNavOfInvestedAssets(); // Assumed to be positive
-        idleTokens = token.balanceOf(address(this));
-
-        // Always positive otherwise we couldn't do the operation, and idleTokens >= amountAdded
-        uint256 total = idleTokens + netAssets - amountAdded;
-        uint256 lastBalance_ = lastBalances[token];
-
-        if (total > lastBalance_) {
-            // In case of a yield gain, if there is already a loss, the gain is used to compensate the previous loss
-            uint256 gain = total - lastBalance_;
-            uint256 protocolDebtPre = protocolDebts[token];
-            if (protocolDebtPre <= gain) {
-                protocolGains[token] += gain - protocolDebtPre;
-                protocolDebts[token] = 0;
-            } else protocolDebts[token] -= gain;
-        } else if (total < lastBalance_) {
-            // In case of a loss, we first try to compensate it from previous gains for the part that concerns
-            // the protocol
-            uint256 loss = lastBalance_ - total;
-            uint256 protocolGainBeforeLoss = protocolGains[token];
-            // If the loss can not be entirely soaked by the gains already made then
-            // the protocol keeps track of the debt
-            if (loss > protocolGainBeforeLoss) {
-                protocolDebts[token] += loss - protocolGainBeforeLoss;
-                protocolGains[token] = 0;
-            } else protocolGains[token] -= loss;
+            uint256 lpSupply = curvePool.totalSupply();
+            uint256[2] memory balances = curvePool.get_balances();
+            uint256 amountToken0 = _calcRemoveLiquidityStablePool(balances[0], lpSupply, lpTokenOwned);
+            uint256 amountToken1 = _calcRemoveLiquidityStablePool(balances[1], lpSupply, lpTokenOwned);
+            if (indexAgToken == 0) {
+                amountStablecoin = amountToken0;
+                amountOtherToken = amountToken1;
+            } else {
+                amountStablecoin = amountToken1;
+                amountOtherToken = amountToken0;
+            }
         }
     }
 
@@ -382,57 +376,104 @@ abstract contract CurveModule is ICurveModule, CurveModuleStorage {
         IERC20(token).safeApprove(spender, type(uint256).max);
     }
 
-    /// @notice Processes 1Inch revert messages
-    function _revertBytes(bytes memory errMsg) internal pure {
-        if (errMsg.length > 0) {
-            //solhint-disable-next-line
-            assembly {
-                revert(add(32, errMsg), mload(errMsg))
-            }
-        }
-        revert OneInchSwapFailed();
+    function _curvePoolDeposit(uint256 amountAgToken, uint256 amountOtherToken) internal {
+        // TODO slippage
+        if (indexAgToken == 0) curvePool.add_liquidity([amountAgToken, amountOtherToken], 0);
+        else curvePool.add_liquidity([amountOtherToken, amountAgToken], 0);
     }
 
-    function _curvePoolWithdraw(
-        IERC20[] memory,
-        uint256[] memory amounts,
-        uint256[] memory
-    ) internal returns (uint256[] memory) {
-        IMetaPool2(mainPool).remove_liquidity_imbalance([amounts[0], 0], 0); // TODO Slippage
-        return amounts;
+    function _curvePoolWithdraw(uint256 amountAgToken, uint256 amountOtherToken) internal {
+        if (amountAgToken > 0 || amountOtherToken > 0) {
+            // TODO Slippage -> probably a better way to do this
+            uint256[2] memory removalAmounts;
+            uint256 _indexAgToken = indexAgToken;
+            removalAmounts[_indexAgToken] = amountAgToken;
+            removalAmounts[1 - indexAgToken] = amountOtherToken;
+            uint256 burntAmount = curvePool.calc_token_amount(removalAmounts, false);
+            uint256 lpTokenOwned = _lpTokenBalance();
+            if (burntAmount > lpTokenOwned) curvePool.remove_liquidity(lpTokenOwned, removalAmounts);
+            else curvePool.remove_liquidity_imbalance(removalAmounts, burntAmount);
+        }
+    }
+
+    function _removeAll() internal {
+        _unstakeLPTokens();
+        uint256[2] memory minAmounts;
+        // TODO slippage
+        curvePool.remove_liquidity(_lpTokenBalance(), minAmounts);
     }
 
     /// @dev In this implementation, Curve LP tokens are deposited into StakeDAO and Convex
-    function _depositLPToken() internal {
-        uint256 balanceLP = IERC20(mainPool).balanceOf(address(this));
+    function _stakeLPTokens() internal {
+        uint256 balanceLP = IERC20(curvePool).balanceOf(address(this));
+        uint256 _stakeDAOProportion = stakeDAOProportion;
+        uint256 _convexPoolId = convexPoolId;
+        uint256 lpForStakeDAO;
+        uint256 lpForConvex;
 
-        // Compute what should go to Stake and Convex respectively
-        uint256 lpForStakeDAO = (balanceLP * stakeDAOProportion) / _BASE_9;
-        uint256 lpForConvex = balanceLP - lpForStakeDAO;
+        // If there are no gauges
+        if (_stakeDAOProportion == 0 && _convexPoolId == type(uint256).max) return;
+        else if (_stakeDAOProportion != 0 && _convexPoolId == type(uint256).max) lpForStakeDAO = balanceLP;
+        else {
+            lpForStakeDAO = (balanceLP * stakeDAOProportion) / 100;
+            lpForConvex = balanceLP - lpForStakeDAO;
+        }
 
         if (lpForStakeDAO > 0) {
+            IStakeCurveVault _stakeCurveVault = stakeCurveVault;
             // Approve the vault contract for the Curve LP tokens
-            _changeAllowance(IERC20(mainPool), address(vault), lpForStakeDAO);
+            _changeAllowance(IERC20(address(curvePool)), address(_stakeCurveVault), lpForStakeDAO);
             // Deposit the Curve LP tokens into the vault contract and stake
-            vault.deposit(address(this), lpForStakeDAO, true);
+            _stakeCurveVault.deposit(address(this), lpForStakeDAO, true);
         }
 
         if (lpForConvex > 0) {
-            // Deposit the Curve LP tokens into the convex contract and stake
-            _changeAllowance(IERC20(mainPool), address(_CONVEX_BOOSTER), lpForConvex);
-            _CONVEX_BOOSTER.deposit(poolId, lpForConvex, true);
+            // Deposit the Curve LP tokens into the Convex contract and stake
+            _changeAllowance(IERC20(address(curvePool)), address(_CONVEX_BOOSTER), lpForConvex);
+            _CONVEX_BOOSTER.deposit(_convexPoolId, lpForConvex, true);
         }
     }
 
     /// @notice Withdraws the Curve LP tokens from StakeDAO and Convex
-    function _withdrawLPToken() internal {
+    function _unstakeLPTokens() internal {
+        _unstakeStakeLP();
+        _unstakeConvexLP();
+    }
+
+    function _unstakeStakeLP() internal {
         uint256 lpInStakeDAO = _stakeDAOLPStaked();
-        uint256 lpInConvex = _convexLPStaked();
         if (lpInStakeDAO > 0) {
-            if (vault.withdrawalFee() > 0) revert WithdrawFeeTooLarge();
-            vault.withdraw(lpInStakeDAO);
+            if (stakeCurveVault.withdrawalFee() > 0) revert WithdrawFeeTooLarge();
+            stakeCurveVault.withdraw(lpInStakeDAO);
         }
-        if (lpInConvex > 0) baseRewardPool.withdrawAllAndUnwrap(true);
+    }
+
+    function _unstakeConvexLP() internal {
+        uint256 lpInConvex = _convexLPStaked();
+        if (lpInConvex > 0) convexBaseRewardPool.withdrawAllAndUnwrap(true);
+    }
+
+    // ========================== INTERNAL VIEW FUNCTIONS ==========================
+
+    function _lpTokenBalance() internal view returns (uint256) {
+        return curvePool.balanceOf(address(this)) + _convexLPStaked() + _stakeDAOLPStaked();
+    }
+
+    /// @notice Get the balance of the Curve LP tokens staked on StakeDAO for the pool
+    function _stakeDAOLPStaked() internal view returns (uint256 amount) {
+        ILiquidityGauge _stakeGauge = stakeGauge;
+        if (address(_stakeGauge) != address(0)) amount = _stakeGauge.balanceOf(address(this));
+    }
+
+    /// @notice Get the balance of the Curve LP tokens staked on Convex for the pool
+    function _convexLPStaked() internal view returns (uint256 amount) {
+        IConvexBaseRewardPool _convexBaseRewardPool = convexBaseRewardPool;
+        if (address(_convexBaseRewardPool) != address(0)) amount = _convexBaseRewardPool.balanceOf(address(this));
+    }
+
+    function _depegSafeguard() internal view returns (bool isOtherTokenDepegged) {
+        if (address(oracle) != address(0) && oracle.read() < (_BASE_18 * oracleDeviationThreshold) / _BASE_9)
+            isOtherTokenDepegged = true;
     }
 
     /// @notice Compute the underlying tokens amount that will be received upon removing liquidity in a balanced manner
@@ -448,28 +489,18 @@ abstract contract CurveModule is ICurveModule, CurveModuleStorage {
         if (totalLpSupply > 0) tokenWithdrawn = (tokenSupply * myLpSupply) / totalLpSupply;
     }
 
-    // ========================== INTERNAL VIEW FUNCTIONS ==========================
-
-    /// @notice Get the balance of the Curve LP tokens staked on StakeDAO for the pool
-    function _stakeDAOLPStaked() internal view returns (uint256) {
-        return gauge.balanceOf(address(this));
+    function _calcSwap(IERC20 token, uint256 amountTokenIn) internal view returns (uint256 amountTokenOut) {
+        // TODO: do this function -> estimate the output of a swap of `amountTokenIn` of `token`
+        curvePool;
+        token;
+        amountTokenIn;
+        return amountTokenOut;
     }
 
-    /// @notice Get the balance of the Curve LP tokens staked on Convex for the pool
-    function _convexLPStaked() internal view returns (uint256) {
-        return baseRewardPool.balanceOf(address(this));
-    }
-
-    /// @notice Checks on a given `tokens` and `amounts` list that are passed for a `_pull` or `_push` operation,
-    /// reverting if the tokens are not supported and filling the arrays if they are missing entries
-    /// @param tokens Addresses of tokens to be withdrawn
-    /// @param amounts Amounts of each token to be withdrawn
-    function _checkTokensList(
-        IERC20[] memory tokens,
-        uint256[] memory amounts
-    ) internal view returns (IERC20[] memory, uint256[] memory) {
-        if (tokens.length != 1) revert IncompatibleLengths();
-        if (address(tokens[0]) != address(agToken)) revert IncompatibleTokens();
-        return (tokens, amounts);
-    }
+    /*
+TODO Setters:
+- for thresholds
+- for gauges and stuff
+- for oracles and reward handler
+    */
 }

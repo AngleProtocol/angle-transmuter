@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-import "../interfaces/external/convex/IClaimZap.sol";
-import "../interfaces/external/convex/IBooster.sol";
-import "../interfaces/ITreasury.sol";
+import "../interfaces/IAccessControlManager.sol";
 
 import "../utils/Errors.sol";
 
@@ -12,7 +10,7 @@ contract AccessControl {
     /// @notice `accessControlManager` used to check roles
     IAccessControlManager public accessControlManager;
 
-    uint256[49] private __gapStorage;
+    uint256[49] private __gapAccessControl;
 
     // ================================= MODIFIERS =================================
 
@@ -23,7 +21,7 @@ contract AccessControl {
     }
 
     /// @notice Checks whether the `msg.sender` has the guardian role
-    modifier onlyGuardian(address module) {
+    modifier onlyGuardian() {
         if (!accessControlManager.isGovernorOrGuardian(msg.sender)) revert NotGovernorOrGuardian();
         _;
     }

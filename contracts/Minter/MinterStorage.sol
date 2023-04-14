@@ -7,29 +7,37 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import "../interfaces/IAgToken.sol";
-import "../interfaces/ICurveModule.sol";
 import "../interfaces/IMinter.sol";
 
 import "../utils/AccessControl.sol";
 
 /// @title MinterStorage
-/// @author Angle Labs
-/// @dev Inspired from https://github.com/FraxFinance/frax-solidity/blob/master/src/hardhat/contracts/Frax/FraxAMOMinter.sol
+/// @author Angle Labs, Inc.
+/// @notice Parameters, variables and events for the `Minter` contract
 contract MinterStorage is Initializable, AccessControl {
     using SafeERC20 for IERC20;
 
-    /// @notice Array of all supported contracts
+    struct ModuleTokenData {
+        // Amount of token owed to the minted
+        uint256 debt;
+        // Max amount of `token` borrowable by the module
+        uint256 borrowCap;
+        // Max amount that can be borrowed in a day
+        // It's technically possible to borrow 2x `dailyBorrowCap` in 24 hours by borrowing before
+        // the end of a day and right after the start of a new day
+        uint256 dailyBorrowCap;
+    }
+
+    /// @notice Array of all supported modules
     address[] public moduleList;
     /// @notice Maps an address to whether it is a module
     mapping(address => uint256) public isModule;
-    /// @notice Maps a module to whether an address can call the `sendTo`/`receiveFrom` functions associated to it
-    mapping(address => mapping(address => uint256)) public isTrustedForModule;
     /// @notice Maps each module to the list of tokens it currently supports
     mapping(address => IERC20[]) public tokens;
-    /// @notice Max amount borrowable by each `(module,token)` pair
-    mapping(address => mapping(IERC20 => uint256)) public borrowCaps;
-    /// @notice module debt to the Minter for a given token
-    mapping(address => mapping(IERC20 => uint256)) public debts;
+    /// @notice Maps `(module,token)` pairs to their associated data and parameters
+    mapping(address => mapping(IERC20 => ModuleTokenData)) public moduleTokenData;
+    /// @notice Maps `(module,token)` pairs to their associated daily borrow amounts
+    mapping(address => mapping(IERC20 => mapping(uint256 => uint256))) public usage;
 
     uint256[43] private __gap;
 
@@ -37,6 +45,8 @@ contract MinterStorage is Initializable, AccessControl {
 
     event AccessControlManagerUpdated(IAccessControlManager indexed _accessControlManager);
     event BorrowCapUpdated(address indexed module, IERC20 indexed token, uint256 borrowCap);
+    event DailyBorrowCapUpdated(address indexed module, IERC20 indexed token, uint256 dailyBorrowCap);
+    event DebtModified(address indexed module, IERC20 indexed token, uint256 amount, bool increase);
     event MinterUpdated(address indexed _minter);
     event ModuleAdded(address indexed module);
     event ModuleRemoved(address indexed module);
