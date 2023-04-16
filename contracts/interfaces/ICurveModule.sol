@@ -30,7 +30,6 @@ interface ICurveModule {
     /// @notice Pulls the gains made by the protocol on its strategies
     /// @param token Address of the token to getch gain for
     /// @param to Address to which tokens should be sent
-    /// @param data List of bytes giving additional information when withdrawing
     /// @dev This function cannot transfer more than the gains made by the protocol
     function pushSurplus(IERC20 token, address to) external;
 
@@ -60,25 +59,6 @@ interface ICurveModule {
     function recoverERC20(address tokenAddress, address to, uint256 amountToRecover) external;
 
     // ========================== Only AMOMinter Functions =========================
-
-    /// @notice Withdraws invested funds to make it available to the `AMOMinter`
-    /// @param tokens Addresses of the token to be withdrawn
-    /// @param amounts Amounts of `token` wanted to be withdrawn
-    /// @param data List of bytes giving additional information when withdrawing
-    /// @return amountsAvailable Idle amounts in each token at the end of the call
-    /// @dev Caller should make sure that for each token the associated amount can be withdrawn
-    /// otherwise the call will revert
-    function pull(
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        bytes[] memory data
-    ) external returns (uint256[] memory);
-
-    /// @notice Notify that stablecoins has been minted to the contract
-    /// @param tokens Addresses of the token transferred
-    /// @param amounts Amounts of the tokens transferred
-    /// @param data List of bytes giving additional information when depositing
-    function push(IERC20[] memory tokens, uint256[] memory amounts, bytes[] memory data) external;
 
     /// @notice Changes the reference to the `Minter` contract
     /// @param minter_ Address of the new `Minter`
