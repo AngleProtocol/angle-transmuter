@@ -10,6 +10,7 @@ import "../interfaces/IAgToken.sol";
 import "../interfaces/IManager.sol";
 import "../interfaces/IMinter.sol";
 import "../interfaces/IOracle.sol";
+import "../interfaces/IOracleFallback.sol";
 
 import "../utils/AccessControl.sol";
 import "../utils/Constants.sol";
@@ -23,6 +24,7 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
 
     struct Collateral {
         address oracle;
+        uint8 hasOracleFallback;
         uint8 delegated;
         uint8 unpaused;
         uint8 decimals;
@@ -47,6 +49,9 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
     address[] public unredeemableDirectDepositList;
     mapping(IERC20 => Collateral) public collaterals;
     mapping(address => DirectDeposit) public directDeposits;
+
+    uint64[] public xFeeRedemptionCurve;
+    int64[] public yFeeRedemptionCurve;
 
     IAgToken public agToken;
 

@@ -11,4 +11,6 @@ import "../interfaces/IAccessControlManager.sol";
 /// @notice Interface for the `Minter` contract
 interface IManager {
     function pull(uint256 amount) external;
+
+    function getUnderlyingBalance() external view returns (uint256);
 }
