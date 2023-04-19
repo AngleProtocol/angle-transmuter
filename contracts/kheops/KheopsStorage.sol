@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import "../interfaces/IAgToken.sol";
+import "../interfaces/IDepositModule.sol";
 import "../interfaces/IManager.sol";
 import "../interfaces/IMinter.sol";
 import "../interfaces/IOracle.sol";
@@ -38,6 +39,7 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
 
     struct DirectDeposit {
         uint256 r;
+        address token;
         uint64 maxExposure;
         uint8 redeemable;
         uint8 paused;
@@ -50,8 +52,8 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
     mapping(IERC20 => Collateral) public collaterals;
     mapping(address => DirectDeposit) public directDeposits;
 
-    uint64[] public xFeeRedemptionCurve;
-    int64[] public yFeeRedemptionCurve;
+    uint64[] public xRedemptionCurve;
+    int64[] public yRedemptionCurve;
 
     IAgToken public agToken;
 

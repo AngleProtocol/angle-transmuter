@@ -8,6 +8,7 @@ pragma solidity ^0.8.17;
 contract Constants {
     // =================================== MATHS ===================================
 
+    uint256 internal constant _BASE_6 = 1e6;
     uint256 internal constant _BASE_9 = 1e9;
     uint256 internal constant _BASE_12 = 1e12;
     uint256 internal constant _BASE_18 = 1e18;

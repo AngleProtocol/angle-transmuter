@@ -18,6 +18,10 @@ import "./KheopsStorage.sol";
 contract Kheops is KheopsStorage {
     using SafeERC20 for IERC20;
 
+    function initialize() external initializer {}
+
+    constructor() initializer {}
+
     function swapExact(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -38,6 +42,54 @@ contract Kheops is KheopsStorage {
         uint deadline
     ) external returns (uint amountIn) {
         return _swap(amountOut, amountInMax, tokenIn, tokenOut, to, deadline, false);
+    }
+
+    function redeem(
+        uint256 amount,
+        address receiver,
+        uint deadline,
+        uint256[] memory minAmountOuts
+    ) external returns (address[] memory tokens, uint256[] memory amounts) {
+        address[] memory forfeitTokens;
+        return _redeemWithForfeit(amount, receiver, deadline, minAmountOuts, forfeitTokens);
+    }
+
+    function redeemWithForfeit(
+        uint256 amount,
+        address receiver,
+        uint deadline,
+        uint256[] memory minAmountOuts,
+        address[] memory forfeitTokens
+    ) external returns (address[] memory tokens, uint256[] memory amounts) {
+        return _redeemWithForfeit(amount, receiver, deadline, minAmountOuts, forfeitTokens);
+    }
+
+    function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256) {
+        (bool mint, Collateral memory collatInfo) = _getMintBurn(tokenIn, tokenOut);
+        if (mint) return _quoteMintExact(collatInfo, amountIn);
+        else return _quoteBurnExact(collatInfo, amountIn);
+    }
+
+    function quoteOut(uint256 amountOut, address tokenIn, address tokenOut) external view returns (uint256) {
+        (bool mint, Collateral memory collatInfo) = _getMintBurn(tokenIn, tokenOut);
+        if (mint) return _quoteMintForExact(collatInfo, amountOut);
+        else return _quoteBurnForExact(collatInfo, amountOut);
+    }
+
+    function quoteRedemptionCurve(
+        uint256 amountBurnt
+    ) external view returns (address[] memory tokens, uint256[] memory amounts) {
+        amounts = _quoteRedemptionCurve(amountBurnt);
+        address[] memory list = collateralList;
+        uint256 length = list.length;
+        for (uint256 i; i < length; ++i) {
+            tokens[i] = collateralList[i];
+        }
+        address[] memory depositModuleList = redeemableDirectDepositList;
+        uint256 depositModuleLength = depositModuleList.length;
+        for (uint256 i; i < depositModuleLength; ++i) {
+            tokens[i + length] = directDeposits[depositModuleList[i]].token;
+        }
     }
 
     function _swap(
@@ -83,20 +135,51 @@ contract Kheops is KheopsStorage {
         }
     }
 
-    function redeem(
-        uint256 amount,
-        address receiver,
-        uint deadline,
-        uint256[] memory minAmountOuts
-    ) external returns (address[] memory tokens, uint256[] memory amounts) {}
-
-    function redeemWithForfeit(
+    function _redeemWithForfeit(
         uint256 amount,
         address receiver,
         uint deadline,
         uint256[] memory minAmountOuts,
         address[] memory forfeitTokens
-    ) external returns (address[] memory tokens, uint256[] memory amounts) {}
+    ) internal returns (address[] memory tokens, uint256[] memory amounts) {
+        if (block.timestamp < deadline) revert TooLate();
+        amounts = _quoteRedemptionCurve(amount);
+        address[] memory _collateralList = collateralList;
+        address[] memory depositModuleList = redeemableDirectDepositList;
+        uint256 collateralListLength = _collateralList.length;
+        uint256 _reserves = reserves;
+        for (uint256 i; i < amounts.length; ++i) {
+            if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
+            uint256 reduction;
+            if (i < collateralListLength) {
+                tokens[i] = _collateralList[i];
+                reduction = (collaterals[IERC20(tokens[i])].r * amount) / _reserves;
+                collaterals[IERC20(tokens[i])].r -= reduction;
+            } else {
+                tokens[i] = directDeposits[depositModuleList[i - collateralListLength]].token;
+                reduction = (directDeposits[depositModuleList[i - collateralListLength]].r * amount) / _reserves;
+                directDeposits[depositModuleList[i - collateralListLength]].r -= reduction;
+            }
+            _reserves -= reduction;
+            if (!_checkForfeit(tokens[i], forfeitTokens)) {
+                if (i < collateralListLength) {
+                    IERC20(tokens[i]).safeTransfer(receiver, amounts[i]);
+                } else {
+                    IDepositModule(depositModuleList[i - collateralListLength]).transfer(receiver, amount);
+                }
+            }
+        }
+        reserves = _reserves;
+    }
+
+    function _checkForfeit(address token, address[] memory tokens) internal pure returns (bool forfeit) {
+        for (uint256 i; i < tokens.length; ++i) {
+            if (token == tokens[i]) {
+                forfeit = true;
+                break;
+            }
+        }
+    }
 
     function _quoteMintExact(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
         uint256 oracleValue = _BASE_18;
@@ -210,34 +293,35 @@ contract Kheops is KheopsStorage {
         else amountIn = (amountOut * _BASE_27) / ((_BASE_9 + uint256(int256(-fees))) * oracleValue);
     }
 
-    function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256) {
-        (bool mint, Collateral memory collatInfo) = _getMintBurn(tokenIn, tokenOut);
-        if (mint) return _quoteMintExact(collatInfo, amountIn);
-        else return _quoteBurnExact(collatInfo, amountIn);
+    function _quoteRedemptionCurve(uint256 amountBurnt) internal view returns (uint256[] memory amounts) {
+        (uint64 collatRatio, uint256[] memory balances) = _getCollateralRatio();
+        uint64[] memory _xRedemptionCurve = xRedemptionCurve;
+        int64[] memory _yRedemptionCurve = yRedemptionCurve;
+        uint256 length = _yRedemptionCurve.length;
+        uint64 cap;
+        if (collatRatio >= _BASE_9) {
+            // TODO check conversions whether it works well
+            cap = (uint64(_yRedemptionCurve[length - 1]) * uint64(_BASE_6)) / collatRatio;
+        } else {
+            cap = uint64(_piecewiseMean(collatRatio, collatRatio, _xRedemptionCurve, _yRedemptionCurve));
+        }
+        uint256 balancesLength = balances.length;
+        uint256 _reserves = reserves;
+        for (uint256 i; i < balancesLength; ++i) {
+            amounts[i] = (amountBurnt * balances[i] * cap) / (_reserves * _BASE_9);
+        }
     }
 
-    function quoteOut(uint256 amountOut, address tokenIn, address tokenOut) external view returns (uint256) {
-        (bool mint, Collateral memory collatInfo) = _getMintBurn(tokenIn, tokenOut);
-        if (mint) return _quoteMintForExact(collatInfo, amountOut);
-        else return _quoteBurnForExact(collatInfo, amountOut);
+    function getCollateralRatio() external view returns (uint64 collatRatio) {
+        (collatRatio, ) = _getCollateralRatio();
     }
 
-    function quoteRedemptionCurve(
-        uint256 amountBurnt
-    ) external view returns (address[] memory tokens, uint256[] memory amounts) {
-        // TODO: getCollateralRatio
-        // then compute what should get in value
-        // then how much from each token -> with a formula that works so that no more than surplus is given
-    }
-
-    function getCollateralRatio() external view returns (uint256, uint256[] memory balances, uint256[] memory oracles) {
+    function _getCollateralRatio() internal view returns (uint64 collatRatio, uint256[] memory balances) {
         uint256 totalCollateralization;
         // TODO check whether an oracleList could be smart -> with just list of addresses or stuff
         address[] memory list = collateralList;
         uint256 length = list.length;
-        // TODO iterate over AMOs as well -> so it works well
         for (uint256 i; i < length; ++i) {
-            // TODO if poolManager we need a way to get the balance as well
             uint256 balance;
             address manager = collaterals[IERC20(list[i])].manager;
             if (manager != address(0)) balance = IManager(manager).getUnderlyingBalance();
@@ -245,11 +329,7 @@ contract Kheops is KheopsStorage {
             balances[i] = balance;
             address oracle = collaterals[IERC20(list[i])].oracle;
             uint256 oracleValue = _BASE_18;
-            if (oracle != address(0)) {
-                // TODO normalization by asset value
-                (oracleValue, ) = IOracle(oracle).readBurn();
-            }
-            oracles[i] = oracleValue;
+            if (oracle != address(0)) (oracleValue, ) = IOracle(oracle).readBurn();
             uint8 decimals = collaterals[IERC20(list[i])].decimals;
             if (decimals > 18) {
                 totalCollateralization += oracleValue * (balance / 10 ** (decimals - 18));
@@ -259,10 +339,15 @@ contract Kheops is KheopsStorage {
                 totalCollateralization += oracleValue * balance;
             }
         }
-
         address[] memory depositModuleList = redeemableDirectDepositList;
-        length = depositModuleList.length;
-        for (uint256 i; i < length; ++i) {}
+        uint256 depositModuleLength = depositModuleList.length;
+        for (uint256 i; i < depositModuleLength; ++i) {
+            (uint256 balance, uint256 oracleValue) = IDepositModule(depositModuleList[i]).getBalanceAndValue();
+            balances[i + length] = balance;
+            totalCollateralization += oracleValue * balance;
+        }
+        uint256 _reserves = reserves;
+        if (_reserves > 0) collatRatio = uint64((totalCollateralization * _BASE_6) / _reserves);
     }
 
     function _getMintBurn(
@@ -288,6 +373,7 @@ contract Kheops is KheopsStorage {
      * function to acknowledge surplus and do some bookkeeping at the oracle level
      * improve exposure computation when there are fees
      * logic for AMOs as well in it -> so they can borrow funds
-     * setters to update r_i potentially
+     * setters to update r_i potentially in the initializer
+     * initializer
      */
 }
