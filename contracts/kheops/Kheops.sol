@@ -15,7 +15,6 @@ import "./KheopsStorage.sol";
 
 /**
  * TODO:
- * function to recover surplus
  * function to acknowledge surplus and do some bookkeeping at the oracle level
  * contract size
  * virtual agEUR
@@ -36,11 +35,49 @@ contract Kheops is KheopsStorage {
 
     constructor() initializer {}
 
-    function getCollateralList() external view returns (address[] memory) {}
+    function getCollateralList() external view returns (address[] memory) {
+        return collateralList;
+    }
 
-    function getRedeemableModuleList() external view returns (address[] memory) {}
+    function getRedeemableModuleList() external view returns (address[] memory) {
+        return redeemableModuleList;
+    }
 
-    function getUnredeemableModuleList() external view returns (address[] memory) {}
+    function getUnredeemableModuleList() external view returns (address[] memory) {
+        return unredeemableModuleList;
+    }
+
+    function getCollateralRatio() external view returns (uint64 collatRatio) {
+        (collatRatio, ) = _getCollateralRatio();
+    }
+
+    function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256) {
+        (bool mint, Collateral memory collatInfo) = _getMintBurn(tokenIn, tokenOut);
+        if (mint) return _quoteMintExact(collatInfo, amountIn);
+        else return _quoteBurnExact(collatInfo, amountIn);
+    }
+
+    function quoteOut(uint256 amountOut, address tokenIn, address tokenOut) external view returns (uint256) {
+        (bool mint, Collateral memory collatInfo) = _getMintBurn(tokenIn, tokenOut);
+        if (mint) return _quoteMintForExact(collatInfo, amountOut);
+        else return _quoteBurnForExact(collatInfo, amountOut);
+    }
+
+    function quoteRedemptionCurve(
+        uint256 amountBurnt
+    ) external view returns (address[] memory tokens, uint256[] memory amounts) {
+        amounts = _quoteRedemptionCurve(amountBurnt);
+        address[] memory list = collateralList;
+        uint256 length = list.length;
+        for (uint256 i; i < length; ++i) {
+            tokens[i] = collateralList[i];
+        }
+        address[] memory depositModuleList = redeemableModuleList;
+        uint256 depositModuleLength = depositModuleList.length;
+        for (uint256 i; i < depositModuleLength; ++i) {
+            tokens[i + length] = modules[depositModuleList[i]].token;
+        }
+    }
 
     function swapExact(
         uint256 amountIn,
@@ -84,34 +121,6 @@ contract Kheops is KheopsStorage {
         return _redeemWithForfeit(amount, receiver, deadline, minAmountOuts, forfeitTokens);
     }
 
-    function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256) {
-        (bool mint, Collateral memory collatInfo) = _getMintBurn(tokenIn, tokenOut);
-        if (mint) return _quoteMintExact(collatInfo, amountIn);
-        else return _quoteBurnExact(collatInfo, amountIn);
-    }
-
-    function quoteOut(uint256 amountOut, address tokenIn, address tokenOut) external view returns (uint256) {
-        (bool mint, Collateral memory collatInfo) = _getMintBurn(tokenIn, tokenOut);
-        if (mint) return _quoteMintForExact(collatInfo, amountOut);
-        else return _quoteBurnForExact(collatInfo, amountOut);
-    }
-
-    function quoteRedemptionCurve(
-        uint256 amountBurnt
-    ) external view returns (address[] memory tokens, uint256[] memory amounts) {
-        amounts = _quoteRedemptionCurve(amountBurnt);
-        address[] memory list = collateralList;
-        uint256 length = list.length;
-        for (uint256 i; i < length; ++i) {
-            tokens[i] = collateralList[i];
-        }
-        address[] memory depositModuleList = redeemableModuleList;
-        uint256 depositModuleLength = depositModuleList.length;
-        for (uint256 i; i < depositModuleLength; ++i) {
-            tokens[i + length] = modules[depositModuleList[i]].token;
-        }
-    }
-
     function _swap(
         uint256 amount,
         uint256 slippage,
@@ -136,14 +145,14 @@ contract Kheops is KheopsStorage {
         if (block.timestamp < deadline) revert TooLate();
         if (mint) {
             address toProtocolAddress = collatInfo.manager != address(0) ? collatInfo.manager : address(this);
-            collaterals[IERC20(tokenOut)].r += amountOut;
+            collaterals[tokenOut].r += amountOut;
             reserves += amountOut;
             IERC20(tokenIn).safeTransferFrom(msg.sender, toProtocolAddress, amountIn);
             if (collatInfo.hasOracleFallback > 0)
                 IOracleFallback(collatInfo.oracle).updateInternalData(amountIn, amountOut, mint);
             IAgToken(tokenOut).mint(to, amountOut);
         } else {
-            collaterals[IERC20(tokenOut)].r -= amountOut;
+            collaterals[tokenOut].r -= amountOut;
             reserves -= amountOut;
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
             if (collatInfo.manager != address(0)) {
@@ -173,8 +182,8 @@ contract Kheops is KheopsStorage {
             uint256 reduction;
             if (i < collateralListLength) {
                 tokens[i] = _collateralList[i];
-                reduction = (collaterals[IERC20(tokens[i])].r * amount) / _reserves;
-                collaterals[IERC20(tokens[i])].r -= reduction;
+                reduction = (collaterals[tokens[i]].r * amount) / _reserves;
+                collaterals[tokens[i]].r -= reduction;
             } else {
                 tokens[i] = modules[depositModuleList[i - collateralListLength]].token;
                 reduction = (modules[depositModuleList[i - collateralListLength]].r * amount) / _reserves;
@@ -255,7 +264,7 @@ contract Kheops is KheopsStorage {
         uint256 deviation = _BASE_9;
         uint256 deviationValue;
         for (uint256 i; i < length; ++i) {
-            address oracle = collaterals[IERC20(list[i])].oracle;
+            address oracle = collaterals[list[i]].oracle;
             if (oracle != address(0) && oracle != collatOracle) {
                 deviationValue = IOracle(oracle).getDeviation();
                 if (deviationValue < deviation) deviation = deviationValue;
@@ -332,10 +341,6 @@ contract Kheops is KheopsStorage {
         }
     }
 
-    function getCollateralRatio() external view returns (uint64 collatRatio) {
-        (collatRatio, ) = _getCollateralRatio();
-    }
-
     function _getCollateralRatio() internal view returns (uint64 collatRatio, uint256[] memory balances) {
         uint256 totalCollateralization;
         // TODO check whether an oracleList could be smart -> with just list of addresses or stuff
@@ -343,14 +348,14 @@ contract Kheops is KheopsStorage {
         uint256 length = list.length;
         for (uint256 i; i < length; ++i) {
             uint256 balance;
-            address manager = collaterals[IERC20(list[i])].manager;
+            address manager = collaterals[list[i]].manager;
             if (manager != address(0)) balance = IManager(manager).getUnderlyingBalance();
             else balance = IERC20(list[i]).balanceOf(address(this));
             balances[i] = balance;
-            address oracle = collaterals[IERC20(list[i])].oracle;
+            address oracle = collaterals[list[i]].oracle;
             uint256 oracleValue = _BASE_18;
             if (oracle != address(0)) (oracleValue, ) = IOracle(oracle).readBurn();
-            uint8 decimals = collaterals[IERC20(list[i])].decimals;
+            uint8 decimals = collaterals[list[i]].decimals;
             if (decimals > 18) {
                 totalCollateralization += oracleValue * (balance / 10 ** (decimals - 18));
             } else if (decimals < 18) {
@@ -376,11 +381,11 @@ contract Kheops is KheopsStorage {
     ) internal view returns (bool mint, Collateral memory collatInfo) {
         address _agToken = address(agToken);
         if (tokenIn == _agToken) {
-            collatInfo = collaterals[IERC20(tokenOut)];
+            collatInfo = collaterals[tokenOut];
             if (collatInfo.unpaused == 0) revert InvalidTokens();
             mint = false;
         } else if (tokenOut == _agToken) {
-            collatInfo = collaterals[IERC20(tokenOut)];
+            collatInfo = collaterals[tokenOut];
             if (collatInfo.unpaused == 0) revert InvalidTokens();
             mint = true;
         } else revert InvalidTokens();
@@ -409,7 +414,7 @@ contract Kheops is KheopsStorage {
     }
 
     function adjustReserve(address collateral, uint256 amount, bool addOrRemove) external onlyGovernor {
-        Collateral storage collatInfo = collaterals[IERC20(collateral)];
+        Collateral storage collatInfo = collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         if (addOrRemove) {
             collatInfo.r += amount;
@@ -422,13 +427,13 @@ contract Kheops is KheopsStorage {
 
     function recoverERC20(IERC20 token, address to, uint256 amount, bool pull) external onlyGovernor {
         if (pull) {
-            IManager(collaterals[token].manager).pull(amount);
+            IManager(collaterals[address(token)].manager).pull(amount);
             token.safeTransfer(to, amount);
         } else token.safeTransfer(to, amount);
     }
 
     function setCollateralManager(address collateral, address manager) external onlyGovernor {
-        Collateral storage collatInfo = collaterals[IERC20(collateral)];
+        Collateral storage collatInfo = collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         if (manager == address(0)) {
             IManager(collatInfo.manager).pullAll();
@@ -440,7 +445,7 @@ contract Kheops is KheopsStorage {
 
     function togglePause(address collateral, bool collateralOrModule) external onlyGuardian {
         if (collateralOrModule) {
-            Collateral storage collatInfo = collaterals[IERC20(collateral)];
+            Collateral storage collatInfo = collaterals[collateral];
             if (collatInfo.decimals == 0) revert NotCollateral();
             uint8 pausedStatus = collatInfo.unpaused;
             collatInfo.unpaused = 1 - pausedStatus;
@@ -461,7 +466,7 @@ contract Kheops is KheopsStorage {
         uint64[] memory xFeeBurn,
         int64[] memory yFeeBurn
     ) external onlyGovernor {
-        Collateral storage collatInfo = collaterals[IERC20(collateral)];
+        Collateral storage collatInfo = collaterals[collateral];
         if (collatInfo.decimals != 0) revert AlreadyAdded();
         _checkOracle(oracle, hasOracleFallback);
         _checkFees(xFeeMint, yFeeMint, 0);
@@ -493,9 +498,9 @@ contract Kheops is KheopsStorage {
     }
 
     function revokeCollateral(address collateral) external onlyGovernor {
-        Collateral memory collatInfo = collaterals[IERC20(collateral)];
+        Collateral memory collatInfo = collaterals[collateral];
         if (collatInfo.decimals == 0 || collatInfo.r > 0) revert NotCollateral();
-        delete collaterals[IERC20(collateral)];
+        delete collaterals[collateral];
         address[] memory _collateralList = collateralList;
         uint256 length = _collateralList.length;
         // We already know that it is in the list
@@ -538,7 +543,7 @@ contract Kheops is KheopsStorage {
     }
 
     function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) external onlyGuardian {
-        Collateral storage collatInfo = collaterals[IERC20(collateral)];
+        Collateral storage collatInfo = collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         uint8 setter;
         if (!mint) setter = 1;
@@ -555,7 +560,7 @@ contract Kheops is KheopsStorage {
     // Future unpredicted use cases, so we're not messing up with storage
     function setExtraData(bytes memory extraData, address collateral, bool collateralOrModule) external onlyGuardian {
         if (collateralOrModule) {
-            Collateral storage collatInfo = collaterals[IERC20(collateral)];
+            Collateral storage collatInfo = collaterals[collateral];
             if (collatInfo.decimals == 0) revert NotCollateral();
             collatInfo.extraData = extraData;
         } else {
@@ -566,7 +571,7 @@ contract Kheops is KheopsStorage {
     }
 
     function setOracle(address collateral, address oracle, uint8 hasOracleFallback) external onlyGovernor {
-        Collateral storage collatInfo = collaterals[IERC20(collateral)];
+        Collateral storage collatInfo = collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         _checkOracle(oracle, hasOracleFallback);
         collatInfo.oracle = oracle;
@@ -596,7 +601,7 @@ contract Kheops is KheopsStorage {
             uint256 length = _collateralList.length;
             for (uint256 i; i < length; ++i) {
                 // TODO: do we perform other checks on the fact that sum of target exposures and stuff must be well respected
-                int64[] memory burnFees = collaterals[IERC20(_collateralList[i])].yFeeBurn;
+                int64[] memory burnFees = collaterals[_collateralList[i]].yFeeBurn;
                 if (burnFees[burnFees.length - 1] + yFee[0] < 0) revert InvalidParams();
             }
         }
@@ -605,7 +610,7 @@ contract Kheops is KheopsStorage {
             address[] memory _collateralList = collateralList;
             uint256 length = _collateralList.length;
             for (uint256 i; i < length; ++i) {
-                int64[] memory mintFees = collaterals[IERC20(_collateralList[i])].yFeeMint;
+                int64[] memory mintFees = collaterals[_collateralList[i]].yFeeMint;
                 if (mintFees[0] + yFee[n - 1] < 0) revert InvalidParams();
             }
         }

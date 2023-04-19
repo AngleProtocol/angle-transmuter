@@ -28,12 +28,12 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
 
     struct Collateral {
         address oracle;
+        address manager;
+        // TODO r can potentially be formatted into something with fewer bytes
+        uint256 r;
         uint8 hasOracleFallback;
-        // TODO check whether this one is valid or whether it could work with just decimals to validate upgradeability
         uint8 unpaused;
         uint8 decimals;
-        address manager;
-        uint256 r;
         uint64[] xFeeMint;
         int64[] yFeeMint;
         uint64[] xFeeBurn;
@@ -43,8 +43,8 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
     }
 
     struct Module {
-        uint256 r;
         address token;
+        uint256 r;
         uint64 maxExposure;
         uint8 initialized;
         uint8 redeemable;
@@ -57,7 +57,7 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
     address[] public collateralList;
     address[] public redeemableModuleList;
     address[] public unredeemableModuleList;
-    mapping(IERC20 => Collateral) public collaterals;
+    mapping(address => Collateral) public collaterals;
     mapping(address => Module) public modules;
 
     uint64[] public xRedemptionCurve;
