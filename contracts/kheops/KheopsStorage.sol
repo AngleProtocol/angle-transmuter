@@ -3,11 +3,12 @@
 pragma solidity ^0.8.12;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import "../interfaces/IAgToken.sol";
-import "../interfaces/IDepositModule.sol";
+import "../interfaces/IModule.sol";
 import "../interfaces/IManager.sol";
 import "../interfaces/IMinter.sol";
 import "../interfaces/IOracle.sol";
@@ -23,10 +24,12 @@ import "../utils/FunctionUtils.sol";
 contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils {
     using SafeERC20 for IERC20;
 
+    // TODO parameter for pausing the whole system or -> is it just setting fees
+
     struct Collateral {
         address oracle;
         uint8 hasOracleFallback;
-        uint8 delegated;
+        // TODO check whether this one is valid or whether it could work with just decimals to validate upgradeability
         uint8 unpaused;
         uint8 decimals;
         address manager;
@@ -35,22 +38,27 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
         int64[] yFeeMint;
         uint64[] xFeeBurn;
         int64[] yFeeBurn;
+        // For future upgrades
+        bytes extraData;
     }
 
-    struct DirectDeposit {
+    struct Module {
         uint256 r;
         address token;
         uint64 maxExposure;
+        uint8 initialized;
         uint8 redeemable;
-        uint8 paused;
+        uint8 unpaused;
+        // For future upgrades
+        bytes extraData;
     }
 
     uint256 public reserves;
     address[] public collateralList;
-    address[] public redeemableDirectDepositList;
-    address[] public unredeemableDirectDepositList;
+    address[] public redeemableModuleList;
+    address[] public unredeemableModuleList;
     mapping(IERC20 => Collateral) public collaterals;
-    mapping(address => DirectDeposit) public directDeposits;
+    mapping(address => Module) public modules;
 
     uint64[] public xRedemptionCurve;
     int64[] public yRedemptionCurve;

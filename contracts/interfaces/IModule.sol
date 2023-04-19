@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.12;
 
-/// @title IDepositModule
+/// @title IModule
 /// @author Angle Labs, Inc.
-interface IDepositModule {
+interface IModule {
     /// @notice Returns the current balance and value of the asset
     function getBalanceAndValue() external view returns (uint256, uint256);
 

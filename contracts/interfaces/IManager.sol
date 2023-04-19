@@ -12,5 +12,7 @@ import "../interfaces/IAccessControlManager.sol";
 interface IManager {
     function pull(uint256 amount) external;
 
+    function pullAll() external;
+
     function getUnderlyingBalance() external view returns (uint256);
 }
