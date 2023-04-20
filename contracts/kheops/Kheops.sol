@@ -20,6 +20,7 @@ import "./KheopsStorage.sol";
  * virtual agEUR
  * events
  * multiplier for the r_i and R -> so that reserves can be increased or decreased
+ * function to estimate the collateral ratio
  */
 
 /// @title Kheops
@@ -345,7 +346,7 @@ contract Kheops is KheopsStorage {
             balances[i] = balance;
             address oracle = collaterals[list[i]].oracle;
             uint256 oracleValue = _BASE_18;
-            if (oracle != address(0)) (oracleValue, ) = IOracle(oracle).readBurn();
+            if (oracle != address(0)) oracleValue = IOracle(oracle).readMint();
             totalCollateralization += oracleValue * _convertToBase(balance, collaterals[list[i]].decimals);
         }
         address[] memory depositModuleList = redeemableModuleList;
