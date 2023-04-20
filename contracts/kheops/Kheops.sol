@@ -255,10 +255,16 @@ contract Kheops is KheopsStorage {
         uint256 oracleValue = _BASE_18;
         if (collatInfo.oracle != address(0)) oracleValue = IOracle(collatInfo.oracle).readMint();
         uint256 amountInCorrected = _convertDecimalTo(amountIn, collatInfo.decimals, 18);
-        // Overestimating the amount of stablecoin we'll get to compute the exposure
-        uint256 estimatedStablecoinAmount = (_applyFeeOut(amountInCorrected, oracleValue, collatInfo.yFeeMint[0]) *
-            _BASE_27) / accumulator;
         uint256 _reserves = reserves;
+        // We know for sure that the account won't get more stable than what it deposited*oracle
+        uint256 maxStablecoinAmount = (oracleValue * amountIn) / _BASE_18;
+        uint64 maxExposure = uint64(
+            ((collatInfo.r + maxStablecoinAmount) * _BASE_9) / (_reserves + maxStablecoinAmount)
+        );
+        int64 maxFee = _piecewiseLinear(maxExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
+        // Overestimating the amount of stablecoin we'll get to compute the exposure
+        uint256 estimatedStablecoinAmount = (_applyFeeOut(amountInCorrected, oracleValue, maxFee) * _BASE_27) /
+            accumulator;
         uint64 newExposure = uint64(
             ((collatInfo.r + estimatedStablecoinAmount) * _BASE_9) / (_reserves + estimatedStablecoinAmount)
         );
@@ -298,14 +304,21 @@ contract Kheops is KheopsStorage {
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
         uint256 oracleValue = _getBurnOracle(collatInfo.oracle);
+        uint256 _reserves = reserves;
+        // We know for sure that the account won't get more stable than what it deposited*oracle
+        uint256 maxStablecoinAmount = (oracleValue * _convertDecimalTo(amountOut, collatInfo.decimals, 18)) / _BASE_18;
+        uint64 maxExposure = uint64(
+            ((collatInfo.r + maxStablecoinAmount) * _BASE_9) / (_reserves + maxStablecoinAmount)
+        );
+        int64 maxFee = _piecewiseLinear(maxExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
         // Underestimating the amount that needs to be burnt
         uint256 estimatedStablecoinAmount = (_applyFeeIn(
             _convertDecimalTo(amountOut, collatInfo.decimals, 18),
             oracleValue,
-            collatInfo.yFeeBurn[collatInfo.yFeeBurn.length - 1]
+            maxFee
         ) * _BASE_27) / accumulator;
-        uint256 _reserves = reserves;
         uint64 newExposure;
+        // TODO why not just equality
         if (estimatedStablecoinAmount >= reserves) newExposure = 0;
         else
             newExposure = uint64(
