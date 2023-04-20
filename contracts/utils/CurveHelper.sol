@@ -59,6 +59,7 @@ contract CurveHelper is Constants {
                 }
             }
         }
+        return 0;
         // Convergence typically occurs in 4 rounds or less, this should be unreachable!
         // If it does happen, the pool is broken and LPs can withdraw via `remove_liquidity`
     }
@@ -107,6 +108,7 @@ contract CurveHelper is Constants {
                 }
             }
         }
+        return 0;
     }
 
     function get_dy(uint256 i, uint256 j, uint256 dx, uint256[N_COINS] memory balances) public view returns (uint256) {
