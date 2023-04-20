@@ -263,7 +263,7 @@ contract Kheops is KheopsStorage {
         uint64 maxExposure = uint64(
             ((collatInfo.r + maxStablecoinAmount) * _BASE_9) / (_reserves + maxStablecoinAmount)
         );
-        int64 maxFee = maxExposure(maxExposure, maxExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
+        int64 maxFee = _piecewiseMean(maxExposure, maxExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
         // Overestimating the amount of stablecoin we'll get to compute the exposure
         uint256 estimatedStablecoinAmount = (_applyFeeOut(amountInCorrected, oracleValue, maxFee) * _BASE_27) /
             accumulator;
