@@ -375,8 +375,12 @@ contract Kheops is KheopsStorage {
         uint256 totalCollateralization;
         // TODO check whether an oracleList could be smart -> with just list of addresses or stuff
         address[] memory list = collateralList;
-        uint256 length = list.length;
-        for (uint256 i; i < length; ++i) {
+        uint256 listLength = list.length;
+        address[] memory depositModuleList = redeemableModuleList;
+        uint256 depositModuleLength = depositModuleList.length;
+        balances = new uint256[](listLength + depositModuleLength);
+
+        for (uint256 i; i < listLength; ++i) {
             uint256 balance;
             address manager = collaterals[list[i]].manager;
             if (manager != address(0)) balance = IManager(manager).getUnderlyingBalance();
@@ -388,11 +392,9 @@ contract Kheops is KheopsStorage {
             if (oracle != address(0)) oracleValue = IOracle(oracle).readMint();
             totalCollateralization += oracleValue * _convertDecimalTo(balance, collaterals[list[i]].decimals, 18);
         }
-        address[] memory depositModuleList = redeemableModuleList;
-        uint256 depositModuleLength = depositModuleList.length;
         for (uint256 i; i < depositModuleLength; ++i) {
             (uint256 balance, uint256 value) = IModule(depositModuleList[i]).getBalanceAndValue();
-            balances[i + length] = balance;
+            balances[i + listLength] = balance;
             totalCollateralization += value;
         }
         uint256 _reserves = reserves;
