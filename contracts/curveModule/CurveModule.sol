@@ -311,7 +311,11 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         ILiquidityGauge _stakeGauge,
         IStakeCurveVault _stakeCurveVault
     ) external onlyGovernor {
-        // TODO zero address checks
+        if (
+            address(_convexBaseRewardPool) == address(0) ||
+            address(_stakeGauge) == address(0) ||
+            address(_stakeCurveVault) == address(0)
+        ) revert ZeroAddress();
         stakeCurveVault = _stakeCurveVault;
         stakeGauge = _stakeGauge;
         convexBaseRewardPool = _convexBaseRewardPool;
@@ -471,7 +475,5 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
 TODO Setters:
 - for thresholds
 - for gauges and stuff
-- for oracles and reward handler
-- transfer as part of redemption
     */
 }
