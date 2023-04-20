@@ -299,7 +299,7 @@ contract Kheops is KheopsStorage {
     ) internal view returns (uint256 amountIn) {
         uint256 oracleValue = _getBurnOracle(collatInfo.oracle);
         // Underestimating the amount that needs to be burnt
-        uint256 estimatedStablecoinAmount = _applyFeeIn(
+        uint256 estimatedStablecoinAmount = (_applyFeeIn(
             _convertDecimalTo(amountOut, collatInfo.decimals, 18),
             oracleValue,
             collatInfo.yFeeBurn[collatInfo.yFeeBurn.length - 1]
