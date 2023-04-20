@@ -20,7 +20,8 @@ import "./KheopsStorage.sol";
  * virtual agEUR
  * events
  * multiplier for the r_i and R -> so that reserves can be increased or decreased
- * function to estimate the collateral ratio
+ * function to estimate the collateral ratio -> and acknowledge surplus based on this
+ * function to increase reserves or decrease based on multiplicator
  */
 
 /// @title Kheops
@@ -127,6 +128,14 @@ contract Kheops is KheopsStorage {
         address[] memory forfeitTokens
     ) external returns (address[] memory tokens, uint256[] memory amounts) {
         return _redeemWithForfeit(amount, receiver, deadline, minAmountOuts, forfeitTokens);
+    }
+
+    function getModuleBorrowed(address module) external view returns (uint256) {
+        return modules[module].r;
+    }
+
+    function isModule(address module) external view returns (bool) {
+        return modules[module].initialized > 0;
     }
 
     function _swap(

@@ -15,20 +15,22 @@ import "../interfaces/external/stakeDAO/IClaimerRewards.sol";
 import "../interfaces/external/stakeDAO/ILiquidityGauge.sol";
 import "../interfaces/external/curve/IMetaPool2.sol";
 import "../interfaces/ICurveModule.sol";
-import "../interfaces/IMinter.sol";
+import "../interfaces/IKheops.sol";
+import "../interfaces/IModule.sol";
 import "../interfaces/IOracle.sol";
 
 import "../utils/Constants.sol";
 import "../utils/AccessControl.sol";
+import "../utils/FunctionUtils.sol";
 
 /// @title CurveModuleStorage
 /// @author Angle Labs
 /// @notice This contract stores the references, parameters, and mappings for the CurveModule contract.
-contract CurveModuleStorage is Initializable, AccessControl, Constants {
+contract CurveModuleStorage is Initializable, AccessControl, Constants, FunctionUtils {
     // ================================= REFERENCES ================================
 
     /// @notice Reference to the `Minter` contract
-    IMinter public minter;
+    IKheops public kheops;
 
     /// @notice Address of the Curve pool on which this contract deposits liquidity
     IMetaPool2 public curvePool;
@@ -69,7 +71,7 @@ contract CurveModuleStorage is Initializable, AccessControl, Constants {
     uint64 public withdrawThreshold;
 
     /// @notice Decimals of the other token
-    uint16 public decimalsOtherToken;
+    uint8 public decimalsOtherToken;
 
     /// @notice Index of agToken in the Curve pool
     uint16 public indexAgToken;

@@ -53,6 +53,7 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
         bytes extraData;
     }
 
+    // TODO: rename reserves = not a good name
     uint256 public reserves;
     address[] public collateralList;
     address[] public redeemableModuleList;

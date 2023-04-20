@@ -4,7 +4,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../interfaces/IAccessControlManager.sol";
-import "../interfaces/IMinter.sol";
+import "../interfaces/IKheops.sol";
 
 import "../utils/AccessControl.sol";
 import "../utils/Constants.sol";
@@ -16,7 +16,7 @@ contract RewardHandler is AccessControl, Constants {
     using SafeERC20 for IERC20;
     IERC20[] public protectedTokens;
 
-    IMinter public minter;
+    IKheops public kheops;
 
     mapping(address => uint256) public isTrusted;
 
@@ -29,9 +29,9 @@ contract RewardHandler is AccessControl, Constants {
         _;
     }
 
-    constructor(address _accessControlManager, address[] memory _protectedTokens, address _minter) {
-        if (_accessControlManager == address(0) || _minter == address(0)) revert ZeroAddress();
-        minter = IMinter(minter);
+    constructor(address _accessControlManager, address[] memory _protectedTokens, address _kheops) {
+        if (_accessControlManager == address(0) || _kheops == address(0)) revert ZeroAddress();
+        kheops = IKheops(_kheops);
         accessControlManager = IAccessControlManager(_accessControlManager);
         uint256 protectedTokensLength = _protectedTokens.length;
         for (uint256 i; i < protectedTokensLength; ++i) {
@@ -105,8 +105,8 @@ contract RewardHandler is AccessControl, Constants {
     }
 
     function _recover(address token, address toAddress, uint256 amount) internal {
-        IMinter _minter = minter;
-        if (toAddress != address(_minter) || !_minter.checkModule(toAddress)) revert InvalidToAddress();
+        IKheops _kheops = kheops;
+        if (toAddress != address(_kheops) || !_kheops.isModule(toAddress)) revert InvalidToAddress();
         IERC20(token).safeTransfer(toAddress, amount);
         emit Recovered(token, toAddress, amount);
     }

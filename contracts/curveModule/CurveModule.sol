@@ -14,16 +14,16 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
 
     function initialize(
         address _accessControlManager,
-        address _minter,
-        address _agToken,
+        address _kheops,
         IMetaPool2 _curvePool,
         address _stakeCurveVault,
         address _stakeGauge,
         address _convexBaseRewardPool,
         uint16 _convexPoolId
     ) external initializer {
-        if (_accessControlManager == address(0) || _minter == address(0) || _agToken == address(0))
-            revert ZeroAddress();
+        if (_accessControlManager == address(0)) revert ZeroAddress();
+
+        address _agToken = address(IKheops(kheops).agToken());
 
         address[2] memory coins = [_curvePool.coins(0), _curvePool.coins(1)];
         if (coins[0] != _agToken && coins[1] != _agToken) {
@@ -31,13 +31,13 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         }
 
         accessControlManager = IAccessControlManager(_accessControlManager);
-        minter = IMinter(_minter);
+        kheops = IKheops(_kheops);
         curvePool = _curvePool;
         agToken = IERC20(_agToken);
         uint8 _indexAgToken = coins[0] == _agToken ? 0 : 1;
         indexAgToken = _indexAgToken;
         otherToken = IERC20(coins[1 - _indexAgToken]);
-        decimalsOtherToken = uint8(10 ** IERC20Metadata(coins[1 - _indexAgToken]).decimals());
+        decimalsOtherToken = uint8(IERC20Metadata(coins[1 - _indexAgToken]).decimals());
         stakeCurveVault = IStakeCurveVault(_stakeCurveVault);
         stakeGauge = ILiquidityGauge(_stakeGauge);
         convexBaseRewardPool = IConvexBaseRewardPool(_convexBaseRewardPool);
@@ -58,14 +58,45 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
 
     // =============================== VIEW FUNCTIONS ==============================
 
-    function nav() public view returns (uint256 amountStablecoin, uint256 amountOtherToken) {
-        (amountStablecoin, amountOtherToken) = _getNavOfInvestedAssets();
+    // Balance solely estimated from LP Tokens here
+    function getBalanceAndValue() external view returns (uint256, uint256) {
+        (uint256 lpTokenOwned, uint256 amountStablecoin, uint256 amountOtherToken) = _getNavOfInvestedAssets();
+        int128 _indexAgToken = int128(uint128(indexAgToken));
+        amountOtherToken = curvePool.get_dy(1 - _indexAgToken, _indexAgToken, amountOtherToken);
+        /* TODO: estimate best option
+        amountOtherToken = _convertToBase(amountOtherToken, decimalsOtherToken);
+        if (address(oracle) != address(0)) {
+            amountOtherToken = (oracle.read() * amountOtherToken) / _BASE_18;
+        }
+        */
+        return (lpTokenOwned, amountStablecoin + amountOtherToken);
+    }
+
+    // Assuming here that everything that is controlled is the LP tokens and only outstanding balances are profits
+    function transfer(address receiver, uint256 amount) external {
+        if (msg.sender != address(kheops)) revert NotAllowed();
+        _unstakeLPTokens();
+        IERC20(address(curvePool)).safeTransfer(receiver, amount);
+        _stakeLPTokens();
+    }
+
+    function nav() public view returns (uint256 lpTokenOwned, uint256 amountStablecoin, uint256 amountOtherToken) {
+        (lpTokenOwned, amountStablecoin, amountOtherToken) = _getNavOfInvestedAssets();
         amountStablecoin += agToken.balanceOf(address(this));
         amountOtherToken += otherToken.balanceOf(address(this));
     }
 
-    function getNavOfInvestedAssets() public view returns (uint256, uint256) {
+    function getNavOfInvestedAssets() public view returns (uint256, uint256, uint256) {
         return _getNavOfInvestedAssets();
+    }
+
+    function estimateProfit() public view returns (int256 agTokenProfit) {
+        (, uint256 amountStablecoin, uint256 amountOtherToken) = nav();
+        int128 _indexAgToken = int128(uint128(indexAgToken));
+        agTokenProfit =
+            int256(amountStablecoin) +
+            int256(curvePool.get_dy(1 - _indexAgToken, _indexAgToken, amountOtherToken)) -
+            int256(kheops.getModuleBorrowed(address(this)));
     }
 
     function hasOtherTokenDepegged() external view returns (bool) {
@@ -74,17 +105,6 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
 
     function getRewardTokens() external view returns (IERC20[] memory) {
         return rewardTokens;
-    }
-
-    function estimateProfit() public view returns (int256 agTokenProfit) {
-        (uint256 amountStablecoin, uint256 amountOtherToken) = nav();
-        agTokenProfit = int256(amountStablecoin) - int256(minter.debt(agToken));
-        int256 otherTokenProfit = int256(amountOtherToken) - int256(minter.debt(otherToken));
-        if (otherTokenProfit > 0) {
-            agTokenProfit += int256(_calcSwap(otherToken, uint256(otherTokenProfit)));
-        } else {
-            agTokenProfit -= int256(_calcSwap(otherToken, uint256(-otherTokenProfit)));
-        }
     }
 
     /// @notice Returns the current state that is to say how much agToken should be added or removed to reach equilibrium
@@ -97,22 +117,13 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         if (isOtherTokenDepegged) return (true, false, 0, 0);
 
         uint256[2] memory balances = curvePool.get_balances();
-        uint256 _decimalsOtherToken = decimalsOtherToken;
         uint256 _indexAgToken = indexAgToken;
         // Borrowing as much as possible
-        uint256 otherTokenBalance = otherToken.balanceOf(address(this)) +
-            minter.getModuleBorrowingPower(address(this), otherToken, false);
-
-        // Handle decimals
-        if (_decimalsOtherToken > 18) {
-            balances[1 - _indexAgToken] =
-                (balances[1 - _indexAgToken] + otherTokenBalance) /
-                10 ** (_decimalsOtherToken - 18);
-        } else if (_decimalsOtherToken < 18) {
-            balances[1 - _indexAgToken] =
-                (balances[1 - _indexAgToken] + otherTokenBalance) *
-                10 ** (18 - _decimalsOtherToken);
-        }
+        uint256 otherTokenBalance = otherToken.balanceOf(address(this));
+        balances[1 - _indexAgToken] = _convertToBase(
+            balances[1 - _indexAgToken] + otherTokenBalance,
+            decimalsOtherToken
+        );
 
         uint256 total = balances[0] + balances[1];
         uint256 _depositThreshold = depositThreshold;
@@ -135,8 +146,6 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         return (false, false, 0, otherTokenBalance);
     }
 
-    // ============================ ONLYMINTER FUNCTIONS ===========================
-
     /// @notice Adjusts by automatically minting and depositing, or withdrawing and burning the exact
     /// amount needed to put the Curve pool back at balance
     function adjust()
@@ -148,15 +157,15 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         if (isOtherTokenDepegged) {
             // TODO: in this case we don't repay the debt, but should we do something particular beyond or just wait
             // How do we repay debt in this case
-            // TODO: cross communication between modules
-            _removeAll();
+            _unstakeLPTokens();
+            uint256[2] memory minAmounts;
+            curvePool.remove_liquidity(_lpTokenBalance(), minAmounts);
         } else {
-            minter.borrowSingle(otherToken, false, type(uint256).max);
             if (addLiquidity) {
                 uint256 agTokenBalance = agToken.balanceOf(address(this));
                 amountAgToken = amountAgToken > agTokenBalance ? amountAgToken - agTokenBalance : 0;
                 if (amountAgToken > 0) {
-                    uint256 amountBorrowed = minter.borrowSingle(agToken, true, amountAgToken);
+                    uint256 amountBorrowed = kheops.borrow(amountAgToken);
                     agTokenBalance += amountBorrowed;
                     amountAgToken = amountAgToken > agTokenBalance ? agTokenBalance : amountAgToken;
                 }
@@ -170,7 +179,7 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
                     _unstakeLPTokens();
                     _curvePoolWithdraw(amountAgToken, 0);
                     _stakeLPTokens();
-                    minter.repaySingle(agToken, true, agToken.balanceOf(address(this)), address(0));
+                    kheops.repay(agToken.balanceOf(address(this)));
                 } else if (amountOtherToken > 0) _stakeLPTokens();
             }
         }
@@ -211,55 +220,15 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
 
     // ====================== Restricted Governance Functions ======================
 
-    function pushSurplus(address to) external onlyGovernor {
-        // TODO better think of cross-communication between modules
-        if (to == address(0)) revert ZeroAddress();
-        int256 agTokenProfit = estimateProfit();
-        if (agTokenProfit > 0) {
-            uint256 agTokenBalance = agToken.balanceOf(address(this));
-            uint256 profit = uint256(agTokenProfit);
-            uint256 toRemove = profit > agTokenBalance ? profit - agTokenBalance : 0;
-            if (toRemove > 0) {
-                _unstakeLPTokens();
-                _curvePoolWithdraw(uint256(agTokenProfit), 0);
-                _stakeLPTokens();
-                agTokenBalance = agToken.balanceOf(address(this));
-            }
-
-            uint256 toSend = profit > agTokenBalance ? agTokenBalance : profit;
-            agToken.safeTransfer(to, toSend);
-        }
+    function forceAdjustTokenPosition(uint256 amount, bool borrow) external onlyGovernor {
+        if (borrow) kheops.borrow(amount);
+        else kheops.repay(amount);
     }
 
-    // For when we receive EUROC after a swap -> we want to have them first in the contract and then adjust to add everything at the same time
-    function forceBorrowToken(uint256 amount, bool isStablecoin) external onlyGovernor {
-        IERC20 token = isStablecoin ? agToken : otherToken;
-        minter.borrowSingle(token, isStablecoin, amount);
-    }
-
-    function forceWithdrawBothTokens(
-        uint256 amountAgToken,
-        uint256 amountOtherToken,
-        bool repay
-    ) external onlyGovernor {
+    function forceWithdrawBothTokens(uint256 amountAgToken, uint256 amountOtherToken) external onlyGovernor {
         _unstakeLPTokens();
         _curvePoolWithdraw(amountAgToken, amountOtherToken);
         _stakeLPTokens();
-        if (repay) {
-            uint256 agTokenBalance = agToken.balanceOf(address(this));
-            uint256 otherTokenBalance = otherToken.balanceOf(address(this));
-            uint256[] memory amounts = new uint256[](2);
-            IERC20[] memory tokens = new IERC20[](2);
-            bool[] memory isStablecoin = new bool[](2);
-            address[] memory to = new address[](2);
-            amounts[0] = agTokenBalance;
-            amounts[1] = otherTokenBalance;
-            tokens[0] = agToken;
-            tokens[1] = otherToken;
-            isStablecoin[0] = true;
-            isStablecoin[1] = false;
-            minter.repay(tokens, isStablecoin, amounts, to);
-        }
     }
 
     function togglePause() external onlyGuardian {
@@ -308,9 +277,21 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         rewardHandler = _rewardHandler;
     }
 
-    function addRewardToken(IERC20 _rewardToken) external onlyGovernor {}
+    function addRewardToken(IERC20 rewardToken) external onlyGovernor {
+        rewardTokens.push(rewardToken);
+    }
 
-    function removeRewardToken(IERC20 _rewardToken) external onlyGovernor {}
+    function removeRewardToken(IERC20 rewardToken) external onlyGovernor {
+        IERC20[] memory list = rewardTokens;
+        uint256 listLength = list.length;
+        for (uint256 i; i < listLength - 1; ++i) {
+            if (list[i] == IERC20(rewardToken)) {
+                rewardTokens[i] = list[listLength - 1];
+                break;
+            }
+        }
+        rewardTokens.pop();
+    }
 
     function setOracle(IOracle _oracle) external onlyGovernor {
         _oracle.read();
@@ -339,8 +320,12 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
 
     // ========================== Internal Actions =================================
 
-    function _getNavOfInvestedAssets() internal view returns (uint256 amountStablecoin, uint256 amountOtherToken) {
-        uint256 lpTokenOwned = _lpTokenBalance();
+    function _getNavOfInvestedAssets()
+        internal
+        view
+        returns (uint256 lpTokenOwned, uint256 amountStablecoin, uint256 amountOtherToken)
+    {
+        lpTokenOwned = _lpTokenBalance();
         if (lpTokenOwned != 0) {
             uint256 lpSupply = curvePool.totalSupply();
             uint256[2] memory balances = curvePool.get_balances();
@@ -394,13 +379,6 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
             if (burntAmount > lpTokenOwned) curvePool.remove_liquidity(lpTokenOwned, removalAmounts);
             else curvePool.remove_liquidity_imbalance(removalAmounts, burntAmount);
         }
-    }
-
-    function _removeAll() internal {
-        _unstakeLPTokens();
-        uint256[2] memory minAmounts;
-        // TODO slippage
-        curvePool.remove_liquidity(_lpTokenBalance(), minAmounts);
     }
 
     /// @dev In this implementation, Curve LP tokens are deposited into StakeDAO and Convex
@@ -489,18 +467,11 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         if (totalLpSupply > 0) tokenWithdrawn = (tokenSupply * myLpSupply) / totalLpSupply;
     }
 
-    function _calcSwap(IERC20 token, uint256 amountTokenIn) internal view returns (uint256 amountTokenOut) {
-        // TODO: do this function -> estimate the output of a swap of `amountTokenIn` of `token`
-        curvePool;
-        token;
-        amountTokenIn;
-        return amountTokenOut;
-    }
-
     /*
 TODO Setters:
 - for thresholds
 - for gauges and stuff
 - for oracles and reward handler
+- transfer as part of redemption
     */
 }

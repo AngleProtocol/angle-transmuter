@@ -19,6 +19,7 @@ error InvalidToAddress();
 error InvalidSwap();
 error MintMoreThanMax();
 error NoRightsOnToken();
+error NotAllowed();
 error NotCollateral();
 error NotGovernor();
 error NotGovernorOrGuardian();
