@@ -346,6 +346,7 @@ contract Kheops is KheopsStorage {
             balances[i] = balance;
             address oracle = collaterals[list[i]].oracle;
             uint256 oracleValue = _BASE_18;
+            // Using an underestimated oracle value for the collateral ratio
             if (oracle != address(0)) oracleValue = IOracle(oracle).readMint();
             totalCollateralization += oracleValue * _convertToBase(balance, collaterals[list[i]].decimals);
         }
