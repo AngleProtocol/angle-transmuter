@@ -254,7 +254,7 @@ contract Kheops is KheopsStorage {
     function _quoteMintExact(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
         uint256 oracleValue = _BASE_18;
         if (collatInfo.oracle != address(0)) oracleValue = IOracle(collatInfo.oracle).readMint();
-        uint256 amountInCorrected = _convertToBase(amountIn, collatInfo.decimals);
+        uint256 amountInCorrected = _convertDecimalTo(amountIn, collatInfo.decimals, 18);
         // Overestimating the amount of stablecoin we'll get to compute the exposure
         uint256 estimatedStablecoinAmount = (_applyFeeOut(amountInCorrected, oracleValue, collatInfo.yFeeMint[0]) *
             _BASE_27) / accumulator;
@@ -278,7 +278,7 @@ contract Kheops is KheopsStorage {
         uint64 newExposure = uint64(((collatInfo.r + amountOutCorrected) * _BASE_9) / (_reserves + amountOutCorrected));
         uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
         int64 fees = _piecewiseMean(currentExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
-        amountIn = _convertFromBase(_applyFeeIn(amountOut, oracleValue, fees), collatInfo.decimals);
+        amountIn = _convertDecimalTo(_applyFeeIn(amountOut, oracleValue, fees), 18, collatInfo.decimals);
     }
 
     function _quoteBurnExact(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
@@ -290,7 +290,7 @@ contract Kheops is KheopsStorage {
         else newExposure = uint64(((collatInfo.r - amountInCorrected) * _BASE_9) / (_reserves - amountInCorrected));
         uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
         int64 fees = _piecewiseMean(newExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
-        amountOut = _convertFromBase(_applyFeeOut(amountIn, oracleValue, fees), collatInfo.decimals);
+        amountOut = _convertDecimalTo(_applyFeeOut(amountIn, oracleValue, fees), 18, collatInfo.decimals);
     }
 
     function _quoteBurnForExact(
@@ -299,8 +299,8 @@ contract Kheops is KheopsStorage {
     ) internal view returns (uint256 amountIn) {
         uint256 oracleValue = _getBurnOracle(collatInfo.oracle);
         // Underestimating the amount that needs to be burnt
-        uint256 estimatedStablecoinAmount = (_applyFeeIn(
-            _convertToBase(amountOut, collatInfo.decimals),
+        uint256 estimatedStablecoinAmount = _applyFeeIn(
+            _convertDecimalTo(amountOut, collatInfo.decimals, 18),
             oracleValue,
             collatInfo.yFeeBurn[collatInfo.yFeeBurn.length - 1]
         ) * _BASE_27) / accumulator;
@@ -386,7 +386,7 @@ contract Kheops is KheopsStorage {
             uint256 oracleValue = _BASE_18;
             // Using an underestimated oracle value for the collateral ratio
             if (oracle != address(0)) oracleValue = IOracle(oracle).readMint();
-            totalCollateralization += oracleValue * _convertToBase(balance, collaterals[list[i]].decimals);
+            totalCollateralization += oracleValue * _convertDecimalTo(balance, collaterals[list[i]].decimals, 18);
         }
         address[] memory depositModuleList = redeemableModuleList;
         uint256 depositModuleLength = depositModuleList.length;
