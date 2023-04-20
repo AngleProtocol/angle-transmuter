@@ -89,14 +89,16 @@ contract Kheops is KheopsStorage {
     ) external view returns (address[] memory tokens, uint256[] memory amounts) {
         amounts = _quoteRedemptionCurve(amountBurnt);
         address[] memory list = collateralList;
-        uint256 length = list.length;
-        for (uint256 i; i < length; ++i) {
-            tokens[i] = list[i];
-        }
+        uint256 collateralLength = list.length;
         address[] memory depositModuleList = redeemableModuleList;
         uint256 depositModuleLength = depositModuleList.length;
+
+        tokens = new address[](collateralLength + depositModuleLength);
+        for (uint256 i; i < collateralLength; ++i) {
+            tokens[i] = list[i];
+        }
         for (uint256 i; i < depositModuleLength; ++i) {
-            tokens[i + length] = modules[depositModuleList[i]].token;
+            tokens[i + collateralLength] = modules[depositModuleList[i]].token;
         }
     }
 
@@ -261,7 +263,7 @@ contract Kheops is KheopsStorage {
         uint64 maxExposure = uint64(
             ((collatInfo.r + maxStablecoinAmount) * _BASE_9) / (_reserves + maxStablecoinAmount)
         );
-        int64 maxFee = _piecewiseLinear(maxExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
+        int64 maxFee = maxExposure(maxExposure, maxExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
         // Overestimating the amount of stablecoin we'll get to compute the exposure
         uint256 estimatedStablecoinAmount = (_applyFeeOut(amountInCorrected, oracleValue, maxFee) * _BASE_27) /
             accumulator;
@@ -310,7 +312,7 @@ contract Kheops is KheopsStorage {
         uint64 maxExposure = uint64(
             ((collatInfo.r + maxStablecoinAmount) * _BASE_9) / (_reserves + maxStablecoinAmount)
         );
-        int64 maxFee = _piecewiseLinear(maxExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
+        int64 maxFee = _piecewiseMean(maxExposure, maxExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
         // Underestimating the amount that needs to be burnt
         uint256 estimatedStablecoinAmount = (_applyFeeIn(
             _convertDecimalTo(amountOut, collatInfo.decimals, 18),
@@ -318,7 +320,7 @@ contract Kheops is KheopsStorage {
             maxFee
         ) * _BASE_27) / accumulator;
         uint64 newExposure;
-        // TODO why not just equality
+        // TODO why not just equality, as there shouldn't be any case we can exceed this amount. For rounding?
         if (estimatedStablecoinAmount >= reserves) newExposure = 0;
         else
             newExposure = uint64(
@@ -336,6 +338,7 @@ contract Kheops is KheopsStorage {
         uint64 penalty;
         if (collatRatio >= _BASE_9) {
             // TODO check conversions whether it works well
+            // it works fine as long as _yRedemptionCurve[_yRedemptionCurve.length - 1]>=0
             penalty = (uint64(_yRedemptionCurve[_yRedemptionCurve.length - 1]) * uint64(_BASE_9)) / collatRatio;
         } else {
             penalty = uint64(_piecewiseMean(collatRatio, collatRatio, _xRedemptionCurve, _yRedemptionCurve));
