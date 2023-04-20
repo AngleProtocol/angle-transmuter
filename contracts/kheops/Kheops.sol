@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import "../interfaces/IAgToken.sol";
-import "../interfaces/IMinter.sol";
 
 import "../utils/AccessControl.sol";
 
@@ -52,6 +51,14 @@ contract Kheops is KheopsStorage {
 
     function getCollateralRatio() external view returns (uint64 collatRatio) {
         (collatRatio, ) = _getCollateralRatio();
+    }
+
+    function getModuleBorrowed(address module) external view returns (uint256) {
+        return modules[module].r;
+    }
+
+    function isModule(address module) external view returns (bool) {
+        return modules[module].initialized > 0;
     }
 
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256) {
@@ -128,14 +135,6 @@ contract Kheops is KheopsStorage {
         address[] memory forfeitTokens
     ) external returns (address[] memory tokens, uint256[] memory amounts) {
         return _redeemWithForfeit(amount, receiver, deadline, minAmountOuts, forfeitTokens);
-    }
-
-    function getModuleBorrowed(address module) external view returns (uint256) {
-        return modules[module].r;
-    }
-
-    function isModule(address module) external view returns (bool) {
-        return modules[module].initialized > 0;
     }
 
     function _swap(

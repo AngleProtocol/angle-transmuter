@@ -10,7 +10,6 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../interfaces/IAgToken.sol";
 import "../interfaces/IModule.sol";
 import "../interfaces/IManager.sol";
-import "../interfaces/IMinter.sol";
 import "../interfaces/IOracle.sol";
 import "../interfaces/IOracleFallback.sol";
 
@@ -53,7 +52,7 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
         bytes extraData;
     }
 
-    // TODO: rename reserves = not a good name
+    // TODO: rename reserves = not a good name -> as here it's more totalMinted according to the system
     uint256 public reserves;
     address[] public collateralList;
     address[] public redeemableModuleList;
