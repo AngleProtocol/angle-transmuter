@@ -19,6 +19,7 @@ import "./KheopsStorage.sol";
  * contract size
  * virtual agEUR
  * events
+ * multiplier for the r_i and R -> so that reserves can be increased or decreased
  */
 
 /// @title Kheops
@@ -54,23 +55,29 @@ contract Kheops is KheopsStorage {
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256) {
         (bool mint, Collateral memory collatInfo) = _getMintBurn(tokenIn, tokenOut);
         if (mint) return _quoteMintExact(collatInfo, amountIn);
-        else return _quoteBurnExact(collatInfo, amountIn);
+        else {
+            uint256 amountOut = _quoteBurnExact(collatInfo, amountIn);
+            _checkAmounts(collatInfo, amountOut);
+            return amountOut;
+        }
     }
 
     function quoteOut(uint256 amountOut, address tokenIn, address tokenOut) external view returns (uint256) {
         (bool mint, Collateral memory collatInfo) = _getMintBurn(tokenIn, tokenOut);
         if (mint) return _quoteMintForExact(collatInfo, amountOut);
-        else return _quoteBurnForExact(collatInfo, amountOut);
+        else {
+            return _quoteBurnForExact(collatInfo, amountOut);
+        }
     }
 
     function quoteRedemptionCurve(
         uint256 amountBurnt
     ) external view returns (address[] memory tokens, uint256[] memory amounts) {
-        amounts = _quoteRedemptionCurve(amountBurnt);
+        amounts = _quoteRedemptionCurve(amountBurnt, reserves);
         address[] memory list = collateralList;
         uint256 length = list.length;
         for (uint256 i; i < length; ++i) {
-            tokens[i] = collateralList[i];
+            tokens[i] = list[i];
         }
         address[] memory depositModuleList = redeemableModuleList;
         uint256 depositModuleLength = depositModuleList.length;
@@ -91,12 +98,12 @@ contract Kheops is KheopsStorage {
     }
 
     function swapForExact(
-        uint amountOut,
-        uint amountInMax,
+        uint256 amountOut,
+        uint256 amountInMax,
         address tokenIn,
         address tokenOut,
         address to,
-        uint deadline
+        uint256 deadline
     ) external returns (uint amountIn) {
         return _swap(amountOut, amountInMax, tokenIn, tokenOut, to, deadline, false);
     }
@@ -104,7 +111,7 @@ contract Kheops is KheopsStorage {
     function redeem(
         uint256 amount,
         address receiver,
-        uint deadline,
+        uint256 deadline,
         uint256[] memory minAmountOuts
     ) external returns (address[] memory tokens, uint256[] memory amounts) {
         address[] memory forfeitTokens;
@@ -114,7 +121,7 @@ contract Kheops is KheopsStorage {
     function redeemWithForfeit(
         uint256 amount,
         address receiver,
-        uint deadline,
+        uint256 deadline,
         uint256[] memory minAmountOuts,
         address[] memory forfeitTokens
     ) external returns (address[] memory tokens, uint256[] memory amounts) {
@@ -130,6 +137,7 @@ contract Kheops is KheopsStorage {
         uint256 deadline,
         bool exactIn
     ) internal returns (uint256 otherAmount) {
+        if (block.timestamp < deadline) revert TooLate();
         (bool mint, Collateral memory collatInfo) = _getMintBurn(tokenIn, tokenOut);
         uint256 amountIn;
         uint256 amountOut;
@@ -142,7 +150,6 @@ contract Kheops is KheopsStorage {
             if (otherAmount > slippage) revert TooBigAmountIn();
             (amountIn, amountOut) = (otherAmount, amount);
         }
-        if (block.timestamp < deadline) revert TooLate();
         if (mint) {
             address toProtocolAddress = collatInfo.manager != address(0) ? collatInfo.manager : address(this);
             collaterals[tokenOut].r += amountOut;
@@ -156,27 +163,29 @@ contract Kheops is KheopsStorage {
             reserves -= amountOut;
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
             if (collatInfo.manager != address(0)) {
-                IManager(collatInfo.manager).pull(amountOut);
+                // TODO deal if not enough tokens can be freed
+                IManager(collatInfo.manager).transfer(to, amountOut, true);
+            } else {
+                IERC20(tokenOut).safeTransfer(to, amountOut);
             }
             if (collatInfo.hasOracleFallback > 0)
                 IOracleFallback(collatInfo.oracle).updateInternalData(amountIn, amountOut, mint);
-            IERC20(tokenOut).safeTransfer(to, amountOut);
         }
     }
 
     function _redeemWithForfeit(
         uint256 amount,
-        address receiver,
+        address to,
         uint deadline,
         uint256[] memory minAmountOuts,
         address[] memory forfeitTokens
     ) internal returns (address[] memory tokens, uint256[] memory amounts) {
         if (block.timestamp < deadline) revert TooLate();
-        amounts = _quoteRedemptionCurve(amount);
+        uint256 _reserves = reserves;
+        amounts = _quoteRedemptionCurve(amount, _reserves);
         address[] memory _collateralList = collateralList;
         address[] memory depositModuleList = redeemableModuleList;
         uint256 collateralListLength = _collateralList.length;
-        uint256 _reserves = reserves;
         for (uint256 i; i < amounts.length; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             uint256 reduction;
@@ -192,41 +201,119 @@ contract Kheops is KheopsStorage {
             _reserves -= reduction;
             if (!_checkForfeit(tokens[i], forfeitTokens)) {
                 if (i < collateralListLength) {
-                    IERC20(tokens[i]).safeTransfer(receiver, amounts[i]);
+                    address manager = collaterals[_collateralList[i]].manager;
+                    if (manager != address(0)) {
+                        IManager(manager).transfer(to, amounts[i], false);
+                    } else {
+                        IERC20(tokens[i]).safeTransfer(to, amounts[i]);
+                    }
                 } else {
-                    IModule(depositModuleList[i - collateralListLength]).transfer(receiver, amount);
+                    IModule(depositModuleList[i - collateralListLength]).transfer(to, amounts[i]);
                 }
             }
         }
         reserves = _reserves;
     }
 
-    function _checkForfeit(address token, address[] memory tokens) internal pure returns (bool forfeit) {
-        for (uint256 i; i < tokens.length; ++i) {
-            if (token == tokens[i]) {
-                forfeit = true;
-                break;
-            }
-        }
-    }
-
     function _quoteMintExact(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
         uint256 oracleValue = _BASE_18;
         if (collatInfo.oracle != address(0)) oracleValue = IOracle(collatInfo.oracle).readMint();
-        uint256 amountInCorrected;
-        if (collatInfo.decimals > 18) {
-            amountInCorrected = amountIn / 10 ** (collatInfo.decimals - 18);
-        } else if (collatInfo.decimals < 18) {
-            amountInCorrected = amountIn * 10 ** (18 - collatInfo.decimals);
-        }
-        uint256 _reserves = reserves;
+        uint256 amountInCorrected = _convertToBase(amountIn, collatInfo.decimals);
+        // Overestimating the amount of stablecoin we'll get to compute the exposure
         uint256 estimatedStablecoinAmount = _applyFeeOut(amountInCorrected, oracleValue, collatInfo.yFeeMint[0]);
+        uint256 _reserves = reserves;
         uint64 newExposure = uint64(
             ((collatInfo.r + estimatedStablecoinAmount) * _BASE_9) / (_reserves + estimatedStablecoinAmount)
         );
         uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
-        int64 fees = _piecewiseMean(currentExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeBurn);
+        int64 fees = _piecewiseMean(currentExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
         amountOut = _applyFeeOut(amountInCorrected, oracleValue, fees);
+    }
+
+    function _quoteMintForExact(
+        Collateral memory collatInfo,
+        uint256 amountOut
+    ) internal view returns (uint256 amountIn) {
+        uint256 oracleValue = _BASE_18;
+        if (collatInfo.oracle != address(0)) oracleValue = IOracle(collatInfo.oracle).readMint();
+        uint256 _reserves = reserves;
+        uint64 newExposure = uint64(((collatInfo.r + amountOut) * _BASE_9) / (_reserves + amountOut));
+        uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
+        int64 fees = _piecewiseMean(currentExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
+        amountIn = _convertFromBase(_applyFeeIn(amountOut, oracleValue, fees), collatInfo.decimals);
+    }
+
+    function _quoteBurnExact(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
+        uint256 oracleValue = _getBurnOracle(collatInfo.oracle);
+        uint64 newExposure;
+        uint256 _reserves = reserves;
+        if (amountIn == reserves) newExposure = 0;
+        else newExposure = uint64(((collatInfo.r - amountIn) * _BASE_9) / (_reserves - amountIn));
+        uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
+        int64 fees = _piecewiseMean(newExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
+        amountOut = _convertFromBase(_applyFeeOut(amountIn, oracleValue, fees), collatInfo.decimals);
+    }
+
+    function _quoteBurnForExact(
+        Collateral memory collatInfo,
+        uint256 amountOut
+    ) internal view returns (uint256 amountIn) {
+        uint256 oracleValue = _getBurnOracle(collatInfo.oracle);
+        // Underestimating the amount that needs to be burnt
+        uint256 estimatedStablecoinAmount = _applyFeeIn(
+            _convertToBase(amountOut, collatInfo.decimals),
+            oracleValue,
+            collatInfo.yFeeBurn[collatInfo.yFeeBurn.length - 1]
+        );
+        uint256 _reserves = reserves;
+        uint64 newExposure;
+        if (estimatedStablecoinAmount >= reserves) newExposure = 0;
+        else
+            newExposure = uint64(
+                ((collatInfo.r - estimatedStablecoinAmount) * _BASE_9) / (_reserves - estimatedStablecoinAmount)
+            );
+        uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
+        int64 fees = _piecewiseMean(newExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
+        amountIn = _applyFeeIn(amountOut, oracleValue, fees);
+    }
+
+    function _quoteRedemptionCurve(
+        uint256 amountBurnt,
+        uint256 _reserves
+    ) internal view returns (uint256[] memory amounts) {
+        (uint64 collatRatio, uint256[] memory balances) = _getCollateralRatio();
+        uint64[] memory _xRedemptionCurve = xRedemptionCurve;
+        int64[] memory _yRedemptionCurve = yRedemptionCurve;
+        uint64 penalty;
+        if (collatRatio >= _BASE_9) {
+            // TODO check conversions whether it works well
+            penalty = (uint64(_yRedemptionCurve[_yRedemptionCurve.length - 1]) * uint64(_BASE_9)) / collatRatio;
+        } else {
+            penalty = uint64(_piecewiseMean(collatRatio, collatRatio, _xRedemptionCurve, _yRedemptionCurve));
+        }
+        uint256 balancesLength = balances.length;
+        for (uint256 i; i < balancesLength; ++i) {
+            amounts[i] = (amountBurnt * balances[i] * penalty) / (_reserves * _BASE_9);
+        }
+    }
+
+    function _getBurnOracle(address collatOracle) internal view returns (uint256) {
+        uint256 oracleValue = _BASE_18;
+        address[] memory list = collateralList;
+        uint256 length = list.length;
+        uint256 deviation = _BASE_9;
+        for (uint256 i; i < length; ++i) {
+            address oracle = collaterals[list[i]].oracle;
+            uint256 deviationValue = _BASE_9;
+            if (oracle != address(0) && oracle != collatOracle) {
+                deviationValue = IOracle(oracle).getDeviation();
+            } else if (oracle != address(0)) {
+                (oracleValue, deviationValue) = IOracle(oracle).readBurn();
+            }
+            if (deviationValue < deviation) deviation = deviationValue;
+        }
+        // Renormalizing by an overestimated value of the oracle
+        return (deviation * _BASE_27) / oracleValue;
     }
 
     function _applyFeeOut(uint256 amountIn, uint256 oracleValue, int64 fees) internal pure returns (uint256 amountOut) {
@@ -239,106 +326,10 @@ contract Kheops is KheopsStorage {
         else amountIn = (amountOut * _BASE_27) / ((_BASE_9 + uint256(int256(-fees))) * oracleValue);
     }
 
-    function _quoteMintForExact(
-        Collateral memory collatInfo,
-        uint256 amountOut
-    ) internal view returns (uint256 amountIn) {
-        uint256 oracleValue = _BASE_18;
-        if (collatInfo.oracle != address(0)) oracleValue = IOracle(collatInfo.oracle).readMint();
-        uint256 _reserves = reserves;
-        uint64 newExposure = uint64(((collatInfo.r + amountOut) * _BASE_9) / (_reserves + amountOut));
-        uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
-        int64 fees = _piecewiseMean(currentExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeBurn);
-        amountIn = _applyFeeIn(amountOut, oracleValue, fees);
-        if (collatInfo.decimals > 18) {
-            amountIn = amountIn * 10 ** (collatInfo.decimals - 18);
-        } else if (collatInfo.decimals < 18) {
-            amountIn = amountIn / 10 ** (18 - collatInfo.decimals);
-        }
-    }
-
-    function _getBurnOracle(address collatOracle) internal view returns (uint256) {
-        uint256 oracleValue = _BASE_18;
-        address[] memory list = collateralList;
-        uint256 length = list.length;
-        uint256 deviation = _BASE_9;
-        uint256 deviationValue;
-        for (uint256 i; i < length; ++i) {
-            address oracle = collaterals[list[i]].oracle;
-            if (oracle != address(0) && oracle != collatOracle) {
-                deviationValue = IOracle(oracle).getDeviation();
-                if (deviationValue < deviation) deviation = deviationValue;
-            } else if (oracle != address(0)) {
-                (oracleValue, deviationValue) = IOracle(oracle).readBurn();
-                if (deviationValue < deviation) deviation = deviationValue;
-            }
-        }
-        // Renormalizing by an overestimated value of the oracle
-        return (deviation * _BASE_27) / oracleValue;
-    }
-
-    function _quoteBurnExact(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
-        uint256 oracleValue = _getBurnOracle(collatInfo.oracle);
-        uint64 newExposure;
-        uint256 _reserves = reserves;
-        if (amountIn == reserves) newExposure = 0;
-        else newExposure = uint64(((collatInfo.r - amountIn) * _BASE_9) / (_reserves - amountIn));
-        uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
-        int64 fees = _piecewiseMean(newExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
-        amountOut = _applyFeeOut(amountIn, oracleValue, fees);
-        if (collatInfo.decimals > 18) {
-            amountOut = amountOut * 10 ** (collatInfo.decimals - 18);
-        } else if (collatInfo.decimals < 18) {
-            amountOut = amountOut / 10 ** (18 - collatInfo.decimals);
-        }
-    }
-
-    function _quoteBurnForExact(
-        Collateral memory collatInfo,
-        uint256 amountOut
-    ) internal view returns (uint256 amountIn) {
-        uint256 oracleValue = _getBurnOracle(collatInfo.oracle);
-        uint256 amountOutCorrected;
-        if (collatInfo.decimals > 18) {
-            amountOutCorrected = amountOut / 10 ** (collatInfo.decimals - 18);
-        } else if (collatInfo.decimals < 18) {
-            amountOutCorrected = amountOut * 10 ** (18 - collatInfo.decimals);
-        }
-        uint256 estimatedStablecoinAmount = _applyFeeIn(
-            amountOutCorrected,
-            oracleValue,
-            collatInfo.yFeeBurn[collatInfo.yFeeBurn.length - 1]
-        );
-        uint256 _reserves = reserves;
-        uint64 newExposure;
-        if (estimatedStablecoinAmount == reserves) newExposure = 0;
-        else
-            newExposure = uint64(
-                ((collatInfo.r - estimatedStablecoinAmount) * _BASE_9) / (_reserves - estimatedStablecoinAmount)
-            );
-        uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
-        int64 fees = _piecewiseMean(newExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
-        if (fees >= 0) amountIn = (amountOut * _BASE_27) / ((_BASE_9 - uint256(int256(fees))) * oracleValue);
-        else amountIn = (amountOut * _BASE_27) / ((_BASE_9 + uint256(int256(-fees))) * oracleValue);
-    }
-
-    function _quoteRedemptionCurve(uint256 amountBurnt) internal view returns (uint256[] memory amounts) {
-        (uint64 collatRatio, uint256[] memory balances) = _getCollateralRatio();
-        uint64[] memory _xRedemptionCurve = xRedemptionCurve;
-        int64[] memory _yRedemptionCurve = yRedemptionCurve;
-        uint256 length = _yRedemptionCurve.length;
-        uint64 cap;
-        if (collatRatio >= _BASE_9) {
-            // TODO check conversions whether it works well
-            cap = (uint64(_yRedemptionCurve[length - 1]) * uint64(_BASE_6)) / collatRatio;
-        } else {
-            cap = uint64(_piecewiseMean(collatRatio, collatRatio, _xRedemptionCurve, _yRedemptionCurve));
-        }
-        uint256 balancesLength = balances.length;
-        uint256 _reserves = reserves;
-        for (uint256 i; i < balancesLength; ++i) {
-            amounts[i] = (amountBurnt * balances[i] * cap) / (_reserves * _BASE_9);
-        }
+    function _checkAmounts(Collateral memory collatInfo, uint256 amountOut) internal view {
+        // Checking if enough is available for collateral assets that involve manager addresses
+        if (collatInfo.manager != address(0) && IManager(collatInfo.manager).maxAvailable() < amountOut)
+            revert InvalidSwap();
     }
 
     function _getCollateralRatio() internal view returns (uint64 collatRatio, uint256[] memory balances) {
@@ -355,24 +346,18 @@ contract Kheops is KheopsStorage {
             address oracle = collaterals[list[i]].oracle;
             uint256 oracleValue = _BASE_18;
             if (oracle != address(0)) (oracleValue, ) = IOracle(oracle).readBurn();
-            uint8 decimals = collaterals[list[i]].decimals;
-            if (decimals > 18) {
-                totalCollateralization += oracleValue * (balance / 10 ** (decimals - 18));
-            } else if (decimals < 18) {
-                totalCollateralization += oracleValue * (balance * 10 ** (18 - decimals));
-            } else {
-                totalCollateralization += oracleValue * balance;
-            }
+            totalCollateralization += oracleValue * _convertToBase(balance, collaterals[list[i]].decimals);
         }
         address[] memory depositModuleList = redeemableModuleList;
         uint256 depositModuleLength = depositModuleList.length;
         for (uint256 i; i < depositModuleLength; ++i) {
-            (uint256 balance, uint256 oracleValue) = IModule(depositModuleList[i]).getBalanceAndValue();
+            (uint256 balance, uint256 value) = IModule(depositModuleList[i]).getBalanceAndValue();
             balances[i + length] = balance;
-            totalCollateralization += oracleValue * balance;
+            totalCollateralization += value;
         }
         uint256 _reserves = reserves;
-        if (_reserves > 0) collatRatio = uint64((totalCollateralization * _BASE_6) / _reserves);
+        if (_reserves > 0) collatRatio = uint64((totalCollateralization * _BASE_9) / _reserves);
+        else collatRatio = type(uint64).max;
     }
 
     function _getMintBurn(
@@ -382,13 +367,12 @@ contract Kheops is KheopsStorage {
         address _agToken = address(agToken);
         if (tokenIn == _agToken) {
             collatInfo = collaterals[tokenOut];
-            if (collatInfo.unpaused == 0) revert InvalidTokens();
             mint = false;
         } else if (tokenOut == _agToken) {
-            collatInfo = collaterals[tokenOut];
-            if (collatInfo.unpaused == 0) revert InvalidTokens();
+            collatInfo = collaterals[tokenIn];
             mint = true;
         } else revert InvalidTokens();
+        if (collatInfo.unpaused == 0) revert InvalidTokens();
     }
 
     function borrow(uint256 amount) external returns (uint256) {
@@ -425,10 +409,9 @@ contract Kheops is KheopsStorage {
         }
     }
 
-    function recoverERC20(IERC20 token, address to, uint256 amount, bool pull) external onlyGovernor {
-        if (pull) {
-            IManager(collaterals[address(token)].manager).pull(amount);
-            token.safeTransfer(to, amount);
+    function recoverERC20(IERC20 token, address to, uint256 amount, bool manager) external onlyGovernor {
+        if (manager) {
+            IManager(collaterals[address(token)].manager).transfer(to, amount, false);
         } else token.safeTransfer(to, amount);
     }
 
@@ -527,18 +510,8 @@ contract Kheops is KheopsStorage {
                 }
             }
             redeemableModuleList.pop();
-        } else {
-            address[] memory _unredeemableModuleList = unredeemableModuleList;
-            uint256 length = _unredeemableModuleList.length;
-            // We already know that it is in the list
-            for (uint256 i; i < length - 1; ++i) {
-                if (_unredeemableModuleList[i] == moduleAddress) {
-                    unredeemableModuleList[i] = _unredeemableModuleList[length - 1];
-                    break;
-                }
-            }
-            unredeemableModuleList.pop();
         }
+        // No need to remove from the unredeemable module list -> it is never actually queried
         delete modules[moduleAddress];
     }
 
@@ -595,6 +568,7 @@ contract Kheops is KheopsStorage {
                 yFee[i] > int64(uint64(_BASE_9))
             ) revert InvalidParams();
         }
+
         if (setter == 0 && yFee[0] < 0) {
             // Checking that the mint fee is still bigger than the smallest burn fee everywhere
             address[] memory _collateralList = collateralList;

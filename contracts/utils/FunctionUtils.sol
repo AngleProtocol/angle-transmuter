@@ -45,4 +45,25 @@ contract FunctionUtils {
 
         return area / int64(x2 - x1);
     }
+
+    function _convertToBase(uint256 amount, uint8 decimals) internal pure returns (uint256) {
+        if (decimals > 18) return amount / 10 ** (decimals - 18);
+        else if (decimals < 18) return amount * 10 ** (18 - decimals);
+        else return amount;
+    }
+
+    function _convertFromBase(uint256 amount, uint8 decimals) internal pure returns (uint256) {
+        if (decimals > 18) return amount * 10 ** (decimals - 18);
+        else if (decimals < 18) return amount / 10 ** (18 - decimals);
+        else return amount;
+    }
+
+    function _checkForfeit(address token, address[] memory tokens) internal pure returns (bool forfeit) {
+        for (uint256 i; i < tokens.length; ++i) {
+            if (token == tokens[i]) {
+                forfeit = true;
+                break;
+            }
+        }
+    }
 }
