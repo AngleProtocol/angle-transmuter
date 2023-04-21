@@ -20,4 +20,10 @@ interface IKheops {
     function getModuleBorrowed(address module) external view returns (uint256);
 
     function isModule(address module) external view returns (bool);
+
+    function getCollateralRatio() external view returns (uint64 collatRatio);
+
+    function getIssuedByCollateral(address collateral) external view returns (uint256, uint256);
+
+    function updateAccumulator(uint256 amount, bool increase) external returns (uint256);
 }

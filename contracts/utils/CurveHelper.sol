@@ -4,6 +4,7 @@ import "../utils/Constants.sol";
 
 pragma solidity ^0.8.17;
 
+//solhint-disable
 contract CurveHelper is Constants {
     uint256 public constant N_COINS = 2;
     uint256 public constant A_PRECISION = 100;
