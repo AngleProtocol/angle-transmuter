@@ -43,7 +43,7 @@ contract FunctionUtils {
             xPos = xSegmentEnd;
         }
 
-        return x1 == x2 ? area : area / int64(x2 - x1);
+        return area / int64(x2 - x1);
     }
 
     function _convertDecimalTo(uint256 amount, uint8 fromDecimals, uint8 toDecimals) internal pure returns (uint256) {

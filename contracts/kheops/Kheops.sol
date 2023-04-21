@@ -234,13 +234,11 @@ contract Kheops is KheopsStorage {
 
     function _updateAccumulator(uint256 amount, bool increase) internal returns (uint256 newAccumulatorValue) {
         uint256 _accumulator = accumulator;
-        uint256 _reserves = (reserves * _accumulator) / _BASE_27;
-        if (_reserves == 0) newAccumulatorValue = _BASE_27;
+        if (reserves == 0) newAccumulatorValue = _BASE_27;
         else if (increase) {
-            newAccumulatorValue = ((_reserves + amount) * _BASE_27) / _reserves;
+            newAccumulatorValue = _accumulator + (amount * _BASE_27) / reserves;
         } else {
-            // TODO checks on _reserves >= amount ?
-            newAccumulatorValue = ((_reserves - amount) * _BASE_27) / _reserves;
+            newAccumulatorValue = _accumulator - (amount * _BASE_27) / reserves;
             // TODO check if it remains consistent when it gets too small
             if (newAccumulatorValue == 0) {
                 address[] memory _collateralList = collateralList;
@@ -275,11 +273,12 @@ contract Kheops is KheopsStorage {
             oracleValue,
             _accumulator,
             collatInfo.xFeeBurn,
-            collatInfo.yFeeBurn
+            collatInfo.yFeeBurn,
+            true
         );
         // Overestimating the amount of stablecoin we'll get to compute the exposure
         uint256 estimatedStablecoinAmount = (_applyFeeOut(amountInCorrected, oracleValue, maxFee) * _BASE_27) /
-            accumulator;
+            _accumulator;
         uint64 newExposure = uint64(
             ((collatInfo.r + estimatedStablecoinAmount) * _BASE_9) / (_reserves + estimatedStablecoinAmount)
         );
@@ -329,7 +328,8 @@ contract Kheops is KheopsStorage {
             oracleValue,
             _accumulator,
             collatInfo.xFeeBurn,
-            collatInfo.yFeeBurn
+            collatInfo.yFeeBurn,
+            false
         );
         // Underestimating the amount that needs to be burnt
         uint256 estimatedStablecoinAmount = (_applyFeeIn(
@@ -407,16 +407,17 @@ contract Kheops is KheopsStorage {
         uint256 oracleValue,
         uint256 _accumulator,
         uint64[] memory xFee,
-        int64[] memory yFee
+        int64[] memory yFee,
+        bool mint
     ) internal pure returns (int64 maxFee) {
         // We know for sure that the account won't get more stable than what it deposited*oracle*(1-curFee)
         // for the fee it is just because whenever you do a swap you worsen the rate (high requirement monotonous fees)
         int64 currentFee = _piecewiseMean(currentExposure, currentExposure, xFee, yFee);
         uint256 maxStablecoinAmount = (_applyFeeOut(correctedAmountOut, oracleValue, currentFee) * _BASE_27) /
             _accumulator;
-        uint64 maxExposure = uint64(
-            ((collatReserves + maxStablecoinAmount) * _BASE_9) / (sumReserves + maxStablecoinAmount)
-        );
+        uint64 maxExposure = mint
+            ? uint64(((collatReserves + maxStablecoinAmount) * _BASE_9) / (sumReserves + maxStablecoinAmount))
+            : uint64(((collatReserves - maxStablecoinAmount) * _BASE_9) / (sumReserves - maxStablecoinAmount));
         maxFee = _piecewiseMean(maxExposure, maxExposure, xFee, yFee);
     }
 
@@ -543,10 +544,9 @@ contract Kheops is KheopsStorage {
         Collateral storage collatInfo = collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         if (collatInfo.manager != address(0)) IManager(collatInfo.manager).pullAll();
-        if (manager != address(0)) {
+        if (manager != address(0))
             IERC20(collateral).safeTransfer(manager, IERC20(collateral).balanceOf(address(this)));
-            collatInfo.manager = manager;
-        }
+        collatInfo.manager = manager;
     }
 
     /// TODO so if paused a module cannot repay its debt
