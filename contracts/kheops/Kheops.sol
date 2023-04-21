@@ -76,6 +76,7 @@ contract Kheops is KheopsStorage {
         (bool mint, Collateral memory collatInfo) = _getMintBurn(tokenIn, tokenOut);
         if (mint) return _quoteMintForExact(collatInfo, amountOut);
         else {
+            _checkAmounts(collatInfo, amountOut);
             return _quoteBurnForExact(collatInfo, amountOut);
         }
     }
@@ -173,7 +174,6 @@ contract Kheops is KheopsStorage {
             reserves -= changeAmount;
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
             if (collatInfo.manager != address(0)) {
-                // TODO deal if not enough tokens can be freed
                 IManager(collatInfo.manager).transfer(to, amountOut, true);
             } else {
                 IERC20(tokenOut).safeTransfer(to, amountOut);
@@ -487,26 +487,11 @@ contract Kheops is KheopsStorage {
         }
     }
 
-    function addCollateral(
-        address collateral,
-        address oracle,
-        uint8 hasOracleFallback,
-        uint64[] memory xFeeMint,
-        int64[] memory yFeeMint,
-        uint64[] memory xFeeBurn,
-        int64[] memory yFeeBurn
-    ) external onlyGovernor {
+    // Need to be followed by a call to set fees and set oracle and unpaused
+    function addCollateral(address collateral) external onlyGovernor {
         Collateral storage collatInfo = collaterals[collateral];
         if (collatInfo.decimals != 0) revert AlreadyAdded();
-        _checkOracle(oracle, hasOracleFallback);
-        _checkFees(xFeeMint, yFeeMint, 0);
-        _checkFees(xFeeBurn, yFeeBurn, 1);
-        collatInfo.oracle = oracle;
         collatInfo.decimals = uint8(IERC20Metadata(collateral).decimals());
-        collatInfo.xFeeMint = xFeeMint;
-        collatInfo.yFeeMint = yFeeMint;
-        collatInfo.xFeeBurn = xFeeBurn;
-        collatInfo.yFeeBurn = yFeeBurn;
         collateralList.push(collateral);
     }
 
@@ -518,13 +503,6 @@ contract Kheops is KheopsStorage {
         module.initialized = 1;
         if (redeemable > 0) redeemableModuleList.push(moduleAddress);
         else unredeemableModuleList.push(moduleAddress);
-    }
-
-    function setModuleMaxExposure(address moduleAddress, uint64 maxExposure) external onlyGuardian {
-        Module storage module = modules[moduleAddress];
-        if (module.initialized == 0) revert NotModule();
-        if (maxExposure > _BASE_9) revert InvalidParam();
-        module.maxExposure = maxExposure;
     }
 
     function revokeCollateral(address collateral) external onlyGovernor {
@@ -577,6 +555,19 @@ contract Kheops is KheopsStorage {
         }
     }
 
+    function setRedemptionCurveParams(uint64[] memory xFee, int64[] memory yFee) external onlyGuardian {
+        _checkFees(xFee, yFee, 2);
+        xRedemptionCurve = xFee;
+        yRedemptionCurve = yFee;
+    }
+
+    function setModuleMaxExposure(address moduleAddress, uint64 maxExposure) external onlyGuardian {
+        Module storage module = modules[moduleAddress];
+        if (module.initialized == 0) revert NotModule();
+        if (maxExposure > _BASE_9) revert InvalidParam();
+        module.maxExposure = maxExposure;
+    }
+
     // Future unpredicted use cases, so we're not messing up with storage
     function setExtraData(bytes memory extraData, address collateral, bool collateralOrModule) external onlyGuardian {
         if (collateralOrModule) {
@@ -593,13 +584,10 @@ contract Kheops is KheopsStorage {
     function setOracle(address collateral, address oracle, uint8 hasOracleFallback) external onlyGovernor {
         Collateral storage collatInfo = collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
-        _checkOracle(oracle, hasOracleFallback);
-        collatInfo.oracle = oracle;
-    }
-
-    function _checkOracle(address oracle, uint8 hasOracleFallback) internal {
         if (hasOracleFallback > 0) IOracleFallback(oracle).updateInternalData(0, 0, true);
         else if (oracle != address(0)) IOracle(oracle).readMint();
+        collatInfo.oracle = oracle;
+        collatInfo.hasOracleFallback = hasOracleFallback;
     }
 
     function _checkFees(uint64[] memory xFee, int64[] memory yFee, uint8 setter) internal view {
@@ -610,6 +598,7 @@ contract Kheops is KheopsStorage {
                 (xFee[i] >= xFee[i + 1]) ||
                 (setter == 0 && (yFee[i + 1] < yFee[i])) ||
                 (setter == 1 && (yFee[i + 1] > yFee[i])) ||
+                (setter == 2 && yFee[i] < 0) ||
                 xFee[i] > uint64(_BASE_9) ||
                 yFee[i] < -int64(uint64(_BASE_9)) ||
                 yFee[i] > int64(uint64(_BASE_9))
@@ -635,11 +624,5 @@ contract Kheops is KheopsStorage {
                 if (mintFees[0] + yFee[n - 1] < 0) revert InvalidParams();
             }
         }
-    }
-
-    function setRedemptionCurveParams(uint64[] memory xFee, int64[] memory yFee) external onlyGuardian {
-        _checkFees(xFee, yFee, 2);
-        xRedemptionCurve = xFee;
-        yRedemptionCurve = yFee;
     }
 }
