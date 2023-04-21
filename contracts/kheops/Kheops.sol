@@ -520,6 +520,7 @@ contract Kheops is KheopsStorage {
     }
 
     /// @dev amount is an absolute amount (like not normalized) -> need to pay attention to this
+    /// Why not normalising directly here? easier for Governance
     function adjustReserve(address collateral, uint256 amount, bool addOrRemove) external onlyGovernor {
         Collateral storage collatInfo = collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
@@ -541,14 +542,16 @@ contract Kheops is KheopsStorage {
     function setCollateralManager(address collateral, address manager) external onlyGovernor {
         Collateral storage collatInfo = collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
-        if (manager == address(0)) {
-            IManager(collatInfo.manager).pullAll();
-        } else {
+        if (collatInfo.manager != address(0)) IManager(collatInfo.manager).pullAll();
+        if (manager != address(0)) {
             IERC20(collateral).safeTransfer(manager, IERC20(collateral).balanceOf(address(this)));
+            collatInfo.manager = manager;
         }
-        collatInfo.manager = manager;
     }
 
+    /// TODO so if paused a module cannot repay its debt
+    /// I think it is better to dissociate mint and burn pause on a collat
+    /// We are not pausing redeem via this which seems odd
     function togglePause(address collateral, bool collateralOrModule) external onlyGuardian {
         if (collateralOrModule) {
             Collateral storage collatInfo = collaterals[collateral];
