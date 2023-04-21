@@ -77,6 +77,8 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl, Constants {
     /// @notice Whether the contract is paused or not
     uint64 public paused;
 
+    uint64 public updateDelay;
+
     /// @notice Amount of profit that needs to be vested
     uint256 public vestingProfit;
 
@@ -131,12 +133,12 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl, Constants {
 
     /// @notice Accrues interest to this contract by minting agTokens
     function accrue() external returns (uint256 minted) {
+        if (block.timestamp - lastUpdate < updateDelay && !accessControlManager.isGovernorOrGuardian(msg.sender))
+            revert NotAllowed();
         IKheops _kheops = kheops;
-        // TODO make sure to have only one call in the end
-        uint64 collatRatio = _kheops.getCollateralRatio();
-        (, uint256 reserves) = _kheops.getIssuedByCollateral(address(0));
+        IAgToken _agToken = IAgToken(asset());
+        (uint64 collatRatio, uint256 reserves) = _kheops.getCollateralRatio();
         if (collatRatio > _BASE_9) {
-            IAgToken _agToken = IAgToken(asset());
             minted = (collatRatio * reserves) / _BASE_9 - reserves;
             _kheops.updateAccumulator(minted, true);
             uint256 surplusForProtocol = (minted * protocolSafetyFee) / _BASE_9;
@@ -145,9 +147,19 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl, Constants {
             _agToken.mint(_surplusManager, surplusForProtocol);
             uint256 surplus = minted - surplusForProtocol;
             if (surplus != 0) {
-                _agToken.mint(_surplusManager, surplus);
                 vestingProfit = (lockedProfit() + surplus);
                 lastUpdate = uint64(block.timestamp);
+                _agToken.mint(_surplusManager, surplus);
+            }
+        } else {
+            uint256 missing = reserves - (collatRatio * reserves) / _BASE_9;
+            uint256 currentLockedProfit = lockedProfit();
+            missing = missing > currentLockedProfit ? currentLockedProfit : missing;
+            if (missing > 0) {
+                vestingProfit -= missing;
+                lastUpdate = uint64(block.timestamp);
+                _agToken.burnSelf(missing, address(this));
+                _kheops.updateAccumulator(missing, false);
             }
         }
     }
@@ -259,6 +271,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl, Constants {
         else if (what == "PF") protocolSafetyFee = param;
         else if (what == "VP") vestingPeriod = param;
         else if (what == "P") paused = param;
+        else if (what == "UD") updateDelay = param;
         else revert InvalidParam();
         emit FiledUint64(param, what);
     }

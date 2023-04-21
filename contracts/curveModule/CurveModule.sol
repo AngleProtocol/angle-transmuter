@@ -120,9 +120,10 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         uint256 _indexAgToken = indexAgToken;
         // Borrowing as much as possible
         uint256 otherTokenBalance = otherToken.balanceOf(address(this));
-        balances[1 - _indexAgToken] = _convertToBase(
+        balances[1 - _indexAgToken] = _convertDecimalTo(
             balances[1 - _indexAgToken] + otherTokenBalance,
-            decimalsOtherToken
+            decimalsOtherToken,
+            18
         );
 
         uint256 total = balances[0] + balances[1];
