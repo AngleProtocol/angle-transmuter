@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { Signer } from 'ethers';
-import { formatBytes32String, parseEther, parseUnits } from 'ethers/lib/utils';
+import { parseEther, parseUnits } from 'ethers/lib/utils';
 import hre, { ethers } from 'hardhat';
 
 import {
@@ -11,7 +11,6 @@ import {
   Savings,
   Savings__factory,
 } from '../../../typechain';
-import { parseAmount } from '../../../utils/bignumber';
 import { expect } from '../utils/chai-setup';
 import { inReceipt } from '../utils/expectEvent';
 import { deployUpgradeable, expectApprox, increaseTime, latestTime, MAX_UINT256, ZERO_ADDRESS } from '../utils/helpers';
