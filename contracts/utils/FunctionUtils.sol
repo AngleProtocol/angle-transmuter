@@ -52,12 +52,13 @@ contract FunctionUtils {
         else return amount;
     }
 
-    function _checkForfeit(address token, address[] memory tokens) internal pure returns (bool forfeit) {
-        for (uint256 i; i < tokens.length; ++i) {
-            if (token == tokens[i]) {
-                forfeit = true;
-                break;
-            }
+    function _checkForfeit(address token, uint256 startIndex, address[] memory tokens) internal pure returns (int256) {
+        for (uint256 i = startIndex; i < tokens.length; ++i) {
+            // if tokens.length>type(uint256).max, then it will return a negative value if found
+            // for no attack surface any negative value should be considered as not found
+            if (token == tokens[i]) return int256(i);
         }
+
+        return -1;
     }
 }

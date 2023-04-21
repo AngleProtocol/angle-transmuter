@@ -23,6 +23,8 @@ import "./KheopsStorage.sol";
 
 /// @title Kheops
 /// @author Angle Labs, Inc.
+/// TODO For the moment we consider there is only one agToken on this contract, as we take full balance
+/// when redeeming for instance. So we would have multiple contract for different stable (not necessarily a bad thing)
 contract Kheops is KheopsStorage {
     using SafeERC20 for IERC20;
 
@@ -102,6 +104,7 @@ contract Kheops is KheopsStorage {
         }
     }
 
+    // TODO need to add recipient/sender or use a router contract on top
     function swapExact(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -178,16 +181,13 @@ contract Kheops is KheopsStorage {
             collaterals[tokenOut].r -= changeAmount;
             reserves -= changeAmount;
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-            if (collatInfo.manager != address(0)) {
-                IManager(collatInfo.manager).transfer(to, amountOut, true);
-            } else {
-                IERC20(tokenOut).safeTransfer(to, amountOut);
-            }
+            _transferCollateral(tokenOut, collatInfo.manager, to, amountOut);
         }
         if (collatInfo.hasOracleFallback > 0)
             IOracleFallback(collatInfo.oracle).updateInternalData(amountIn, amountOut, mint);
     }
 
+    // TODO we don't burn the stable right now
     function _redeemWithForfeit(
         uint256 amount,
         address to,
@@ -198,24 +198,30 @@ contract Kheops is KheopsStorage {
         if (block.timestamp < deadline) revert TooLate();
         amounts = _quoteRedemptionCurve(amount);
         _updateAccumulator(amount, false);
+
+        // Settlement - burn the stable and send the redeemable tokens
+        IAgToken(agToken).burnSelf(amount, msg.sender);
+
         address[] memory _collateralList = collateralList;
         address[] memory depositModuleList = redeemableModuleList;
         uint256 collateralListLength = _collateralList.length;
-        for (uint256 i; i < amounts.length; ++i) {
+        uint256 amountsLength = amounts.length;
+        tokens = new address[](amountsLength);
+        uint256 startTokenForfeit;
+        for (uint256 i; i < amountsLength; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             if (i < collateralListLength) tokens[i] = _collateralList[i];
             else tokens[i] = modules[depositModuleList[i - collateralListLength]].token;
-            if (!_checkForfeit(tokens[i], forfeitTokens)) {
-                if (i < collateralListLength) {
-                    address manager = collaterals[_collateralList[i]].manager;
-                    if (manager != address(0)) {
-                        IManager(manager).transfer(to, amounts[i], false);
-                    } else {
-                        IERC20(tokens[i]).safeTransfer(to, amounts[i]);
-                    }
-                } else {
-                    IModule(depositModuleList[i - collateralListLength]).transfer(to, amounts[i]);
-                }
+            int256 indexFound = _checkForfeit(tokens[i], startTokenForfeit, forfeitTokens);
+            if (indexFound >= 0) {
+                // we force the user to give addresses in the order of collateralList and redeemableModuleList
+                // to save on going through array too many times/
+                // Not sure empirically worth it, it depends on many tokens will be supported + how many will be
+                // open to forfeit
+                startTokenForfeit = uint256(indexFound);
+                if (i < collateralListLength)
+                    _transferCollateral(_collateralList[i], collaterals[_collateralList[i]].manager, to, amounts[i]);
+                else IModule(depositModuleList[i - collateralListLength]).transfer(to, amounts[i]);
             } else amounts[i] = 0;
         }
     }
@@ -231,9 +237,10 @@ contract Kheops is KheopsStorage {
         uint256 _reserves = (reserves * _accumulator) / _BASE_27;
         if (_reserves == 0) newAccumulatorValue = _BASE_27;
         else if (increase) {
-            newAccumulatorValue = (_accumulator * (_reserves + amount)) / _reserves;
+            newAccumulatorValue = ((_reserves + amount) * _BASE_27) / _reserves;
         } else {
-            newAccumulatorValue = (_accumulator * (_reserves - amount)) / _reserves;
+            // TODO checks on _reserves >= amount ?
+            newAccumulatorValue = ((_reserves - amount) * _BASE_27) / _reserves;
             // TODO check if it remains consistent when it gets too small
             if (newAccumulatorValue == 0) {
                 address[] memory _collateralList = collateralList;
@@ -259,12 +266,14 @@ contract Kheops is KheopsStorage {
         uint256 amountInCorrected = _convertDecimalTo(amountIn, collatInfo.decimals, 18);
         uint256 _reserves = reserves;
         uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
+        uint256 _accumulator = accumulator;
         int64 maxFee = _upperBoundStablecoinEstimate(
-            _convertDecimalTo(amountOut, collatInfo.decimals, 18),
+            amountInCorrected,
             _reserves,
             collatInfo.r,
             currentExposure,
             oracleValue,
+            _accumulator,
             collatInfo.xFeeBurn,
             collatInfo.yFeeBurn
         );
@@ -311,12 +320,14 @@ contract Kheops is KheopsStorage {
         uint256 oracleValue = _getBurnOracle(collatInfo.oracle);
         uint256 _reserves = reserves;
         uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
+        uint256 _accumulator = accumulator;
         int64 maxFee = _upperBoundStablecoinEstimate(
             _convertDecimalTo(amountOut, collatInfo.decimals, 18),
             _reserves,
             collatInfo.r,
             currentExposure,
             oracleValue,
+            _accumulator,
             collatInfo.xFeeBurn,
             collatInfo.yFeeBurn
         );
@@ -325,7 +336,7 @@ contract Kheops is KheopsStorage {
             _convertDecimalTo(amountOut, collatInfo.decimals, 18),
             oracleValue,
             maxFee
-        ) * _BASE_27) / accumulator;
+        ) * _BASE_27) / _accumulator;
         uint64 newExposure;
         // TODO why not just equality, as there shouldn't be any case we can exceed this amount. For rounding?
         if (estimatedStablecoinAmount >= reserves) newExposure = 0;
@@ -337,8 +348,9 @@ contract Kheops is KheopsStorage {
         amountIn = _applyFeeIn(amountOut, oracleValue, fees);
     }
 
-    function _quoteRedemptionCurve(uint256 amountBurnt) internal view returns (uint256[] memory amounts) {
-        (uint64 collatRatio, uint256[] memory balances) = _getCollateralRatio();
+    function _quoteRedemptionCurve(uint256 amountBurnt) internal view returns (uint256[] memory balances) {
+        uint64 collatRatio;
+        (collatRatio, balances) = _getCollateralRatio();
         uint64[] memory _xRedemptionCurve = xRedemptionCurve;
         int64[] memory _yRedemptionCurve = yRedemptionCurve;
         uint64 penalty;
@@ -351,7 +363,7 @@ contract Kheops is KheopsStorage {
         }
         uint256 balancesLength = balances.length;
         for (uint256 i; i < balancesLength; ++i) {
-            amounts[i] = (amountBurnt * balances[i] * penalty * _BASE_18) / (reserves * accumulator);
+            balances[i] = (amountBurnt * balances[i] * penalty * _BASE_18) / (reserves * accumulator);
         }
     }
 
@@ -393,13 +405,15 @@ contract Kheops is KheopsStorage {
         uint256 collatReserves,
         uint64 currentExposure,
         uint256 oracleValue,
+        uint256 _accumulator,
         uint64[] memory xFee,
         int64[] memory yFee
     ) internal pure returns (int64 maxFee) {
         // We know for sure that the account won't get more stable than what it deposited*oracle*(1-curFee)
         // for the fee it is just because whenever you do a swap you worsen the rate (high requirement monotonous fees)
         int64 currentFee = _piecewiseMean(currentExposure, currentExposure, xFee, yFee);
-        uint256 maxStablecoinAmount = _applyFeeOut(correctedAmountOut, oracleValue, currentFee);
+        uint256 maxStablecoinAmount = (_applyFeeOut(correctedAmountOut, oracleValue, currentFee) * _BASE_27) /
+            _accumulator;
         uint64 maxExposure = uint64(
             ((collatReserves + maxStablecoinAmount) * _BASE_9) / (sumReserves + maxStablecoinAmount)
         );
@@ -410,6 +424,14 @@ contract Kheops is KheopsStorage {
         // Checking if enough is available for collateral assets that involve manager addresses
         if (collatInfo.manager != address(0) && IManager(collatInfo.manager).maxAvailable() < amountOut)
             revert InvalidSwap();
+    }
+
+    function _transferCollateral(address collateral, address manager, address to, uint256 amount) internal {
+        if (manager != address(0)) {
+            IManager(manager).transfer(to, amount, false);
+        } else {
+            IERC20(collateral).safeTransfer(to, amount);
+        }
     }
 
     function _getCollateralRatio() internal view returns (uint64 collatRatio, uint256[] memory balances) {
@@ -440,6 +462,7 @@ contract Kheops is KheopsStorage {
         }
         uint256 _reserves = reserves;
         uint256 _accumulator = accumulator;
+        // _reserves > 0 looks fine but this one _accumulator > 0 seems risky
         if (_reserves > 0 && _accumulator > 0)
             collatRatio = uint64((totalCollateralization * _BASE_36) / (_reserves * _accumulator));
         else collatRatio = type(uint64).max;
@@ -467,6 +490,8 @@ contract Kheops is KheopsStorage {
         uint256 _reserves = reserves;
         uint256 _accumulator = accumulator;
         uint256 borrowingPower;
+        // Note maxExposure set to 10% is an actual maxExposure of 11.11...%
+        // As you can loop on the borrow as it increases the reserves
         if (module.r * _BASE_9 < module.maxExposure * _reserves) {
             if (module.redeemable > 0) {
                 borrowingPower =
