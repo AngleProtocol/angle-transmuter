@@ -300,9 +300,14 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
 
     function setUint64(uint64 param, bytes32 what) external onlyGovernor {
         // TODO add safety checks and else revert
-        if (what == "D") depositThreshold = param;
-        else if (what == "W") withdrawThreshold = param;
-        else if (what == "O") oracleDeviationThreshold = param;
+        if (param > _BASE_9) revert InvalidParam();
+        if (what == "D") {
+            if (param < withdrawThreshold) revert InvalidParam();
+            depositThreshold = param;
+        } else if (what == "W") {
+            if (param > depositThreshold) revert InvalidParam();
+            withdrawThreshold = param;
+        } else if (what == "O") oracleDeviationThreshold = param;
     }
 
     function setConvexStakeData(
@@ -470,10 +475,4 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
     ) internal pure returns (uint256 tokenWithdrawn) {
         if (totalLpSupply > 0) tokenWithdrawn = (tokenSupply * myLpSupply) / totalLpSupply;
     }
-
-    /*
-TODO Setters:
-- for thresholds
-- for gauges and stuff
-    */
 }
