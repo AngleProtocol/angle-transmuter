@@ -258,19 +258,22 @@ contract Kheops is KheopsStorage {
         if (collatInfo.oracle != address(0)) oracleValue = IOracle(collatInfo.oracle).readMint();
         uint256 amountInCorrected = _convertDecimalTo(amountIn, collatInfo.decimals, 18);
         uint256 _reserves = reserves;
-        // We know for sure that the account won't get more stable than what it deposited*oracle
-        uint256 maxStablecoinAmount = (oracleValue * amountIn) / _BASE_18;
-        uint64 maxExposure = uint64(
-            ((collatInfo.r + maxStablecoinAmount) * _BASE_9) / (_reserves + maxStablecoinAmount)
+        uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
+        int64 maxFee = _upperBoundStablecoinEstimate(
+            _convertDecimalTo(amountOut, collatInfo.decimals, 18),
+            _reserves,
+            collatInfo.r,
+            currentExposure,
+            oracleValue,
+            collatInfo.xFeeBurn,
+            collatInfo.yFeeBurn
         );
-        int64 maxFee = _piecewiseMean(maxExposure, maxExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
         // Overestimating the amount of stablecoin we'll get to compute the exposure
         uint256 estimatedStablecoinAmount = (_applyFeeOut(amountInCorrected, oracleValue, maxFee) * _BASE_27) /
             accumulator;
         uint64 newExposure = uint64(
             ((collatInfo.r + estimatedStablecoinAmount) * _BASE_9) / (_reserves + estimatedStablecoinAmount)
         );
-        uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
         int64 fees = _piecewiseMean(currentExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
         amountOut = _applyFeeOut(amountInCorrected, oracleValue, fees);
     }
@@ -307,12 +310,16 @@ contract Kheops is KheopsStorage {
     ) internal view returns (uint256 amountIn) {
         uint256 oracleValue = _getBurnOracle(collatInfo.oracle);
         uint256 _reserves = reserves;
-        // We know for sure that the account won't get more stable than what it deposited*oracle
-        uint256 maxStablecoinAmount = (oracleValue * _convertDecimalTo(amountOut, collatInfo.decimals, 18)) / _BASE_18;
-        uint64 maxExposure = uint64(
-            ((collatInfo.r + maxStablecoinAmount) * _BASE_9) / (_reserves + maxStablecoinAmount)
+        uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
+        int64 maxFee = _upperBoundStablecoinEstimate(
+            _convertDecimalTo(amountOut, collatInfo.decimals, 18),
+            _reserves,
+            collatInfo.r,
+            currentExposure,
+            oracleValue,
+            collatInfo.xFeeBurn,
+            collatInfo.yFeeBurn
         );
-        int64 maxFee = _piecewiseMean(maxExposure, maxExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
         // Underestimating the amount that needs to be burnt
         uint256 estimatedStablecoinAmount = (_applyFeeIn(
             _convertDecimalTo(amountOut, collatInfo.decimals, 18),
@@ -326,7 +333,6 @@ contract Kheops is KheopsStorage {
             newExposure = uint64(
                 ((collatInfo.r - estimatedStablecoinAmount) * _BASE_9) / (_reserves - estimatedStablecoinAmount)
             );
-        uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
         int64 fees = _piecewiseMean(newExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
         amountIn = _applyFeeIn(amountOut, oracleValue, fees);
     }
@@ -379,6 +385,25 @@ contract Kheops is KheopsStorage {
             if (feesDenom == 0) amountIn = type(uint256).max;
             else amountIn = (amountOut * _BASE_27) / (feesDenom * oracleValue);
         } else amountIn = (amountOut * _BASE_27) / ((_BASE_9 + uint256(int256(-fees))) * oracleValue);
+    }
+
+    function _upperBoundStablecoinEstimate(
+        uint256 correctedAmountOut,
+        uint256 sumReserves,
+        uint256 collatReserves,
+        uint64 currentExposure,
+        uint256 oracleValue,
+        uint64[] memory xFee,
+        int64[] memory yFee
+    ) internal pure returns (int64 maxFee) {
+        // We know for sure that the account won't get more stable than what it deposited*oracle*(1-curFee)
+        // for the fee it is just because whenever you do a swap you worsen the rate (high requirement monotonous fees)
+        int64 currentFee = _piecewiseMean(currentExposure, currentExposure, xFee, yFee);
+        uint256 maxStablecoinAmount = _applyFeeOut(correctedAmountOut, oracleValue, currentFee);
+        uint64 maxExposure = uint64(
+            ((collatReserves + maxStablecoinAmount) * _BASE_9) / (sumReserves + maxStablecoinAmount)
+        );
+        maxFee = _piecewiseMean(maxExposure, maxExposure, xFee, yFee);
     }
 
     function _checkAmounts(Collateral memory collatInfo, uint256 amountOut) internal view {
