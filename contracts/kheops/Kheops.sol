@@ -18,9 +18,7 @@ import "./KheopsStorage.sol";
  * contract size
  * virtual agEUR
  * events
- * multiplier for the r_i and R -> so that reserves can be increased or decreased
  * function to estimate the collateral ratio -> and acknowledge surplus based on this
- * function to increase reserves or decrease based on multiplicator
  */
 
 /// @title Kheops
@@ -54,8 +52,13 @@ contract Kheops is KheopsStorage {
         (collatRatio, ) = _getCollateralRatio();
     }
 
+    function getIssuedByCollateral(address collateral) external view returns (uint256, uint256) {
+        uint256 _accumulator = accumulator;
+        return ((collaterals[collateral].r * _accumulator) / _BASE_27, (reserves * _accumulator) / _BASE_27);
+    }
+
     function getModuleBorrowed(address module) external view returns (uint256) {
-        return modules[module].r;
+        return (modules[module].r * accumulator) / _BASE_27;
     }
 
     function isModule(address module) external view returns (bool) {
@@ -215,7 +218,9 @@ contract Kheops is KheopsStorage {
         }
     }
 
-    function updateAccumulator(uint256 amount, bool increase) external onlyGovernor returns (uint256) {
+    function updateAccumulator(uint256 amount, bool increase) external returns (uint256) {
+        // Trusted addresses can call the function (like a savings contract in the case of a LSD)
+        if (!accessControlManager.isGovernor(msg.sender) && isTrusted[msg.sender] == 0) revert NotTrusted();
         return _updateAccumulator(amount, increase);
     }
 
@@ -353,8 +358,11 @@ contract Kheops is KheopsStorage {
     }
 
     function _applyFeeIn(uint256 amountOut, uint256 oracleValue, int64 fees) internal pure returns (uint256 amountIn) {
-        if (fees >= 0) amountIn = (amountOut * _BASE_27) / ((_BASE_9 - uint256(int256(fees))) * oracleValue);
-        else amountIn = (amountOut * _BASE_27) / ((_BASE_9 + uint256(int256(-fees))) * oracleValue);
+        if (fees >= 0) {
+            uint256 feesDenom = (_BASE_9 - uint256(int256(fees)));
+            if (feesDenom == 0) amountIn = type(uint256).max;
+            else amountIn = (amountOut * _BASE_27) / (feesDenom * oracleValue);
+        } else amountIn = (amountOut * _BASE_27) / ((_BASE_9 + uint256(int256(-fees))) * oracleValue);
     }
 
     function _checkAmounts(Collateral memory collatInfo, uint256 amountOut) internal view {
@@ -485,6 +493,11 @@ contract Kheops is KheopsStorage {
             uint8 pausedStatus = module.unpaused;
             module.unpaused = 1 - pausedStatus;
         }
+    }
+
+    function toggleTrusted(address sender) external onlyGovernor {
+        uint256 trustedStatus = 1 - isTrusted[sender];
+        isTrusted[sender] = trustedStatus;
     }
 
     // Need to be followed by a call to set fees and set oracle and unpaused

@@ -59,6 +59,7 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
     address[] public unredeemableModuleList;
     mapping(address => Collateral) public collaterals;
     mapping(address => Module) public modules;
+    mapping(address => uint256) public isTrusted;
     uint256 public accumulator;
 
     uint64[] public xRedemptionCurve;
