@@ -36,6 +36,7 @@
 pragma solidity ^0.8.12;
 
 import "../interfaces/IOracle.sol";
+import "../interfaces/IOracleFallback.sol";
 import "../utils/AccessControl.sol";
 import "../utils/Constants.sol";
 import "../utils/Errors.sol";
