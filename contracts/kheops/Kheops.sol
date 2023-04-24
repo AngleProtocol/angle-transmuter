@@ -265,7 +265,7 @@ contract Kheops is KheopsStorage {
         uint256 amountInCorrected = _convertDecimalTo(amountIn, collatInfo.decimals, 18);
         uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
 
-        int64 fees = int64(uint64(_BASE_9));
+        int64 fees = collatInfo.yFeeMint[collatInfo.yFeeMint.length - 1];
         int64 estimatedFees;
         uint64 newExposure = currentExposure;
         uint256 estimatedStablecoinAmount;
@@ -324,7 +324,7 @@ contract Kheops is KheopsStorage {
         uint256 _accumulator = accumulator;
         uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
 
-        int64 fees = int64(uint64(_BASE_9));
+        int64 fees = collatInfo.yFeeBurn[0];
         int64 estimatedFees;
         uint64 newExposure = currentExposure;
         uint256 estimatedStablecoinAmount;
