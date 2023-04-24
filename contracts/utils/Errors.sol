@@ -12,6 +12,7 @@ error IncompatibleTokens();
 error IncompatibleValues();
 error Initializing();
 error InsufficientAllowance();
+error InvalidChainlinkRate();
 error InvalidParam();
 error InvalidParams();
 error InvalidTokens();

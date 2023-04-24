@@ -21,7 +21,7 @@ interface IKheops {
 
     function isModule(address module) external view returns (bool);
 
-    function getCollateralRatio() external view returns (uint64 collatRatio);
+    function getCollateralRatio() external view returns (uint64 collatRatio, uint256 reservesValue);
 
     function getIssuedByCollateral(address collateral) external view returns (uint256, uint256);
 

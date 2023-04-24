@@ -13,8 +13,4 @@ interface IOracle {
     function readBurn() external view returns (uint256, uint256);
 
     function read() external view returns (uint256);
-
-    /// @notice Returns the deviation with respect to the target value for the asset
-    /// @dev If EUROC is worth 0.995 instead of 1, then this should return 0.995
-    function getDeviation() external view returns (uint256);
 }
