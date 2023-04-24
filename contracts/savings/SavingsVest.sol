@@ -149,7 +149,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl, Constants {
             if (surplus != 0) {
                 vestingProfit = (lockedProfit() + surplus);
                 lastUpdate = uint64(block.timestamp);
-                _agToken.mint(_surplusManager, surplus);
+                _agToken.mint(address(this), surplus);
             }
         } else {
             uint256 missing = reserves - (collatRatio * reserves) / _BASE_9;
