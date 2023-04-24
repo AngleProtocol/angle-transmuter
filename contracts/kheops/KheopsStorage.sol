@@ -31,7 +31,8 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
         // TODO r can potentially be formatted into something with fewer bytes
         uint256 r;
         uint8 hasOracleFallback;
-        uint8 unpaused;
+        uint8 unpausedMint;
+        uint8 unpausedBurn;
         uint8 decimals;
         uint64[] xFeeMint;
         int64[] yFeeMint;
@@ -54,6 +55,7 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
 
     // TODO: rename reserves = not a good name -> as here it's more totalMinted according to the system
     uint256 public reserves;
+    uint8 public pausedRedemption;
     address[] public collateralList;
     address[] public redeemableModuleList;
     address[] public unredeemableModuleList;

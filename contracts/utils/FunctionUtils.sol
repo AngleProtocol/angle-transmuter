@@ -27,7 +27,7 @@ contract FunctionUtils {
             if (x1 >= xFee[n - 1]) return yFee[n - 1];
             else area += yFee[n - 1] * int64(x2 - xFee[n - 1]);
         }
-        for (uint256 i; i < n - 1 && xPos <= x2; ++i) {
+        for (uint256 i; i < n - 1 && xPos <= x2; i++) {
             uint64 xEnd = xFee[i + 1];
             if (xPos >= xEnd) continue;
             uint64 xStart = xFee[i];

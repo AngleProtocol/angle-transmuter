@@ -92,10 +92,10 @@ contract Kheops is KheopsStorage {
         uint256 depositModuleLength = depositModuleList.length;
 
         tokens = new address[](collateralLength + depositModuleLength);
-        for (uint256 i; i < collateralLength; ++i) {
+        for (uint256 i; i < collateralLength; i++) {
             tokens[i] = list[i];
         }
-        for (uint256 i; i < depositModuleLength; ++i) {
+        for (uint256 i; i < depositModuleLength; i++) {
             tokens[i + collateralLength] = modules[depositModuleList[i]].token;
         }
     }
@@ -192,6 +192,7 @@ contract Kheops is KheopsStorage {
         address[] memory forfeitTokens
     ) internal returns (address[] memory tokens, uint256[] memory amounts) {
         if (block.timestamp < deadline) revert TooLate();
+        if (pausedRedemption == 0) revert Paused();
         amounts = _quoteRedemptionCurve(amount);
         _updateAccumulator(amount, false);
 
@@ -204,7 +205,7 @@ contract Kheops is KheopsStorage {
         uint256 amountsLength = amounts.length;
         tokens = new address[](amountsLength);
         uint256 startTokenForfeit;
-        for (uint256 i; i < amountsLength; ++i) {
+        for (uint256 i; i < amountsLength; i++) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             if (i < collateralListLength) tokens[i] = _collateralList[i];
             else tokens[i] = modules[depositModuleList[i - collateralListLength]].token;
@@ -239,18 +240,20 @@ contract Kheops is KheopsStorage {
         } else {
             newAccumulatorValue = _accumulator - (amount * _BASE_27) / _reserves;
             // TODO check if it remains consistent when it gets too small
-            if (newAccumulatorValue == 0) {
+            if (newAccumulatorValue <= _BASE_18) {
                 address[] memory _collateralList = collateralList;
                 address[] memory depositModuleList = redeemableModuleList;
                 uint256 collateralListLength = _collateralList.length;
                 uint256 depositModuleListLength = depositModuleList.length;
-                for (uint256 i; i < collateralListLength; ++i) {
-                    collaterals[_collateralList[i]].r = 0;
+                for (uint256 i; i < collateralListLength; i++) {
+                    uint256 r = collaterals[_collateralList[i]].r;
+                    collaterals[_collateralList[i]].r = (r * newAccumulatorValue) / _BASE_27;
                 }
-                for (uint256 i; i < depositModuleListLength; ++i) {
-                    modules[depositModuleList[i]].r = 0;
+                for (uint256 i; i < depositModuleListLength; i++) {
+                    uint256 r = modules[depositModuleList[i]].r;
+                    modules[depositModuleList[i]].r = (r * newAccumulatorValue) / _BASE_27;
                 }
-                reserves = 0;
+                reserves = (_reserves * newAccumulatorValue) / _BASE_27;
                 newAccumulatorValue = _BASE_27;
             }
         }
@@ -364,7 +367,7 @@ contract Kheops is KheopsStorage {
             penalty = uint64(_piecewiseMean(collatRatio, collatRatio, _xRedemptionCurve, _yRedemptionCurve));
         }
         uint256 balancesLength = balances.length;
-        for (uint256 i; i < balancesLength; ++i) {
+        for (uint256 i; i < balancesLength; i++) {
             balances[i] = (amountBurnt * balances[i] * penalty) / (reservesValue * _BASE_9);
         }
     }
@@ -374,7 +377,7 @@ contract Kheops is KheopsStorage {
         address[] memory list = collateralList;
         uint256 length = list.length;
         uint256 deviation = _BASE_18;
-        for (uint256 i; i < length; ++i) {
+        for (uint256 i; i < length; i++) {
             address oracle = collaterals[list[i]].oracle;
             uint256 deviationValue = _BASE_18;
             if (oracle != address(0) && oracle != collatOracle) {
@@ -428,7 +431,7 @@ contract Kheops is KheopsStorage {
         uint256 depositModuleLength = depositModuleList.length;
         balances = new uint256[](listLength + depositModuleLength);
 
-        for (uint256 i; i < listLength; ++i) {
+        for (uint256 i; i < listLength; i++) {
             uint256 balance;
             address manager = collaterals[list[i]].manager;
             if (manager != address(0)) balance = IManager(manager).getUnderlyingBalance();
@@ -440,7 +443,7 @@ contract Kheops is KheopsStorage {
             if (oracle != address(0)) oracleValue = IOracle(oracle).readMint();
             totalCollateralization += oracleValue * _convertDecimalTo(balance, collaterals[list[i]].decimals, 18);
         }
-        for (uint256 i; i < depositModuleLength; ++i) {
+        for (uint256 i; i < depositModuleLength; i++) {
             (uint256 balance, uint256 value) = IModule(depositModuleList[i]).getBalanceAndValue();
             balances[i + listLength] = balance;
             totalCollateralization += value;
@@ -458,11 +461,12 @@ contract Kheops is KheopsStorage {
         if (tokenIn == _agToken) {
             collatInfo = collaterals[tokenOut];
             mint = false;
+            if (collatInfo.unpausedMint == 0) revert Paused();
         } else if (tokenOut == _agToken) {
             collatInfo = collaterals[tokenIn];
             mint = true;
+            if (collatInfo.unpausedBurn == 0) revert Paused();
         } else revert InvalidTokens();
-        if (collatInfo.unpaused == 0) revert InvalidTokens();
     }
 
     function borrow(uint256 amount) external returns (uint256) {
@@ -472,8 +476,6 @@ contract Kheops is KheopsStorage {
         uint256 _reserves = reserves;
         uint256 _accumulator = accumulator;
         uint256 borrowingPower;
-        // Note maxExposure set to 10% is an actual maxExposure of 11.11...%
-        // As you can loop on the borrow as it increases the reserves
         if (module.r * _BASE_9 < module.maxExposure * _reserves) {
             if (module.redeemable > 0) {
                 borrowingPower =
@@ -491,7 +493,7 @@ contract Kheops is KheopsStorage {
 
     function repay(uint256 amount) external returns (uint256) {
         Module storage module = modules[msg.sender];
-        if (module.unpaused == 0) revert NotModule();
+        if (module.initialized == 0) revert NotModule();
         uint256 currentR = module.r;
         amount = amount > currentR ? currentR : amount;
         uint256 amountCorrected = (amount * _BASE_27) / accumulator;
@@ -533,17 +535,25 @@ contract Kheops is KheopsStorage {
     /// TODO so if paused a module cannot repay its debt
     /// I think it is better to dissociate mint and burn pause on a collat
     /// We are not pausing redeem via this which seems odd
-    function togglePause(address collateral, bool collateralOrModule) external onlyGuardian {
-        if (collateralOrModule) {
+    function togglePause(address collateral, uint8 pausedType) external onlyGuardian {
+        if (pausedType == 0 || pausedType == 1) {
             Collateral storage collatInfo = collaterals[collateral];
             if (collatInfo.decimals == 0) revert NotCollateral();
-            uint8 pausedStatus = collatInfo.unpaused;
-            collatInfo.unpaused = 1 - pausedStatus;
-        } else {
+            if (pausedType == 0) {
+                uint8 pausedStatus = collatInfo.unpausedMint;
+                collatInfo.unpausedMint = 1 - pausedStatus;
+            } else {
+                uint8 pausedStatus = collatInfo.unpausedBurn;
+                collatInfo.unpausedBurn = 1 - pausedStatus;
+            }
+        } else if (pausedType == 2) {
             Module storage module = modules[collateral];
             if (module.initialized == 0) revert NotModule();
             uint8 pausedStatus = module.unpaused;
             module.unpaused = 1 - pausedStatus;
+        } else {
+            uint8 pausedStatus = pausedRedemption;
+            pausedRedemption = 1 - pausedStatus;
         }
     }
 
@@ -577,7 +587,7 @@ contract Kheops is KheopsStorage {
         address[] memory _collateralList = collateralList;
         uint256 length = _collateralList.length;
         // We already know that it is in the list
-        for (uint256 i; i < length - 1; ++i) {
+        for (uint256 i; i < length - 1; i++) {
             if (_collateralList[i] == collateral) {
                 collateralList[i] = _collateralList[length - 1];
                 break;
@@ -593,7 +603,7 @@ contract Kheops is KheopsStorage {
             address[] memory _redeemableModuleList = redeemableModuleList;
             uint256 length = _redeemableModuleList.length;
             // We already know that it is in the list
-            for (uint256 i; i < length - 1; ++i) {
+            for (uint256 i; i < length - 1; i++) {
                 if (_redeemableModuleList[i] == moduleAddress) {
                     redeemableModuleList[i] = _redeemableModuleList[length - 1];
                     break;
@@ -658,7 +668,7 @@ contract Kheops is KheopsStorage {
     function _checkFees(uint64[] memory xFee, int64[] memory yFee, uint8 setter) internal view {
         uint256 n = xFee.length;
         if (n != yFee.length || n == 0) revert InvalidParams();
-        for (uint256 i = 0; i < n - 1; ++i) {
+        for (uint256 i = 0; i < n - 1; i++) {
             if (
                 (xFee[i] >= xFee[i + 1]) ||
                 (setter == 0 && (yFee[i + 1] < yFee[i])) ||
@@ -674,7 +684,7 @@ contract Kheops is KheopsStorage {
             // Checking that the mint fee is still bigger than the smallest burn fee everywhere
             address[] memory _collateralList = collateralList;
             uint256 length = _collateralList.length;
-            for (uint256 i; i < length; ++i) {
+            for (uint256 i; i < length; i++) {
                 // TODO: do we perform other checks on the fact that sum of target exposures and stuff must be well respected
                 int64[] memory burnFees = collaterals[_collateralList[i]].yFeeBurn;
                 if (burnFees[burnFees.length - 1] + yFee[0] < 0) revert InvalidParams();
@@ -684,7 +694,7 @@ contract Kheops is KheopsStorage {
             // Checking that the burn fee is still bigger than the smallest mint fee everywhere
             address[] memory _collateralList = collateralList;
             uint256 length = _collateralList.length;
-            for (uint256 i; i < length; ++i) {
+            for (uint256 i; i < length; i++) {
                 int64[] memory mintFees = collaterals[_collateralList[i]].yFeeMint;
                 if (mintFees[0] + yFee[n - 1] < 0) revert InvalidParams();
             }

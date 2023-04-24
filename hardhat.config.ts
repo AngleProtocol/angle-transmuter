@@ -173,6 +173,7 @@ const config: HardhatUserConfig = {
   namedAccounts: {
     bob: 0,
     alice: 1,
+    proxyAdmin: 2,
   },
   contractSizer: {
     alphaSort: true,
