@@ -46,17 +46,20 @@ contract Kheops is KheopsStorage {
         return unredeemableModuleList;
     }
 
-    function getCollateralRatio() external view returns (uint64 collatRatio, uint256 reservesValue) {
-        (collatRatio, reservesValue, ) = _getCollateralRatio();
+    function getCollateralRatio() external view returns (uint64 collatRatio, uint256 normalizedStablesValue) {
+        (collatRatio, normalizedStablesValue, ) = _getCollateralRatio();
     }
 
     function getIssuedByCollateral(address collateral) external view returns (uint256, uint256) {
         uint256 _accumulator = accumulator;
-        return ((collaterals[collateral].r * _accumulator) / _BASE_27, (reserves * _accumulator) / _BASE_27);
+        return (
+            (collaterals[collateral].normalizedStables * _accumulator) / _BASE_27,
+            (normalizedStables * _accumulator) / _BASE_27
+        );
     }
 
     function getModuleBorrowed(address module) external view returns (uint256) {
-        return (modules[module].r * accumulator) / _BASE_27;
+        return (modules[module].normalizedStables * accumulator) / _BASE_27;
     }
 
     function isModule(address module) external view returns (bool) {
@@ -92,10 +95,10 @@ contract Kheops is KheopsStorage {
         uint256 depositModuleLength = depositModuleList.length;
 
         tokens = new address[](collateralLength + depositModuleLength);
-        for (uint256 i; i < collateralLength; i++) {
+        for (uint256 i; i < collateralLength; ++i) {
             tokens[i] = list[i];
         }
-        for (uint256 i; i < depositModuleLength; i++) {
+        for (uint256 i; i < depositModuleLength; ++i) {
             tokens[i + collateralLength] = modules[depositModuleList[i]].token;
         }
     }
@@ -168,14 +171,14 @@ contract Kheops is KheopsStorage {
         if (mint) {
             address toProtocolAddress = collatInfo.manager != address(0) ? collatInfo.manager : address(this);
             uint256 changeAmount = (amountOut * _BASE_27) / accumulator;
-            collaterals[tokenOut].r += changeAmount;
-            reserves += changeAmount;
+            collaterals[tokenOut].normalizedStables += changeAmount;
+            normalizedStables += changeAmount;
             IERC20(tokenIn).safeTransferFrom(msg.sender, toProtocolAddress, amountIn);
             IAgToken(tokenOut).mint(to, amountOut);
         } else {
             uint256 changeAmount = (amountIn * _BASE_27) / accumulator;
-            collaterals[tokenOut].r -= changeAmount;
-            reserves -= changeAmount;
+            collaterals[tokenOut].normalizedStables -= changeAmount;
+            normalizedStables -= changeAmount;
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
             _transferCollateral(tokenOut, collatInfo.manager, to, amountOut);
         }
@@ -205,7 +208,7 @@ contract Kheops is KheopsStorage {
         uint256 amountsLength = amounts.length;
         tokens = new address[](amountsLength);
         uint256 startTokenForfeit;
-        for (uint256 i; i < amountsLength; i++) {
+        for (uint256 i; i < amountsLength; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             if (i < collateralListLength) tokens[i] = _collateralList[i];
             else tokens[i] = modules[depositModuleList[i - collateralListLength]].token;
@@ -233,12 +236,12 @@ contract Kheops is KheopsStorage {
 
     function _updateAccumulator(uint256 amount, bool increase) internal returns (uint256 newAccumulatorValue) {
         uint256 _accumulator = accumulator;
-        uint256 _reserves = reserves;
-        if (_reserves == 0) newAccumulatorValue = _BASE_27;
+        uint256 _normalizedStables = normalizedStables;
+        if (_normalizedStables == 0) newAccumulatorValue = _BASE_27;
         else if (increase) {
-            newAccumulatorValue = _accumulator + (amount * _BASE_27) / _reserves;
+            newAccumulatorValue = _accumulator + (amount * _BASE_27) / _normalizedStables;
         } else {
-            newAccumulatorValue = _accumulator - (amount * _BASE_27) / _reserves;
+            newAccumulatorValue = _accumulator - (amount * _BASE_27) / _normalizedStables;
             // TODO check if it remains consistent when it gets too small
             if (newAccumulatorValue <= _BASE_18) {
                 address[] memory _collateralList = collateralList;
@@ -246,14 +249,14 @@ contract Kheops is KheopsStorage {
                 uint256 collateralListLength = _collateralList.length;
                 uint256 depositModuleListLength = depositModuleList.length;
                 for (uint256 i; i < collateralListLength; i++) {
-                    uint256 r = collaterals[_collateralList[i]].r;
-                    collaterals[_collateralList[i]].r = (r * newAccumulatorValue) / _BASE_27;
+                    uint256 r = collaterals[_collateralList[i]].normalizedStables;
+                    collaterals[_collateralList[i]].normalizedStables = (r * newAccumulatorValue) / _BASE_27;
                 }
                 for (uint256 i; i < depositModuleListLength; i++) {
-                    uint256 r = modules[depositModuleList[i]].r;
-                    modules[depositModuleList[i]].r = (r * newAccumulatorValue) / _BASE_27;
+                    uint256 r = modules[depositModuleList[i]].normalizedStables;
+                    modules[depositModuleList[i]].normalizedStables = (r * newAccumulatorValue) / _BASE_27;
                 }
-                reserves = (_reserves * newAccumulatorValue) / _BASE_27;
+                normalizedStables = (_normalizedStables * newAccumulatorValue) / _BASE_27;
                 newAccumulatorValue = _BASE_27;
             }
         }
@@ -263,10 +266,10 @@ contract Kheops is KheopsStorage {
     function _quoteMintExact(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
         uint256 oracleValue = _BASE_18;
         if (collatInfo.oracle != address(0)) oracleValue = IOracle(collatInfo.oracle).readMint();
-        uint256 _reserves = reserves;
+        uint256 _normalizedStables = normalizedStables;
         uint256 _accumulator = accumulator;
         uint256 amountInCorrected = _convertDecimalTo(amountIn, collatInfo.decimals, 18);
-        uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
+        uint64 currentExposure = uint64((collatInfo.normalizedStables * _BASE_9) / _normalizedStables);
         // Over-estimating the amount of stablecoins we'd get, to get an idea of the exposure after the swap
         // TODO: do we need to interate like that -> here doing two iterations but could be less
         // 1. We compute current fees
@@ -276,7 +279,8 @@ contract Kheops is KheopsStorage {
             _accumulator;
         // 3. We compute the exposure we'd get with the current fees
         uint64 newExposure = uint64(
-            ((collatInfo.r + estimatedStablecoinAmount) * _BASE_9) / (_reserves + estimatedStablecoinAmount)
+            ((collatInfo.normalizedStables + estimatedStablecoinAmount) * _BASE_9) /
+                (_normalizedStables + estimatedStablecoinAmount)
         );
         // 4. We deduce the amount of fees we would face with this exposure
         fees = _piecewiseMean(newExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
@@ -284,7 +288,8 @@ contract Kheops is KheopsStorage {
         estimatedStablecoinAmount = (_applyFeeOut(amountInCorrected, oracleValue, fees) * _BASE_27) / _accumulator;
         // 6. We get the exposure with these estimated fees
         newExposure = uint64(
-            ((collatInfo.r + estimatedStablecoinAmount) * _BASE_9) / (_reserves + estimatedStablecoinAmount)
+            ((collatInfo.normalizedStables + estimatedStablecoinAmount) * _BASE_9) /
+                (_normalizedStables + estimatedStablecoinAmount)
         );
         // 7. We deduce a current value of the fees
         fees = _piecewiseMean(currentExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
@@ -298,10 +303,12 @@ contract Kheops is KheopsStorage {
     ) internal view returns (uint256 amountIn) {
         uint256 oracleValue = _BASE_18;
         if (collatInfo.oracle != address(0)) oracleValue = IOracle(collatInfo.oracle).readMint();
-        uint256 _reserves = reserves;
+        uint256 _normalizedStables = normalizedStables;
         uint256 amountOutCorrected = (amountOut * _BASE_27) / accumulator;
-        uint64 newExposure = uint64(((collatInfo.r + amountOutCorrected) * _BASE_9) / (_reserves + amountOutCorrected));
-        uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
+        uint64 newExposure = uint64(
+            ((collatInfo.normalizedStables + amountOutCorrected) * _BASE_9) / (_normalizedStables + amountOutCorrected)
+        );
+        uint64 currentExposure = uint64((collatInfo.normalizedStables * _BASE_9) / _normalizedStables);
         int64 fees = _piecewiseMean(currentExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
         amountIn = _convertDecimalTo(_applyFeeIn(amountOut, oracleValue, fees), 18, collatInfo.decimals);
     }
@@ -309,11 +316,15 @@ contract Kheops is KheopsStorage {
     function _quoteBurnExact(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
         uint256 oracleValue = _getBurnOracle(collatInfo.oracle);
         uint64 newExposure;
-        uint256 _reserves = reserves;
+        uint256 _normalizedStables = normalizedStables;
         uint256 amountInCorrected = (amountIn * _BASE_27) / accumulator;
-        if (amountInCorrected == reserves) newExposure = 0;
-        else newExposure = uint64(((collatInfo.r - amountInCorrected) * _BASE_9) / (_reserves - amountInCorrected));
-        uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
+        if (amountInCorrected == normalizedStables) newExposure = 0;
+        else
+            newExposure = uint64(
+                ((collatInfo.normalizedStables - amountInCorrected) * _BASE_9) /
+                    (_normalizedStables - amountInCorrected)
+            );
+        uint64 currentExposure = uint64((collatInfo.normalizedStables * _BASE_9) / _normalizedStables);
         int64 fees = _piecewiseMean(newExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
         amountOut = _convertDecimalTo(_applyFeeOut(amountIn, oracleValue, fees), 18, collatInfo.decimals);
     }
@@ -323,9 +334,9 @@ contract Kheops is KheopsStorage {
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
         uint256 oracleValue = _getBurnOracle(collatInfo.oracle);
-        uint256 _reserves = reserves;
+        uint256 _normalizedStables = normalizedStables;
         uint256 _accumulator = accumulator;
-        uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
+        uint64 currentExposure = uint64((collatInfo.normalizedStables * _BASE_9) / _normalizedStables);
         // Over estimating the amount of stablecoins that will need to be burnt to overestimate the fees down the line
         // 1. Getting current fee
         int64 fees = _piecewiseMean(currentExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
@@ -333,7 +344,8 @@ contract Kheops is KheopsStorage {
         uint256 estimatedStablecoinAmount = (_applyFeeIn(amountOut, oracleValue, fees) * _BASE_27) / _accumulator;
         // 3. Getting max exposure with this stablecoin amount
         uint64 newExposure = uint64(
-            ((collatInfo.r - estimatedStablecoinAmount) * _BASE_9) / (_reserves - estimatedStablecoinAmount)
+            ((collatInfo.normalizedStables - estimatedStablecoinAmount) * _BASE_9) /
+                (_normalizedStables - estimatedStablecoinAmount)
         );
         // 4. Computing the max fee with this exposure
         fees = _piecewiseMean(newExposure, newExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
@@ -342,10 +354,11 @@ contract Kheops is KheopsStorage {
             (_applyFeeIn(_convertDecimalTo(amountOut, collatInfo.decimals, 18), oracleValue, fees) * _BASE_27) /
             _accumulator;
         // 6. Getting exposure from this
-        if (estimatedStablecoinAmount >= reserves) newExposure = 0;
+        if (estimatedStablecoinAmount >= normalizedStables) newExposure = 0;
         else
             newExposure = uint64(
-                ((collatInfo.r - estimatedStablecoinAmount) * _BASE_9) / (_reserves - estimatedStablecoinAmount)
+                ((collatInfo.normalizedStables - estimatedStablecoinAmount) * _BASE_9) /
+                    (_normalizedStables - estimatedStablecoinAmount)
             );
         // 7. Deducing fees
         fees = _piecewiseMean(newExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
@@ -354,8 +367,8 @@ contract Kheops is KheopsStorage {
 
     function _quoteRedemptionCurve(uint256 amountBurnt) internal view returns (uint256[] memory balances) {
         uint64 collatRatio;
-        uint256 reservesValue;
-        (collatRatio, reservesValue, balances) = _getCollateralRatio();
+        uint256 normalizedStablesValue;
+        (collatRatio, normalizedStablesValue, balances) = _getCollateralRatio();
         uint64[] memory _xRedemptionCurve = xRedemptionCurve;
         int64[] memory _yRedemptionCurve = yRedemptionCurve;
         uint64 penalty;
@@ -368,7 +381,7 @@ contract Kheops is KheopsStorage {
         }
         uint256 balancesLength = balances.length;
         for (uint256 i; i < balancesLength; i++) {
-            balances[i] = (amountBurnt * balances[i] * penalty) / (reservesValue * _BASE_9);
+            balances[i] = (amountBurnt * balances[i] * penalty) / (normalizedStablesValue * _BASE_9);
         }
     }
 
@@ -377,7 +390,7 @@ contract Kheops is KheopsStorage {
         address[] memory list = collateralList;
         uint256 length = list.length;
         uint256 deviation = _BASE_18;
-        for (uint256 i; i < length; i++) {
+        for (uint256 i; i < length; ++i) {
             address oracle = collaterals[list[i]].oracle;
             uint256 deviationValue = _BASE_18;
             if (oracle != address(0) && oracle != collatOracle) {
@@ -421,7 +434,7 @@ contract Kheops is KheopsStorage {
     function _getCollateralRatio()
         internal
         view
-        returns (uint64 collatRatio, uint256 reservesValue, uint256[] memory balances)
+        returns (uint64 collatRatio, uint256 normalizedStablesValue, uint256[] memory balances)
     {
         uint256 totalCollateralization;
         // TODO check whether an oracleList could be smart -> with just list of addresses or stuff
@@ -431,7 +444,7 @@ contract Kheops is KheopsStorage {
         uint256 depositModuleLength = depositModuleList.length;
         balances = new uint256[](listLength + depositModuleLength);
 
-        for (uint256 i; i < listLength; i++) {
+        for (uint256 i; i < listLength; ++i) {
             uint256 balance;
             address manager = collaterals[list[i]].manager;
             if (manager != address(0)) balance = IManager(manager).getUnderlyingBalance();
@@ -443,13 +456,14 @@ contract Kheops is KheopsStorage {
             if (oracle != address(0)) oracleValue = IOracle(oracle).readMint();
             totalCollateralization += oracleValue * _convertDecimalTo(balance, collaterals[list[i]].decimals, 18);
         }
-        for (uint256 i; i < depositModuleLength; i++) {
+        for (uint256 i; i < depositModuleLength; ++i) {
             (uint256 balance, uint256 value) = IModule(depositModuleList[i]).getBalanceAndValue();
             balances[i + listLength] = balance;
             totalCollateralization += value;
         }
-        reservesValue = (reserves * accumulator) / _BASE_27;
-        if (reservesValue > 0) collatRatio = uint64((totalCollateralization * _BASE_9) / reservesValue);
+        normalizedStablesValue = (normalizedStables * accumulator) / _BASE_27;
+        if (normalizedStablesValue > 0)
+            collatRatio = uint64((totalCollateralization * _BASE_9) / normalizedStablesValue);
         else collatRatio = type(uint64).max;
     }
 
@@ -473,20 +487,23 @@ contract Kheops is KheopsStorage {
         Module storage module = modules[msg.sender];
         if (module.unpaused == 0) revert NotModule();
         // Getting borrowing power from the module
-        uint256 _reserves = reserves;
+        uint256 _normalizedStables = normalizedStables;
         uint256 _accumulator = accumulator;
         uint256 borrowingPower;
-        if (module.r * _BASE_9 < module.maxExposure * _reserves) {
+        if (module.normalizedStables * _BASE_9 < module.maxExposure * _normalizedStables) {
             if (module.redeemable > 0) {
                 borrowingPower =
-                    ((module.maxExposure * _reserves - module.r * _BASE_9) * _accumulator) /
+                    ((module.maxExposure * _normalizedStables - module.normalizedStables * _BASE_9) * _accumulator) /
                     ((_BASE_9 - module.maxExposure) * _BASE_27);
-            } else borrowingPower = (((module.maxExposure * _reserves) / _BASE_9 - module.r) * _accumulator) / _BASE_27;
+            } else
+                borrowingPower =
+                    (((module.maxExposure * _normalizedStables) / _BASE_9 - module.normalizedStables) * _accumulator) /
+                    _BASE_27;
         }
         amount = amount > borrowingPower ? borrowingPower : amount;
         uint256 amountCorrected = (amount * _BASE_27) / _accumulator;
-        module.r += amountCorrected;
-        reserves += amountCorrected;
+        module.normalizedStables += amountCorrected;
+        normalizedStables += amountCorrected;
         IAgToken(agToken).mint(msg.sender, amount);
         return amount;
     }
@@ -494,11 +511,11 @@ contract Kheops is KheopsStorage {
     function repay(uint256 amount) external returns (uint256) {
         Module storage module = modules[msg.sender];
         if (module.initialized == 0) revert NotModule();
-        uint256 currentR = module.r;
+        uint256 currentR = module.normalizedStables;
         amount = amount > currentR ? currentR : amount;
         uint256 amountCorrected = (amount * _BASE_27) / accumulator;
-        module.r -= amountCorrected;
-        reserves -= amountCorrected;
+        module.normalizedStables -= amountCorrected;
+        normalizedStables -= amountCorrected;
         IAgToken(agToken).burnSelf(amount, msg.sender);
         return amount;
     }
@@ -509,11 +526,11 @@ contract Kheops is KheopsStorage {
         Collateral storage collatInfo = collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         if (addOrRemove) {
-            collatInfo.r += amount;
-            reserves += amount;
+            collatInfo.normalizedStables += amount;
+            normalizedStables += amount;
         } else {
-            collatInfo.r -= amount;
-            reserves -= amount;
+            collatInfo.normalizedStables -= amount;
+            normalizedStables -= amount;
         }
     }
 
@@ -582,12 +599,12 @@ contract Kheops is KheopsStorage {
 
     function revokeCollateral(address collateral) external onlyGovernor {
         Collateral memory collatInfo = collaterals[collateral];
-        if (collatInfo.decimals == 0 || collatInfo.r > 0) revert NotCollateral();
+        if (collatInfo.decimals == 0 || collatInfo.normalizedStables > 0) revert NotCollateral();
         delete collaterals[collateral];
         address[] memory _collateralList = collateralList;
         uint256 length = _collateralList.length;
         // We already know that it is in the list
-        for (uint256 i; i < length - 1; i++) {
+        for (uint256 i; i < length - 1; ++i) {
             if (_collateralList[i] == collateral) {
                 collateralList[i] = _collateralList[length - 1];
                 break;
@@ -598,12 +615,12 @@ contract Kheops is KheopsStorage {
 
     function revokeModule(address moduleAddress) external onlyGovernor {
         Module storage module = modules[moduleAddress];
-        if (module.initialized == 0 || module.r > 0) revert NotModule();
+        if (module.initialized == 0 || module.normalizedStables > 0) revert NotModule();
         if (module.redeemable > 0) {
             address[] memory _redeemableModuleList = redeemableModuleList;
             uint256 length = _redeemableModuleList.length;
             // We already know that it is in the list
-            for (uint256 i; i < length - 1; i++) {
+            for (uint256 i; i < length - 1; ++i) {
                 if (_redeemableModuleList[i] == moduleAddress) {
                     redeemableModuleList[i] = _redeemableModuleList[length - 1];
                     break;
@@ -668,7 +685,7 @@ contract Kheops is KheopsStorage {
     function _checkFees(uint64[] memory xFee, int64[] memory yFee, uint8 setter) internal view {
         uint256 n = xFee.length;
         if (n != yFee.length || n == 0) revert InvalidParams();
-        for (uint256 i = 0; i < n - 1; i++) {
+        for (uint256 i = 0; i < n - 1; ++i) {
             if (
                 (xFee[i] >= xFee[i + 1]) ||
                 (setter == 0 && (yFee[i + 1] < yFee[i])) ||
@@ -684,7 +701,7 @@ contract Kheops is KheopsStorage {
             // Checking that the mint fee is still bigger than the smallest burn fee everywhere
             address[] memory _collateralList = collateralList;
             uint256 length = _collateralList.length;
-            for (uint256 i; i < length; i++) {
+            for (uint256 i; i < length; ++i) {
                 // TODO: do we perform other checks on the fact that sum of target exposures and stuff must be well respected
                 int64[] memory burnFees = collaterals[_collateralList[i]].yFeeBurn;
                 if (burnFees[burnFees.length - 1] + yFee[0] < 0) revert InvalidParams();
@@ -694,7 +711,7 @@ contract Kheops is KheopsStorage {
             // Checking that the burn fee is still bigger than the smallest mint fee everywhere
             address[] memory _collateralList = collateralList;
             uint256 length = _collateralList.length;
-            for (uint256 i; i < length; i++) {
+            for (uint256 i; i < length; ++i) {
                 int64[] memory mintFees = collaterals[_collateralList[i]].yFeeMint;
                 if (mintFees[0] + yFee[n - 1] < 0) revert InvalidParams();
             }

@@ -29,7 +29,7 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
         address oracle;
         address manager;
         // TODO r can potentially be formatted into something with fewer bytes
-        uint256 r;
+        uint256 normalizedStables;
         uint8 hasOracleFallback;
         uint8 unpausedMint;
         uint8 unpausedBurn;
@@ -44,7 +44,7 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
 
     struct Module {
         address token;
-        uint256 r;
+        uint256 normalizedStables;
         uint64 maxExposure;
         uint8 initialized;
         uint8 redeemable;
@@ -53,8 +53,7 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
         bytes extraData;
     }
 
-    // TODO: rename reserves = not a good name -> as here it's more totalMinted according to the system
-    uint256 public reserves;
+    uint256 public normalizedStables;
     uint8 public pausedRedemption;
     address[] public collateralList;
     address[] public redeemableModuleList;
