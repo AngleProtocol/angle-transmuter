@@ -187,8 +187,6 @@ contract Kheops is KheopsStorage {
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
             _transferCollateral(tokenOut, collatInfo.manager, to, amountOut);
         }
-        if (collatInfo.hasOracleFallback > 0)
-            IOracleFallback(collatInfo.oracle).updateInternalData(amountIn, amountOut, mint);
     }
 
     // TODO we don't burn the stable right now
@@ -662,13 +660,11 @@ contract Kheops is KheopsStorage {
         module.maxExposure = maxExposure;
     }
 
-    function setOracle(address collateral, address oracle, uint8 hasOracleFallback) external onlyGovernor {
+    function setOracle(address collateral, address oracle) external onlyGovernor {
         Collateral storage collatInfo = collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
-        if (hasOracleFallback > 0) IOracleFallback(oracle).updateInternalData(0, 0, true);
-        else if (oracle != address(0)) IOracle(oracle).readMint();
+        if (oracle != address(0)) IOracle(oracle).readMint();
         collatInfo.oracle = oracle;
-        collatInfo.hasOracleFallback = hasOracleFallback;
     }
 
     function _checkFees(uint64[] memory xFee, int64[] memory yFee, uint8 setter) internal view {

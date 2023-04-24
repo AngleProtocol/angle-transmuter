@@ -28,7 +28,6 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
         address manager;
         // TODO r can potentially be formatted into something with fewer bytes
         uint256 normalizedStables;
-        uint8 hasOracleFallback;
         uint8 unpausedMint;
         uint8 unpausedBurn;
         uint8 decimals;
@@ -48,19 +47,17 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
     }
 
     uint256 public normalizedStables;
+    uint256 public accumulator;
     uint8 public pausedRedemption;
     address[] public collateralList;
     address[] public redeemableModuleList;
     address[] public unredeemableModuleList;
+    uint64[] public xRedemptionCurve;
+    int64[] public yRedemptionCurve;
+    IAgToken public agToken;
     mapping(address => Collateral) public collaterals;
     mapping(address => Module) public modules;
     mapping(address => uint256) public isTrusted;
-    uint256 public accumulator;
-
-    uint64[] public xRedemptionCurve;
-    int64[] public yRedemptionCurve;
-
-    IAgToken public agToken;
 
     uint256[43] private __gap;
 }
