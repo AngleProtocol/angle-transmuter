@@ -11,7 +11,6 @@ import "../interfaces/IAgToken.sol";
 import "../interfaces/IModule.sol";
 import "../interfaces/IManager.sol";
 import "../interfaces/IOracle.sol";
-import "../interfaces/IOracleFallback.sol";
 
 import "../utils/AccessControl.sol";
 import "../utils/Constants.sol";

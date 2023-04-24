@@ -65,13 +65,13 @@ contract Savings is ERC4626Upgradeable, AccessControl, Constants {
     uint256 public rate;
 
     /// @notice Last time rewards were accrued
-    uint128 public lastUpdate;
+    uint64 public lastUpdate;
 
     /// @notice Whether the contract is paused or not
-    uint128 public paused;
+    uint8 public paused;
 
     /// @notice Number of decimals for `_asset`
-    uint256 internal _assetDecimals;
+    uint184 internal _assetDecimals;
 
     uint256[46] private __gap;
 
@@ -104,7 +104,7 @@ contract Savings is ERC4626Upgradeable, AccessControl, Constants {
         __ERC4626_init(asset_);
         __ERC20_init(_name, _symbol);
         accessControlManager = _accessControlManager;
-        uint256 numDecimals = 10 ** (asset_.decimals());
+        uint184 numDecimals = uint184(10 ** (asset_.decimals()));
         _assetDecimals = numDecimals;
         _deposit(msg.sender, address(this), numDecimals / divizer, _BASE_18 / divizer);
     }
@@ -123,7 +123,7 @@ contract Savings is ERC4626Upgradeable, AccessControl, Constants {
     function _accrue() internal returns (uint256 newTotalAssets) {
         uint256 currentBalance = super.totalAssets();
         newTotalAssets = _computeUpdatedAssets(currentBalance, block.timestamp - lastUpdate);
-        lastUpdate = uint128(block.timestamp);
+        lastUpdate = uint64(block.timestamp);
         uint256 earned = newTotalAssets - currentBalance;
         if (earned > 0) {
             IAgToken(asset()).mint(address(this), earned);
@@ -250,7 +250,7 @@ contract Savings is ERC4626Upgradeable, AccessControl, Constants {
 
     /// @notice Pauses the contract
     function togglePause() external onlyGuardian {
-        uint128 pauseStatus = 1 - paused;
+        uint8 pauseStatus = 1 - paused;
         paused = pauseStatus;
         emit ToggledPause(pauseStatus);
     }
