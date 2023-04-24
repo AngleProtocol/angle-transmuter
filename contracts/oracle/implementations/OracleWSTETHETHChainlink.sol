@@ -29,4 +29,8 @@ contract OracleWSTETHETHChainlink is BaseOracleChainlinkTwoFeeds {
     function targetPrice() public view override returns (uint256) {
         return STETH.getPooledEthByShares(1 ether);
     }
+
+    function _quoteAmount() internal view override returns (uint256) {
+        return targetPrice();
+    }
 }
