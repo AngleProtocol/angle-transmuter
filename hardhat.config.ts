@@ -171,9 +171,13 @@ const config: HardhatUserConfig = {
     cache: 'cache-hh',
   },
   namedAccounts: {
-    bob: 0,
-    alice: 1,
-    proxyAdmin: 2,
+    deployer: 0,
+    guardian: 1,
+    governor: 2,
+    proxyAdmin: 3,
+    alice: 4,
+    bob: 5,
+    charlie: 6,
   },
   contractSizer: {
     alphaSort: true,

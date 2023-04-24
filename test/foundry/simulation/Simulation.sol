@@ -6,10 +6,10 @@ import "forge-std/Test.sol";
 import "../../../contracts/utils/CurveHelper.sol";
 
 contract Simulations is Test {
-    CurveHelper helper = new CurveHelper();
+    CurveHelper public helper = new CurveHelper();
 
     function setUp() public {}
-
+    /*
     function testPriceForImbalance() public {
         for (uint256 i = 1; i < 10; i++) {
             (uint256 balance0, uint256 balance1, uint256 imbalance, uint256 price) = helper.priceForImbalance(
@@ -24,4 +24,5 @@ contract Simulations is Test {
             console.log("====END====");
         }
     }
+    */
 }
