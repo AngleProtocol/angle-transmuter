@@ -63,6 +63,41 @@ const config: HardhatUserConfig = {
       blockGasLimit: 125e5,
       initialBaseFeePerGas: 0,
       hardfork: 'london',
+      forking: {
+        enabled: argv.fork || false,
+        // Mainnet
+
+        url: nodeUrl('fork'),
+        blockNumber: 17116262,
+
+        // Polygon
+        /*
+        url: nodeUrl('forkpolygon'),
+        blockNumber: 35592019,
+        */
+
+        // Optimism
+        /*
+        url: nodeUrl('optimism'),
+        blockNumber: 17614765,
+        */
+        // Arbitrum
+        /*
+        url: nodeUrl('arbitrum'),
+        blockNumber: 19356874,
+        */
+        // Avalanche
+        /*
+        url: nodeUrl('avalanche'),
+        blockNumber: 23545788,
+        */
+      },
+      mining: argv.disableAutoMining
+        ? {
+            auto: false,
+            interval: 1000,
+          }
+        : { auto: true },
       chainId: 1337,
     },
     polygon: {

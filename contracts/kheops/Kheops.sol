@@ -38,6 +38,11 @@ contract Kheops is KheopsStorage {
         return collateralList;
     }
 
+    function getCollateralFees(address collateral, bool mint) external view returns (uint64[] memory, int64[] memory) {
+        if (mint) return (collaterals[collateral].xFeeMint, collaterals[collateral].yFeeMint);
+        else return (collaterals[collateral].xFeeBurn, collaterals[collateral].yFeeBurn);
+    }
+
     function getRedeemableModuleList() external view returns (address[] memory) {
         return redeemableModuleList;
     }
@@ -549,9 +554,6 @@ contract Kheops is KheopsStorage {
         collatInfo.manager = manager;
     }
 
-    /// TODO so if paused a module cannot repay its debt
-    /// I think it is better to dissociate mint and burn pause on a collat
-    /// We are not pausing redeem via this which seems odd
     function togglePause(address collateral, uint8 pausedType) external onlyGuardian {
         if (pausedType == 0 || pausedType == 1) {
             Collateral storage collatInfo = collaterals[collateral];
@@ -658,19 +660,6 @@ contract Kheops is KheopsStorage {
         if (module.initialized == 0) revert NotModule();
         if (maxExposure > _BASE_9) revert InvalidParam();
         module.maxExposure = maxExposure;
-    }
-
-    // Future unpredicted use cases, so we're not messing up with storage
-    function setExtraData(bytes memory extraData, address collateral, bool collateralOrModule) external onlyGuardian {
-        if (collateralOrModule) {
-            Collateral storage collatInfo = collaterals[collateral];
-            if (collatInfo.decimals == 0) revert NotCollateral();
-            collatInfo.extraData = extraData;
-        } else {
-            Module storage module = modules[collateral];
-            if (module.initialized == 0) revert NotModule();
-            module.extraData = extraData;
-        }
     }
 
     function setOracle(address collateral, address oracle, uint8 hasOracleFallback) external onlyGovernor {

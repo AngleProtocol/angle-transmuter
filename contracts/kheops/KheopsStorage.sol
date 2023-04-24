@@ -23,8 +23,6 @@ import "../utils/FunctionUtils.sol";
 contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils {
     using SafeERC20 for IERC20;
 
-    // TODO parameter for pausing the whole system or -> is it just setting fees
-
     struct Collateral {
         address oracle;
         address manager;
@@ -38,8 +36,6 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
         int64[] yFeeMint;
         uint64[] xFeeBurn;
         int64[] yFeeBurn;
-        // For future upgrades
-        bytes extraData;
     }
 
     struct Module {
@@ -49,8 +45,6 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
         uint8 initialized;
         uint8 redeemable;
         uint8 unpaused;
-        // For future upgrades
-        bytes extraData;
     }
 
     uint256 public normalizedStables;

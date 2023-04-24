@@ -42,13 +42,9 @@ async function main() {
   // Uncomment to check all valid build names
   // console.log((await artifacts.getAllFullyQualifiedNames()));
 
-  testUpgradeability('MockAgEURUpgradeable', 'contracts/example/MockAgEURUpgradeable.sol');
-  testStorage(
-    'MockAgEURUpgradeable2',
-    'contracts/example/MockAgEURUpgradeable2.sol',
-    'MockAgEURUpgradeable',
-    'contracts/example/MockAgEURUpgradeable.sol',
-  );
+  testUpgradeability('KheopsTest', 'contracts/kheops/KheopsTest.sol');
+  testUpgradeability('Kheops', 'contracts/kheops/Kheops.sol');
+  testStorage('Kheops', 'contracts/kheops/Kheops.sol', 'KheopsTest', 'contracts/kheops/KheopsTest.sol');
 }
 
 main().catch(error => {
