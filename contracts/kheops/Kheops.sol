@@ -108,7 +108,6 @@ contract Kheops is KheopsStorage {
         }
     }
 
-    // TODO need to add recipient/sender or use a router contract on top
     function swapExact(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -174,7 +173,7 @@ contract Kheops is KheopsStorage {
             (amountIn, amountOut) = (otherAmount, amount);
         }
         if (mint) {
-            address toProtocolAddress = collatInfo.manager != address(0) ? collatInfo.manager : address(this);
+            address toProtocolAddress = collatInfo.hasManager > 0 ? collatInfo.manager : address(this);
             uint256 changeAmount = (amountOut * _BASE_27) / accumulator;
             collaterals[tokenOut].normalizedStables += changeAmount;
             normalizedStables += changeAmount;
@@ -185,11 +184,11 @@ contract Kheops is KheopsStorage {
             collaterals[tokenOut].normalizedStables -= changeAmount;
             normalizedStables -= changeAmount;
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-            _transferCollateral(tokenOut, collatInfo.manager, to, amountOut);
+            if (collatInfo.hasManager > 0) IManager(collatInfo.manager).transfer(to, amountOut, false);
+            else IERC20(tokenOut).safeTransfer(to, amountOut);
         }
     }
 
-    // TODO we don't burn the stable right now
     function _redeemWithForfeit(
         uint256 amount,
         address to,
@@ -217,9 +216,11 @@ contract Kheops is KheopsStorage {
             else tokens[i] = modules[depositModuleList[i - collateralListLength]].token;
             int256 indexFound = _checkForfeit(tokens[i], startTokenForfeit, forfeitTokens);
             if (indexFound < 0) {
-                if (i < collateralListLength)
-                    _transferCollateral(_collateralList[i], collaterals[_collateralList[i]].manager, to, amounts[i]);
-                else IModule(depositModuleList[i - collateralListLength]).transfer(to, amounts[i]);
+                if (i < collateralListLength) {
+                    if (collaterals[_collateralList[i]].hasManager > 0)
+                        IManager(collaterals[_collateralList[i]].manager).transfer(to, amounts[i], false);
+                    else IERC20(_collateralList[i]).safeTransfer(to, amounts[i]);
+                } else IModule(depositModuleList[i - collateralListLength]).transfer(to, amounts[i]);
             } else {
                 // we force the user to give addresses in the order of collateralList and redeemableModuleList
                 // to save on going through array too many times/
@@ -245,7 +246,6 @@ contract Kheops is KheopsStorage {
             newAccumulatorValue = _accumulator + (amount * _BASE_27) / _normalizedStables;
         } else {
             newAccumulatorValue = _accumulator - (amount * _BASE_27) / _normalizedStables;
-            // TODO check if it remains consistent when it gets too small
             if (newAccumulatorValue <= _BASE_18) {
                 address[] memory _collateralList = collateralList;
                 address[] memory depositModuleList = redeemableModuleList;
@@ -422,16 +422,7 @@ contract Kheops is KheopsStorage {
 
     function _checkAmounts(Collateral memory collatInfo, uint256 amountOut) internal view {
         // Checking if enough is available for collateral assets that involve manager addresses
-        if (collatInfo.manager != address(0) && IManager(collatInfo.manager).maxAvailable() < amountOut)
-            revert InvalidSwap();
-    }
-
-    function _transferCollateral(address collateral, address manager, address to, uint256 amount) internal {
-        if (manager != address(0)) {
-            IManager(manager).transfer(to, amount, false);
-        } else {
-            IERC20(collateral).safeTransfer(to, amount);
-        }
+        if (collatInfo.hasManager > 0 && IManager(collatInfo.manager).maxAvailable() < amountOut) revert InvalidSwap();
     }
 
     function _getCollateralRatio()
@@ -449,8 +440,8 @@ contract Kheops is KheopsStorage {
 
         for (uint256 i; i < listLength; ++i) {
             uint256 balance;
-            address manager = collaterals[list[i]].manager;
-            if (manager != address(0)) balance = IManager(manager).getUnderlyingBalance();
+            if (collaterals[list[i]].hasManager > 0)
+                balance = IManager(collaterals[list[i]].manager).getUnderlyingBalance();
             else balance = IERC20(list[i]).balanceOf(address(this));
             balances[i] = balance;
             address oracle = collaterals[list[i]].oracle;
@@ -546,9 +537,13 @@ contract Kheops is KheopsStorage {
     function setCollateralManager(address collateral, address manager) external onlyGovernor {
         Collateral storage collatInfo = collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
-        if (collatInfo.manager != address(0)) IManager(collatInfo.manager).pullAll();
-        if (manager != address(0))
+        uint8 hasManager = collatInfo.hasManager;
+        if (hasManager > 0) IManager(collatInfo.manager).pullAll();
+        if (manager != address(0)) {
+            collatInfo.hasManager = 1;
             IERC20(collateral).safeTransfer(manager, IERC20(collateral).balanceOf(address(this)));
+        }
+
         collatInfo.manager = manager;
     }
 
@@ -687,7 +682,6 @@ contract Kheops is KheopsStorage {
             address[] memory _collateralList = collateralList;
             uint256 length = _collateralList.length;
             for (uint256 i; i < length; ++i) {
-                // TODO: do we perform other checks on the fact that sum of target exposures and stuff must be well respected
                 int64[] memory burnFees = collaterals[_collateralList[i]].yFeeBurn;
                 if (burnFees[burnFees.length - 1] + yFee[0] < 0) revert InvalidParams();
             }

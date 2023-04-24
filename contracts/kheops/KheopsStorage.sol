@@ -24,13 +24,13 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
     using SafeERC20 for IERC20;
 
     struct Collateral {
-        address oracle;
         address manager;
-        // TODO r can potentially be formatted into something with fewer bytes
-        uint256 normalizedStables;
+        address oracle;
+        uint8 hasManager;
         uint8 unpausedMint;
         uint8 unpausedBurn;
         uint8 decimals;
+        uint256 normalizedStables;
         uint64[] xFeeMint;
         int64[] yFeeMint;
         uint64[] xFeeBurn;
@@ -39,22 +39,22 @@ contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils
 
     struct Module {
         address token;
-        uint256 normalizedStables;
         uint64 maxExposure;
         uint8 initialized;
         uint8 redeemable;
         uint8 unpaused;
+        uint256 normalizedStables;
     }
 
+    IAgToken public agToken;
+    uint8 public pausedRedemption;
     uint256 public normalizedStables;
     uint256 public accumulator;
-    uint8 public pausedRedemption;
     address[] public collateralList;
     address[] public redeemableModuleList;
     address[] public unredeemableModuleList;
     uint64[] public xRedemptionCurve;
     int64[] public yRedemptionCurve;
-    IAgToken public agToken;
     mapping(address => Collateral) public collaterals;
     mapping(address => Module) public modules;
     mapping(address => uint256) public isTrusted;
