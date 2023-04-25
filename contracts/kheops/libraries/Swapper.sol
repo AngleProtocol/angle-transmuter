@@ -102,8 +102,8 @@ library Swapper {
 
     function quoteFees(
         Collateral memory collatInfo,
-        uint64[] xFee,
-        int64[] yFee,
+        uint64[] memory xFee,
+        int64[] memory yFee,
         uint256 amountWithFees
     ) internal view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
@@ -115,53 +115,56 @@ library Swapper {
         uint256 n = xFee.length;
         if (n == 1) {
             // First case: constant fees
-            return applyFee(amountInWithFees, collatInfo.yFeeBurn[0]);
+            return applyFee(amountWithFees, yFee[0]);
         } else {
             uint256 amount;
 
             uint256 i = Utils.findIndexThres(uint64(currentExposure), xFee);
             while (i < n - 1) {
-                uint256 lowerExposure = collatInfo.xFeeBurn[i];
-                uint256 upperExposure = collatInfo.xFeeBurn[i + 1];
-                int256 lowerFees = collatInfo.yFeeBurn[i];
-                int256 upperFees = collatInfo.yFeeBurn[i + 1];
+                uint256 lowerExposure = xFee[i];
+                uint256 upperExposure = xFee[i + 1];
+                int256 lowerFees = yFee[i];
+                int256 upperFees = yFee[i + 1];
 
                 // We transform the linear function on exposure to a linear function depending on the amount swapped
                 uint256 amountToNextBreakPoint = ((_accumulator * (_reserves * upperExposure - collatInfo.r)) /
                     ((c._BASE_9 - upperExposure) * c._BASE_27));
-                uint256 amountFromPrevBreakPoint = ((_accumulator * (collatInfo.r - _reserves * lowerExposure)) /
-                    ((c._BASE_9 - lowerExposure) * c._BASE_27));
-                // upperFees - lowerFees > 0 because fees are an increasing function of exposure (for mint) and 1-exposure (for burn)
-                uint256 slope = (uint256(upperFees - lowerFees) / (amountToNextBreakPoint + amountFromPrevBreakPoint));
 
                 // TODO Safe casts
                 int256 currentFees;
                 if (lowerExposure == currentExposure) currentFees = lowerFees;
-                else currentFees = lowerFees + int256(slope * amountFromPrevBreakPoint);
+                else {
+                    uint256 amountFromPrevBreakPoint = ((_accumulator * (collatInfo.r - _reserves * lowerExposure)) /
+                        ((c._BASE_9 - lowerExposure) * c._BASE_27));
+                    // upperFees - lowerFees > 0 because fees are an increasing function of exposure (for mint) and 1-exposure (for burn)
+                    uint256 slope = (uint256(upperFees - lowerFees) /
+                        (amountToNextBreakPoint + amountFromPrevBreakPoint));
+                    currentFees = lowerFees + int256(slope * amountFromPrevBreakPoint);
+                }
 
                 uint256 amountToNextBreakPointWithFees = invertFee(
                     amountToNextBreakPoint,
                     int64(upperFees + currentFees) / 2
                 );
 
-                if (amountFromPrevBreakPointWithFees >= amountWithFees) {
+                if (amountToNextBreakPointWithFees >= amountWithFees) {
                     return
-                        amountIn +
+                        amount +
                         applyFee(
                             amountWithFees,
                             int64(
                                 (upperFees *
                                     int256(amountWithFees) +
                                     currentFees *
-                                    int256(2 * amountFromPrevBreakPointWithFees - amountWithFees)) /
-                                    int256(2 * amountFromPrevBreakPointWithFees)
+                                    int256(2 * amountToNextBreakPointWithFees - amountWithFees)) /
+                                    int256(2 * amountToNextBreakPointWithFees)
                             )
                         );
                 } else {
-                    amountWithFees -= amountFromPrevBreakPointWithFees;
-                    amount += amountFromPrevBreakPoint;
+                    amountWithFees -= amountToNextBreakPointWithFees;
+                    amount += amountToNextBreakPoint;
                     currentExposure = upperExposure;
-                    i++;
+                    ++i;
                 }
             }
             return amount + applyFee(amountWithFees, yFee[n - 1]);
@@ -179,25 +182,28 @@ library Swapper {
     }
 
     function quoteBurnIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
-        (uint64[] xFee, int64[] yFee) = _symmetricPiecewise(collatInfo.xFeeBurn, collatInfo.yFeeBurn);
+        (uint64[] memory xFee, int64[] memory yFee) = symmetricPiecewise(collatInfo.xFeeBurn, collatInfo.yFeeBurn);
         uint256 oracleValue = getBurnOracle(collatInfo.oracle);
         amountOut = quoteFees(collatInfo, xFee, yFee, amountIn);
         amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * c._BASE_18) / oracleValue;
     }
 
     function quoteBurnOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
-        (uint64[] xFee, int64[] yFee) = _symmetricPiecewise(collatInfo.xFeeBurn, collatInfo.yFeeBurn);
+        (uint64[] memory xFee, int64[] memory yFee) = symmetricPiecewise(collatInfo.xFeeBurn, collatInfo.yFeeBurn);
         uint256 oracleValue = getBurnOracle(collatInfo.oracle);
         amountIn = (oracleValue * Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / c._BASE_18;
         amountIn = quoteFees(collatInfo, xFee, yFee, amountIn);
     }
 
-    function symmetricPiecewise(uint64[] xFee, int64[] yFee) internal returns (uint64[] xSymFee, int64[] ySimFee) {
+    function symmetricPiecewise(
+        uint64[] memory xFee,
+        int64[] memory yFee
+    ) internal pure returns (uint64[] memory xSymFee, int64[] memory ySymFee) {
         uint256 listLengt = xFee.length;
         xSymFee = new uint64[](listLengt);
         ySymFee = new int64[](listLengt);
         for (uint256 i; i < listLengt; ++i) {
-            xSimFee[i] = xFee[listLengt - 1 - i];
+            xSymFee[i] = xFee[listLengt - 1 - i];
             ySymFee[i] = yFee[listLengt - 1 - i];
         }
     }
