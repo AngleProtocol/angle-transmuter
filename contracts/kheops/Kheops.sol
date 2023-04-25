@@ -296,12 +296,71 @@ contract Kheops is KheopsStorage {
         uint256 oracleValue = _BASE_18;
         if (collatInfo.oracle != address(0)) oracleValue = IOracle(collatInfo.oracle).readMint();
         uint256 _reserves = reserves;
-        uint256 amountOutCorrected = (amountOut * _BASE_27) / accumulator;
-        uint64 newExposure = uint64(((collatInfo.r + amountOutCorrected) * _BASE_9) / (_reserves + amountOutCorrected));
+        uint256 _accumulator = accumulator;
+        uint256 amountOutCorrected = (amountOut * _BASE_27) / _accumulator;
+
         uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
-        int64 fees = _piecewiseMean(currentExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
-        amountIn = _convertDecimalTo(_applyFeeIn(amountOut, oracleValue, fees), 18, collatInfo.decimals);
+        uint256 currentIndex = _findIndexThres(currentExposure, collatInfo.xFeeMint);
+        (uint256 lowerThres, uint256 upperThres) = (
+            collatInfo.xFeeMint[currentIndex],
+            // we suppose we always have the thres 0 and 1 in the xFee...
+            collatInfo.xFeeMint[currentIndex + 1]
+        );
+        while (amountOutCorrected > 0) {
+            // x
+            uint256 nextAbsoluteThres = (_reserves * uint256(upperThres) - collatInfo.r) / (1 - uint256(upperThres));
+            // -y
+            uint256 prevNegAbsoluteThres = (reserves * uint256(lowerThres) - collatInfo.r) / (1 - uint256(lowerThres));
+            // I suppose first that the fees are all positive
+            uint256 slope = ((uint256(uint64(collatInfo.yFeeMint[upperThres])) -
+                uint256(uint64(collatInfo.yFeeMint[lowerThres]))) / (nextAbsoluteThres + prevNegAbsoluteThres));
+
+            // in this case we will stay in the same inflexion point
+            if (nextAbsoluteThres >= amountOutCorrected) {
+                // I suppose first that the fees are all positive
+                int64 computeMeanFee = int64(
+                    int256(
+                        slope *
+                            prevNegAbsoluteThres +
+                            uint256(uint64(collatInfo.yFeeMint[lowerThres])) +
+                            (amountOutCorrected * slope) /
+                            2
+                    )
+                );
+                amountIn += _convertDecimalTo(
+                    _applyFeeIn(amountOut, oracleValue, computeMeanFee),
+                    18,
+                    collatInfo.decimals
+                );
+                amountOutCorrected = 0;
+            } else {
+                // in this case we need to saturate current inflexion and go to the next one (repeat)
+                int64 computeMidFeeToInflexion = int64(
+                    int256(
+                        slope *
+                            prevNegAbsoluteThres +
+                            uint256(uint64(collatInfo.yFeeMint[lowerThres])) +
+                            (nextAbsoluteThres * slope) /
+                            2
+                    )
+                );
+                amountIn += _convertDecimalTo(
+                    _applyFeeIn(nextAbsoluteThres * _accumulator, oracleValue, computeMidFeeToInflexion),
+                    18,
+                    collatInfo.decimals
+                );
+                amountOutCorrected -= nextAbsoluteThres;
+                currentIndex += 1;
+                (lowerThres, upperThres) = (
+                    collatInfo.xFeeMint[currentIndex],
+                    // we suppose we always have the thres 0 and 1 in the xFee...
+                    collatInfo.xFeeMint[currentIndex + 1]
+                );
+            }
+        }
     }
+
+    // function iterateMethodMintDirect(uint256 upperThres , uint256 lowerThres,uint256 _reserves,  )
 
     function _quoteBurnExact(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
         uint256 oracleValue = _getBurnOracle(collatInfo.oracle);
