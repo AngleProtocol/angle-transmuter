@@ -34,11 +34,11 @@ library SwapperLib {
         uint256 amountIn;
         uint256 amountOut;
         if (exactIn) {
-            otherAmount = mint ? quoteMintExact(collatInfo, amount) : quoteBurnExact(collatInfo, amount);
+            otherAmount = mint ? quoteMintIn(collatInfo, amount) : quoteBurnIn(collatInfo, amount);
             if (otherAmount < slippage) revert TooSmallAmountOut();
             (amountIn, amountOut) = (amount, otherAmount);
         } else {
-            otherAmount = mint ? quoteMintForExact(collatInfo, amount) : quoteBurnForExact(collatInfo, amount);
+            otherAmount = mint ? quoteMintOut(collatInfo, amount) : quoteBurnOut(collatInfo, amount);
             if (otherAmount > slippage) revert TooBigAmountIn();
             (amountIn, amountOut) = (otherAmount, amount);
         }
@@ -88,13 +88,13 @@ library SwapperLib {
         ks.accumulator = newAccumulatorValue;
     }
 
-    function quoteMint(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
+    function quoteMintIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
         uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
         amountOut = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / c._BASE_18;
         amountOut = quoteMintFees(collatInfo, amountOut);
     }
 
-    function quoteMintFor(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
+    function quoteMintOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
         uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
         amountIn = quoteMintFees(collatInfo, amountOut);
         amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * c._BASE_18) / oracleValue;
@@ -159,7 +159,7 @@ library SwapperLib {
                                 (upperFees *
                                     int256(amountOutBeforeFees) +
                                     currentFees *
-                                    int256(amountToNextBreakPointBeforeFees - amountOutBeforeFees)) /
+                                    int256(2 * amountToNextBreakPointBeforeFees - amountOutBeforeFees)) /
                                     int256(2 * amountToNextBreakPointBeforeFees)
                             )
                         );
@@ -184,7 +184,7 @@ library SwapperLib {
         else amountOut = (c._BASE_9 * amountIn) / (c._BASE_9 + uint256(int256(-fees)));
     }
 
-    function quoteBurnExact(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
+    function quoteBurnIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 oracleValue = getBurnOracle(collatInfo.oracle);
         uint64 newExposure;
@@ -197,10 +197,7 @@ library SwapperLib {
         amountOut = Utils.convertDecimalTo(applyFeeOut(amountIn, oracleValue, fees), 18, collatInfo.decimals);
     }
 
-    function quoteBurnForExact(
-        Collateral memory collatInfo,
-        uint256 amountOut
-    ) internal view returns (uint256 amountIn) {
+    function quoteBurnOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 oracleValue = getBurnOracle(collatInfo.oracle);
         uint256 _reserves = ks.reserves;
