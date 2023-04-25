@@ -103,7 +103,7 @@ library SwapperLib {
         if (n == 1) {
             // First case: constant fees
             // TODO No need for oracle anymore in the below function
-            return applyFeeOut(amountOutBeforeFees, c._BASE_18, collatInfo.yFeeMint[0]);
+            return applyFee(amountOutBeforeFees, collatInfo.yFeeMint[0]);
         } else {
             uint256 amountOut;
 
@@ -137,7 +137,7 @@ library SwapperLib {
 
                 uint256 amountToNextBreakPoint = ((_accumulator * (_reserves * upperExposure - collatInfo.r)) /
                     ((c._BASE_9 - upperExposure) * c._BASE_27));
-                uint256 amountToNextBreakPointBeforeFees = applyFeeIn(
+                uint256 amountToNextBreakPointBeforeFees = invertFee(
                     amountToNextBreakPoint,
                     c._BASE_18,
                     int64(upperFees + currentFees) / 2
@@ -146,9 +146,8 @@ library SwapperLib {
                 if (amountToNextBreakPointBeforeFees >= amountOutBeforeFees) {
                     return
                         amountOut +
-                        applyFeeOut(
+                        applyFee(
                             amountOutBeforeFees,
-                            c._BASE_18,
                             int64(
                                 (upperFees *
                                     int256(amountOutBeforeFees) +
@@ -164,32 +163,18 @@ library SwapperLib {
                     ++i;
                 }
             }
-            return amountOut + applyFeeOut(amountOutBeforeFees, c._BASE_18, collatInfo.yFeeMint[n - 1]);
+            return amountOut + applyFee(amountOutBeforeFees, collatInfo.yFeeMint[n - 1]);
         }
+    }
 
-        // // Over-estimating the amount of stablecoins we'd get, to get an idea of the exposure after the swap
-        // // TODO: do we need to interate like that -> here doing two iterations but could be less
-        // // 1. We compute current fees
-        // int64 fees = Utils.piecewiseMean(currentExposure, currentExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
-        // // 2. We estimate the amount of stablecoins we'd get from these current fees
-        // uint256 estimatedStablecoinAmount = (applyFeeOut(amountInCorrected, oracleValue, fees) * c._BASE_27) /
-        //     _accumulator;
-        // // 3. We compute the exposure we'd get with the current fees
-        // uint64 newExposure = uint64(
-        //     ((collatInfo.r + estimatedStablecoinAmount) * c._BASE_9) / (_reserves + estimatedStablecoinAmount)
-        // );
-        // // 4. We deduce the amount of fees we would face with this exposure
-        // fees = Utils.piecewiseMean(newExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
-        // // 5. We compute the amount of stablecoins it'd give us
-        // estimatedStablecoinAmount = (applyFeeOut(amountInCorrected, oracleValue, fees) * c._BASE_27) / _accumulator;
-        // // 6. We get the exposure with these estimated fees
-        // newExposure = uint64(
-        //     ((collatInfo.r + estimatedStablecoinAmount) * c._BASE_9) / (_reserves + estimatedStablecoinAmount)
-        // );
-        // // 7. We deduce a current value of the fees
-        // fees = Utils.piecewiseMean(currentExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
-        // // 8. We get the current fee value
-        // amountOut = applyFeeOut(amountInCorrected, oracleValue, fees);
+    function applyFee(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
+        if (fees >= 0) amountOut = ((c._BASE_9 - uint256(int256(fees))) * amountIn) / c._BASE_9;
+        else amountOut = ((c._BASE_9 + uint256(int256(-fees))) * amountIn) / c._BASE_9;
+    }
+
+    function invertFee(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
+        if (fees >= 0) amountOut = (c._BASE_9 * amountIn) / (c._BASE_9 - uint256(int256(fees)));
+        else amountOut = (c._BASE_9 * amountIn) / (c._BASE_9 + uint256(int256(-fees)));
     }
 
     function quoteMintForExact(
