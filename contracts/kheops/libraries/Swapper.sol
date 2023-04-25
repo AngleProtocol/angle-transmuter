@@ -104,7 +104,7 @@ library Swapper {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 _reserves = ks.reserves;
         uint256 _accumulator = ks.accumulator;
-        uint256 currentExposure = uint64((collatInfo.r * BASE_9) / _reserves);
+        uint256 currentExposure = (collatInfo.r * c._BASE_9) / _reserves;
 
         // Compute amount out.
         uint256 n = collatInfo.xFeeMint.length;
@@ -115,13 +115,8 @@ library Swapper {
         } else {
             uint256 amountOut;
 
-            uint256 i;
-            // TODO: shall we do a binary search?
-            for (i; i < n - 1 && currentExposure <= collatInfo.xFeeMint[i + 1]; ++i) {}
-
-            uint64 largestExposure = collatInfo.xFeeMint[n - 1];
-
-            while (currentExposure < largestExposure) {
+            uint256 i = Utils.findIndexThres(uint64(currentExposure), collatInfo.xFeeMint);
+            while (i < n - 1) {
                 uint256 lowerExposure = collatInfo.xFeeMint[i];
                 uint256 upperExposure = collatInfo.xFeeMint[i + 1];
                 int256 lowerFees = collatInfo.yFeeMint[i];
@@ -180,49 +175,127 @@ library Swapper {
     }
 
     function quoteBurnIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
-        KheopsStorage storage ks = s.kheopsStorage();
         uint256 oracleValue = getBurnOracle(collatInfo.oracle);
-        uint64 newExposure;
-        uint256 _reserves = ks.reserves;
-        uint256 amountInCorrected = (amountIn * BASE_27) / ks.accumulator;
-        if (amountInCorrected == ks.reserves) newExposure = 0;
-        else newExposure = uint64(((collatInfo.r - amountInCorrected) * BASE_9) / (_reserves - amountInCorrected));
-        uint64 currentExposure = uint64((collatInfo.r * BASE_9) / _reserves);
-        int64 fees = Utils.piecewiseMean(newExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
-        amountOut = Utils.convertDecimalTo(applyFeeOut(amountIn, oracleValue, fees), 18, collatInfo.decimals);
+        amountOut = quoteBurnFees(collatInfo, amountIn);
+        amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * c._BASE_18) / oracleValue;
     }
 
     function quoteBurnOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
-        KheopsStorage storage ks = s.kheopsStorage();
         uint256 oracleValue = getBurnOracle(collatInfo.oracle);
+        amountIn = (oracleValue * Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / c._BASE_18;
+        amountIn = quoteBurnFees(collatInfo, amountIn);
+    }
+
+    function quoteBurnFees(Collateral memory collatInfo, uint256 amountInWithFees) internal view returns (uint256) {
+        KheopsStorage storage ks = s.kheopsStorage();
         uint256 _reserves = ks.reserves;
         uint256 _accumulator = ks.accumulator;
-        uint64 currentExposure = uint64((collatInfo.r * BASE_9) / _reserves);
-        // Over estimating the amount of stablecoins that will need to be burnt to overestimate the fees down the line
-        // 1. Getting current fee
-        int64 fees = Utils.piecewiseMean(currentExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
-        // 2. Getting stablecoin amount to burn for these current fees
-        uint256 estimatedStablecoinAmount = (applyFeeIn(amountOut, oracleValue, fees) * BASE_27) / _accumulator;
-        // 3. Getting max exposure with this stablecoin amount
-        uint64 newExposure = uint64(
-            ((collatInfo.r - estimatedStablecoinAmount) * BASE_9) / (_reserves - estimatedStablecoinAmount)
-        );
-        // 4. Computing the max fee with this exposure
-        fees = Utils.piecewiseMean(newExposure, newExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
-        // 5. Underestimating the amount that needs to be burnt
-        estimatedStablecoinAmount =
-            (applyFeeIn(Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18), oracleValue, fees) * BASE_27) /
-            _accumulator;
-        // 6. Getting exposure from this
-        if (estimatedStablecoinAmount >= ks.reserves) newExposure = 0;
-        else
-            newExposure = uint64(
-                ((collatInfo.r - estimatedStablecoinAmount) * BASE_9) / (_reserves - estimatedStablecoinAmount)
-            );
-        // 7. Deducing fees
-        fees = Utils.piecewiseMean(newExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
-        amountIn = applyFeeIn(amountOut, oracleValue, fees);
+        uint256 currentExposure = uint64((collatInfo.r * c._BASE_9) / _reserves);
+
+        // Compute amount out.
+        uint256 n = collatInfo.xFeeBurn.length;
+        if (n == 1) {
+            // First case: constant fees
+            return applyFee(amountInWithFees, collatInfo.yFeeBurn[0]);
+        } else {
+            uint256 amountIn;
+
+            uint256 i = Utils.findIndexThres(uint64(currentExposure), collatInfo.xFeeBurn);
+            while (i >= 0) {
+                uint256 lowerExposure = collatInfo.xFeeBurn[i];
+                uint256 upperExposure = collatInfo.xFeeBurn[i + 1];
+                int256 lowerFees = collatInfo.yFeeBurn[i];
+                int256 upperFees = collatInfo.yFeeBurn[i + 1];
+
+                // We transform the linear function on exposure to a linear function depending on the amount swapped
+                uint256 amountFromPrevBreakPoint = ((_accumulator * (_reserves * lowerExposure - collatInfo.r)) /
+                    ((c._BASE_9 - lowerExposure) * c._BASE_27));
+                // TODO Safe casts
+                int256 currentFees;
+                if (lowerExposure == currentExposure) currentFees = lowerFees;
+                else {
+                    uint256 amountToNextBreakPoint = ((_accumulator * (_reserves * upperExposure - collatInfo.r)) /
+                        ((c._BASE_9 - upperExposure) * c._BASE_27));
+                    // upperFees - lowerFees < 0 because fees are a decreasing function of exposure
+                    // TODO Safe casts
+                    int256 slope = ((upperFees - lowerFees) /
+                        int256(amountToNextBreakPoint + amountFromPrevBreakPoint));
+                    currentFees = lowerFees + slope * int256(amountFromPrevBreakPoint);
+                }
+
+                uint256 amountFromPrevBreakPointWithFees = invertFee(
+                    amountFromPrevBreakPoint,
+                    int64(lowerFees + currentFees) / 2
+                );
+
+                if (amountFromPrevBreakPointWithFees >= amountInWithFees) {
+                    return
+                        amountIn +
+                        applyFee(
+                            amountInWithFees,
+                            int64(
+                                (lowerFees *
+                                    int256(amountInWithFees) +
+                                    currentFees *
+                                    int256(2 * amountFromPrevBreakPointWithFees - amountInWithFees)) /
+                                    int256(2 * amountFromPrevBreakPointWithFees)
+                            )
+                        );
+                } else {
+                    amountInWithFees -= amountFromPrevBreakPointWithFees;
+                    amountIn += amountFromPrevBreakPoint;
+                    currentExposure = lowerExposure;
+                    --i;
+                }
+            }
+            return amountIn + applyFee(amountInWithFees, collatInfo.yFeeBurn[0]);
+        }
     }
+
+    // function quoteBurnIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
+    //     KheopsStorage storage ks = s.kheopsStorage();
+    //     uint256 oracleValue = getBurnOracle(collatInfo.oracle);
+    //     uint64 newExposure;
+    //     uint256 _reserves = ks.reserves;
+    //     uint256 amountInCorrected = (amountIn * c._BASE_27) / ks.accumulator;
+    //     if (amountInCorrected == ks.reserves) newExposure = 0;
+    //     else newExposure = uint64(((collatInfo.r - amountInCorrected) * c._BASE_9) / (_reserves - amountInCorrected));
+    //     uint64 currentExposure = uint64((collatInfo.r * c._BASE_9) / _reserves);
+    //     int64 fees = Utils.piecewiseMean(newExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
+    //     amountOut = Utils.convertDecimalTo(applyFeeOut(amountIn, oracleValue, fees), 18, collatInfo.decimals);
+    // }
+
+    // function quoteBurnOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
+    //     KheopsStorage storage ks = s.kheopsStorage();
+    //     uint256 oracleValue = getBurnOracle(collatInfo.oracle);
+    //     uint256 _reserves = ks.reserves;
+    //     uint256 _accumulator = ks.accumulator;
+    //     uint64 currentExposure = uint64((collatInfo.r * c._BASE_9) / _reserves);
+    //     // Over estimating the amount of stablecoins that will need to be burnt to overestimate the fees down the line
+    //     // 1. Getting current fee
+    //     int64 fees = Utils.piecewiseMean(currentExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
+    //     // 2. Getting stablecoin amount to burn for these current fees
+    //     uint256 estimatedStablecoinAmount = (applyFeeIn(amountOut, oracleValue, fees) * c._BASE_27) / _accumulator;
+    //     // 3. Getting max exposure with this stablecoin amount
+    //     uint64 newExposure = uint64(
+    //         ((collatInfo.r - estimatedStablecoinAmount) * c._BASE_9) / (_reserves - estimatedStablecoinAmount)
+    //     );
+    //     // 4. Computing the max fee with this exposure
+    //     fees = Utils.piecewiseMean(newExposure, newExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
+    //     // 5. Underestimating the amount that needs to be burnt
+    //     estimatedStablecoinAmount =
+    //         (applyFeeIn(Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18), oracleValue, fees) * c._BASE_27) /
+    //         _accumulator;
+    //     // 6. Getting exposure from this
+    //     if (estimatedStablecoinAmount >= ks.reserves) newExposure = 0;
+    //     else
+    //         newExposure = uint64(
+    //             ((collatInfo.r - estimatedStablecoinAmount) * c._BASE_9) / (_reserves - estimatedStablecoinAmount)
+    //         );
+    //     // 7. Deducing fees
+    //     fees = Utils.piecewiseMean(newExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
+    //     amountIn = applyFeeIn(amountOut, oracleValue, fees);
+    // }
 
     function getBurnOracle(bytes memory oracleData) internal view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
