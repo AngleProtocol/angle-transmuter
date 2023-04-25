@@ -135,14 +135,15 @@ library SwapperLib {
                             int256(currentExposure - lowerExposure));
                 }
 
-                uint256 amountToNextBreakPoint = applyFeeIn(
-                    ((_accumulator * (_reserves * upperExposure - collatInfo.r)) /
-                        ((c._BASE_9 - upperExposure) * c._BASE_27)),
+                uint256 amountToNextBreakPoint = ((_accumulator * (_reserves * upperExposure - collatInfo.r)) /
+                    ((c._BASE_9 - upperExposure) * c._BASE_27));
+                uint256 amountToNextBreakPointBeforeFees = applyFeeIn(
+                    amountToNextBreakPoint,
                     c._BASE_18,
                     int64(upperFees + currentFees) / 2
                 );
 
-                if (amountToNextBreakPoint >= amountOutBeforeFees) {
+                if (amountToNextBreakPointBeforeFees >= amountOutBeforeFees) {
                     return
                         amountOut +
                         applyFeeOut(
@@ -152,13 +153,13 @@ library SwapperLib {
                                 (upperFees *
                                     int256(amountOutBeforeFees) +
                                     currentFees *
-                                    int256(amountToNextBreakPoint - amountOutBeforeFees)) /
-                                    int256(2 * amountToNextBreakPoint)
+                                    int256(amountToNextBreakPointBeforeFees - amountOutBeforeFees)) /
+                                    int256(2 * amountToNextBreakPointBeforeFees)
                             )
                         );
                 } else {
-                    amountOutBeforeFees -= amountToNextBreakPoint;
-                    amountOut += applyFeeOut(amountToNextBreakPoint, c._BASE_18, int64((upperFees + currentFees) / 2));
+                    amountOutBeforeFees -= amountToNextBreakPointBeforeFees;
+                    amountOut += amountToNextBreakPoint;
                     currentExposure = upperExposure;
                     ++i;
                 }
