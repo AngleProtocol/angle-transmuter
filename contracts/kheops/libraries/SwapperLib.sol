@@ -100,7 +100,7 @@ library SwapperLib {
         amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * c._BASE_18) / oracleValue;
     }
 
-    function quoteMintFees(Collateral memory collatInfo, uint256 amountOutBeforeFees) internal view returns (uint256) {
+    function quoteMintFees(Collateral memory collatInfo, uint256 amountOutWithFees) internal view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 _reserves = ks.reserves;
         uint256 _accumulator = ks.accumulator;
@@ -111,7 +111,7 @@ library SwapperLib {
         if (n == 1) {
             // First case: constant fees
             // TODO No need for oracle anymore in the below function
-            return applyFee(amountOutBeforeFees, collatInfo.yFeeMint[0]);
+            return applyFee(amountOutWithFees, collatInfo.yFeeMint[0]);
         } else {
             uint256 amountOut;
 
@@ -145,32 +145,32 @@ library SwapperLib {
 
                 uint256 amountToNextBreakPoint = ((_accumulator * (_reserves * upperExposure - collatInfo.r)) /
                     ((c._BASE_9 - upperExposure) * c._BASE_27));
-                uint256 amountToNextBreakPointBeforeFees = invertFee(
+                uint256 amountToNextBreakPointWithFees = invertFee(
                     amountToNextBreakPoint,
                     int64(upperFees + currentFees) / 2
                 );
 
-                if (amountToNextBreakPointBeforeFees >= amountOutBeforeFees) {
+                if (amountToNextBreakPointWithFees >= amountOutWithFees) {
                     return
                         amountOut +
                         applyFee(
-                            amountOutBeforeFees,
+                            amountOutWithFees,
                             int64(
                                 (upperFees *
-                                    int256(amountOutBeforeFees) +
+                                    int256(amountOutWithFees) +
                                     currentFees *
-                                    int256(2 * amountToNextBreakPointBeforeFees - amountOutBeforeFees)) /
-                                    int256(2 * amountToNextBreakPointBeforeFees)
+                                    int256(2 * amountToNextBreakPointWithFees - amountOutWithFees)) /
+                                    int256(2 * amountToNextBreakPointWithFees)
                             )
                         );
                 } else {
-                    amountOutBeforeFees -= amountToNextBreakPointBeforeFees;
+                    amountOutWithFees -= amountToNextBreakPointWithFees;
                     amountOut += amountToNextBreakPoint;
                     currentExposure = upperExposure;
                     ++i;
                 }
             }
-            return amountOut + applyFee(amountOutBeforeFees, collatInfo.yFeeMint[n - 1]);
+            return amountOut + applyFee(amountOutWithFees, collatInfo.yFeeMint[n - 1]);
         }
     }
 
