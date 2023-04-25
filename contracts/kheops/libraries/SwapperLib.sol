@@ -139,7 +139,6 @@ library SwapperLib {
                     ((c._BASE_9 - upperExposure) * c._BASE_27));
                 uint256 amountToNextBreakPointBeforeFees = invertFee(
                     amountToNextBreakPoint,
-                    c._BASE_18,
                     int64(upperFees + currentFees) / 2
                 );
 
