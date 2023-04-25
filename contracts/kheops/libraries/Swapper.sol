@@ -127,24 +127,19 @@ library Swapper {
                 int256 lowerFees = collatInfo.yFeeMint[i];
                 int256 upperFees = collatInfo.yFeeMint[i + 1];
 
+                // We transform the linear function on exposure to a linear function depending on the amount swapped
+                uint256 amountToNextBreakPoint = ((_accumulator * (_reserves * upperExposure - collatInfo.r)) /
+                    ((c._BASE_9 - upperExposure) * c._BASE_27));
+                uint256 amountFromPrevBreakPoint = ((_accumulator * (_reserves * lowerExposure - collatInfo.r)) /
+                    ((c._BASE_9 - lowerExposure) * c._BASE_27));
+                // upperFees - lowerFees > 0 because fees are an increasing function of exposure
+                uint256 slope = (uint256(upperFees - lowerFees) / (amountToNextBreakPoint + amountFromPrevBreakPoint));
+
                 // TODO Safe casts
                 int256 currentFees;
-                if (lowerExposure == currentExposure) {
-                    currentFees = lowerFees;
-                } else {
-                    currentFees =
-                        ((upperFees * int256(BASE_9 - upperExposure) * int256(currentExposure - lowerExposure)) +
-                            lowerFees *
-                            int256(BASE_9 - lowerExposure) *
-                            int256(upperExposure - currentExposure)) /
-                        (int256(upperExposure - currentExposure) *
-                            int256(BASE_9 - lowerExposure) +
-                            int256(BASE_9 - upperExposure) *
-                            int256(currentExposure - lowerExposure));
-                }
+                if (lowerExposure == currentExposure) currentFees = lowerFees;
+                else currentFees = lowerFees + int256(slope * amountFromPrevBreakPoint);
 
-                uint256 amountToNextBreakPoint = ((_accumulator * (_reserves * upperExposure - collatInfo.r)) /
-                    ((BASE_9 - upperExposure) * BASE_27));
                 uint256 amountToNextBreakPointWithFees = invertFee(
                     amountToNextBreakPoint,
                     int64(upperFees + currentFees) / 2
