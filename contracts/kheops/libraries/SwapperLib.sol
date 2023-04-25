@@ -88,15 +88,23 @@ library SwapperLib {
         ks.accumulator = newAccumulatorValue;
     }
 
-    function quoteMintExact(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256) {
-        KheopsStorage storage ks = s.kheopsStorage();
+    function quoteMint(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
         uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
+        amountOut = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / c._BASE_18;
+        amountOut = quoteMintFees(collatInfo, amountOut);
+    }
+
+    function quoteMintFor(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
+        uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
+        amountIn = quoteMintFees(collatInfo, amountOut);
+        amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * c._BASE_18) / oracleValue;
+    }
+
+    function quoteMintFees(Collateral memory collatInfo, uint256 amountOutBeforeFees) internal view returns (uint256) {
+        KheopsStorage storage ks = s.kheopsStorage();
         uint256 _reserves = ks.reserves;
         uint256 _accumulator = ks.accumulator;
         uint256 currentExposure = uint64((collatInfo.r * c._BASE_9) / _reserves);
-
-        uint256 amountOutBeforeFees = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) /
-            c._BASE_18;
 
         // Compute amount out.
         uint256 n = collatInfo.xFeeMint.length;
@@ -174,22 +182,6 @@ library SwapperLib {
     function invertFee(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
         if (fees >= 0) amountOut = (c._BASE_9 * amountIn) / (c._BASE_9 - uint256(int256(fees)));
         else amountOut = (c._BASE_9 * amountIn) / (c._BASE_9 + uint256(int256(-fees)));
-    }
-
-    function quoteMintForExact(
-        Collateral memory collatInfo,
-        uint256 amountOut
-    ) internal view returns (uint256 amountIn) {
-        KheopsStorage storage ks = s.kheopsStorage();
-        uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
-        uint256 _reserves = ks.reserves;
-        uint256 amountOutCorrected = (amountOut * c._BASE_27) / ks.accumulator;
-        uint64 newExposure = uint64(
-            ((collatInfo.r + amountOutCorrected) * c._BASE_9) / (_reserves + amountOutCorrected)
-        );
-        uint64 currentExposure = uint64((collatInfo.r * c._BASE_9) / _reserves);
-        int64 fees = Utils.piecewiseMean(currentExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
-        amountIn = Utils.convertDecimalTo(applyFeeIn(amountOut, oracleValue, fees), 18, collatInfo.decimals);
     }
 
     function quoteBurnExact(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
