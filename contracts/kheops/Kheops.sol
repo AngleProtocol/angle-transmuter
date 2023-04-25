@@ -35,7 +35,7 @@ contract Kheops is KheopsStorage {
     constructor() initializer {}
 
     function getCollateralList() external view returns (address[] memory) {
-        return collateralList;
+        return _collateralList;
     }
 
     function getCollateralFees(address collateral, bool mint) external view returns (uint64[] memory, int64[] memory) {
@@ -43,12 +43,16 @@ contract Kheops is KheopsStorage {
         else return (collaterals[collateral].xFeeBurn, collaterals[collateral].yFeeBurn);
     }
 
+    function getRedemptionFees() external view returns (uint64[] memory, int64[] memory) {
+        return (_xRedemptionCurve, _yRedemptionCurve);
+    }
+
     function getRedeemableModuleList() external view returns (address[] memory) {
-        return redeemableModuleList;
+        return _redeemableModuleList;
     }
 
     function getUnredeemableModuleList() external view returns (address[] memory) {
-        return unredeemableModuleList;
+        return _unredeemableModuleList;
     }
 
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 normalizedStablesValue) {
@@ -94,9 +98,9 @@ contract Kheops is KheopsStorage {
         uint256 amountBurnt
     ) external view returns (address[] memory tokens, uint256[] memory amounts) {
         amounts = _quoteRedemptionCurve(amountBurnt);
-        address[] memory list = collateralList;
+        address[] memory list = _collateralList;
         uint256 collateralLength = list.length;
-        address[] memory depositModuleList = redeemableModuleList;
+        address[] memory depositModuleList = _redeemableModuleList;
         uint256 depositModuleLength = depositModuleList.length;
 
         tokens = new address[](collateralLength + depositModuleLength);
@@ -204,22 +208,22 @@ contract Kheops is KheopsStorage {
         // Settlement - burn the stable and send the redeemable tokens
         IAgToken(agToken).burnSelf(amount, msg.sender);
 
-        address[] memory _collateralList = collateralList;
-        address[] memory depositModuleList = redeemableModuleList;
-        uint256 collateralListLength = _collateralList.length;
+        address[] memory collateralListMem = _collateralList;
+        address[] memory depositModuleList = _redeemableModuleList;
+        uint256 collateralListLength = collateralListMem.length;
         uint256 amountsLength = amounts.length;
         tokens = new address[](amountsLength);
         uint256 startTokenForfeit;
         for (uint256 i; i < amountsLength; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
-            if (i < collateralListLength) tokens[i] = _collateralList[i];
+            if (i < collateralListLength) tokens[i] = collateralListMem[i];
             else tokens[i] = modules[depositModuleList[i - collateralListLength]].token;
             int256 indexFound = _checkForfeit(tokens[i], startTokenForfeit, forfeitTokens);
             if (indexFound < 0) {
                 if (i < collateralListLength) {
-                    if (collaterals[_collateralList[i]].hasManager > 0)
-                        IManager(collaterals[_collateralList[i]].manager).transfer(to, amounts[i], false);
-                    else IERC20(_collateralList[i]).safeTransfer(to, amounts[i]);
+                    if (collaterals[collateralListMem[i]].hasManager > 0)
+                        IManager(collaterals[collateralListMem[i]].manager).transfer(to, amounts[i], false);
+                    else IERC20(collateralListMem[i]).safeTransfer(to, amounts[i]);
                 } else IModule(depositModuleList[i - collateralListLength]).transfer(to, amounts[i]);
             } else {
                 // we force the user to give addresses in the order of collateralList and redeemableModuleList
@@ -247,13 +251,13 @@ contract Kheops is KheopsStorage {
         } else {
             newAccumulatorValue = _accumulator - (amount * _BASE_27) / _normalizedStables;
             if (newAccumulatorValue <= _BASE_18) {
-                address[] memory _collateralList = collateralList;
-                address[] memory depositModuleList = redeemableModuleList;
-                uint256 collateralListLength = _collateralList.length;
+                address[] memory collateralListMem = _collateralList;
+                address[] memory depositModuleList = _redeemableModuleList;
+                uint256 collateralListLength = collateralListMem.length;
                 uint256 depositModuleListLength = depositModuleList.length;
                 for (uint256 i; i < collateralListLength; i++) {
-                    uint256 r = collaterals[_collateralList[i]].normalizedStables;
-                    collaterals[_collateralList[i]].normalizedStables = (r * newAccumulatorValue) / _BASE_27;
+                    uint256 r = collaterals[collateralListMem[i]].normalizedStables;
+                    collaterals[collateralListMem[i]].normalizedStables = (r * newAccumulatorValue) / _BASE_27;
                 }
                 for (uint256 i; i < depositModuleListLength; i++) {
                     uint256 r = modules[depositModuleList[i]].normalizedStables;
@@ -372,15 +376,13 @@ contract Kheops is KheopsStorage {
         uint64 collatRatio;
         uint256 normalizedStablesValue;
         (collatRatio, normalizedStablesValue, balances) = _getCollateralRatio();
-        uint64[] memory _xRedemptionCurve = xRedemptionCurve;
-        int64[] memory _yRedemptionCurve = yRedemptionCurve;
+        uint64[] memory xRedemptionCurveMem = _xRedemptionCurve;
+        int64[] memory yRedemptionCurveMem = _yRedemptionCurve;
         uint64 penalty;
         if (collatRatio >= _BASE_9) {
-            // TODO check conversions whether it works well
-            // it works fine as long as _yRedemptionCurve[_yRedemptionCurve.length - 1]>=0
-            penalty = (uint64(_yRedemptionCurve[_yRedemptionCurve.length - 1]) * uint64(_BASE_9)) / collatRatio;
+            penalty = (uint64(yRedemptionCurveMem[yRedemptionCurveMem.length - 1]) * uint64(_BASE_9)) / collatRatio;
         } else {
-            penalty = uint64(_piecewiseMean(collatRatio, collatRatio, _xRedemptionCurve, _yRedemptionCurve));
+            penalty = uint64(_piecewiseMean(collatRatio, collatRatio, xRedemptionCurveMem, yRedemptionCurveMem));
         }
         uint256 balancesLength = balances.length;
         for (uint256 i; i < balancesLength; i++) {
@@ -390,7 +392,7 @@ contract Kheops is KheopsStorage {
 
     function _getBurnOracle(address collatOracle) internal view returns (uint256) {
         uint256 oracleValue = _BASE_18;
-        address[] memory list = collateralList;
+        address[] memory list = _collateralList;
         uint256 length = list.length;
         uint256 deviation = _BASE_18;
         for (uint256 i; i < length; ++i) {
@@ -432,9 +434,9 @@ contract Kheops is KheopsStorage {
     {
         uint256 totalCollateralization;
         // TODO check whether an oracleList could be smart -> with just list of addresses or stuff
-        address[] memory list = collateralList;
+        address[] memory list = _collateralList;
         uint256 listLength = list.length;
-        address[] memory depositModuleList = redeemableModuleList;
+        address[] memory depositModuleList = _redeemableModuleList;
         uint256 depositModuleLength = depositModuleList.length;
         balances = new uint256[](listLength + depositModuleLength);
 
@@ -579,7 +581,7 @@ contract Kheops is KheopsStorage {
         Collateral storage collatInfo = collaterals[collateral];
         if (collatInfo.decimals != 0) revert AlreadyAdded();
         collatInfo.decimals = uint8(IERC20Metadata(collateral).decimals());
-        collateralList.push(collateral);
+        _collateralList.push(collateral);
     }
 
     function addModule(address moduleAddress, address token, uint8 redeemable) external onlyGovernor {
@@ -588,40 +590,40 @@ contract Kheops is KheopsStorage {
         module.token = token;
         module.redeemable = redeemable;
         module.initialized = 1;
-        if (redeemable > 0) redeemableModuleList.push(moduleAddress);
-        else unredeemableModuleList.push(moduleAddress);
+        if (redeemable > 0) _redeemableModuleList.push(moduleAddress);
+        else _unredeemableModuleList.push(moduleAddress);
     }
 
     function revokeCollateral(address collateral) external onlyGovernor {
         Collateral memory collatInfo = collaterals[collateral];
         if (collatInfo.decimals == 0 || collatInfo.normalizedStables > 0) revert NotCollateral();
         delete collaterals[collateral];
-        address[] memory _collateralList = collateralList;
-        uint256 length = _collateralList.length;
+        address[] memory collateralListMem = _collateralList;
+        uint256 length = collateralListMem.length;
         // We already know that it is in the list
         for (uint256 i; i < length - 1; ++i) {
-            if (_collateralList[i] == collateral) {
-                collateralList[i] = _collateralList[length - 1];
+            if (collateralListMem[i] == collateral) {
+                _collateralList[i] = collateralListMem[length - 1];
                 break;
             }
         }
-        collateralList.pop();
+        _collateralList.pop();
     }
 
     function revokeModule(address moduleAddress) external onlyGovernor {
         Module storage module = modules[moduleAddress];
         if (module.initialized == 0 || module.normalizedStables > 0) revert NotModule();
         if (module.redeemable > 0) {
-            address[] memory _redeemableModuleList = redeemableModuleList;
-            uint256 length = _redeemableModuleList.length;
+            address[] memory redeemableModuleListMem = _redeemableModuleList;
+            uint256 length = redeemableModuleListMem.length;
             // We already know that it is in the list
             for (uint256 i; i < length - 1; ++i) {
                 if (_redeemableModuleList[i] == moduleAddress) {
-                    redeemableModuleList[i] = _redeemableModuleList[length - 1];
+                    _redeemableModuleList[i] = redeemableModuleListMem[length - 1];
                     break;
                 }
             }
-            redeemableModuleList.pop();
+            _redeemableModuleList.pop();
         }
         // No need to remove from the unredeemable module list -> it is never actually queried
         delete modules[moduleAddress];
@@ -644,8 +646,8 @@ contract Kheops is KheopsStorage {
 
     function setRedemptionCurveParams(uint64[] memory xFee, int64[] memory yFee) external onlyGuardian {
         _checkFees(xFee, yFee, 2);
-        xRedemptionCurve = xFee;
-        yRedemptionCurve = yFee;
+        _xRedemptionCurve = xFee;
+        _yRedemptionCurve = yFee;
     }
 
     function setModuleMaxExposure(address moduleAddress, uint64 maxExposure) external onlyGuardian {
@@ -677,21 +679,18 @@ contract Kheops is KheopsStorage {
             ) revert InvalidParams();
         }
 
+        address[] memory collateralListMem = _collateralList;
+        uint256 length = collateralListMem.length;
         if (setter == 0 && yFee[0] < 0) {
             // Checking that the mint fee is still bigger than the smallest burn fee everywhere
-            address[] memory _collateralList = collateralList;
-            uint256 length = _collateralList.length;
             for (uint256 i; i < length; ++i) {
-                int64[] memory burnFees = collaterals[_collateralList[i]].yFeeBurn;
+                int64[] memory burnFees = collaterals[collateralListMem[i]].yFeeBurn;
                 if (burnFees[burnFees.length - 1] + yFee[0] < 0) revert InvalidParams();
             }
         }
         if (setter == 1 && yFee[n - 1] < 0) {
-            // Checking that the burn fee is still bigger than the smallest mint fee everywhere
-            address[] memory _collateralList = collateralList;
-            uint256 length = _collateralList.length;
             for (uint256 i; i < length; ++i) {
-                int64[] memory mintFees = collaterals[_collateralList[i]].yFeeMint;
+                int64[] memory mintFees = collaterals[collateralListMem[i]].yFeeMint;
                 if (mintFees[0] + yFee[n - 1] < 0) revert InvalidParams();
             }
         }
