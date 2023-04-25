@@ -14,13 +14,13 @@ import "../interfaces/IOracle.sol";
 import "../interfaces/IOracleFallback.sol";
 
 import "../utils/AccessControl.sol";
-import "../utils/Constants.sol";
+import { Constants as c } from "../utils/Constants.sol";
 import "../utils/FunctionUtils.sol";
 
 /// @title MinterStorage
 /// @author Angle Labs, Inc.
 /// @notice Parameters, variables and events for the `Minter` contract
-contract KheopsStorage is Initializable, AccessControl, Constants, FunctionUtils {
+contract KheopsStorage is Initializable, AccessControl, FunctionUtils {
     using SafeERC20 for IERC20;
 
     // TODO parameter for pausing the whole system or -> is it just setting fees

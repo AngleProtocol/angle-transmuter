@@ -4,7 +4,7 @@ pragma solidity ^0.8.12;
 
 import "../BaseOracleChainlinkTwoFeeds.sol";
 
-/// @title OracleBTCEURChainlink
+/// @title OracleEUROCEURChainlink
 /// @author Angle Labs, Inc.
 /// @notice Gives the price of EUROC in Euro in base 18
 contract OracleEUROCEURChainlink is BaseOracleChainlinkTwoFeeds {
@@ -26,6 +26,6 @@ contract OracleEUROCEURChainlink is BaseOracleChainlinkTwoFeeds {
     }
 
     function targetPrice() public pure override returns (uint256) {
-        return _BASE_18;
+        return c._BASE_18;
     }
 }

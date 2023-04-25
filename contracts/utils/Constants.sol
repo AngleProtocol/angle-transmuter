@@ -2,10 +2,11 @@
 
 import "../interfaces/external/convex/IClaimZap.sol";
 import "../interfaces/external/convex/IBooster.sol";
+import "../interfaces/external/lido/IStETH.sol";
 
 pragma solidity ^0.8.17;
 
-contract Constants {
+library Constants {
     // =================================== MATHS ===================================
 
     uint256 internal constant _BASE_6 = 1e6;
@@ -32,4 +33,8 @@ contract Constants {
     address internal constant _CURVE_AGEUR_EUROC_GAUGE = 0x63f222079608EEc2DDC7a9acdCD9344a21428Ce7;
     address internal constant _CURVE_AGEUR_EUROC_CONVEX_REWARDS_POOL = 0xA91fccC1ec9d4A2271B7A86a7509Ca05057C1A98;
     uint256 internal constant _CURVE_AGEUR_EUROC_CONVEX_POOL_ID = 113;
+
+    // ============================== OTHER ADDRESSES ==============================
+
+    IStETH internal constant _STETH = IStETH(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
 }

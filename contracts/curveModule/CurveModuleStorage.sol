@@ -19,14 +19,14 @@ import "../interfaces/IKheops.sol";
 import "../interfaces/IModule.sol";
 import "../interfaces/IOracle.sol";
 
-import "../utils/Constants.sol";
+import { Constants as c } from "../utils/Constants.sol";
 import "../utils/AccessControl.sol";
 import "../utils/FunctionUtils.sol";
 
 /// @title CurveModuleStorage
 /// @author Angle Labs
 /// @notice This contract stores the references, parameters, and mappings for the CurveModule contract.
-contract CurveModuleStorage is Initializable, AccessControl, Constants, FunctionUtils {
+contract CurveModuleStorage is Initializable, AccessControl, FunctionUtils {
     // ================================= REFERENCES ================================
 
     /// @notice Reference to the `Minter` contract
