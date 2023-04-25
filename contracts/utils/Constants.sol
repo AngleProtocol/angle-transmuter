@@ -15,6 +15,7 @@ contract Constants {
     uint256 internal constant _HALF_BASE_27 = 1e27 / 2;
     uint256 internal constant _BASE_27 = 1e27;
     uint256 internal constant _BASE_36 = 1e36;
+    uint256 internal constant _MAX_IT = 5;
 
     // ============================== COMMON ADDRESSES =============================
 

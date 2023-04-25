@@ -265,27 +265,40 @@ contract Kheops is KheopsStorage {
         uint256 amountInCorrected = _convertDecimalTo(amountIn, collatInfo.decimals, 18);
         uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
 
-        int64 fees = collatInfo.yFeeMint[collatInfo.yFeeMint.length - 1];
-        int64 estimatedFees;
+        int64 fees;
         uint64 newExposure = currentExposure;
-        uint256 estimatedStablecoinAmount;
-        // TODO: do we need to interate like that -> here doing two iterations but could be less
-        // arbitrary bound to be refine, will stop when the fees change from a factor <= 0.1%
-        while (int256(fees - estimatedFees) > int256(_BASE_6) * int256(estimatedFees)) {
-            // Over estimating the amount of stablecoins that will need to be burnt to overestimate the fees down the line
-            // 1. Computing the max fee with this exposure
-            estimatedFees = fees;
-            fees = _piecewiseMean(newExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
-            // 2. Underestimating the amount that needs to be burnt
-            estimatedStablecoinAmount = (_applyFeeOut(amountInCorrected, oracleValue, fees) * _BASE_27) / _accumulator;
-            // 3. Getting exposure from this
-            newExposure = uint64(
-                ((collatInfo.r + estimatedStablecoinAmount) * _BASE_9) / (_reserves + estimatedStablecoinAmount)
-            );
+        {
+            uint256 estimatedStablecoinAmount = type(uint256).max / _BASE_6;
+            uint256 prevEstimatedStablecoinAmount;
+            uint8 countIteration;
+            // TODO: do we need to interate like that -> here doing two iterations but could be less
+            // arbitrary bound to be refine, will stop when the fees change from a factor <= 0.1%
+            while (
+                prevEstimatedStablecoinAmount > estimatedStablecoinAmount
+                    ? (prevEstimatedStablecoinAmount - estimatedStablecoinAmount > _BASE_6 * estimatedStablecoinAmount)
+                    : (estimatedStablecoinAmount - prevEstimatedStablecoinAmount >
+                        _BASE_6 * estimatedStablecoinAmount) &&
+                        // _MAX_IT should be > 0 and odd to have an upper bound on the new exposure
+                        countIteration < _MAX_IT
+            ) {
+                // Over estimating the amount of stablecoins that will need to be burnt to overestimate the fees down the line
+                // 1. Computing the max fee with this exposure
+                fees = _piecewiseMean(newExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
+                // 2. Overestimating/Underestimating (when countIteration is even and odd respectiveley) the amount that needs to be minted
+                prevEstimatedStablecoinAmount = estimatedStablecoinAmount;
+                estimatedStablecoinAmount =
+                    (_applyFeeOut(amountInCorrected, oracleValue, fees) * _BASE_27) /
+                    _accumulator;
+                // 3. Getting exposure from this
+                newExposure = uint64(
+                    ((collatInfo.r + estimatedStablecoinAmount) * _BASE_9) / (_reserves + estimatedStablecoinAmount)
+                );
+                countIteration++;
+            }
         }
-        // 7. We deduce a current value of the fees
+        // 4. We deduce a current value of the fees
         fees = _piecewiseMean(currentExposure, newExposure, collatInfo.xFeeMint, collatInfo.yFeeMint);
-        // 8. We get the current fee value
+        // 5. We get the current fee value
         amountOut = _applyFeeOut(amountInCorrected, oracleValue, fees);
     }
 
@@ -324,26 +337,35 @@ contract Kheops is KheopsStorage {
         uint256 _accumulator = accumulator;
         uint64 currentExposure = uint64((collatInfo.r * _BASE_9) / _reserves);
 
-        int64 fees = collatInfo.yFeeBurn[0];
-        int64 estimatedFees;
-        uint64 newExposure = currentExposure;
-        uint256 estimatedStablecoinAmount;
-        // arbitrary bound to be refine
-        while (int256(fees - estimatedFees) > int256(_BASE_6) * int256(estimatedFees)) {
-            // Over estimating the amount of stablecoins that will need to be burnt to overestimate the fees down the line
-            // 1. Computing the max fee with this exposure
-            estimatedFees = fees;
-            fees = _piecewiseMean(newExposure, newExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
-            // 2. Underestimating the amount that needs to be burnt
-            estimatedStablecoinAmount =
-                (_applyFeeIn(_convertDecimalTo(amountOut, collatInfo.decimals, 18), oracleValue, fees) * _BASE_27) /
-                _accumulator;
-            // 3. Getting exposure from this
-            if (estimatedStablecoinAmount >= reserves) newExposure = 0;
-            else
-                newExposure = uint64(
-                    ((collatInfo.r - estimatedStablecoinAmount) * _BASE_9) / (_reserves - estimatedStablecoinAmount)
-                );
+        int64 fees;
+        // Ok this doesn't work if burn fee at 100%
+        uint64 newExposure = 0;
+        {
+            uint256 estimatedStablecoinAmount = type(uint256).max / _BASE_6;
+            uint256 prevEstimatedStablecoinAmount;
+            uint8 countIteration;
+            // TODO: do we need to interate like that -> here doing two iterations but could be less
+            // arbitrary bound to be refine, will stop when the fees change from a factor <= 0.1%
+            while (
+                prevEstimatedStablecoinAmount - estimatedStablecoinAmount > _BASE_6 * estimatedStablecoinAmount &&
+                countIteration < _MAX_IT
+            ) {
+                // Over estimating the amount of stablecoins that will need to be burnt to overestimate the fees down the line
+                // 1. Computing the max fee with this exposure
+                fees = _piecewiseMean(newExposure, newExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
+                // 2. Overestimating the amount that needs to be burnt
+                prevEstimatedStablecoinAmount = estimatedStablecoinAmount;
+                estimatedStablecoinAmount =
+                    (_applyFeeIn(_convertDecimalTo(amountOut, collatInfo.decimals, 18), oracleValue, fees) * _BASE_27) /
+                    _accumulator;
+                // 3. Getting exposure from this
+                if (estimatedStablecoinAmount >= reserves) newExposure = 0;
+                else
+                    newExposure = uint64(
+                        ((collatInfo.r - estimatedStablecoinAmount) * _BASE_9) / (_reserves - estimatedStablecoinAmount)
+                    );
+                countIteration++;
+            }
         }
         // 4. Get final fees
         fees = _piecewiseMean(newExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
