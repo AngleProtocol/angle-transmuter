@@ -90,27 +90,27 @@ library Swapper {
 
     function quoteMintIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
         uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
-        amountOut = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / c._BASE_18;
+        amountOut = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
         amountOut = quoteFees(collatInfo, collatInfo.xFeeMint, collatInfo.yFeeMint, amountOut);
     }
 
     function quoteMintOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
         uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
         amountIn = quoteFees(collatInfo, collatInfo.xFeeMint, collatInfo.yFeeMint, amountOut);
-        amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * c._BASE_18) / oracleValue;
+        amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
 
     function quoteBurnIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
         (uint64[] memory xFee, int64[] memory yFee) = symmetricPiecewise(collatInfo.xFeeBurn, collatInfo.yFeeBurn);
         uint256 oracleValue = getBurnOracle(collatInfo.oracle);
         amountOut = quoteFees(collatInfo, xFee, yFee, amountIn);
-        amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * c._BASE_18) / oracleValue;
+        amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
 
     function quoteBurnOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
         (uint64[] memory xFee, int64[] memory yFee) = symmetricPiecewise(collatInfo.xFeeBurn, collatInfo.yFeeBurn);
         uint256 oracleValue = getBurnOracle(collatInfo.oracle);
-        amountIn = (oracleValue * Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / c._BASE_18;
+        amountIn = (oracleValue * Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / BASE_18;
         amountIn = quoteFees(collatInfo, xFee, yFee, amountIn);
     }
 
@@ -123,7 +123,7 @@ library Swapper {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 _reserves = ks.reserves;
         uint256 _accumulator = ks.accumulator;
-        uint256 currentExposure = uint64((collatInfo.r * c._BASE_9) / _reserves);
+        uint256 currentExposure = uint64((collatInfo.r * BASE_9) / _reserves);
 
         // Compute amount out.
         uint256 n = xFee.length;
@@ -142,14 +142,14 @@ library Swapper {
 
                 // We transform the linear function on exposure to a linear function depending on the amount swapped
                 uint256 amountToNextBreakPoint = ((_accumulator * (_reserves * upperExposure - collatInfo.r)) /
-                    ((c._BASE_9 - upperExposure) * c._BASE_27));
+                    ((BASE_9 - upperExposure) * BASE_27));
 
                 // TODO Safe casts
                 int256 currentFees;
                 if (lowerExposure == currentExposure) currentFees = lowerFees;
                 else {
                     uint256 amountFromPrevBreakPoint = ((_accumulator * (collatInfo.r - _reserves * lowerExposure)) /
-                        ((c._BASE_9 - lowerExposure) * c._BASE_27));
+                        ((BASE_9 - lowerExposure) * BASE_27));
                     // upperFees - lowerFees > 0 because fees are an increasing function of exposure (for mint) and 1-exposure (for burn)
                     uint256 slope = (uint256(upperFees - lowerFees) /
                         (amountToNextBreakPoint + amountFromPrevBreakPoint));
