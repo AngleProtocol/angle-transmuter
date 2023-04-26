@@ -5,6 +5,7 @@ pragma solidity ^0.8.12;
 import { Storage as s } from "../libraries/Storage.sol";
 import { AccessControl } from "../utils/AccessControl.sol";
 import { Redeemer } from "../libraries/Redeemer.sol";
+import { Diamond } from "../libraries/Diamond.sol";
 import "../../utils/Constants.sol";
 
 import "../../interfaces/IAccessControlManager.sol";
@@ -13,6 +14,16 @@ import "../Storage.sol";
 contract Getters is AccessControl {
     function accessControlManager() external view onlyGovernor returns (IAccessControlManager) {
         return s.diamondStorage().accessControlManager;
+    }
+
+    /// @notice Checks whether `admin` has the governor role
+    function isGovernor(address admin) public view returns (bool) {
+        return Diamond.isGovernor(admin);
+    }
+
+    /// @notice Checks whether `admin` has the guardian role
+    function isGovernorOrGuardian(address admin) public view returns (bool) {
+        return Diamond.isGovernorOrGuardian(admin);
     }
 
     function getCollateralList() external view returns (address[] memory) {

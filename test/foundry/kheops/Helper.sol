@@ -13,7 +13,6 @@ import "stringutils/strings.sol";
 import "../../../contracts/kheops/interfaces/IDiamondLoupe.sol";
 
 import { Test } from "forge-std/Test.sol";
-import { console } from "forge-std/console.sol";
 
 abstract contract Helper is Test {
     using strings for *;

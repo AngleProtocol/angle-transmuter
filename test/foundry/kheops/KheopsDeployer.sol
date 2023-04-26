@@ -8,9 +8,12 @@ pragma solidity ^0.8.0;
 /******************************************************************************/
 
 import { IKheops } from "../../../contracts/kheops/interfaces/IKheops.sol";
+import { DiamondProxy } from "../../../contracts/kheops/DiamondProxy.sol";
+
 import { DiamondCut } from "../../../contracts/kheops/facets/DiamondCut.sol";
 import { DiamondLoupe } from "../../../contracts/kheops/facets/DiamondLoupe.sol";
-import { DiamondProxy } from "../../../contracts/kheops/DiamondProxy.sol";
+import { Swapper } from "../../../contracts/kheops/facets/Swapper.sol";
+import { Setters } from "../../../contracts/kheops/facets/Setters.sol";
 
 import "../../../contracts/kheops/Storage.sol";
 import "../../../contracts/utils/Errors.sol";
@@ -20,31 +23,35 @@ abstract contract KheopsDeployer is Helper {
     // Diamond
     IKheops kheops;
 
-    // Facets
-    DiamondCut diamondCut;
-    DiamondLoupe diamondLoupe;
-
     string[] facetNames;
     address[] facetAddressList;
 
     // @dev Deploys diamond and connects facets
     function deployKheops(address _init, bytes memory _calldata) public virtual {
-        FacetCut[] memory cut = new FacetCut[](1);
+        // Deploy every facet
+        facetNames.push("DiamondCut");
+        facetAddressList.push(address(new DiamondCut()));
 
-        diamondCut = new DiamondCut();
-        cut[0] = FacetCut({
-            facetAddress: address(diamondCut),
-            action: FacetCutAction.Add,
-            functionSelectors: generateSelectors("DiamondCut")
-        });
+        facetNames.push("DiamondLoupe");
+        facetAddressList.push(address(new DiamondLoupe()));
 
-        cut[1] = FacetCut({
-            facetAddress: address(diamondLoupe),
-            action: FacetCutAction.Add,
-            functionSelectors: generateSelectors("DiamondLoupe")
-        });
+        facetNames.push("Swapper");
+        facetAddressList.push(address(new Swapper()));
 
-        // Deploy Config and build payload
+        facetNames.push("Setters");
+        facetAddressList.push(address(new Setters()));
+
+        // Build appropriate payload
+        uint256 n = facetNames.length;
+        FacetCut[] memory cut = new FacetCut[](n);
+        for (uint256 i = 0; i < n; i++) {
+            cut[i] = FacetCut({
+                facetAddress: facetAddressList[i],
+                action: FacetCutAction.Add,
+                functionSelectors: generateSelectors(facetNames[i])
+            });
+        }
+
         // Deploy diamond
         kheops = IKheops(address(new DiamondProxy(cut, _init, _calldata)));
     }

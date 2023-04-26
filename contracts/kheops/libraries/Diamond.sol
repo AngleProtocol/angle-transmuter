@@ -15,14 +15,16 @@ import "../interfaces/IDiamondCut.sol";
 // Remember to add the loupe functions from DiamondLoupe to the diamond.
 // The loupe functions are required by the EIP2535 Diamonds standard
 library Diamond {
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event DiamondCut(FacetCut[] _diamondCut, address _init, bytes _calldata);
 
-    function setAccessControlManager(IAccessControlManager _newAccessControlManager) internal {
-        DiamondStorage storage ds = s.diamondStorage();
-        IAccessControlManager previousAccessControlManager = ds.accessControlManager;
-        ds.accessControlManager = _newAccessControlManager;
-        emit OwnershipTransferred(address(previousAccessControlManager), address(_newAccessControlManager));
+    /// @notice Checks whether `admin` has the governor role
+    function isGovernor(address admin) internal view returns (bool) {
+        return s.diamondStorage().accessControlManager.isGovernor(admin);
+    }
+
+    /// @notice Checks whether `admin` has the guardian role
+    function isGovernorOrGuardian(address admin) internal view returns (bool) {
+        return s.diamondStorage().accessControlManager.isGovernorOrGuardian(admin);
     }
 
     // Internal function version of diamondCut
