@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-import { DiamondLib } from "../libraries/DiamondLib.sol";
+import { Diamond } from "../libraries/Diamond.sol";
 import { AccessControl } from "../utils/AccessControl.sol";
 
 import "../../interfaces/IAccessControlManager.sol";
 
-contract SettersFacet is AccessControl {
+contract Setters is AccessControl {
     function setAccessControlManager(IAccessControlManager _newAccessControlManager) external onlyGovernor {
-        DiamondLib.setAccessControlManager(_newAccessControlManager);
+        Diamond.setAccessControlManager(_newAccessControlManager);
     }
 }

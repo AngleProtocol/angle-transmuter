@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import { SwapperLib } from "../libraries/SwapperLib.sol";
+import { Swapper as SwapperLib } from "../libraries/Swapper.sol";
 
-contract SwapperFacet {
+contract Swapper {
     function swapExact(
         uint256 amountIn,
         uint256 amountOutMin,

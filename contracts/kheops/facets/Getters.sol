@@ -4,13 +4,13 @@ pragma solidity ^0.8.0;
 
 import { Storage as s } from "../libraries/Storage.sol";
 import { AccessControl } from "../utils/AccessControl.sol";
-import { RedeemerLib } from "../libraries/RedeemerLib.sol";
+import { Redeemer } from "../libraries/Redeemer.sol";
 import "../../utils/Constants.sol";
 
 import "../../interfaces/IAccessControlManager.sol";
-import "../Structs.sol";
+import "../Storage.sol";
 
-contract GettersFacet is AccessControl {
+contract Getters is AccessControl {
     function accessControlManager() external view onlyGovernor returns (IAccessControlManager) {
         return s.diamondStorage().accessControlManager;
     }
@@ -28,7 +28,7 @@ contract GettersFacet is AccessControl {
     }
 
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 reservesValue) {
-        (collatRatio, reservesValue, ) = RedeemerLib.getCollateralRatio();
+        (collatRatio, reservesValue, ) = Redeemer.getCollateralRatio();
     }
 
     function getIssuedByCollateral(address collateral) external view returns (uint256, uint256) {

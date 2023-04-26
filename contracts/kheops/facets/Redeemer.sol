@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import { RedeemerLib } from "../libraries/RedeemerLib.sol";
+import { Redeemer as RedeemerLib } from "../libraries/Redeemer.sol";
 
-contract RedeemerFacet {
+contract Redeemer {
     function redeem(
         uint256 amount,
         address receiver,

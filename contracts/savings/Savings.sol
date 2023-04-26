@@ -41,7 +41,7 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 import "../utils/Errors.sol";
 import "../utils/AccessControl.sol";
-import { Constants as c } from "../utils/Constants.sol";
+import "../utils/Constants.sol";
 
 import "../interfaces/IERC4626.sol";
 import "../interfaces/IAgToken.sol";

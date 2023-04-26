@@ -38,7 +38,7 @@ pragma solidity ^0.8.12;
 import "../interfaces/IOracle.sol";
 import "../interfaces/IOracleFallback.sol";
 import "../utils/AccessControl.sol";
-import { Constants as c } from "../utils/Constants.sol";
+import "../utils/Constants.sol";
 import "../utils/Errors.sol";
 
 /// @title BaseOracle

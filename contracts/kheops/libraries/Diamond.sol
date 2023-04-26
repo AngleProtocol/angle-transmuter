@@ -7,16 +7,16 @@ pragma solidity ^0.8.0;
 /******************************************************************************/
 
 import { Storage as s } from "./Storage.sol";
-import "../Structs.sol";
+import "../Storage.sol";
 import "../../utils/Errors.sol";
 
 import { IDiamond } from "../../interfaces/IDiamond.sol";
 import { IDiamondCut } from "../../interfaces/IDiamondCut.sol";
 
-// Remember to add the loupe functions from DiamondLoupeFacet to the diamond.
+// Remember to add the loupe functions from DiamondLoupe to the diamond.
 // The loupe functions are required by the EIP2535 Diamonds standard
 
-library DiamondLib {
+library Diamond {
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event DiamondCut(IDiamondCut.FacetCut[] _diamondCut, address _init, bytes _calldata);
 

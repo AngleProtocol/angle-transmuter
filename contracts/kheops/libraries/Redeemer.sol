@@ -8,16 +8,16 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 import { Storage as s } from "./Storage.sol";
-import "./OracleLib.sol";
-import "./SwapperLib.sol";
+import "./Oracle.sol";
+import "./Swapper.sol";
 import "../utils/Utils.sol";
-import "../Structs.sol";
+import "../Storage.sol";
 
 import "../../interfaces/IAgToken.sol";
 import "../../interfaces/IModule.sol";
 import "../../interfaces/IManager.sol";
 
-library RedeemerLib {
+library Redeemer {
     using SafeERC20 for IERC20;
 
     function redeem(
@@ -30,7 +30,7 @@ library RedeemerLib {
         KheopsStorage storage ks = s.kheopsStorage();
         if (block.timestamp < deadline) revert TooLate();
         amounts = quoteRedemptionCurve(amount);
-        SwapperLib.updateAccumulator(amount, false);
+        Swapper.updateAccumulator(amount, false);
 
         // Settlement - burn the stable and send the redeemable tokens
         IAgToken(ks.agToken).burnSelf(amount, msg.sender);
@@ -111,7 +111,7 @@ library RedeemerLib {
             bytes memory oracle = ks.collaterals[list[i]].oracle;
             uint256 oracleValue = BASE_18;
             // Using an underestimated oracle value for the collateral ratio
-            if (keccak256(oracle) != keccak256("0x")) oracleValue = OracleLib.readMint(oracle);
+            if (keccak256(oracle) != keccak256("0x")) oracleValue = Oracle.readMint(oracle);
             totalCollateralization +=
                 oracleValue *
                 Utils.convertDecimalTo(balance, ks.collaterals[list[i]].decimals, 18);

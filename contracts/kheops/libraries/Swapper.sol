@@ -8,15 +8,15 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 import { Storage as s } from "./Storage.sol";
-import "./OracleLib.sol";
+import "./Oracle.sol";
 import "../utils/Utils.sol";
-import "../Structs.sol";
+import "../Storage.sol";
 
 import "../../interfaces/IAgToken.sol";
 import "../../interfaces/IModule.sol";
 import "../../interfaces/IManager.sol";
 
-library SwapperLib {
+library Swapper {
     using SafeERC20 for IERC20;
 
     function swap(
@@ -89,13 +89,13 @@ library SwapperLib {
     }
 
     function quoteMintIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
-        uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
+        uint256 oracleValue = Oracle.readMint(collatInfo.oracle);
         amountOut = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
         amountOut = quoteMintFees(collatInfo, amountOut);
     }
 
     function quoteMintOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
-        uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
+        uint256 oracleValue = Oracle.readMint(collatInfo.oracle);
         amountIn = quoteMintFees(collatInfo, amountOut);
         amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
@@ -241,9 +241,9 @@ library SwapperLib {
 
             // TODO Change the comparison mechanism
             if (keccak256(oracle) != keccak256("0x") && keccak256(oracle) != keccak256(oracleData)) {
-                (, deviationValue) = OracleLib.readBurn(oracleData);
+                (, deviationValue) = Oracle.readBurn(oracleData);
             } else if (keccak256(oracle) != keccak256("0x")) {
-                (oracleValue, deviationValue) = OracleLib.readBurn(oracleData);
+                (oracleValue, deviationValue) = Oracle.readBurn(oracleData);
             }
             if (deviationValue < deviation) deviation = deviationValue;
         }

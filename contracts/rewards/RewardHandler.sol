@@ -7,7 +7,7 @@ import "../interfaces/IAccessControlManager.sol";
 import "../interfaces/IKheops.sol";
 
 import "../utils/AccessControl.sol";
-import { Constants as c } from "../utils/Constants.sol";
+import "../utils/Constants.sol";
 import "../utils/Errors.sol";
 
 pragma solidity ^0.8.17;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-import { Constants as c } from "../utils/Constants.sol";
+import "../utils/Constants.sol";
 
 pragma solidity ^0.8.17;
 

@@ -4,7 +4,7 @@ pragma solidity ^0.8.12;
 
 import "../../utils/Constants.sol";
 import { Storage as s } from "./Storage.sol";
-import "../Structs.sol";
+import "../Storage.sol";
 import "../../utils/Errors.sol";
 
 import "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
@@ -17,7 +17,7 @@ interface IOracle {
     function read() external view returns (uint256);
 }
 
-library OracleLib {
+library Oracle {
     function parseOracleData(bytes memory oracleData) internal pure returns (OracleType, bytes memory) {
         return abi.decode(oracleData, (OracleType, bytes));
     }

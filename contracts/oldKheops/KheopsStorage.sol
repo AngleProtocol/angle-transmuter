@@ -14,7 +14,7 @@ import "../interfaces/IOracle.sol";
 import "../interfaces/IOracleFallback.sol";
 
 import "../utils/AccessControl.sol";
-import { Constants as c } from "../utils/Constants.sol";
+import "../utils/Constants.sol";
 import "../utils/FunctionUtils.sol";
 
 /// @title MinterStorage

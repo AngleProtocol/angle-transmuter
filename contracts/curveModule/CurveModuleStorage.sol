@@ -19,7 +19,7 @@ import "../interfaces/IKheops.sol";
 import "../interfaces/IModule.sol";
 import "../interfaces/IOracle.sol";
 
-import { Constants as c } from "../utils/Constants.sol";
+import "../utils/Constants.sol";
 import "../utils/AccessControl.sol";
 import "../utils/FunctionUtils.sol";
 
