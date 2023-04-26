@@ -6,16 +6,13 @@ pragma solidity ^0.8.0;
 * EIP-2535 Diamonds
 /******************************************************************************/
 
+import "../Storage.sol";
+
 // A loupe is a small magnifying glass used to look at diamonds.
 // These functions look at diamonds
 interface IDiamondLoupe {
     /// These functions are expected to be called frequently
     /// by tools.
-
-    struct Facet {
-        address facetAddress;
-        bytes4[] functionSelectors;
-    }
 
     /// @notice Gets all facet addresses and their four byte function selectors.
     /// @return facets_ Facet

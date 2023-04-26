@@ -4,14 +4,13 @@ pragma solidity ^0.8.12;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../interfaces/IDiamondCut.sol";
 import "../interfaces/IAccessControlManager.sol";
 import "../interfaces/IAgToken.sol";
 
 /// @title IKheops
 /// @author Angle Labs
 /// @notice Interface for the `Minter` contract
-interface IKheops is IDiamondCut {
+interface IKheops {
     // TODO TO UPDATE
     function borrow(uint256 amount) external returns (uint256);
 

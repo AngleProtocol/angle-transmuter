@@ -13,28 +13,8 @@ import { Storage as s } from "./libraries/Storage.sol";
 import "../utils/Errors.sol";
 import "./Storage.sol";
 
-import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
-import { IDiamondLoupe } from "../interfaces/IDiamondLoupe.sol";
-import { IERC173 } from "../interfaces/IERC173.sol";
-import { IERC165 } from "../interfaces/IERC165.sol";
-
-// This is used in diamond constructor
-// more arguments are added to this struct
-// this avoids stack too deep errors
-struct DiamondArgs {
-    address owner;
-    address init;
-    bytes initCalldata;
-}
-
 contract DiamondProxy {
-    constructor(
-        IAccessControlManager _accessControlManager,
-        IDiamondCut.FacetCut[] memory _diamondCut,
-        address _init,
-        bytes memory _calldata
-    ) payable {
-        Diamond.setAccessControlManager(_accessControlManager);
+    constructor(FacetCut[] memory _diamondCut, address _init, bytes memory _calldata) payable {
         Diamond.diamondCut(_diamondCut, _init, _calldata);
     }
 

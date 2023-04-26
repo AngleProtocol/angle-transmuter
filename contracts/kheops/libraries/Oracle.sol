@@ -8,8 +8,7 @@ import "../Storage.sol";
 import "../../utils/Errors.sol";
 
 import "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
-import { IDiamond } from "../../interfaces/IDiamond.sol";
-import { IDiamondCut } from "../../interfaces/IDiamondCut.sol";
+import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
 
 interface IOracle {
     function targetPrice() external view returns (uint256);
@@ -18,16 +17,24 @@ interface IOracle {
 }
 
 library Oracle {
-    function parseOracleData(bytes memory oracleData) internal pure returns (OracleType, bytes memory) {
+    function parseOracle(bytes memory oracleData) internal pure returns (OracleType, bytes memory) {
         return abi.decode(oracleData, (OracleType, bytes));
     }
 
-    function getOracleData(address collateral) internal view returns (OracleType, bytes memory) {
-        return parseOracleData(s.kheopsStorage().collaterals[collateral].oracle);
+    function getOracle(address collateral) internal view returns (OracleType, bytes memory) {
+        return parseOracle(s.kheopsStorage().collaterals[collateral].oracle);
     }
 
-    function setOracleData(address collateral, OracleType oracleType, bytes memory data) internal {
-        s.kheopsStorage().collaterals[collateral].oracle = abi.encode(oracleType, data);
+    function setOracle(address collateral, OracleType oracleType, bytes memory data) internal {
+        data = abi.encode(oracleType, data);
+
+        KheopsStorage storage ks = s.kheopsStorage();
+        Collateral storage collatInfo = ks.collaterals[collateral];
+        if (collatInfo.decimals == 0) revert NotCollateral();
+
+        // TODO Eventually add more validation
+        Oracle.readMint(data); // Checks oracle validity
+        ks.collaterals[collateral].oracle = data;
     }
 
     function targetPrice(OracleType oracleType, bytes memory data) internal view returns (uint256) {
@@ -47,8 +54,8 @@ library Oracle {
 
     function read(OracleType oracleType, bytes memory data) internal view returns (uint256) {
         if (oracleType == OracleType.CHAINLINK_SIMPLE) {
-            // TODO To complete
-            return BASE_18;
+            (uint32 stalePeriod, AggregatorV3Interface oracle) = abi.decode(data, (uint32, AggregatorV3Interface));
+            return readChainlinkFeed(BASE_18, oracle, 1, 8, stalePeriod);
         }
         if (oracleType == OracleType.CHAINLINK_TWO_FEEDS) {
             (uint32 stalePeriod, AggregatorV3Interface[2] memory circuitChainlink) = abi.decode(
@@ -76,14 +83,14 @@ library Oracle {
     }
 
     function readMint(bytes memory oracleData) internal view returns (uint256 oracleValue) {
-        (OracleType oracleType, bytes memory data) = parseOracleData(oracleData);
+        (OracleType oracleType, bytes memory data) = parseOracle(oracleData);
         oracleValue = read(oracleType, data);
         uint256 _targetPrice = targetPrice(oracleType, data);
         if (_targetPrice < oracleValue) oracleValue = _targetPrice;
     }
 
     function readBurn(bytes memory oracleData) internal view returns (uint256 oracleValue, uint256 deviation) {
-        (OracleType oracleType, bytes memory data) = parseOracleData(oracleData);
+        (OracleType oracleType, bytes memory data) = parseOracle(oracleData);
         oracleValue = read(oracleType, data);
         uint256 _targetPrice = targetPrice(oracleType, data);
         deviation = BASE_18;

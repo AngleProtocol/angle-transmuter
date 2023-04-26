@@ -1,8 +1,25 @@
 // SPDX-License-Identifier: CC0-1.0
 pragma solidity ^0.8.0;
 
-import "../interfaces/IAccessControlManager.sol";
-import "../interfaces/IAgToken.sol";
+import { IAccessControlManager } from "../interfaces/IAccessControlManager.sol";
+import { IAgToken } from "../interfaces/IAgToken.sol";
+
+enum FacetCutAction {
+    Add,
+    Replace,
+    Remove
+}
+
+struct FacetCut {
+    address facetAddress;
+    FacetCutAction action;
+    bytes4[] functionSelectors;
+}
+
+struct Facet {
+    address facetAddress;
+    bytes4[] functionSelectors;
+}
 
 struct FacetAddressAndSelectorPosition {
     address facetAddress;

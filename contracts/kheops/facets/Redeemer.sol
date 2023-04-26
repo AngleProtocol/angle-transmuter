@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import { Redeemer as RedeemerLib } from "../libraries/Redeemer.sol";
+import { Redeemer as Lib } from "../libraries/Redeemer.sol";
 
 contract Redeemer {
     function redeem(
@@ -12,7 +12,7 @@ contract Redeemer {
         uint256[] memory minAmountOuts
     ) external returns (address[] memory tokens, uint256[] memory amounts) {
         address[] memory forfeitTokens;
-        return RedeemerLib.redeem(amount, receiver, deadline, minAmountOuts, forfeitTokens);
+        return Lib.redeem(amount, receiver, deadline, minAmountOuts, forfeitTokens);
     }
 
     function redeemWithForfeit(
@@ -22,6 +22,6 @@ contract Redeemer {
         uint256[] memory minAmountOuts,
         address[] memory forfeitTokens
     ) external returns (address[] memory tokens, uint256[] memory amounts) {
-        return RedeemerLib.redeem(amount, receiver, deadline, minAmountOuts, forfeitTokens);
+        return Lib.redeem(amount, receiver, deadline, minAmountOuts, forfeitTokens);
     }
 }

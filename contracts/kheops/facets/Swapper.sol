@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import { Swapper as SwapperLib } from "../libraries/Swapper.sol";
+import { Swapper as Lib } from "../libraries/Swapper.sol";
 
 contract Swapper {
     function swapExact(
@@ -13,7 +13,7 @@ contract Swapper {
         address to,
         uint256 deadline
     ) external returns (uint amountOut) {
-        return SwapperLib.swap(amountIn, amountOutMin, tokenIn, tokenOut, to, deadline, true);
+        return Lib.swap(amountIn, amountOutMin, tokenIn, tokenOut, to, deadline, true);
     }
 
     function swapForExact(
@@ -24,6 +24,6 @@ contract Swapper {
         address to,
         uint256 deadline
     ) external returns (uint amountIn) {
-        return SwapperLib.swap(amountOut, amountInMax, tokenIn, tokenOut, to, deadline, false);
+        return Lib.swap(amountOut, amountInMax, tokenIn, tokenOut, to, deadline, false);
     }
 }

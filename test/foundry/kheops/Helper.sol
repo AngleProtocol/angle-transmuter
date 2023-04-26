@@ -10,13 +10,11 @@ pragma solidity ^0.8.0;
 /******************************************************************************/
 
 import "stringutils/strings.sol";
-import "../../../contracts/interfaces/IDiamond.sol";
-import "../../../contracts/interfaces/IDiamondLoupe.sol";
+import "../../../contracts/kheops/interfaces/IDiamondLoupe.sol";
 
 import { Test } from "forge-std/Test.sol";
-import { console } from "forge-std/console.sol";
 
-abstract contract HelperContract is IDiamond, IDiamondLoupe, Test {
+abstract contract Helper is Test {
     using strings for *;
 
     // return array of function selectors for given facet name
@@ -117,15 +115,4 @@ abstract contract HelperContract is IDiamond, IDiamondLoupe, Test {
         }
         return selectors;
     }
-
-    // implement dummy override functions
-    function diamondCut(FacetCut[] calldata _diamondCut, address _init, bytes calldata _calldata) external {}
-
-    function facetAddress(bytes4 _functionSelector) external view returns (address facetAddress_) {}
-
-    function facetAddresses() external view returns (address[] memory facetAddresses_) {}
-
-    function facetFunctionSelectors(address _facet) external view returns (bytes4[] memory facetFunctionSelectors_) {}
-
-    function facets() external view returns (Facet[] memory facets_) {}
 }

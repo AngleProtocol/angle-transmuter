@@ -10,37 +10,38 @@ import { Storage as s } from "./Storage.sol";
 import "../Storage.sol";
 import "../../utils/Errors.sol";
 
-import { IDiamond } from "../../interfaces/IDiamond.sol";
-import { IDiamondCut } from "../../interfaces/IDiamondCut.sol";
+import "../interfaces/IDiamondCut.sol";
 
 // Remember to add the loupe functions from DiamondLoupe to the diamond.
 // The loupe functions are required by the EIP2535 Diamonds standard
 library Diamond {
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-    event DiamondCut(IDiamondCut.FacetCut[] _diamondCut, address _init, bytes _calldata);
+    event DiamondCut(FacetCut[] _diamondCut, address _init, bytes _calldata);
 
-    function setAccessControlManager(IAccessControlManager _newAccessControlManager) internal {
-        DiamondStorage storage ds = s.diamondStorage();
-        IAccessControlManager previousAccessControlManager = ds.accessControlManager;
-        ds.accessControlManager = _newAccessControlManager;
-        emit OwnershipTransferred(address(previousAccessControlManager), address(_newAccessControlManager));
+    /// @notice Checks whether `admin` has the governor role
+    function isGovernor(address admin) internal view returns (bool) {
+        return s.diamondStorage().accessControlManager.isGovernor(admin);
+    }
+
+    /// @notice Checks whether `admin` has the guardian role
+    function isGovernorOrGuardian(address admin) internal view returns (bool) {
+        return s.diamondStorage().accessControlManager.isGovernorOrGuardian(admin);
     }
 
     // Internal function version of diamondCut
-    function diamondCut(IDiamondCut.FacetCut[] memory _diamondCut, address _init, bytes memory _calldata) internal {
+    function diamondCut(FacetCut[] memory _diamondCut, address _init, bytes memory _calldata) internal {
         for (uint256 facetIndex; facetIndex < _diamondCut.length; facetIndex++) {
             bytes4[] memory functionSelectors = _diamondCut[facetIndex].functionSelectors;
             address facetAddress = _diamondCut[facetIndex].facetAddress;
             if (functionSelectors.length == 0) {
                 revert NoSelectorsProvidedForFacetForCut(facetAddress);
             }
-            IDiamondCut.FacetCutAction action = _diamondCut[facetIndex].action;
-            if (action == IDiamond.FacetCutAction.Add) {
-                addFunctions(facetAddress, functionSelectors);
-            } else if (action == IDiamond.FacetCutAction.Replace) {
-                replaceFunctions(facetAddress, functionSelectors);
-            } else if (action == IDiamond.FacetCutAction.Remove) {
-                removeFunctions(facetAddress, functionSelectors);
+            FacetCutAction action = _diamondCut[facetIndex].action;
+            if (action == FacetCutAction.Add) {
+                _addFunctions(facetAddress, functionSelectors);
+            } else if (action == FacetCutAction.Replace) {
+                _replaceFunctions(facetAddress, functionSelectors);
+            } else if (action == FacetCutAction.Remove) {
+                _removeFunctions(facetAddress, functionSelectors);
             } else {
                 revert IncorrectFacetCutAction(uint8(action));
             }
@@ -49,13 +50,33 @@ library Diamond {
         initializeDiamondCut(_init, _calldata);
     }
 
-    function addFunctions(address _facetAddress, bytes4[] memory _functionSelectors) internal {
+    function initializeDiamondCut(address _init, bytes memory _calldata) internal {
+        if (_init == address(0)) {
+            return;
+        }
+        _enforceHasContractCode(_init, "LibDiamondCut: _init address has no code");
+        (bool success, bytes memory error) = _init.delegatecall(_calldata);
+        if (!success) {
+            if (error.length > 0) {
+                // bubble up error
+                /// @solidity memory-safe-assembly
+                assembly {
+                    let returndata_size := mload(error)
+                    revert(add(32, error), returndata_size)
+                }
+            } else {
+                revert InitializationFunctionReverted(_init, _calldata);
+            }
+        }
+    }
+
+    function _addFunctions(address _facetAddress, bytes4[] memory _functionSelectors) private {
         if (_facetAddress == address(0)) {
             revert CannotAddSelectorsToZeroAddress(_functionSelectors);
         }
         DiamondStorage storage ds = s.diamondStorage();
         uint16 selectorCount = uint16(ds.selectors.length);
-        enforceHasContractCode(_facetAddress, "LibDiamondCut: Add facet has no code");
+        _enforceHasContractCode(_facetAddress, "LibDiamondCut: Add facet has no code");
         for (uint256 selectorIndex; selectorIndex < _functionSelectors.length; selectorIndex++) {
             bytes4 selector = _functionSelectors[selectorIndex];
             address oldFacetAddress = ds.facetAddressAndSelectorPosition[selector].facetAddress;
@@ -71,12 +92,12 @@ library Diamond {
         }
     }
 
-    function replaceFunctions(address _facetAddress, bytes4[] memory _functionSelectors) internal {
+    function _replaceFunctions(address _facetAddress, bytes4[] memory _functionSelectors) private {
         DiamondStorage storage ds = s.diamondStorage();
         if (_facetAddress == address(0)) {
             revert CannotReplaceFunctionsFromFacetWithZeroAddress(_functionSelectors);
         }
-        enforceHasContractCode(_facetAddress, "LibDiamondCut: Replace facet has no code");
+        _enforceHasContractCode(_facetAddress, "LibDiamondCut: Replace facet has no code");
         for (uint256 selectorIndex; selectorIndex < _functionSelectors.length; selectorIndex++) {
             bytes4 selector = _functionSelectors[selectorIndex];
             address oldFacetAddress = ds.facetAddressAndSelectorPosition[selector].facetAddress;
@@ -95,7 +116,7 @@ library Diamond {
         }
     }
 
-    function removeFunctions(address _facetAddress, bytes4[] memory _functionSelectors) internal {
+    function _removeFunctions(address _facetAddress, bytes4[] memory _functionSelectors) private {
         DiamondStorage storage ds = s.diamondStorage();
         uint256 selectorCount = ds.selectors.length;
         if (_facetAddress != address(0)) {
@@ -127,27 +148,7 @@ library Diamond {
         }
     }
 
-    function initializeDiamondCut(address _init, bytes memory _calldata) internal {
-        if (_init == address(0)) {
-            return;
-        }
-        enforceHasContractCode(_init, "LibDiamondCut: _init address has no code");
-        (bool success, bytes memory error) = _init.delegatecall(_calldata);
-        if (!success) {
-            if (error.length > 0) {
-                // bubble up error
-                /// @solidity memory-safe-assembly
-                assembly {
-                    let returndata_size := mload(error)
-                    revert(add(32, error), returndata_size)
-                }
-            } else {
-                revert InitializationFunctionReverted(_init, _calldata);
-            }
-        }
-    }
-
-    function enforceHasContractCode(address _contract, string memory _errorMessage) internal view {
+    function _enforceHasContractCode(address _contract, string memory _errorMessage) private view {
         uint256 contractSize;
         assembly {
             contractSize := extcodesize(_contract)
