@@ -91,33 +91,31 @@ library Swapper {
     function quoteMintIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
         uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
         amountOut = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
-        amountOut = quoteFees(collatInfo, collatInfo.xFeeMint, collatInfo.yFeeMint, amountOut);
+        amountOut = quoteFees(collatInfo, true, amountOut);
     }
 
     function quoteMintOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
         uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
-        amountIn = quoteFees(collatInfo, collatInfo.xFeeMint, collatInfo.yFeeMint, amountOut);
+        amountIn = quoteFees(collatInfo, true, amountOut);
         amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
 
+    // xFeeBurn and yFeeBurn should be set in reverse, ie xFeeBurn = [0.9,0.5,0.2] and yFeeBurn = [0.01,0.1,1]
     function quoteBurnIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
-        (uint64[] memory xFee, int64[] memory yFee) = symmetricPiecewise(collatInfo.xFeeBurn, collatInfo.yFeeBurn);
         uint256 oracleValue = getBurnOracle(collatInfo.oracle);
-        amountOut = quoteFees(collatInfo, xFee, yFee, amountIn);
+        amountOut = quoteFees(collatInfo, false, amountIn);
         amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
 
     function quoteBurnOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
-        (uint64[] memory xFee, int64[] memory yFee) = symmetricPiecewise(collatInfo.xFeeBurn, collatInfo.yFeeBurn);
         uint256 oracleValue = getBurnOracle(collatInfo.oracle);
         amountIn = (oracleValue * Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / BASE_18;
-        amountIn = quoteFees(collatInfo, xFee, yFee, amountIn);
+        amountIn = quoteFees(collatInfo, false, amountIn);
     }
 
     function quoteFees(
         Collateral memory collatInfo,
-        uint64[] memory xFee,
-        int64[] memory yFee,
+        bool mint,
         uint256 amountWithoutFees
     ) internal view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
@@ -126,19 +124,29 @@ library Swapper {
         uint256 currentExposure = uint64((collatInfo.r * BASE_9) / _reserves);
 
         // Compute amount out.
-        uint256 n = xFee.length;
+        uint256 n = mint ? collatInfo.xFeeMint.length : collatInfo.xFeeBurn.length;
         if (n == 1) {
             // First case: constant fees
-            return applyFee(amountWithoutFees, yFee[0]);
+            return applyFee(amountWithoutFees, mint ? collatInfo.yFeeMint[0] : collatInfo.yFeeBurn[0]);
         } else {
             uint256 amount;
-
-            uint256 i = Utils.findIndexThres(uint64(currentExposure), xFee);
+            uint256 i = Utils.findIndexThres(uint64(currentExposure), mint ? collatInfo.xFeeMint : collatInfo.xFeeBurn);
+            uint256 lowerExposure;
+            uint256 upperExposure;
+            int256 lowerFees;
+            int256 upperFees;
             while (i < n - 1) {
-                uint256 lowerExposure = xFee[i];
-                uint256 upperExposure = xFee[i + 1];
-                int256 lowerFees = yFee[i];
-                int256 upperFees = yFee[i + 1];
+                if (mint) {
+                    lowerExposure = collatInfo.xFeeMint[i];
+                    upperExposure = collatInfo.xFeeMint[i + 1];
+                    lowerFees = collatInfo.yFeeMint[i];
+                    upperFees = collatInfo.yFeeMint[i + 1];
+                } else {
+                    lowerExposure = collatInfo.xFeeBurn[i];
+                    upperExposure = collatInfo.xFeeBurn[i + 1];
+                    lowerFees = collatInfo.yFeeBurn[i];
+                    upperFees = collatInfo.yFeeBurn[i + 1];
+                }
 
                 // We transform the linear function on exposure to a linear function depending on the amount swapped
                 uint256 amountToNextBreakPoint = ((_accumulator * (_reserves * upperExposure - collatInfo.r)) /
@@ -181,7 +189,7 @@ library Swapper {
                     ++i;
                 }
             }
-            return amount + applyFee(amountWithoutFees, yFee[n - 1]);
+            return amount + applyFee(amountWithoutFees, mint ? collatInfo.yFeeMint[n - 1] : collatInfo.yFeeBurn[n - 1]);
         }
     }
 
@@ -193,19 +201,6 @@ library Swapper {
     function invertFee(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
         if (fees >= 0) amountOut = (BASE_9 * amountIn) / (BASE_9 - uint256(int256(fees)));
         else amountOut = (BASE_9 * amountIn) / (BASE_9 + uint256(int256(-fees)));
-    }
-
-    function symmetricPiecewise(
-        uint64[] memory xFee,
-        int64[] memory yFee
-    ) internal pure returns (uint64[] memory xSymFee, int64[] memory ySymFee) {
-        uint256 listLengt = xFee.length;
-        xSymFee = new uint64[](listLengt);
-        ySymFee = new int64[](listLengt);
-        for (uint256 i; i < listLengt; ++i) {
-            xSymFee[i] = xFee[listLengt - 1 - i];
-            ySymFee[i] = yFee[listLengt - 1 - i];
-        }
     }
 
     function getBurnOracle(bytes memory oracleData) internal view returns (uint256) {
