@@ -34,11 +34,11 @@ library Swapper {
         uint256 amountIn;
         uint256 amountOut;
         if (exactIn) {
-            otherAmount = mint ? quoteMintIn(collatInfo, amount) : quoteBurnIn(collatInfo, amount);
+            otherAmount = mint ? quoteMintExactIn(collatInfo, amount) : quoteBurnExactIn(collatInfo, amount);
             if (otherAmount < slippage) revert TooSmallAmountOut();
             (amountIn, amountOut) = (amount, otherAmount);
         } else {
-            otherAmount = mint ? quoteMintOut(collatInfo, amount) : quoteBurnOut(collatInfo, amount);
+            otherAmount = mint ? quoteMintExactOut(collatInfo, amount) : quoteBurnExactOut(collatInfo, amount);
             if (otherAmount > slippage) revert TooBigAmountIn();
             (amountIn, amountOut) = (otherAmount, amount);
         }
@@ -88,26 +88,38 @@ library Swapper {
         ks.accumulator = newAccumulatorValue;
     }
 
-    function quoteMintIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
+    function quoteMintExactIn(
+        Collateral memory collatInfo,
+        uint256 amountIn
+    ) internal view returns (uint256 amountOut) {
         uint256 oracleValue = Oracle.readMint(collatInfo.oracle);
         amountIn = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
         amountOut = quoteFees(collatInfo, 0, amountIn);
     }
 
-    function quoteMintOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
+    function quoteMintExactOut(
+        Collateral memory collatInfo,
+        uint256 amountOut
+    ) internal view returns (uint256 amountIn) {
         uint256 oracleValue = Oracle.readMint(collatInfo.oracle);
         amountIn = quoteFees(collatInfo, 1, amountOut);
         amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
 
     // xFeeBurn and yFeeBurn should be set in reverse, ie xFeeBurn = [0.9,0.5,0.2] and yFeeBurn = [0.01,0.1,1]
-    function quoteBurnOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
+    function quoteBurnExactOut(
+        Collateral memory collatInfo,
+        uint256 amountOut
+    ) internal view returns (uint256 amountIn) {
         uint256 oracleValue = getBurnOracle(collatInfo.oracle);
         amountIn = (oracleValue * Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / BASE_18;
         amountIn = quoteFees(collatInfo, 3, amountIn);
     }
 
-    function quoteBurnIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
+    function quoteBurnExactIn(
+        Collateral memory collatInfo,
+        uint256 amountIn
+    ) internal view returns (uint256 amountOut) {
         uint256 oracleValue = getBurnOracle(collatInfo.oracle);
         amountOut = quoteFees(collatInfo, 2, amountIn);
         amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * BASE_18) / oracleValue;
