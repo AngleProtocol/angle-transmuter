@@ -90,28 +90,28 @@ library Swapper {
 
     function quoteMintIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
         uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
-        amountOut = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
-        amountOut = quoteFees(collatInfo, 0, amountOut);
+        amountIn = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
+        amountOut = quoteMintFees(collatInfo, 0, amountIn);
     }
 
     function quoteMintOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
         uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
-        amountIn = quoteFees(collatInfo, 1, amountOut);
+        amountIn = quoteMintFees(collatInfo, 1, amountOut);
         amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
 
-    // xFeeBurn and yFeeBurn should be set in reverse, ie xFeeBurn = [0.9,0.5,0.2] and yFeeBurn = [0.01,0.1,1]
-    function quoteBurnIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
-        uint256 oracleValue = getBurnOracle(collatInfo.oracle);
-        amountOut = quoteFees(collatInfo, 2, amountIn);
-        amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * BASE_18) / oracleValue;
-    }
+    // // xFeeBurn and yFeeBurn should be set in reverse, ie xFeeBurn = [0.9,0.5,0.2] and yFeeBurn = [0.01,0.1,1]
+    // function quoteBurnIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
+    //     uint256 oracleValue = getBurnOracle(collatInfo.oracle);
+    //     amountOut = quoteFees(collatInfo, 2, amountIn);
+    //     amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * BASE_18) / oracleValue;
+    // }
 
-    function quoteBurnOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
-        uint256 oracleValue = getBurnOracle(collatInfo.oracle);
-        amountIn = (oracleValue * Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / BASE_18;
-        amountIn = quoteFees(collatInfo, 3, amountIn);
-    }
+    // function quoteBurnOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
+    //     uint256 oracleValue = getBurnOracle(collatInfo.oracle);
+    //     amountIn = (oracleValue * Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / BASE_18;
+    //     amountIn = quoteFees(collatInfo, 3, amountIn);
+    // }
 
     // function quoteFees(
     //     Collateral memory collatInfo,
@@ -204,7 +204,7 @@ library Swapper {
     function quoteMintFees(
         Collateral memory collatInfo,
         bool exact,
-        uint256 amountWithoutFees
+        uint256 amountStable
     ) internal view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 _reserves = ks.reserves;
@@ -217,8 +217,8 @@ library Swapper {
             // First case: constant fees
             return
                 exact
-                    ? invertFee(amountWithoutFees, collatInfo.yFeeMint[0])
-                    : applyFee(amountWithoutFees, collatInfo.yFeeMint[0]);
+                    ? invertFee(amountStable, collatInfo.yFeeMint[0])
+                    : applyFee(amountStable, collatInfo.yFeeMint[0]);
         } else {
             uint256 amount;
             uint256 i = Utils.findIndexThres(uint64(currentExposure), collatInfo.xFeeMint);
@@ -256,18 +256,17 @@ library Swapper {
                 uint256 amountToNextBreakPointNormalizer = exact
                     ? amountToNextBreakPoint
                     : amountToNextBreakPointWithFees;
-                if (amountToNextBreakPointNormalizer >= amountWithoutFees) {
+                if (amountToNextBreakPointNormalizer >= amountStable) {
                     int64 midFee = int64(
                         (upperFees *
-                            int256(amountWithoutFees) +
+                            int256(amountStable) +
                             currentFees *
-                            int256(2 * amountToNextBreakPointNormalizer - amountWithoutFees)) /
+                            int256(2 * amountToNextBreakPointNormalizer - amountStable)) /
                             int256(2 * amountToNextBreakPointNormalizer)
                     );
-                    return
-                        amount + (exact ? invertFee(amountWithoutFees, midFee) : applyFee(amountWithoutFees, midFee));
+                    return amount + (exact ? invertFee(amountStable, midFee) : applyFee(amountStable, midFee));
                 } else {
-                    amountWithoutFees -= amountToNextBreakPointNormalizer;
+                    amountStable -= amountToNextBreakPointNormalizer;
                     amount += exact ? amountToNextBreakPointWithFees : amountToNextBreakPoint;
                     currentExposure = upperExposure;
                     ++i;
@@ -277,8 +276,8 @@ library Swapper {
                 amount +
                 (
                     exact
-                        ? invertFee(amountWithoutFees, collatInfo.yFeeMint[n - 1])
-                        : applyFee(amountWithoutFees, collatInfo.yFeeMint[n - 1])
+                        ? invertFee(amountStable, collatInfo.yFeeMint[n - 1])
+                        : applyFee(amountStable, collatInfo.yFeeMint[n - 1])
                 );
         }
     }
