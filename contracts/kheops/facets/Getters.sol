@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: CC0-1.0
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.12;
 
 import { Storage as s } from "../libraries/Storage.sol";
 import { AccessControl } from "../utils/AccessControl.sol";

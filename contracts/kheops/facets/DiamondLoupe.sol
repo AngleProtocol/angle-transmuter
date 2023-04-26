@@ -2,8 +2,7 @@
 
 pragma solidity ^0.8.12;
 
-import { IDiamondLoupe } from "../../interfaces/IDiamondLoupe.sol";
-import { IERC165 } from "../../interfaces/IERC165.sol";
+import { IDiamondLoupe } from "../interfaces/IDiamondLoupe.sol";
 import { Diamond } from "../libraries/Diamond.sol";
 import { Storage as s } from "../libraries/Storage.sol";
 import "../Storage.sol";
@@ -11,15 +10,11 @@ import "../Storage.sol";
 // Remember to add the loupe functions from DiamondLoupe to the diamond.
 // The loupe functions are required by the EIP2535 Diamonds standard
 
-contract DiamondLoupe is IDiamondLoupe, IERC165 {
+contract DiamondLoupe is IDiamondLoupe {
     // Diamond Loupe Functions
     ////////////////////////////////////////////////////////////////////
     /// These functions are expected to be called frequently by tools.
-    //
-    // struct Facet {
-    //     address facetAddress;
-    //     bytes4[] functionSelectors;
-    // }
+
     /// @notice Gets all facets and their selectors.
     /// @return facets_ Facet
     function facets() external view override returns (Facet[] memory facets_) {
@@ -138,11 +133,5 @@ contract DiamondLoupe is IDiamondLoupe, IERC165 {
     function facetAddress(bytes4 _functionSelector) external view override returns (address facetAddress_) {
         DiamondStorage storage ds = s.diamondStorage();
         facetAddress_ = ds.facetAddressAndSelectorPosition[_functionSelector].facetAddress;
-    }
-
-    // This implements ERC-165.
-    function supportsInterface(bytes4 _interfaceId) external view override returns (bool) {
-        DiamondStorage storage ds = s.diamondStorage();
-        return ds.supportedInterfaces[_interfaceId];
     }
 }

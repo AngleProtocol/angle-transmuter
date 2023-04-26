@@ -8,8 +8,7 @@ import "../Storage.sol";
 import "../../utils/Errors.sol";
 
 import "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
-import { IDiamond } from "../../interfaces/IDiamond.sol";
-import { IDiamondCut } from "../../interfaces/IDiamondCut.sol";
+import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
 
 interface IOracle {
     function targetPrice() external view returns (uint256);
