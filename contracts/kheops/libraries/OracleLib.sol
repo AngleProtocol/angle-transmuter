@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.12;
 
-import { Constants as c } from "../../utils/Constants.sol";
+import "../../utils/Constants.sol";
 import { Storage as s } from "./Storage.sol";
 import "../Structs.sol";
 import "../../utils/Errors.sol";
@@ -32,13 +32,13 @@ library OracleLib {
 
     function targetPrice(OracleType oracleType, bytes memory data) internal view returns (uint256) {
         if (oracleType == OracleType.CHAINLINK_SIMPLE) {
-            return c._BASE_18;
+            return BASE_18;
         }
         if (oracleType == OracleType.CHAINLINK_TWO_FEEDS) {
-            return c._BASE_18;
+            return BASE_18;
         }
         if (oracleType == OracleType.WSTETH) {
-            return c._STETH.getPooledEthByShares(1 ether);
+            return STETH.getPooledEthByShares(1 ether);
         } else {
             IOracle externalOracle = abi.decode(data, (IOracle));
             return externalOracle.targetPrice();
@@ -48,7 +48,7 @@ library OracleLib {
     function read(OracleType oracleType, bytes memory data) internal view returns (uint256) {
         if (oracleType == OracleType.CHAINLINK_SIMPLE) {
             // TODO To complete
-            return c._BASE_18;
+            return BASE_18;
         }
         if (oracleType == OracleType.CHAINLINK_TWO_FEEDS) {
             (uint32 stalePeriod, AggregatorV3Interface[2] memory circuitChainlink) = abi.decode(
@@ -56,7 +56,7 @@ library OracleLib {
                 (uint32, AggregatorV3Interface[2])
             );
 
-            uint256 quoteAmount = c._BASE_18;
+            uint256 quoteAmount = BASE_18;
             uint8[2] memory circuitChainIsMultiplied = [1, 0];
             uint8[2] memory chainlinkDecimals = [8, 8];
             for (uint256 i; i < 2; ++i) {
@@ -86,10 +86,10 @@ library OracleLib {
         (OracleType oracleType, bytes memory data) = parseOracleData(oracleData);
         oracleValue = read(oracleType, data);
         uint256 _targetPrice = targetPrice(oracleType, data);
-        deviation = c._BASE_18;
+        deviation = BASE_18;
         if (oracleValue < _targetPrice) {
             // TODO: does it work well in terms of non manipulability of the redemptions to give the prices like that
-            deviation = (oracleValue * c._BASE_18) / _targetPrice;
+            deviation = (oracleValue * BASE_18) / _targetPrice;
             // Overestimating the oracle value
             oracleValue = _targetPrice;
         }

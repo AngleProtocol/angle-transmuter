@@ -26,6 +26,6 @@ contract OracleEUROCEURChainlink is BaseOracleChainlinkTwoFeeds {
     }
 
     function targetPrice() public pure override returns (uint256) {
-        return c._BASE_18;
+        return BASE_18;
     }
 }

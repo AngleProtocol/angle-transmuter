@@ -5,7 +5,7 @@ pragma solidity ^0.8.12;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { Constants as c } from "../../utils/Constants.sol";
+import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 import { Storage as s } from "./Storage.sol";
 import "./OracleLib.sol";
@@ -44,13 +44,13 @@ library SwapperLib {
         }
         if (mint) {
             address toProtocolAddress = collatInfo.manager != address(0) ? collatInfo.manager : address(this);
-            uint256 changeAmount = (amountOut * c._BASE_27) / ks.accumulator;
+            uint256 changeAmount = (amountOut * BASE_27) / ks.accumulator;
             ks.collaterals[tokenOut].r += changeAmount;
             ks.reserves += changeAmount;
             IERC20(tokenIn).safeTransferFrom(msg.sender, toProtocolAddress, amountIn);
             IAgToken(tokenOut).mint(to, amountOut);
         } else {
-            uint256 changeAmount = (amountIn * c._BASE_27) / ks.accumulator;
+            uint256 changeAmount = (amountIn * BASE_27) / ks.accumulator;
             ks.collaterals[tokenOut].r -= changeAmount;
             ks.reserves -= changeAmount;
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
@@ -64,11 +64,11 @@ library SwapperLib {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 _accumulator = ks.accumulator;
         uint256 _reserves = ks.reserves;
-        if (_reserves == 0) newAccumulatorValue = c._BASE_27;
+        if (_reserves == 0) newAccumulatorValue = BASE_27;
         else if (increase) {
-            newAccumulatorValue = _accumulator + (amount * c._BASE_27) / _reserves;
+            newAccumulatorValue = _accumulator + (amount * BASE_27) / _reserves;
         } else {
-            newAccumulatorValue = _accumulator - (amount * c._BASE_27) / _reserves;
+            newAccumulatorValue = _accumulator - (amount * BASE_27) / _reserves;
             // TODO check if it remains consistent when it gets too small
             if (newAccumulatorValue == 0) {
                 address[] memory _collateralList = ks.collateralList;
@@ -82,7 +82,7 @@ library SwapperLib {
                     ks.modules[depositModuleList[i]].r = 0;
                 }
                 ks.reserves = 0;
-                newAccumulatorValue = c._BASE_27;
+                newAccumulatorValue = BASE_27;
             }
         }
         ks.accumulator = newAccumulatorValue;
@@ -90,21 +90,21 @@ library SwapperLib {
 
     function quoteMintIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
         uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
-        amountOut = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / c._BASE_18;
+        amountOut = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
         amountOut = quoteMintFees(collatInfo, amountOut);
     }
 
     function quoteMintOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
         uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
         amountIn = quoteMintFees(collatInfo, amountOut);
-        amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * c._BASE_18) / oracleValue;
+        amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
 
     function quoteMintFees(Collateral memory collatInfo, uint256 amountOutWithFees) internal view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 _reserves = ks.reserves;
         uint256 _accumulator = ks.accumulator;
-        uint256 currentExposure = uint64((collatInfo.r * c._BASE_9) / _reserves);
+        uint256 currentExposure = uint64((collatInfo.r * BASE_9) / _reserves);
 
         // Compute amount out.
         uint256 n = collatInfo.xFeeMint.length;
@@ -133,18 +133,18 @@ library SwapperLib {
                     currentFees = lowerFees;
                 } else {
                     currentFees =
-                        ((upperFees * int256(c._BASE_9 - upperExposure) * int256(currentExposure - lowerExposure)) +
+                        ((upperFees * int256(BASE_9 - upperExposure) * int256(currentExposure - lowerExposure)) +
                             lowerFees *
-                            int256(c._BASE_9 - lowerExposure) *
+                            int256(BASE_9 - lowerExposure) *
                             int256(upperExposure - currentExposure)) /
                         (int256(upperExposure - currentExposure) *
-                            int256(c._BASE_9 - lowerExposure) +
-                            int256(c._BASE_9 - upperExposure) *
+                            int256(BASE_9 - lowerExposure) +
+                            int256(BASE_9 - upperExposure) *
                             int256(currentExposure - lowerExposure));
                 }
 
                 uint256 amountToNextBreakPoint = ((_accumulator * (_reserves * upperExposure - collatInfo.r)) /
-                    ((c._BASE_9 - upperExposure) * c._BASE_27));
+                    ((BASE_9 - upperExposure) * BASE_27));
                 uint256 amountToNextBreakPointWithFees = invertFee(
                     amountToNextBreakPoint,
                     int64(upperFees + currentFees) / 2
@@ -175,13 +175,13 @@ library SwapperLib {
     }
 
     function applyFee(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
-        if (fees >= 0) amountOut = ((c._BASE_9 - uint256(int256(fees))) * amountIn) / c._BASE_9;
-        else amountOut = ((c._BASE_9 + uint256(int256(-fees))) * amountIn) / c._BASE_9;
+        if (fees >= 0) amountOut = ((BASE_9 - uint256(int256(fees))) * amountIn) / BASE_9;
+        else amountOut = ((BASE_9 + uint256(int256(-fees))) * amountIn) / BASE_9;
     }
 
     function invertFee(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
-        if (fees >= 0) amountOut = (c._BASE_9 * amountIn) / (c._BASE_9 - uint256(int256(fees)));
-        else amountOut = (c._BASE_9 * amountIn) / (c._BASE_9 + uint256(int256(-fees)));
+        if (fees >= 0) amountOut = (BASE_9 * amountIn) / (BASE_9 - uint256(int256(fees)));
+        else amountOut = (BASE_9 * amountIn) / (BASE_9 + uint256(int256(-fees)));
     }
 
     function quoteBurnIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
@@ -189,10 +189,10 @@ library SwapperLib {
         uint256 oracleValue = getBurnOracle(collatInfo.oracle);
         uint64 newExposure;
         uint256 _reserves = ks.reserves;
-        uint256 amountInCorrected = (amountIn * c._BASE_27) / ks.accumulator;
+        uint256 amountInCorrected = (amountIn * BASE_27) / ks.accumulator;
         if (amountInCorrected == ks.reserves) newExposure = 0;
-        else newExposure = uint64(((collatInfo.r - amountInCorrected) * c._BASE_9) / (_reserves - amountInCorrected));
-        uint64 currentExposure = uint64((collatInfo.r * c._BASE_9) / _reserves);
+        else newExposure = uint64(((collatInfo.r - amountInCorrected) * BASE_9) / (_reserves - amountInCorrected));
+        uint64 currentExposure = uint64((collatInfo.r * BASE_9) / _reserves);
         int64 fees = Utils.piecewiseMean(newExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
         amountOut = Utils.convertDecimalTo(applyFeeOut(amountIn, oracleValue, fees), 18, collatInfo.decimals);
     }
@@ -202,27 +202,27 @@ library SwapperLib {
         uint256 oracleValue = getBurnOracle(collatInfo.oracle);
         uint256 _reserves = ks.reserves;
         uint256 _accumulator = ks.accumulator;
-        uint64 currentExposure = uint64((collatInfo.r * c._BASE_9) / _reserves);
+        uint64 currentExposure = uint64((collatInfo.r * BASE_9) / _reserves);
         // Over estimating the amount of stablecoins that will need to be burnt to overestimate the fees down the line
         // 1. Getting current fee
         int64 fees = Utils.piecewiseMean(currentExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
         // 2. Getting stablecoin amount to burn for these current fees
-        uint256 estimatedStablecoinAmount = (applyFeeIn(amountOut, oracleValue, fees) * c._BASE_27) / _accumulator;
+        uint256 estimatedStablecoinAmount = (applyFeeIn(amountOut, oracleValue, fees) * BASE_27) / _accumulator;
         // 3. Getting max exposure with this stablecoin amount
         uint64 newExposure = uint64(
-            ((collatInfo.r - estimatedStablecoinAmount) * c._BASE_9) / (_reserves - estimatedStablecoinAmount)
+            ((collatInfo.r - estimatedStablecoinAmount) * BASE_9) / (_reserves - estimatedStablecoinAmount)
         );
         // 4. Computing the max fee with this exposure
         fees = Utils.piecewiseMean(newExposure, newExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
         // 5. Underestimating the amount that needs to be burnt
         estimatedStablecoinAmount =
-            (applyFeeIn(Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18), oracleValue, fees) * c._BASE_27) /
+            (applyFeeIn(Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18), oracleValue, fees) * BASE_27) /
             _accumulator;
         // 6. Getting exposure from this
         if (estimatedStablecoinAmount >= ks.reserves) newExposure = 0;
         else
             newExposure = uint64(
-                ((collatInfo.r - estimatedStablecoinAmount) * c._BASE_9) / (_reserves - estimatedStablecoinAmount)
+                ((collatInfo.r - estimatedStablecoinAmount) * BASE_9) / (_reserves - estimatedStablecoinAmount)
             );
         // 7. Deducing fees
         fees = Utils.piecewiseMean(newExposure, currentExposure, collatInfo.xFeeBurn, collatInfo.yFeeBurn);
@@ -231,13 +231,13 @@ library SwapperLib {
 
     function getBurnOracle(bytes memory oracleData) internal view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
-        uint256 oracleValue = c._BASE_18;
+        uint256 oracleValue = BASE_18;
         address[] memory list = ks.collateralList;
         uint256 length = list.length;
-        uint256 deviation = c._BASE_18;
+        uint256 deviation = BASE_18;
         for (uint256 i; i < length; ++i) {
             bytes memory oracle = ks.collaterals[list[i]].oracle;
-            uint256 deviationValue = c._BASE_18;
+            uint256 deviationValue = BASE_18;
 
             // TODO Change the comparison mechanism
             if (keccak256(oracle) != keccak256("0x") && keccak256(oracle) != keccak256(oracleData)) {
@@ -248,20 +248,20 @@ library SwapperLib {
             if (deviationValue < deviation) deviation = deviationValue;
         }
         // Renormalizing by an overestimated value of the oracle
-        return (deviation * c._BASE_18) / oracleValue;
+        return (deviation * BASE_18) / oracleValue;
     }
 
     function applyFeeOut(uint256 amountIn, uint256 oracleValue, int64 fees) internal pure returns (uint256 amountOut) {
-        if (fees >= 0) amountOut = (oracleValue * (c._BASE_9 - uint256(int256(fees))) * amountIn) / c._BASE_27;
-        else amountOut = (oracleValue * (c._BASE_9 + uint256(int256(-fees))) * amountIn) / c._BASE_27;
+        if (fees >= 0) amountOut = (oracleValue * (BASE_9 - uint256(int256(fees))) * amountIn) / BASE_27;
+        else amountOut = (oracleValue * (BASE_9 + uint256(int256(-fees))) * amountIn) / BASE_27;
     }
 
     function applyFeeIn(uint256 amountOut, uint256 oracleValue, int64 fees) internal pure returns (uint256 amountIn) {
         if (fees >= 0) {
-            uint256 feesDenom = (c._BASE_9 - uint256(int256(fees)));
+            uint256 feesDenom = (BASE_9 - uint256(int256(fees)));
             if (feesDenom == 0) amountIn = type(uint256).max;
-            else amountIn = (amountOut * c._BASE_27) / (feesDenom * oracleValue);
-        } else amountIn = (amountOut * c._BASE_27) / ((c._BASE_9 + uint256(int256(-fees))) * oracleValue);
+            else amountIn = (amountOut * BASE_27) / (feesDenom * oracleValue);
+        } else amountIn = (amountOut * BASE_27) / ((BASE_9 + uint256(int256(-fees))) * oracleValue);
     }
 
     function checkAmounts(Collateral memory collatInfo, uint256 amountOut) internal view {

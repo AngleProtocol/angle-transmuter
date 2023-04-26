@@ -5,7 +5,7 @@ pragma solidity ^0.8.12;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { Constants as c } from "../../utils/Constants.sol";
+import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 import { Storage as s } from "./Storage.sol";
 import "./OracleLib.sol";
@@ -74,16 +74,16 @@ library RedeemerLib {
         uint64[] memory _xRedemptionCurve = ks.xRedemptionCurve;
         int64[] memory _yRedemptionCurve = ks.yRedemptionCurve;
         uint64 penalty;
-        if (collatRatio >= c._BASE_9) {
+        if (collatRatio >= BASE_9) {
             // TODO check conversions whether it works well
             // it works fine as long as _yRedemptionCurve[_yRedemptionCurve.length - 1]>=0
-            penalty = (uint64(_yRedemptionCurve[_yRedemptionCurve.length - 1]) * uint64(c._BASE_9)) / collatRatio;
+            penalty = (uint64(_yRedemptionCurve[_yRedemptionCurve.length - 1]) * uint64(BASE_9)) / collatRatio;
         } else {
             penalty = uint64(Utils.piecewiseMean(collatRatio, collatRatio, _xRedemptionCurve, _yRedemptionCurve));
         }
         uint256 balancesLength = balances.length;
         for (uint256 i; i < balancesLength; ++i) {
-            balances[i] = (amountBurnt * balances[i] * penalty) / (reservesValue * c._BASE_9);
+            balances[i] = (amountBurnt * balances[i] * penalty) / (reservesValue * BASE_9);
         }
     }
 
@@ -109,7 +109,7 @@ library RedeemerLib {
             else balance = IERC20(list[i]).balanceOf(address(this));
             balances[i] = balance;
             bytes memory oracle = ks.collaterals[list[i]].oracle;
-            uint256 oracleValue = c._BASE_18;
+            uint256 oracleValue = BASE_18;
             // Using an underestimated oracle value for the collateral ratio
             if (keccak256(oracle) != keccak256("0x")) oracleValue = OracleLib.readMint(oracle);
             totalCollateralization +=
@@ -121,8 +121,8 @@ library RedeemerLib {
             balances[i + listLength] = balance;
             totalCollateralization += value;
         }
-        reservesValue = (ks.reserves * ks.accumulator) / c._BASE_27;
-        if (reservesValue > 0) collatRatio = uint64((totalCollateralization * c._BASE_9) / reservesValue);
+        reservesValue = (ks.reserves * ks.accumulator) / BASE_27;
+        if (reservesValue > 0) collatRatio = uint64((totalCollateralization * BASE_9) / reservesValue);
         else collatRatio = type(uint64).max;
     }
 }

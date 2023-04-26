@@ -130,18 +130,18 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         uint256 _depositThreshold = depositThreshold;
         uint256 _withdrawThreshold = withdrawThreshold;
         uint256 amountAgToken;
-        if (balances[_indexAgToken] * c._BASE_9 < total * _depositThreshold) {
+        if (balances[_indexAgToken] * BASE_9 < total * _depositThreshold) {
             amountAgToken =
                 (balances[1 - _indexAgToken] * _depositThreshold) /
-                (c._BASE_9 - _depositThreshold) -
+                (BASE_9 - _depositThreshold) -
                 balances[_indexAgToken];
             return (false, true, amountAgToken, otherTokenBalance);
-        } else if (balances[_indexAgToken] * c._BASE_9 > total * _withdrawThreshold) {
+        } else if (balances[_indexAgToken] * BASE_9 > total * _withdrawThreshold) {
             // This is the max theorical amount that can be removed but potentially, we cannot withdraw more than that
             amountAgToken =
                 balances[_indexAgToken] -
                 (balances[1 - _indexAgToken] * _depositThreshold) /
-                (c._BASE_9 - _depositThreshold);
+                (BASE_9 - _depositThreshold);
             return (false, false, amountAgToken, otherTokenBalance);
         }
         return (false, false, 0, otherTokenBalance);
@@ -196,7 +196,7 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
             address[] memory rewardContracts = new address[](1);
             rewardContracts[0] = address(convexBaseRewardPool);
 
-            c._CONVEX_CLAIM_ZAP.claimRewards(
+            CONVEX_CLAIM_ZAP.claimRewards(
                 rewardContracts,
                 new address[](0),
                 new address[](0),
@@ -301,7 +301,7 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
 
     function setUint64(uint64 param, bytes32 what) external onlyGovernor {
         // TODO add safety checks and else revert
-        if (param > c._BASE_9) revert InvalidParam();
+        if (param > BASE_9) revert InvalidParam();
         if (what == "D") {
             if (param < withdrawThreshold) revert InvalidParam();
             depositThreshold = param;
@@ -417,8 +417,8 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
 
         if (lpForConvex > 0) {
             // Deposit the Curve LP tokens into the Convex contract and stake
-            _changeAllowance(IERC20(address(curvePool)), address(c._CONVEX_BOOSTER), lpForConvex);
-            c._CONVEX_BOOSTER.deposit(_convexPoolId, lpForConvex, true);
+            _changeAllowance(IERC20(address(curvePool)), address(CONVEX_BOOSTER), lpForConvex);
+            CONVEX_BOOSTER.deposit(_convexPoolId, lpForConvex, true);
         }
     }
 
@@ -460,7 +460,7 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
     }
 
     function _depegSafeguard() internal view returns (bool isOtherTokenDepegged) {
-        if (address(oracle) != address(0) && oracle.read() < (c._BASE_18 * oracleDeviationThreshold) / c._BASE_9)
+        if (address(oracle) != address(0) && oracle.read() < (BASE_18 * oracleDeviationThreshold) / BASE_9)
             isOtherTokenDepegged = true;
     }
 

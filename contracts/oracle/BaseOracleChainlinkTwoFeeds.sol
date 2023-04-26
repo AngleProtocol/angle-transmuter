@@ -15,7 +15,7 @@ abstract contract BaseOracleChainlinkTwoFeeds is BaseOracleChainlink {
     ) BaseOracleChainlink(_stalePeriod, _accessControlManager) {}
 
     function read() public view virtual override returns (uint256 quoteAmount) {
-        quoteAmount = c._BASE_18;
+        quoteAmount = BASE_18;
         AggregatorV3Interface[] memory _circuitChainlink = circuitChainlink();
         uint8[2] memory circuitChainIsMultiplied = [1, 0];
         uint8[2] memory chainlinkDecimals = [8, 8];

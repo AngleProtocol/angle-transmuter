@@ -79,7 +79,7 @@ contract RewardHandler is AccessControl {
             balances[i] = list[i].balanceOf(address(this));
         }
         //solhint-disable-next-line
-        (bool success, bytes memory result) = c._ONE_INCH_ROUTER.call(payload);
+        (bool success, bytes memory result) = ONE_INCH_ROUTER.call(payload);
         if (!success) _revertBytes(result);
         uint256 amountOut = abi.decode(result, (uint256));
         if (amountOut < minAmountOut) revert TooSmallAmountOut();

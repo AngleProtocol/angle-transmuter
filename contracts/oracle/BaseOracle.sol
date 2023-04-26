@@ -68,10 +68,10 @@ abstract contract BaseOracle is IOracle, AccessControl {
     function readBurn() external view returns (uint256 oracleValue, uint256 deviation) {
         oracleValue = read();
         uint256 _targetPrice = targetPrice();
-        deviation = c._BASE_18;
+        deviation = BASE_18;
         if (oracleValue < _targetPrice) {
             // TODO: does it work well in terms of non manipulability of the redemptions to give the prices like that
-            deviation = (oracleValue * c._BASE_18) / _targetPrice;
+            deviation = (oracleValue * BASE_18) / _targetPrice;
             // Overestimating the oracle value
             oracleValue = _targetPrice;
         }

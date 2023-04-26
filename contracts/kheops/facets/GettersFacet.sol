@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import { Storage as s } from "../libraries/Storage.sol";
 import { AccessControl } from "../utils/AccessControl.sol";
 import { RedeemerLib } from "../libraries/RedeemerLib.sol";
-import { Constants as c } from "../../utils/Constants.sol";
+import "../../utils/Constants.sol";
 
 import "../../interfaces/IAccessControlManager.sol";
 import "../Structs.sol";
@@ -34,11 +34,11 @@ contract GettersFacet is AccessControl {
     function getIssuedByCollateral(address collateral) external view returns (uint256, uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 _accumulator = ks.accumulator;
-        return ((ks.collaterals[collateral].r * _accumulator) / c._BASE_27, (ks.reserves * _accumulator) / c._BASE_27);
+        return ((ks.collaterals[collateral].r * _accumulator) / BASE_27, (ks.reserves * _accumulator) / BASE_27);
     }
 
     function getModuleBorrowed(address module) external view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
-        return (ks.modules[module].r * ks.accumulator) / c._BASE_27;
+        return (ks.modules[module].r * ks.accumulator) / BASE_27;
     }
 }

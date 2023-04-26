@@ -106,7 +106,7 @@ contract Savings is ERC4626Upgradeable, AccessControl {
         accessControlManager = _accessControlManager;
         uint256 numDecimals = 10 ** (asset_.decimals());
         _assetDecimals = numDecimals;
-        _deposit(msg.sender, address(this), numDecimals / divizer, c._BASE_18 / divizer);
+        _deposit(msg.sender, address(this), numDecimals / divizer, BASE_18 / divizer);
     }
 
     // ================================= MODIFIERS =================================
@@ -138,11 +138,11 @@ contract Savings is ERC4626Upgradeable, AccessControl {
         if (exp == 0 || ratePerSecond == 0) return currentBalance;
         uint256 expMinusOne = exp - 1;
         uint256 expMinusTwo = exp > 2 ? exp - 2 : 0;
-        uint256 basePowerTwo = (ratePerSecond * ratePerSecond + c._HALF_BASE_27) / c._BASE_27;
-        uint256 basePowerThree = (basePowerTwo * ratePerSecond + c._HALF_BASE_27) / c._BASE_27;
+        uint256 basePowerTwo = (ratePerSecond * ratePerSecond + HALF_BASE_27) / BASE_27;
+        uint256 basePowerThree = (basePowerTwo * ratePerSecond + HALF_BASE_27) / BASE_27;
         uint256 secondTerm = (exp * expMinusOne * basePowerTwo) / 2;
         uint256 thirdTerm = (exp * expMinusOne * expMinusTwo * basePowerThree) / 6;
-        return (currentBalance * (c._BASE_27 + ratePerSecond * exp + secondTerm + thirdTerm)) / c._BASE_27;
+        return (currentBalance * (BASE_27 + ratePerSecond * exp + secondTerm + thirdTerm)) / BASE_27;
     }
 
     // =========================== ERC4626 VIEW FUNCTIONS ==========================
@@ -209,7 +209,7 @@ contract Savings is ERC4626Upgradeable, AccessControl {
         uint256 supply = totalSupply();
         return
             (assets == 0 || supply == 0)
-                ? assets.mulDiv(c._BASE_18, _assetDecimals, rounding)
+                ? assets.mulDiv(BASE_18, _assetDecimals, rounding)
                 : assets.mulDiv(supply, newTotalAssets, rounding);
     }
 
@@ -230,7 +230,7 @@ contract Savings is ERC4626Upgradeable, AccessControl {
         uint256 supply = totalSupply();
         return
             (supply == 0)
-                ? shares.mulDiv(_assetDecimals, c._BASE_18, rounding)
+                ? shares.mulDiv(_assetDecimals, BASE_18, rounding)
                 : shares.mulDiv(newTotalAssets, supply, rounding);
     }
 
@@ -238,7 +238,7 @@ contract Savings is ERC4626Upgradeable, AccessControl {
 
     /// @notice Provides an estimated Annual Percentage Rate for base depositors on this contract
     function estimatedAPR() external view returns (uint256 apr) {
-        return _computeUpdatedAssets(c._BASE_18, 24 * 365 * 3600) - c._BASE_18;
+        return _computeUpdatedAssets(BASE_18, 24 * 365 * 3600) - BASE_18;
     }
 
     /// @notice Wrapper on top of the `computeUpdatedAssets` function

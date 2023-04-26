@@ -53,7 +53,7 @@ contract OracleBTokenEURChainlink is BaseOracleChainlinkTwoFeeds, IOracleFallbac
     }
 
     function targetPrice() public view override returns (uint256) {
-        return ((cumulativePriceWeightedVolume * c._BASE_18) * DECIMAL_NORMALIZER) / cumulativeVolume;
+        return ((cumulativePriceWeightedVolume * BASE_18) * DECIMAL_NORMALIZER) / cumulativeVolume;
     }
 
     function adjustValues(uint256 newCumulativePriceWeightedVolume, uint256 newCumulativeVolume) external onlyGovernor {
