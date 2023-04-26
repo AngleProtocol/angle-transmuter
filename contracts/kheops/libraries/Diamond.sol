@@ -15,7 +15,6 @@ import { IDiamondCut } from "../../interfaces/IDiamondCut.sol";
 
 // Remember to add the loupe functions from DiamondLoupe to the diamond.
 // The loupe functions are required by the EIP2535 Diamonds standard
-
 library Diamond {
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event DiamondCut(IDiamondCut.FacetCut[] _diamondCut, address _init, bytes _calldata);
