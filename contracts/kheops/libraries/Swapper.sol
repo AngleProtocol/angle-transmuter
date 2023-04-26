@@ -89,13 +89,13 @@ library Swapper {
     }
 
     function quoteMintIn(Collateral memory collatInfo, uint256 amountIn) internal view returns (uint256 amountOut) {
-        uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
+        uint256 oracleValue = Oracle.readMint(collatInfo.oracle);
         amountIn = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
         amountOut = quoteFees(collatInfo, 0, amountIn);
     }
 
     function quoteMintOut(Collateral memory collatInfo, uint256 amountOut) internal view returns (uint256 amountIn) {
-        uint256 oracleValue = OracleLib.readMint(collatInfo.oracle);
+        uint256 oracleValue = Oracle.readMint(collatInfo.oracle);
         amountIn = quoteFees(collatInfo, 1, amountOut);
         amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
