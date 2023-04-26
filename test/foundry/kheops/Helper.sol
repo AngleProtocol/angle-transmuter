@@ -9,7 +9,7 @@ pragma solidity ^0.8.0;
 * to solidity tests.
 /******************************************************************************/
 
-import "../../../lib/solidity-stringutils/strings.sol";
+import "stringutils/strings.sol";
 import "../../../contracts/interfaces/IDiamond.sol";
 import "../../../contracts/interfaces/IDiamondLoupe.sol";
 
