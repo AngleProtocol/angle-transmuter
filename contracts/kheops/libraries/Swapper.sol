@@ -230,19 +230,6 @@ library Swapper {
         return (deviation * BASE_18) / oracleValue;
     }
 
-    function applyFeeOut(uint256 amountIn, uint256 oracleValue, int64 fees) internal pure returns (uint256 amountOut) {
-        if (fees >= 0) amountOut = (oracleValue * (BASE_9 - uint256(int256(fees))) * amountIn) / BASE_27;
-        else amountOut = (oracleValue * (BASE_9 + uint256(int256(-fees))) * amountIn) / BASE_27;
-    }
-
-    function applyFeeIn(uint256 amountOut, uint256 oracleValue, int64 fees) internal pure returns (uint256 amountIn) {
-        if (fees >= 0) {
-            uint256 feesDenom = (BASE_9 - uint256(int256(fees)));
-            if (feesDenom == 0) amountIn = type(uint256).max;
-            else amountIn = (amountOut * BASE_27) / (feesDenom * oracleValue);
-        } else amountIn = (amountOut * BASE_27) / ((BASE_9 + uint256(int256(-fees))) * oracleValue);
-    }
-
     function checkAmounts(Collateral memory collatInfo, uint256 amountOut) internal view {
         // Checking if enough is available for collateral assets that involve manager addresses
         if (collatInfo.manager != address(0) && IManager(collatInfo.manager).maxAvailable() < amountOut)
