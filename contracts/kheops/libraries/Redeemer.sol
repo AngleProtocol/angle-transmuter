@@ -69,18 +69,19 @@ library Redeemer {
     function quoteRedemptionCurve(uint256 amountBurnt) internal view returns (uint256[] memory balances) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint64 collatRatio;
-        uint256 reservesValue;
-        (collatRatio, reservesValue, balances) = getCollateralRatio();
-        uint64[] memory _xRedemptionCurve = ks.xRedemptionCurve;
-        uint64[] memory _yRedemptionCurve = ks.yRedemptionCurve;
+        uint256 normalizedStablesValue;
+        (collatRatio, normalizedStablesValue, balances) = getCollateralRatio();
+        uint64[] memory xRedemptionCurveMem = ks.xRedemptionCurve;
+        uint64[] memory yRedemptionCurveMem = ks.yRedemptionCurve;
         uint64 penalty;
-        if (collatRatio >= BASE_9)
-            penalty = (_yRedemptionCurve[_yRedemptionCurve.length - 1] * uint64(BASE_9)) / collatRatio;
-        else penalty = uint64(Utils.piecewiseLinear(collatRatio, true, _xRedemptionCurve, _yRedemptionCurve));
-
+        if (collatRatio >= BASE_9) {
+            penalty = (uint64(yRedemptionCurveMem[yRedemptionCurveMem.length - 1]) * uint64(BASE_9)) / collatRatio;
+        } else {
+            penalty = uint64(Utils.piecewiseLinear(collatRatio, true, xRedemptionCurveMem, yRedemptionCurveMem));
+        }
         uint256 balancesLength = balances.length;
-        for (uint256 i; i < balancesLength; ++i) {
-            balances[i] = (amountBurnt * balances[i] * penalty) / (reservesValue * BASE_9);
+        for (uint256 i; i < balancesLength; i++) {
+            balances[i] = (amountBurnt * balances[i] * penalty) / (normalizedStablesValue * BASE_9);
         }
     }
 
@@ -115,7 +116,7 @@ library Redeemer {
             balances[i + collateralListLength] = balance;
             totalCollateralization += value;
         }
-        reservesValue = (ks.reserves * ks.accumulator) / BASE_27;
+        reservesValue = (ks.normalizedStables * ks.normalizer) / BASE_27;
         if (reservesValue > 0) collatRatio = uint64((totalCollateralization * BASE_9) / reservesValue);
         else collatRatio = type(uint64).max;
     }

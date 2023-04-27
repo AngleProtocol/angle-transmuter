@@ -1,7 +1,7 @@
 [profile.default]
 src = 'contracts'
 out = 'out'
-test = 'test/foundry'
+test = 'test'
 libs = ['node_modules', 'lib']
 script = 'scripts/foundry'
 cache_path = 'cache-forge'
