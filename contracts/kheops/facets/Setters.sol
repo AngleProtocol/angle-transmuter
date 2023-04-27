@@ -154,11 +154,11 @@ contract Setters is AccessControl {
         module.maxExposure = maxExposure;
     }
 
-    function setOracle(address collateral, bytes memory oracle) external onlyGovernor {
+    function setOracle(address collateral, bytes memory oracleConfig) external onlyGovernor {
         Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
-        if (keccak256(oracle) != keccak256("0x")) Oracle.readMint(oracle, collatInfo.oracleStorage);
-        collatInfo.oracle = oracle;
+        if (keccak256(oracleConfig) != keccak256("0x")) Oracle.readMint(oracleConfig, collatInfo.oracleStorage);
+        collatInfo.oracleConfig = oracleConfig;
     }
 
     // function _checkFees(uint64[] memory xFee, uint64[] memory yFee, uint8 setter) internal view {

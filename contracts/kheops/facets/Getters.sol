@@ -4,7 +4,7 @@ pragma solidity ^0.8.12;
 
 import { Storage as s } from "../libraries/Storage.sol";
 import { AccessControl } from "../utils/AccessControl.sol";
-import { Redeemer } from "../libraries/Redeemer.sol";
+import { LibRedeemer } from "../libraries/LibRedeemer.sol";
 import { Diamond } from "../libraries/Diamond.sol";
 import "../../utils/Constants.sol";
 
@@ -54,7 +54,7 @@ contract Getters {
     }
 
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 reservesValue) {
-        (collatRatio, reservesValue, ) = Redeemer.getCollateralRatio();
+        (collatRatio, reservesValue, ) = LibRedeemer.getCollateralRatio();
     }
 
     function getIssuedByCollateral(address collateral) external view returns (uint256, uint256) {

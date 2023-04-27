@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import { Swapper as Lib } from "../libraries/Swapper.sol";
+import { LibSwapper as Lib } from "../libraries/LibSwapper.sol";
 import { Storage as s } from "../libraries/Storage.sol";
 import "../Storage.sol";
 
