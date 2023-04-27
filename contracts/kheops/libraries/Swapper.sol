@@ -4,6 +4,7 @@ pragma solidity ^0.8.12;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../../external/openZeppelinExtensions/Arrays.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -34,11 +35,11 @@ library Swapper {
         uint256 amountIn;
         uint256 amountOut;
         if (exactIn) {
-            otherAmount = mint ? quoteMintExactIn(collatInfo, amount) : quoteBurnExactIn(collatInfo, amount);
+            otherAmount = mint ? quoteMintExactInput(collatInfo, amount) : quoteBurnExactInput(collatInfo, amount);
             if (otherAmount < slippage) revert TooSmallAmountOut();
             (amountIn, amountOut) = (amount, otherAmount);
         } else {
-            otherAmount = mint ? quoteMintExactOut(collatInfo, amount) : quoteBurnExactOut(collatInfo, amount);
+            otherAmount = mint ? quoteMintExactOutput(collatInfo, amount) : quoteBurnExactOutput(collatInfo, amount);
             if (otherAmount > slippage) revert TooBigAmountIn();
             (amountIn, amountOut) = (otherAmount, amount);
         }
@@ -88,7 +89,9 @@ library Swapper {
         ks.accumulator = newAccumulatorValue;
     }
 
-    function quoteMintExactIn(
+    // TODO put comment on setter to showcase this feature
+    // Should always be xFeeMint[0] = 0 and xFeeBurn[0] = 1. This is for Arrays.findUpperBound(...)>0, the index exclusive upper bound is never 0
+    function quoteMintExactInput(
         Collateral memory collatInfo,
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
@@ -97,7 +100,7 @@ library Swapper {
         amountOut = quoteFees(collatInfo, 0, amountIn);
     }
 
-    function quoteMintExactOut(
+    function quoteMintExactOutput(
         Collateral memory collatInfo,
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
@@ -106,8 +109,9 @@ library Swapper {
         amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
 
-    // xFeeBurn and yFeeBurn should be set in reverse, ie xFeeBurn = [0.9,0.5,0.2] and yFeeBurn = [0.01,0.1,1]
-    function quoteBurnExactOut(
+    // TODO put comment on setter to showcase this feature
+    // xFeeBurn and yFeeBurn should be set in reverse, ie xFeeBurn = [1, 0.9,0.5,0.2] and yFeeBurn = [0.01,0.01,0.1,1]
+    function quoteBurnExactOutput(
         Collateral memory collatInfo,
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
@@ -116,7 +120,7 @@ library Swapper {
         amountIn = quoteFees(collatInfo, 3, amountIn);
     }
 
-    function quoteBurnExactIn(
+    function quoteBurnExactInput(
         Collateral memory collatInfo,
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
@@ -154,29 +158,29 @@ library Swapper {
                     : applyFee(amountStable, collatInfo.yFeeMint[0]);
         } else {
             uint256 amount;
-            uint256 i = Utils.findIndexThres(
-                uint64(currentExposure),
-                quoteType < 2 ? collatInfo.xFeeMint : collatInfo.xFeeBurn
+            uint256 i = Arrays.findUpperBound(
+                quoteType < 2 ? collatInfo.xFeeMint : collatInfo.xFeeBurn,
+                uint64(currentExposure)
             );
             uint256 lowerExposure;
             uint256 upperExposure;
             int256 lowerFees;
             int256 upperFees;
-            while (i < n - 1) {
+            while (i < n) {
                 // We transform the linear function on exposure to a linear function depending on the amount swapped
                 uint256 amountToNextBreakPoint;
                 if (quoteType < 2) {
-                    lowerExposure = collatInfo.xFeeMint[i];
-                    upperExposure = collatInfo.xFeeMint[i + 1];
-                    lowerFees = collatInfo.yFeeMint[i];
-                    upperFees = collatInfo.yFeeMint[i + 1];
+                    lowerExposure = collatInfo.xFeeMint[i - 1];
+                    upperExposure = collatInfo.xFeeMint[i];
+                    lowerFees = collatInfo.yFeeMint[i - 1];
+                    upperFees = collatInfo.yFeeMint[i];
                     amountToNextBreakPoint = ((_accumulator * (_reserves * upperExposure - collatInfo.r)) /
                         ((BASE_9 - upperExposure) * BASE_27));
                 } else {
-                    lowerExposure = collatInfo.xFeeBurn[i];
-                    upperExposure = collatInfo.xFeeBurn[i + 1];
-                    lowerFees = collatInfo.yFeeBurn[i];
-                    upperFees = collatInfo.yFeeBurn[i + 1];
+                    lowerExposure = collatInfo.xFeeBurn[i - 1];
+                    upperExposure = collatInfo.xFeeBurn[i];
+                    lowerFees = collatInfo.yFeeBurn[i - 1];
+                    upperFees = collatInfo.yFeeBurn[i];
                     amountToNextBreakPoint = ((_accumulator * (collatInfo.r - _reserves * upperExposure)) /
                         ((BASE_9 - upperExposure) * BASE_27));
                 }

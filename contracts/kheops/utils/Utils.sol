@@ -60,27 +60,6 @@ library Utils {
         return area / int64(x2 - x1);
     }
 
-    function findIndexThres(uint64 x, uint64[] memory xArray) internal pure returns (uint256 indexThres) {
-        if (x >= xArray[xArray.length - 1]) {
-            return xArray.length - 1;
-        } else if (x <= xArray[0]) {
-            return 0;
-        } else {
-            uint256 lower;
-            uint256 upper = xArray.length - 1;
-            uint256 mid;
-            while (upper - lower > 1) {
-                mid = lower + (upper - lower) / 2;
-                if (xArray[mid] <= x) {
-                    lower = mid;
-                } else {
-                    upper = mid;
-                }
-            }
-            return lower;
-        }
-    }
-
     function convertDecimalTo(uint256 amount, uint8 fromDecimals, uint8 toDecimals) internal pure returns (uint256) {
         if (fromDecimals > toDecimals) return amount / 10 ** (fromDecimals - toDecimals);
         else if (fromDecimals < toDecimals) return amount * 10 ** (toDecimals - fromDecimals);
