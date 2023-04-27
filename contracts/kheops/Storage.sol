@@ -36,8 +36,7 @@ struct DiamondStorage {
 }
 
 enum OracleType {
-    CHAINLINK_SIMPLE,
-    CHAINLINK_TWO_FEEDS,
+    CHAINLINK_FEEDS,
     WSTETH,
     EXTERNAL
 }
@@ -76,6 +75,6 @@ struct KheopsStorage {
     mapping(address => uint256) isTrusted;
     uint256 accumulator;
     uint64[] xRedemptionCurve;
-    int64[] yRedemptionCurve;
+    uint64[] yRedemptionCurve;
     IAgToken agToken;
 }

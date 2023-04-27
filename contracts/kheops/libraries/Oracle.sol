@@ -25,23 +25,8 @@ library Oracle {
         return parseOracle(s.kheopsStorage().collaterals[collateral].oracle);
     }
 
-    function setOracle(address collateral, OracleType oracleType, bytes memory data) internal {
-        data = abi.encode(oracleType, data);
-
-        KheopsStorage storage ks = s.kheopsStorage();
-        Collateral storage collatInfo = ks.collaterals[collateral];
-        if (collatInfo.decimals == 0) revert NotCollateral();
-
-        // TODO Eventually add more validation
-        Oracle.readMint(data); // Checks oracle validity
-        ks.collaterals[collateral].oracle = data;
-    }
-
     function targetPrice(OracleType oracleType, bytes memory data) internal view returns (uint256) {
-        if (oracleType == OracleType.CHAINLINK_SIMPLE) {
-            return BASE_18;
-        }
-        if (oracleType == OracleType.CHAINLINK_TWO_FEEDS) {
+        if (oracleType == OracleType.CHAINLINK_FEEDS) {
             return BASE_18;
         }
         if (oracleType == OracleType.WSTETH) {
@@ -53,33 +38,38 @@ library Oracle {
     }
 
     function read(OracleType oracleType, bytes memory data) internal view returns (uint256) {
-        if (oracleType == OracleType.CHAINLINK_SIMPLE) {
-            (uint32 stalePeriod, AggregatorV3Interface oracle) = abi.decode(data, (uint32, AggregatorV3Interface));
-            return readChainlinkFeed(BASE_18, oracle, 1, 8, stalePeriod);
-        }
-        if (oracleType == OracleType.CHAINLINK_TWO_FEEDS) {
-            (uint32 stalePeriod, AggregatorV3Interface[2] memory circuitChainlink) = abi.decode(
-                data,
-                (uint32, AggregatorV3Interface[2])
-            );
+        if (oracleType == OracleType.CHAINLINK_FEEDS) {
+            (
+                AggregatorV3Interface[] memory circuitChainlink,
+                uint32[] memory stalePeriods,
+                uint8[] memory circuitChainIsMultiplied,
+                uint8[] memory chainlinkDecimals
+            ) = abi.decode(data, (AggregatorV3Interface[], uint32[], uint8[], uint8[]));
 
+            uint256 listLength = circuitChainlink.length;
             uint256 quoteAmount = BASE_18;
-            uint8[2] memory circuitChainIsMultiplied = [1, 0];
-            uint8[2] memory chainlinkDecimals = [8, 8];
-            for (uint256 i; i < 2; ++i) {
+            for (uint256 i; i < listLength; ++i) {
                 quoteAmount = readChainlinkFeed(
                     quoteAmount,
                     circuitChainlink[i],
                     circuitChainIsMultiplied[i],
                     chainlinkDecimals[i],
-                    stalePeriod
+                    stalePeriods[i]
                 );
             }
             return quoteAmount;
         } else {
             IOracle externalOracle = abi.decode(data, (IOracle));
-            return externalOracle.targetPrice();
+            return externalOracle.read();
         }
+    }
+
+    // Do we want to add a small buffer at the protocol advantage or are the fees enough?
+    // It shouldn't take into account the deviation nor target price as it would break the
+    // anti bank run process
+    function readRedemption(bytes memory oracleData) internal view returns (uint256) {
+        (OracleType oracleType, bytes memory data) = parseOracle(oracleData);
+        return read(oracleType, data);
     }
 
     function readMint(bytes memory oracleData) internal view returns (uint256 oracleValue) {
@@ -101,6 +91,8 @@ library Oracle {
             oracleValue = _targetPrice;
         }
     }
+
+    // ============================== SPECIFIC HELPERS =============================
 
     /// @notice Reads a Chainlink feed using a quote amount and converts the quote amount to
     /// the out-currency
