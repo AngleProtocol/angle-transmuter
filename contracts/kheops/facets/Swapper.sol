@@ -3,6 +3,8 @@
 pragma solidity ^0.8.0;
 
 import { Swapper as Lib } from "../libraries/Swapper.sol";
+import { Storage as s } from "../libraries/Storage.sol";
+import "../Storage.sol";
 
 contract Swapper {
     function swapExactInput(
@@ -25,5 +27,24 @@ contract Swapper {
         uint256 deadline
     ) external returns (uint amountIn) {
         return Lib.swap(amountOut, amountInMax, tokenIn, tokenOut, to, deadline, false);
+    }
+
+    function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256) {
+        (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
+        if (mint) return Lib.quoteMintExactIn(collatInfo, amountIn);
+        else {
+            uint256 amountOut = Lib.quoteBurnExactIn(collatInfo, amountIn);
+            Lib.checkAmounts(collatInfo, amountOut);
+            return amountOut;
+        }
+    }
+
+    function quoteOut(uint256 amountOut, address tokenIn, address tokenOut) external view returns (uint256) {
+        (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
+        if (mint) return Lib.quoteMintExactOut(collatInfo, amountOut);
+        else {
+            Lib.checkAmounts(collatInfo, amountOut);
+            return Lib.quoteBurnExactOut(collatInfo, amountOut);
+        }
     }
 }

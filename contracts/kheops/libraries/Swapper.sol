@@ -43,18 +43,19 @@ library Swapper {
             (amountIn, amountOut) = (otherAmount, amount);
         }
         if (mint) {
-            address toProtocolAddress = collatInfo.manager != address(0) ? collatInfo.manager : address(this);
-            uint256 changeAmount = (amountOut * BASE_27) / ks.accumulator;
-            ks.collaterals[tokenOut].r += changeAmount;
-            ks.reserves += changeAmount;
+            address toProtocolAddress = collatInfo.hasManager > 0 ? collatInfo.manager : address(this);
+            uint256 changeAmount = (amountOut * BASE_27) / ks.normalizer;
+            ks.collaterals[tokenOut].normalizedStables += changeAmount;
+            ks.normalizedStables += changeAmount;
             IERC20(tokenIn).safeTransferFrom(msg.sender, toProtocolAddress, amountIn);
             IAgToken(tokenOut).mint(to, amountOut);
         } else {
-            uint256 changeAmount = (amountIn * BASE_27) / ks.accumulator;
-            ks.collaterals[tokenOut].r -= changeAmount;
-            ks.reserves -= changeAmount;
+            uint256 changeAmount = (amountIn * BASE_27) / ks.normalizer;
+            ks.collaterals[tokenOut].normalizedStables -= changeAmount;
+            ks.normalizedStables -= changeAmount;
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-            Utils.transferCollateral(tokenOut, collatInfo.manager, to, amountOut);
+            if (collatInfo.hasManager > 0) IManager(collatInfo.manager).transfer(to, amountOut, false);
+            else IERC20(tokenOut).safeTransfer(to, amountOut);
         }
         // if (collatInfo.hasOracleFallback > 0) {
         //     Oracle.updateInternalData(
@@ -70,13 +71,13 @@ library Swapper {
 
     function updateAccumulator(uint256 amount, bool increase) internal returns (uint256 newAccumulatorValue) {
         KheopsStorage storage ks = s.kheopsStorage();
-        uint256 _accumulator = ks.accumulator;
-        uint256 _reserves = ks.reserves;
+        uint256 _normalizer = ks.normalizer;
+        uint256 _reserves = ks.normalizedStables;
         if (_reserves == 0) newAccumulatorValue = BASE_27;
         else if (increase) {
-            newAccumulatorValue = _accumulator + (amount * BASE_27) / _reserves;
+            newAccumulatorValue = _normalizer + (amount * BASE_27) / _reserves;
         } else {
-            newAccumulatorValue = _accumulator - (amount * BASE_27) / _reserves;
+            newAccumulatorValue = _normalizer - (amount * BASE_27) / _reserves;
             // TODO check if it remains consistent when it gets too small
             if (newAccumulatorValue == 0) {
                 address[] memory _collateralList = ks.collateralList;
@@ -84,16 +85,16 @@ library Swapper {
                 uint256 collateralListLength = _collateralList.length;
                 uint256 depositModuleListLength = depositModuleList.length;
                 for (uint256 i; i < collateralListLength; ++i) {
-                    ks.collaterals[_collateralList[i]].r = 0;
+                    ks.collaterals[_collateralList[i]].normalizedStables = 0;
                 }
                 for (uint256 i; i < depositModuleListLength; ++i) {
-                    ks.modules[depositModuleList[i]].r = 0;
+                    ks.modules[depositModuleList[i]].normalizedStables = 0;
                 }
-                ks.reserves = 0;
+                ks.normalizedStables = 0;
                 newAccumulatorValue = BASE_27;
             }
         }
-        ks.accumulator = newAccumulatorValue;
+        ks.normalizer = newAccumulatorValue;
     }
 
     // TODO put comment on setter to showcase this feature
@@ -151,9 +152,9 @@ library Swapper {
         uint256 amountStable
     ) internal view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
-        uint256 _reserves = ks.reserves;
-        uint256 _accumulator = ks.accumulator;
-        uint256 currentExposure = uint64((collatInfo.r * BASE_9) / _reserves);
+        uint256 _reserves = ks.normalizedStables;
+        uint256 _normalizer = ks.normalizer;
+        uint256 currentExposure = uint64((collatInfo.normalizedStables * BASE_9) / _reserves);
 
         // Compute amount out.
         uint256 n = collatInfo.xFeeMint.length;
@@ -178,18 +179,20 @@ library Swapper {
                 // We transform the linear function on exposure to a linear function depending on the amount swapped
                 uint256 amountToNextBreakPoint;
                 if (quoteType < 2) {
-                    lowerExposure = collatInfo.xFeeMint[i - 1];
-                    upperExposure = collatInfo.xFeeMint[i];
-                    lowerFees = collatInfo.yFeeMint[i - 1];
-                    upperFees = collatInfo.yFeeMint[i];
-                    amountToNextBreakPoint = ((_accumulator * (_reserves * upperExposure - collatInfo.r)) /
+                    lowerExposure = collatInfo.xFeeMint[i];
+                    upperExposure = collatInfo.xFeeMint[i + 1];
+                    lowerFees = collatInfo.yFeeMint[i];
+                    upperFees = collatInfo.yFeeMint[i + 1];
+                    amountToNextBreakPoint = ((_normalizer *
+                        (_reserves * upperExposure - collatInfo.normalizedStables)) /
                         ((BASE_9 - upperExposure) * BASE_27));
                 } else {
-                    lowerExposure = collatInfo.xFeeBurn[i - 1];
-                    upperExposure = collatInfo.xFeeBurn[i];
-                    lowerFees = collatInfo.yFeeBurn[i - 1];
-                    upperFees = collatInfo.yFeeBurn[i];
-                    amountToNextBreakPoint = ((_accumulator * (collatInfo.r - _reserves * upperExposure)) /
+                    lowerExposure = collatInfo.xFeeBurn[i];
+                    upperExposure = collatInfo.xFeeBurn[i + 1];
+                    lowerFees = collatInfo.yFeeBurn[i];
+                    upperFees = collatInfo.yFeeBurn[i + 1];
+                    amountToNextBreakPoint = ((_normalizer *
+                        (collatInfo.normalizedStables - _reserves * upperExposure)) /
                         ((BASE_9 - upperExposure) * BASE_27));
                 }
 
@@ -197,11 +200,11 @@ library Swapper {
                 int256 currentFees;
                 if (lowerExposure == currentExposure) currentFees = lowerFees;
                 else {
-                    uint256 amountFromPrevBreakPoint = ((_accumulator *
+                    uint256 amountFromPrevBreakPoint = ((_normalizer *
                         (
                             quoteType < 2
-                                ? (collatInfo.r - _reserves * lowerExposure)
-                                : (_reserves * lowerExposure - collatInfo.r)
+                                ? (collatInfo.normalizedStables - _reserves * lowerExposure)
+                                : (_reserves * lowerExposure - collatInfo.normalizedStables)
                         )) / ((BASE_9 - lowerExposure) * BASE_27));
                     // upperFees - lowerFees > 0 because fees are an increasing function of exposure (for mint) and 1-exposure (for burn)
                     uint256 slope = (uint256(upperFees - lowerFees) /
@@ -292,10 +295,11 @@ library Swapper {
         if (tokenIn == _agToken) {
             collatInfo = ks.collaterals[tokenOut];
             mint = false;
+            if (collatInfo.unpausedMint == 0) revert Paused();
         } else if (tokenOut == _agToken) {
             collatInfo = ks.collaterals[tokenIn];
             mint = true;
+            if (collatInfo.unpausedBurn == 0) revert Paused();
         } else revert InvalidTokens();
-        if (collatInfo.unpaused == 0) revert InvalidTokens();
     }
 }

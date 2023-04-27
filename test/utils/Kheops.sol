@@ -1,25 +1,23 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: GPL-3.0
 
-/******************************************************************************\
-* Authors: Timo Neumann <timo@fyde.fi>, Rohan Sundar <rohan@fyde.fi>
-* EIP-2535 Diamonds: https://eips.ethereum.org/EIPS/eip-2535
-* Abstract Contracts for the shared setup of the tests
-/******************************************************************************/
+pragma solidity ^0.8.12;
 
-import { IKheops } from "../../../contracts/kheops/interfaces/IKheops.sol";
-import { DiamondProxy } from "../../../contracts/kheops/DiamondProxy.sol";
+import { IKheops } from "contracts/kheops/interfaces/IKheops.sol";
+import { DiamondProxy } from "contracts/kheops/DiamondProxy.sol";
 
-import { DiamondCut } from "../../../contracts/kheops/facets/DiamondCut.sol";
-import { DiamondLoupe } from "../../../contracts/kheops/facets/DiamondLoupe.sol";
-import { Swapper } from "../../../contracts/kheops/facets/Swapper.sol";
-import { Setters } from "../../../contracts/kheops/facets/Setters.sol";
+import { DiamondCut } from "contracts/kheops/facets/DiamondCut.sol";
+import { DiamondLoupe } from "contracts/kheops/facets/DiamondLoupe.sol";
+import { Swapper } from "contracts/kheops/facets/Swapper.sol";
+import { Getters } from "contracts/kheops/facets/Getters.sol";
+import { Lender } from "contracts/kheops/facets/Lender.sol";
+import { Redeemer } from "contracts/kheops/facets/Redeemer.sol";
+import { Setters } from "contracts/kheops/facets/Setters.sol";
 
-import "../../../contracts/kheops/Storage.sol";
-import "../../../contracts/utils/Errors.sol";
+import "contracts/kheops/Storage.sol";
+import "contracts/utils/Errors.sol";
 import "./Helper.sol";
 
-abstract contract KheopsDeployer is Helper {
+abstract contract Kheops is Helper {
     // Diamond
     IKheops kheops;
 
@@ -35,11 +33,20 @@ abstract contract KheopsDeployer is Helper {
         facetNames.push("DiamondLoupe");
         facetAddressList.push(address(new DiamondLoupe()));
 
-        facetNames.push("Swapper");
-        facetAddressList.push(address(new Swapper()));
+        facetNames.push("Getters");
+        facetAddressList.push(address(new Getters()));
+
+        facetNames.push("Lender");
+        facetAddressList.push(address(new Lender()));
+
+        facetNames.push("Redeemer");
+        facetAddressList.push(address(new Redeemer()));
 
         facetNames.push("Setters");
         facetAddressList.push(address(new Setters()));
+
+        facetNames.push("Swapper");
+        facetAddressList.push(address(new Swapper()));
 
         // Build appropriate payload
         uint256 n = facetNames.length;

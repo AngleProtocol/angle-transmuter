@@ -20,4 +20,8 @@ interface ISwapper {
         address to,
         uint256 deadline
     ) external returns (uint amountIn);
+
+    function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256);
+
+    function quoteOut(uint256 amountOut, address tokenIn, address tokenOut) external view returns (uint256);
 }
