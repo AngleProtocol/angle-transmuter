@@ -35,11 +35,21 @@
 
 pragma solidity ^0.8.12;
 
-import "../interfaces/IOracle.sol";
-import "../interfaces/IOracleFallback.sol";
 import "../utils/AccessControl.sol";
 import "../utils/Constants.sol";
 import "../utils/Errors.sol";
+
+interface IOracle {
+    function read() external view returns (uint256);
+
+    function readMint() external view returns (uint256 oracleValue);
+
+    function readBurn() external view returns (uint256 oracleValue, uint256 deviation);
+}
+
+interface IOracleFallback is IOracle {
+    function updateInternalData(uint256 amountIn, uint256 amountOut, bool mint) external;
+}
 
 /// @title BaseOracle
 /// @author Angle Labs, Inc.

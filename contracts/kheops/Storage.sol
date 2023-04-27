@@ -35,10 +35,20 @@ struct DiamondStorage {
     IAccessControlManager accessControlManager;
 }
 
-enum OracleType {
+enum OracleReadType {
     CHAINLINK_FEEDS,
-    WSTETH,
     EXTERNAL
+}
+
+enum OracleQuoteType {
+    UNIT,
+    WSTETH
+}
+
+enum OracleTargetType {
+    STABLE,
+    WSTETH,
+    BONDS
 }
 
 struct Collateral {
@@ -53,6 +63,7 @@ struct Collateral {
     uint64[] xFeeBurn;
     int64[] yFeeBurn;
     bytes oracle;
+    bytes oracleStorage;
 }
 
 struct Module {

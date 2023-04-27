@@ -12,33 +12,46 @@ import "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
 import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
 
 library Oracle {
-    function parseOracle(bytes memory oracleData) internal pure returns (OracleType, bytes memory) {
-        return abi.decode(oracleData, (OracleType, bytes));
+    function parseOracle(
+        bytes memory oracleData
+    ) internal pure returns (OracleReadType, OracleQuoteType, OracleTargetType, bytes memory) {
+        return abi.decode(oracleData, (OracleReadType, OracleQuoteType, OracleTargetType, bytes));
     }
 
-    function getOracle(address collateral) internal view returns (OracleType, bytes memory) {
+    function getOracle(
+        address collateral
+    ) internal view returns (OracleReadType, OracleQuoteType, OracleTargetType, bytes memory) {
         return parseOracle(s.kheopsStorage().collaterals[collateral].oracle);
     }
 
-    function targetPrice(OracleType oracleType, bytes memory data) internal view returns (uint256) {
-        if (oracleType == OracleType.CHAINLINK_FEEDS) {
-            return BASE_18;
+    function targetPrice(OracleTargetType targetType, bytes memory oracleStorage) internal view returns (uint256) {
+        if (targetType == OracleTargetType.STABLE) return BASE_18;
+        if (targetType == OracleTargetType.BONDS) {
+            (uint256 cumulativeVolume, uint256 cumulativePriceWeightedVolume, uint256 decimalNormalizer) = abi.decode(
+                oracleStorage,
+                (uint256, uint256, uint256)
+            );
+            return ((cumulativePriceWeightedVolume * BASE_18) * decimalNormalizer) / cumulativeVolume;
         }
-        if (oracleType == OracleType.WSTETH) {
-            return STETH.getPooledEthByShares(1 ether);
-        } else {
-            IExternalOracle externalOracle = abi.decode(data, (IExternalOracle));
-            return externalOracle.targetPrice();
-        }
+        if (targetType == OracleTargetType.WSTETH) return STETH.getPooledEthByShares(1 ether);
+        revert InvalidOracleType();
     }
 
-    function quoteAmount(OracleType oracleType) internal view returns (uint256) {
-        if (oracleType == OracleType.CHAINLINK_FEEDS) return BASE_18;
-        if (oracleType == OracleType.WSTETH) return STETH.getPooledEthByShares(1 ether);
+    // There aren't Chainlink oracles for wstETH to stETH, we need to tweak a bit the system
+    // For any other asset that is not referenced by Chainlink but have a reliable feed on chain
+    // you can change this function and it will modify the value passed through Chainlink system
+    function quoteAmount(OracleQuoteType quoteType) internal view returns (uint256) {
+        if (quoteType == OracleQuoteType.UNIT) return BASE_18;
+        if (quoteType == OracleQuoteType.WSTETH) return STETH.getPooledEthByShares(1 ether);
+        revert InvalidOracleType();
     }
 
-    function read(OracleType oracleType, bytes memory data) internal view returns (uint256) {
-        if (oracleType == OracleType.CHAINLINK_FEEDS) {
+    function read(
+        OracleReadType readType,
+        OracleQuoteType quoteType,
+        bytes memory data
+    ) internal view returns (uint256) {
+        if (readType == OracleReadType.CHAINLINK_FEEDS) {
             (
                 AggregatorV3Interface[] memory circuitChainlink,
                 uint32[] memory stalePeriods,
@@ -47,7 +60,7 @@ library Oracle {
             ) = abi.decode(data, (AggregatorV3Interface[], uint32[], uint8[], uint8[]));
 
             uint256 listLength = circuitChainlink.length;
-            uint256 _quoteAmount = quoteAmount(oracleType);
+            uint256 _quoteAmount = quoteAmount(quoteType);
             for (uint256 i; i < listLength; ++i) {
                 _quoteAmount = readChainlinkFeed(
                     _quoteAmount,
@@ -58,10 +71,8 @@ library Oracle {
                 );
             }
             return _quoteAmount;
-        } else {
-            IExternalOracle externalOracle = abi.decode(data, (IExternalOracle));
-            return externalOracle.read();
         }
+        revert InvalidOracleType();
     }
 
     // Do we want to add a small buffer at the protocol advantage or are the fees enough?
@@ -73,27 +84,86 @@ library Oracle {
     // Then it is profitable to redeem as you would receive substantially more of the asset 1
     // that you should have
     function readRedemption(bytes memory oracleData) internal view returns (uint256) {
-        (OracleType oracleType, bytes memory data) = parseOracle(oracleData);
-        return read(oracleType, data);
+        (OracleReadType readType, OracleQuoteType quoteType, , bytes memory data) = parseOracle(oracleData);
+        if (readType == OracleReadType.EXTERNAL) {
+            IExternalOracle externalOracle = abi.decode(data, (IExternalOracle));
+            return externalOracle.readRedemption();
+        } else return read(readType, quoteType, data);
     }
 
-    function readMint(bytes memory oracleData) internal view returns (uint256 oracleValue) {
-        (OracleType oracleType, bytes memory data) = parseOracle(oracleData);
-        oracleValue = read(oracleType, data);
-        uint256 _targetPrice = targetPrice(oracleType, data);
+    function readMint(bytes memory oracleData, bytes memory oracleStorage) internal view returns (uint256 oracleValue) {
+        (
+            OracleReadType readType,
+            OracleQuoteType quoteType,
+            OracleTargetType targetType,
+            bytes memory data
+        ) = parseOracle(oracleData);
+        if (readType == OracleReadType.EXTERNAL) {
+            IExternalOracle externalOracle = abi.decode(data, (IExternalOracle));
+            return externalOracle.readMint();
+        }
+        oracleValue = read(readType, quoteType, data);
+        uint256 _targetPrice = targetPrice(targetType, oracleStorage);
         if (_targetPrice < oracleValue) oracleValue = _targetPrice;
     }
 
-    function readBurn(bytes memory oracleData) internal view returns (uint256 oracleValue, uint256 deviation) {
-        (OracleType oracleType, bytes memory data) = parseOracle(oracleData);
-        oracleValue = read(oracleType, data);
-        uint256 _targetPrice = targetPrice(oracleType, data);
+    function readBurn(
+        bytes memory oracleData,
+        bytes memory oracleStorage
+    ) internal view returns (uint256 oracleValue, uint256 deviation) {
+        (
+            OracleReadType readType,
+            OracleQuoteType quoteType,
+            OracleTargetType targetType,
+            bytes memory data
+        ) = parseOracle(oracleData);
+        if (readType == OracleReadType.EXTERNAL) {
+            IExternalOracle externalOracle = abi.decode(data, (IExternalOracle));
+            return externalOracle.readBurn();
+        }
+        oracleValue = read(readType, quoteType, data);
+        uint256 _targetPrice = targetPrice(targetType, oracleStorage);
         deviation = BASE_18;
         if (oracleValue < _targetPrice) {
             deviation = (oracleValue * BASE_18) / _targetPrice;
             // Overestimating the oracle value
             oracleValue = _targetPrice;
         }
+    }
+
+    // TODO: can we do better -> might in fact be problematic to use this as a target value as using this might fix the oracle since
+    // you'd always be acquiring at the lowest value -> which is potentially the initial value
+    function updateInternalData(
+        address collateral,
+        bytes memory oracleData,
+        bytes memory oracleStorage,
+        uint256 amountIn,
+        uint256 amountOut,
+        bool mint
+    ) internal {
+        (OracleReadType readType, , OracleTargetType targetType, bytes memory data) = parseOracle(oracleData);
+        if (targetType == OracleTargetType.BONDS) {
+            (uint256 cumulativeVolume, uint256 cumulativePriceWeightedVolume, uint256 decimalNormalizer) = abi.decode(
+                oracleStorage,
+                (uint256, uint256, uint256)
+            );
+            if (mint) {
+                // Price is amountIn/amountOut -> if you adjust by volume it makes amountIn
+                cumulativePriceWeightedVolume += amountIn;
+                cumulativeVolume += amountOut;
+            } else {
+                cumulativePriceWeightedVolume += amountOut;
+                cumulativeVolume += amountIn;
+            }
+            s.kheopsStorage().collaterals[collateral].oracleStorage = abi.encode(
+                cumulativeVolume,
+                cumulativePriceWeightedVolume,
+                decimalNormalizer
+            );
+        } else if (readType == OracleReadType.EXTERNAL) {
+            IExternalOracle externalOracle = abi.decode(data, (IExternalOracle));
+            externalOracle.updateInternalData(amountIn, amountOut, mint);
+        } else revert InvalidOracleType();
     }
 
     // ============================== SPECIFIC HELPERS =============================

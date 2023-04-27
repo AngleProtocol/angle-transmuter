@@ -294,7 +294,7 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         rewardTokens.pop();
     }
 
-    function setOracle(IOracle _oracle) external onlyGovernor {
+    function setOracle(IExternalOracle _oracle) external onlyGovernor {
         _oracle.read();
         oracle = _oracle;
     }

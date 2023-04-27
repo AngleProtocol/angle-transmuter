@@ -24,6 +24,7 @@ error InitializationFunctionReverted(address _initializationContractAddress, byt
 error Initializing();
 error InsufficientAllowance();
 error InvalidChainlinkRate();
+error InvalidOracleType();
 error InvalidParam();
 error InvalidParams();
 error InvalidSwap();
