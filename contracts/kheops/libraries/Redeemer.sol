@@ -77,7 +77,7 @@ library Redeemer {
         if (collatRatio >= BASE_9) {
             penalty = (uint64(yRedemptionCurveMem[yRedemptionCurveMem.length - 1]) * uint64(BASE_9)) / collatRatio;
         } else {
-            penalty = uint64(Utils.piecewiseMean(collatRatio, collatRatio, xRedemptionCurveMem, yRedemptionCurveMem));
+            penalty = uint64(Utils.piecewiseLinear(collatRatio, true, xRedemptionCurveMem, yRedemptionCurveMem));
         }
         uint256 balancesLength = balances.length;
         for (uint256 i; i < balancesLength; i++) {
@@ -101,9 +101,9 @@ library Redeemer {
 
         for (uint256 i; i < collateralListLength; ++i) {
             uint256 balance;
-            if (ks.collaterals[list[i]].hasManager > 0)
-                balance = IManager(ks.collaterals[list[i]].manager).getUnderlyingBalance();
-            else balance = IERC20(list[i]).balanceOf(address(this));
+            address manager = ks.collaterals[collateralList[i]].manager;
+            if (manager != address(0)) balance = IManager(manager).getUnderlyingBalance();
+            else balance = IERC20(collateralList[i]).balanceOf(address(this));
             balances[i] = balance;
             bytes memory oracle = ks.collaterals[collateralList[i]].oracle;
             uint256 oracleValue = Oracle.readRedemption(oracle);

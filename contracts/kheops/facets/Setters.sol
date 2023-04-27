@@ -6,7 +6,6 @@ import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IManager } from "../../interfaces/IManager.sol";
-import { IOracle } from "../../interfaces/IOracle.sol";
 import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
 
 import { Storage as s } from "../libraries/Storage.sol";
@@ -158,7 +157,7 @@ contract Setters is AccessControl {
     function setOracle(address collateral, bytes memory oracle) external onlyGovernor {
         Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
-        if (keccak256(oracle) != keccak256("0x")) Oracle.readMint(oracle);
+        if (keccak256(oracle) != keccak256("0x")) Oracle.readMint(oracle, collatInfo.oracleStorage);
         collatInfo.oracle = oracle;
     }
 

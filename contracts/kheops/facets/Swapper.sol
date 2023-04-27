@@ -31,9 +31,9 @@ contract Swapper {
 
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256) {
         (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
-        if (mint) return Lib.quoteMintExactIn(collatInfo, amountIn);
+        if (mint) return Lib.quoteMintExactInput(collatInfo, amountIn);
         else {
-            uint256 amountOut = Lib.quoteBurnExactIn(collatInfo, amountIn);
+            uint256 amountOut = Lib.quoteBurnExactInput(collatInfo, amountIn);
             Lib.checkAmounts(collatInfo, amountOut);
             return amountOut;
         }
@@ -41,10 +41,10 @@ contract Swapper {
 
     function quoteOut(uint256 amountOut, address tokenIn, address tokenOut) external view returns (uint256) {
         (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
-        if (mint) return Lib.quoteMintExactOut(collatInfo, amountOut);
+        if (mint) return Lib.quoteMintExactOutput(collatInfo, amountOut);
         else {
             Lib.checkAmounts(collatInfo, amountOut);
-            return Lib.quoteBurnExactOut(collatInfo, amountOut);
+            return Lib.quoteBurnExactOutput(collatInfo, amountOut);
         }
     }
 }

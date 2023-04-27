@@ -30,7 +30,7 @@ contract Test {
         uint32[] memory stalePeriods = new uint32[](1);
         uint8[] memory circuitChainIsMultiplied = new uint8[](1);
         uint8[] memory chainlinkDecimals = new uint8[](1);
-        circuitChainlink[0] = AggregatorV3Interface(address(0));
+        circuitChainlink[0] = AggregatorV3Interface(oracle);
         stalePeriods[0] = 1 hours;
         circuitChainIsMultiplied[0] = 1;
         chainlinkDecimals[0] = 8;
