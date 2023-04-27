@@ -5,7 +5,7 @@ import "../utils/Constants.sol";
 pragma solidity ^0.8.17;
 
 //solhint-disable
-contract CurveHelper is Constants {
+contract CurveHelper {
     uint256 public constant N_COINS = 2;
     uint256 public constant A_PRECISION = 100;
 
@@ -77,7 +77,7 @@ contract CurveHelper is Constants {
         uint256 S_ = 0;
         uint256 _x = 0;
         uint256 y_prev = 0;
-        uint256 c = D;
+        uint256 e = D;
         uint256 Ann = amp * N_COINS;
 
         for (uint256 _i = 0; _i < N_COINS; _i++) {
@@ -89,16 +89,16 @@ contract CurveHelper is Constants {
                 continue;
             }
             S_ += _x;
-            c = (c * D) / (_x * N_COINS);
+            e = (e * D) / (_x * N_COINS);
         }
 
-        c = (c * D * A_PRECISION) / (Ann * N_COINS);
+        e = (e * D * A_PRECISION) / (Ann * N_COINS);
         uint256 b = S_ + (D * A_PRECISION) / Ann;
         uint256 y = D;
 
         for (uint256 _i = 0; _i < 255; _i++) {
             y_prev = y;
-            y = (y * y + c) / (2 * y + b - D);
+            y = (y * y + e) / (2 * y + b - D);
             if (y > y_prev) {
                 if (y - y_prev <= 1) {
                     return y;

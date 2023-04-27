@@ -55,7 +55,7 @@ import "../interfaces/IKheops.sol";
 /// @dev The ERC4626 interface does not allow users to specify a slippage protection parameter for the main user entry points
 /// (like `deposit`, `mint`, `redeem` or `withdraw`). Even though there should be no specific sandwiching issue here,
 /// it is still recommended to interact with this contract through a router that can implement such a protection in case of.
-contract SavingsVest is ERC4626Upgradeable, AccessControl, Constants {
+contract SavingsVest is ERC4626Upgradeable, AccessControl {
     using SafeERC20 for IERC20;
     using MathUpgradeable for uint256;
 
@@ -63,27 +63,27 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl, Constants {
 
     address public surplusManager;
 
+    /// @notice Amount of profit that needs to be vested
+    uint256 public vestingProfit;
+
     IKheops public kheops;
+
+    /// @notice Last time rewards were accrued
+    uint64 public lastUpdate;
 
     uint64 public protocolSafetyFee;
 
     /// @notice The period in seconds over which locked profit is unlocked
     /// @dev Cannot be 0 as it opens harvests up to sandwich attacks
-    uint64 public vestingPeriod;
+    uint32 public vestingPeriod;
 
-    /// @notice Last time rewards were accrued
-    uint64 public lastUpdate;
+    uint32 public updateDelay;
 
     /// @notice Whether the contract is paused or not
-    uint64 public paused;
-
-    uint64 public updateDelay;
-
-    /// @notice Amount of profit that needs to be vested
-    uint256 public vestingProfit;
+    uint8 public paused;
 
     /// @notice Number of decimals for `_asset`
-    uint256 internal _assetDecimals;
+    uint8 internal _assetDecimals;
 
     uint256[46] private __gap;
 
@@ -116,9 +116,9 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl, Constants {
         __ERC20_init(_name, _symbol);
         kheops = _kheops;
         accessControlManager = _accessControlManager;
-        uint256 numDecimals = 10 ** (asset_.decimals());
+        uint8 numDecimals = asset_.decimals();
         _assetDecimals = numDecimals;
-        _deposit(msg.sender, address(this), numDecimals / divizer, _BASE_18 / divizer);
+        _deposit(msg.sender, address(this), 10 ** numDecimals / divizer, BASE_18 / divizer);
     }
 
     // ================================= MODIFIERS =================================
@@ -138,10 +138,10 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl, Constants {
         IKheops _kheops = kheops;
         IAgToken _agToken = IAgToken(asset());
         (uint64 collatRatio, uint256 reserves) = _kheops.getCollateralRatio();
-        if (collatRatio > _BASE_9) {
-            minted = (collatRatio * reserves) / _BASE_9 - reserves;
+        if (collatRatio > BASE_9) {
+            minted = (collatRatio * reserves) / BASE_9 - reserves;
             _kheops.updateAccumulator(minted, true);
-            uint256 surplusForProtocol = (minted * protocolSafetyFee) / _BASE_9;
+            uint256 surplusForProtocol = (minted * protocolSafetyFee) / BASE_9;
             address _surplusManager = surplusManager;
             _surplusManager = _surplusManager == address(0) ? address(_kheops) : _surplusManager;
             _agToken.mint(_surplusManager, surplusForProtocol);
@@ -152,7 +152,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl, Constants {
                 _agToken.mint(address(this), surplus);
             }
         } else {
-            uint256 missing = reserves - (collatRatio * reserves) / _BASE_9;
+            uint256 missing = reserves - (collatRatio * reserves) / BASE_9;
             uint256 currentLockedProfit = lockedProfit();
             missing = missing > currentLockedProfit ? currentLockedProfit : missing;
             if (missing > 0) {
@@ -234,7 +234,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl, Constants {
         uint256 supply = totalSupply();
         return
             (assets == 0 || supply == 0)
-                ? assets.mulDiv(_BASE_18, _assetDecimals, rounding)
+                ? assets.mulDiv(BASE_18, 10 ** _assetDecimals, rounding)
                 : assets.mulDiv(supply, totalAssets(), rounding);
     }
 
@@ -246,7 +246,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl, Constants {
         uint256 supply = totalSupply();
         return
             (supply == 0)
-                ? shares.mulDiv(_assetDecimals, _BASE_18, rounding)
+                ? shares.mulDiv(10 ** _assetDecimals, BASE_18, rounding)
                 : shares.mulDiv(totalAssets(), supply, rounding);
     }
 
@@ -257,7 +257,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl, Constants {
         uint256 currentlyVestingProfit = vestingProfit;
         uint256 weightedAssets = vestingPeriod * totalAssets();
         if (currentlyVestingProfit != 0 && weightedAssets != 0)
-            apr = (currentlyVestingProfit * 3600 * 24 * 365 * _BASE_9) / weightedAssets;
+            apr = (currentlyVestingProfit * 3600 * 24 * 365 * BASE_9) / weightedAssets;
     }
 
     // ================================= GOVERNANCE ================================
@@ -267,11 +267,11 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl, Constants {
     }
 
     function setUint64(bytes32 what, uint64 param) external onlyGuardian {
-        if (param > _BASE_9) revert InvalidParam();
+        if (param > BASE_9) revert InvalidParam();
         else if (what == "PF") protocolSafetyFee = param;
-        else if (what == "VP") vestingPeriod = param;
-        else if (what == "P") paused = param;
-        else if (what == "UD") updateDelay = param;
+        else if (what == "VP") vestingPeriod = uint32(param);
+        else if (what == "UD") updateDelay = uint32(param);
+        else if (what == "P") paused = uint8(param);
         else revert InvalidParam();
         emit FiledUint64(param, what);
     }

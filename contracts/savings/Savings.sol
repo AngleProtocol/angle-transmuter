@@ -55,7 +55,7 @@ import "../interfaces/IAgToken.sol";
 /// @dev The ERC4626 interface does not allow users to specify a slippage protection parameter for the main user entry points
 /// (like `deposit`, `mint`, `redeem` or `withdraw`). Even though there should be no specific sandwiching issue here,
 /// it is still recommended to interact with this contract through a router that can implement such a protection in case of.
-contract Savings is ERC4626Upgradeable, AccessControl, Constants {
+contract Savings is ERC4626Upgradeable, AccessControl {
     using SafeERC20 for IERC20;
     using MathUpgradeable for uint256;
 
@@ -65,13 +65,13 @@ contract Savings is ERC4626Upgradeable, AccessControl, Constants {
     uint256 public rate;
 
     /// @notice Last time rewards were accrued
-    uint128 public lastUpdate;
+    uint64 public lastUpdate;
 
     /// @notice Whether the contract is paused or not
-    uint128 public paused;
+    uint8 public paused;
 
     /// @notice Number of decimals for `_asset`
-    uint256 internal _assetDecimals;
+    uint184 internal _assetDecimals;
 
     uint256[46] private __gap;
 
@@ -104,9 +104,9 @@ contract Savings is ERC4626Upgradeable, AccessControl, Constants {
         __ERC4626_init(asset_);
         __ERC20_init(_name, _symbol);
         accessControlManager = _accessControlManager;
-        uint256 numDecimals = 10 ** (asset_.decimals());
+        uint184 numDecimals = uint184(10 ** (asset_.decimals()));
         _assetDecimals = numDecimals;
-        _deposit(msg.sender, address(this), numDecimals / divizer, _BASE_18 / divizer);
+        _deposit(msg.sender, address(this), numDecimals / divizer, BASE_18 / divizer);
     }
 
     // ================================= MODIFIERS =================================
@@ -123,7 +123,7 @@ contract Savings is ERC4626Upgradeable, AccessControl, Constants {
     function _accrue() internal returns (uint256 newTotalAssets) {
         uint256 currentBalance = super.totalAssets();
         newTotalAssets = _computeUpdatedAssets(currentBalance, block.timestamp - lastUpdate);
-        lastUpdate = uint128(block.timestamp);
+        lastUpdate = uint64(block.timestamp);
         uint256 earned = newTotalAssets - currentBalance;
         if (earned > 0) {
             IAgToken(asset()).mint(address(this), earned);
@@ -138,11 +138,11 @@ contract Savings is ERC4626Upgradeable, AccessControl, Constants {
         if (exp == 0 || ratePerSecond == 0) return currentBalance;
         uint256 expMinusOne = exp - 1;
         uint256 expMinusTwo = exp > 2 ? exp - 2 : 0;
-        uint256 basePowerTwo = (ratePerSecond * ratePerSecond + _HALF_BASE_27) / _BASE_27;
-        uint256 basePowerThree = (basePowerTwo * ratePerSecond + _HALF_BASE_27) / _BASE_27;
+        uint256 basePowerTwo = (ratePerSecond * ratePerSecond + HALF_BASE_27) / BASE_27;
+        uint256 basePowerThree = (basePowerTwo * ratePerSecond + HALF_BASE_27) / BASE_27;
         uint256 secondTerm = (exp * expMinusOne * basePowerTwo) / 2;
         uint256 thirdTerm = (exp * expMinusOne * expMinusTwo * basePowerThree) / 6;
-        return (currentBalance * (_BASE_27 + ratePerSecond * exp + secondTerm + thirdTerm)) / _BASE_27;
+        return (currentBalance * (BASE_27 + ratePerSecond * exp + secondTerm + thirdTerm)) / BASE_27;
     }
 
     // =========================== ERC4626 VIEW FUNCTIONS ==========================
@@ -209,7 +209,7 @@ contract Savings is ERC4626Upgradeable, AccessControl, Constants {
         uint256 supply = totalSupply();
         return
             (assets == 0 || supply == 0)
-                ? assets.mulDiv(_BASE_18, _assetDecimals, rounding)
+                ? assets.mulDiv(BASE_18, _assetDecimals, rounding)
                 : assets.mulDiv(supply, newTotalAssets, rounding);
     }
 
@@ -230,7 +230,7 @@ contract Savings is ERC4626Upgradeable, AccessControl, Constants {
         uint256 supply = totalSupply();
         return
             (supply == 0)
-                ? shares.mulDiv(_assetDecimals, _BASE_18, rounding)
+                ? shares.mulDiv(_assetDecimals, BASE_18, rounding)
                 : shares.mulDiv(newTotalAssets, supply, rounding);
     }
 
@@ -238,7 +238,7 @@ contract Savings is ERC4626Upgradeable, AccessControl, Constants {
 
     /// @notice Provides an estimated Annual Percentage Rate for base depositors on this contract
     function estimatedAPR() external view returns (uint256 apr) {
-        return _computeUpdatedAssets(_BASE_18, 24 * 365 * 3600) - _BASE_18;
+        return _computeUpdatedAssets(BASE_18, 24 * 365 * 3600) - BASE_18;
     }
 
     /// @notice Wrapper on top of the `computeUpdatedAssets` function
@@ -250,7 +250,7 @@ contract Savings is ERC4626Upgradeable, AccessControl, Constants {
 
     /// @notice Pauses the contract
     function togglePause() external onlyGuardian {
-        uint128 pauseStatus = 1 - paused;
+        uint8 pauseStatus = 1 - paused;
         paused = pauseStatus;
         emit ToggledPause(pauseStatus);
     }

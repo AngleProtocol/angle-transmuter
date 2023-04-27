@@ -12,7 +12,7 @@ import "../utils/Errors.sol";
 
 pragma solidity ^0.8.17;
 
-contract RewardHandler is AccessControl, Constants {
+contract RewardHandler is AccessControl {
     using SafeERC20 for IERC20;
     IERC20[] public protectedTokens;
 
@@ -79,7 +79,7 @@ contract RewardHandler is AccessControl, Constants {
             balances[i] = list[i].balanceOf(address(this));
         }
         //solhint-disable-next-line
-        (bool success, bytes memory result) = _ONE_INCH_ROUTER.call(payload);
+        (bool success, bytes memory result) = ONE_INCH_ROUTER.call(payload);
         if (!success) _revertBytes(result);
         uint256 amountOut = abi.decode(result, (uint256));
         if (amountOut < minAmountOut) revert TooSmallAmountOut();

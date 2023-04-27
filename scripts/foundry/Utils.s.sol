@@ -2,8 +2,8 @@
 pragma solidity 0.8.12;
 
 import "forge-std/Script.sol";
-import "../../contracts/proxy/ProxyAdmin.sol";
-import "../../contracts/proxy/TransparentUpgradeableProxy.sol";
+import "contracts/proxy/ProxyAdmin.sol";
+import "contracts/proxy/TransparentUpgradeableProxy.sol";
 
 import { console } from "forge-std/console.sol";
 

@@ -11,6 +11,7 @@ import "../interfaces/IAgToken.sol";
 /// @author Angle Labs
 /// @notice Interface for the `Minter` contract
 interface IKheops {
+    // TODO TO UPDATE
     function borrow(uint256 amount) external returns (uint256);
 
     function agToken() external returns (IAgToken);
