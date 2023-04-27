@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.12;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../interfaces/IAgToken.sol";
@@ -19,68 +20,6 @@ library Utils {
         }
     }
 
-    /// @dev This function should only be called in settings where:
-    /// - `x1 <= x2`
-    /// - `xFee` values are given in a strictly ascending order
-    /// - yFee is monotonous
-    /// - `xFee` and `yFee` must have the same length
-    function piecewiseMean(
-        uint64 x1,
-        uint64 x2,
-        uint64[] memory xFee,
-        int64[] memory yFee
-    ) internal pure returns (int64 area) {
-        uint256 n = xFee.length;
-        if (n == 1) return yFee[0];
-        uint64 xPos = x1;
-        if (x1 < xFee[0]) {
-            if (x2 <= xFee[0]) return yFee[0];
-            else area += yFee[0] * int64(xFee[0] - x1);
-        }
-        if (x2 > xFee[n - 1]) {
-            if (x1 >= xFee[n - 1]) return yFee[n - 1];
-            else area += yFee[n - 1] * int64(x2 - xFee[n - 1]);
-        }
-        for (uint256 i; i < n - 1 && xPos <= x2; ++i) {
-            uint64 xEnd = xFee[i + 1];
-            if (xPos >= xEnd) continue;
-            uint64 xStart = xFee[i];
-            int64 yStart = yFee[i];
-            int64 yEnd = yFee[i + 1];
-            uint64 xSegmentStart = xPos > xStart ? xPos : xStart;
-            // TODO check overflows here
-            int64 ySegmentStart = yStart + (int64(xSegmentStart - xStart) * (yEnd - yStart)) / int64(xEnd - xStart);
-            if (x1 == x2) return ySegmentStart;
-            uint64 xSegmentEnd = x2 < xEnd ? x2 : xEnd;
-            int64 ySegmentEnd = yStart + (int64(xSegmentEnd - xStart) * (yEnd - yStart)) / int64(xEnd - xStart);
-            area += ((ySegmentStart + ySegmentEnd) * int64(xSegmentEnd - xSegmentStart)) / 2;
-            xPos = xSegmentEnd;
-        }
-
-        return area / int64(x2 - x1);
-    }
-
-    function findIndexThres(uint64 x, uint64[] memory xArray) internal pure returns (uint256 indexThres) {
-        if (x >= xArray[xArray.length - 1]) {
-            return xArray.length - 1;
-        } else if (x <= xArray[0]) {
-            return 0;
-        } else {
-            uint256 lower;
-            uint256 upper = xArray.length - 1;
-            uint256 mid;
-            while (upper - lower > 1) {
-                mid = lower + (upper - lower) / 2;
-                if (xArray[mid] <= x) {
-                    lower = mid;
-                } else {
-                    upper = mid;
-                }
-            }
-            return lower;
-        }
-    }
-
     function convertDecimalTo(uint256 amount, uint8 fromDecimals, uint8 toDecimals) internal pure returns (uint256) {
         if (fromDecimals > toDecimals) return amount / 10 ** (fromDecimals - toDecimals);
         else if (fromDecimals < toDecimals) return amount * 10 ** (toDecimals - fromDecimals);
@@ -95,5 +34,67 @@ library Utils {
         }
 
         return -1;
+    }
+
+    // Inspired from OpenZeppelin
+    // OpenZeppelin Contracts v4.4.1 (utils/Arrays.sol)
+    // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Arrays.sol
+    // Modified Angle Labs to support uint64, monotonous arrays and exclusive upper bounds
+    /**
+     * @dev Searches a sorted `array` and returns the first index that contains
+     * a value strictly greater (or lower if increasingArray is false)  to `element`.
+     * If no such index exists (i.e. all values in the array are strictly less/greater than `element`),
+     * the array length is returned. Time complexity O(log n).
+     *
+     * `array` is expected to be sorted, and to contain no repeated elements.
+     */
+    function findUpperBound(
+        bool increasingArray,
+        uint64[] memory array,
+        uint64 element
+    ) internal pure returns (uint256) {
+        if (array.length == 0) {
+            return 0;
+        }
+
+        uint256 low = 0;
+        uint256 high = array.length;
+
+        while (low < high) {
+            uint256 mid = Math.average(low, high);
+
+            // Note that mid will always be strictly less than high (i.e. it will be a valid array index)
+            // because Math.average rounds down (it does integer division with truncation).
+            if (increasingArray ? array[mid] > element : array[mid] < element) {
+                high = mid;
+            } else {
+                low = mid + 1;
+            }
+        }
+
+        // At this point `low` is the exclusive upper bound.
+        return low;
+    }
+
+    function piecewiseLinear(
+        uint64 x,
+        bool increasingArray,
+        uint64[] memory xArray,
+        uint64[] memory yArray
+    ) internal pure returns (uint64) {
+        uint256 indexUpperBound = findUpperBound(increasingArray, xArray, x);
+
+        if (indexUpperBound == xArray.length) return yArray[xArray.length - 1];
+        if (increasingArray) {
+            return
+                yArray[indexUpperBound - 1] +
+                ((yArray[indexUpperBound] - yArray[indexUpperBound - 1]) * (x - xArray[indexUpperBound - 1])) /
+                (xArray[indexUpperBound] - xArray[indexUpperBound - 1]);
+        } else {
+            return
+                yArray[indexUpperBound - 1] -
+                ((yArray[indexUpperBound] - yArray[indexUpperBound - 1]) * (xArray[indexUpperBound - 1] - x)) /
+                (xArray[indexUpperBound - 1] - xArray[indexUpperBound]);
+        }
     }
 }

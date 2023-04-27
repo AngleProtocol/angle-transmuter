@@ -29,12 +29,13 @@ library Setters {
         ks.collateralList.push(collateral);
     }
 
-    function setOracle(address collateral, bytes memory oracle) internal {
+    function setOracle(address collateral, bytes memory oracle, bytes memory oracleStorage) internal {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
-        Oracle.readMint(oracle); // Checks oracle validity
+        Oracle.readMint(oracle, oracleStorage); // Checks oracle validity
         collatInfo.oracle = oracle;
+        collatInfo.oracleStorage = oracleStorage;
     }
 
     function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) internal {

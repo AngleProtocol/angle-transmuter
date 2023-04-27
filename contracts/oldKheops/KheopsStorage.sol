@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../interfaces/IAgToken.sol";
 import "../interfaces/IModule.sol";
 import "../interfaces/IManager.sol";
-import "../interfaces/IOracle.sol";
+import { IOracle } from "../oracle/BaseOracle.sol";
 import "../interfaces/IOracleFallback.sol";
 
 import "../utils/AccessControl.sol";

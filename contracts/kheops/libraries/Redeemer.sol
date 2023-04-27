@@ -72,15 +72,12 @@ library Redeemer {
         uint256 reservesValue;
         (collatRatio, reservesValue, balances) = getCollateralRatio();
         uint64[] memory _xRedemptionCurve = ks.xRedemptionCurve;
-        int64[] memory _yRedemptionCurve = ks.yRedemptionCurve;
+        uint64[] memory _yRedemptionCurve = ks.yRedemptionCurve;
         uint64 penalty;
-        if (collatRatio >= BASE_9) {
-            // TODO check conversions whether it works well
-            // it works fine as long as _yRedemptionCurve[_yRedemptionCurve.length - 1]>=0
-            penalty = (uint64(_yRedemptionCurve[_yRedemptionCurve.length - 1]) * uint64(BASE_9)) / collatRatio;
-        } else {
-            penalty = uint64(Utils.piecewiseMean(collatRatio, collatRatio, _xRedemptionCurve, _yRedemptionCurve));
-        }
+        if (collatRatio >= BASE_9)
+            penalty = (_yRedemptionCurve[_yRedemptionCurve.length - 1] * uint64(BASE_9)) / collatRatio;
+        else penalty = uint64(Utils.piecewiseLinear(collatRatio, true, _xRedemptionCurve, _yRedemptionCurve));
+
         uint256 balancesLength = balances.length;
         for (uint256 i; i < balancesLength; ++i) {
             balances[i] = (amountBurnt * balances[i] * penalty) / (reservesValue * BASE_9);
@@ -95,30 +92,27 @@ library Redeemer {
         KheopsStorage storage ks = s.kheopsStorage();
 
         uint256 totalCollateralization;
-        // TODO check whether an oracleList could be smart -> with just list of addresses or stuff
-        address[] memory list = ks.collateralList;
-        uint256 listLength = list.length;
+        address[] memory collateralList = ks.collateralList;
+        uint256 collateralListLength = collateralList.length;
         address[] memory depositModuleList = ks.redeemableModuleList;
         uint256 depositModuleLength = depositModuleList.length;
-        balances = new uint256[](listLength + depositModuleLength);
+        balances = new uint256[](collateralListLength + depositModuleLength);
 
-        for (uint256 i; i < listLength; ++i) {
+        for (uint256 i; i < collateralListLength; ++i) {
             uint256 balance;
-            address manager = ks.collaterals[list[i]].manager;
+            address manager = ks.collaterals[collateralList[i]].manager;
             if (manager != address(0)) balance = IManager(manager).getUnderlyingBalance();
-            else balance = IERC20(list[i]).balanceOf(address(this));
+            else balance = IERC20(collateralList[i]).balanceOf(address(this));
             balances[i] = balance;
-            bytes memory oracle = ks.collaterals[list[i]].oracle;
-            uint256 oracleValue = BASE_18;
-            // Using an underestimated oracle value for the collateral ratio
-            if (keccak256(oracle) != keccak256("0x")) oracleValue = Oracle.readMint(oracle);
+            bytes memory oracle = ks.collaterals[collateralList[i]].oracle;
+            uint256 oracleValue = Oracle.readRedemption(oracle);
             totalCollateralization +=
-                oracleValue *
-                Utils.convertDecimalTo(balance, ks.collaterals[list[i]].decimals, 18);
+                (oracleValue * Utils.convertDecimalTo(balance, ks.collaterals[collateralList[i]].decimals, 18)) /
+                BASE_18;
         }
         for (uint256 i; i < depositModuleLength; ++i) {
             (uint256 balance, uint256 value) = IModule(depositModuleList[i]).getBalanceAndValue();
-            balances[i + listLength] = balance;
+            balances[i + collateralListLength] = balance;
             totalCollateralization += value;
         }
         reservesValue = (ks.reserves * ks.accumulator) / BASE_27;

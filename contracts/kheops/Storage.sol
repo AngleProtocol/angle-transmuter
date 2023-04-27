@@ -35,11 +35,20 @@ struct DiamondStorage {
     IAccessControlManager accessControlManager;
 }
 
-enum OracleType {
-    CHAINLINK_SIMPLE,
-    CHAINLINK_TWO_FEEDS,
-    WSTETH,
+enum OracleReadType {
+    CHAINLINK_FEEDS,
     EXTERNAL
+}
+
+enum OracleQuoteType {
+    UNIT,
+    WSTETH
+}
+
+enum OracleTargetType {
+    STABLE,
+    WSTETH,
+    BONDS
 }
 
 struct Collateral {
@@ -54,6 +63,7 @@ struct Collateral {
     uint64[] xFeeBurn;
     int64[] yFeeBurn;
     bytes oracle;
+    bytes oracleStorage;
 }
 
 struct Module {
@@ -76,6 +86,6 @@ struct KheopsStorage {
     mapping(address => uint256) isTrusted;
     uint256 accumulator;
     uint64[] xRedemptionCurve;
-    int64[] yRedemptionCurve;
+    uint64[] yRedemptionCurve;
     IAgToken agToken;
 }

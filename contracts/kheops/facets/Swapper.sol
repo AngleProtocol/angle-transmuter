@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import { Swapper as Lib } from "../libraries/Swapper.sol";
 
 contract Swapper {
-    function swapExact(
+    function swapExactInput(
         uint256 amountIn,
         uint256 amountOutMin,
         address tokenIn,
@@ -16,7 +16,7 @@ contract Swapper {
         return Lib.swap(amountIn, amountOutMin, tokenIn, tokenOut, to, deadline, true);
     }
 
-    function swapForExact(
+    function swapExactOutput(
         uint256 amountOut,
         uint256 amountInMax,
         address tokenIn,
