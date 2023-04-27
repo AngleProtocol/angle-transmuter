@@ -40,7 +40,7 @@ contract OracleBTokenEURChainlink is BaseOracleChainlinkTwoFeeds, IOracleFallbac
 
     // TODO: can we do better -> might in fact be problematic to use this as a target value as using this might fix the oracle since
     // you'd always be acquiring at the lowest value -> which is potentially the initial value
-
+    // TODO: needs some access control if implemented this way
     function updateInternalData(uint256 amountIn, uint256 amountOut, bool mint) external override {
         if (mint) {
             // Price is amountIn/amountOut -> if you adjust by volume it makes amountIn
