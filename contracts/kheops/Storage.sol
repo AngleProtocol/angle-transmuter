@@ -43,6 +43,13 @@ enum PauseType {
     Redeem
 }
 
+enum QuoteType {
+    MintExactInput,
+    MintExactOutput,
+    BurnExactInput,
+    BurnExactOutput
+}
+
 enum OracleReadType {
     CHAINLINK_FEEDS,
     EXTERNAL,
