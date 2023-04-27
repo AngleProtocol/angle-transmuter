@@ -36,6 +36,13 @@ struct DiamondStorage {
     IAccessControlManager accessControlManager;
 }
 
+enum PauseType {
+    Mint,
+    Burn,
+    Module,
+    Redeem
+}
+
 enum OracleReadType {
     CHAINLINK_FEEDS,
     EXTERNAL,

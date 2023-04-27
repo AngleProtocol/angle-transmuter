@@ -37,9 +37,8 @@ library LibRedeemer {
         // Settlement - burn the stable and send the redeemable tokens
         IAgToken(ks.agToken).burnSelf(amount, msg.sender);
 
-        address[] memory _collateralList = ks.collateralList;
+        address[] memory collateralListMem = ks.collateralList;
         address[] memory depositModuleList = ks.redeemableModuleList;
-        uint256 collateralListLength = _collateralList.length;
         uint256 amountsLength = amounts.length;
         uint256 startTokenForfeit;
         uint256 indexCollateral;

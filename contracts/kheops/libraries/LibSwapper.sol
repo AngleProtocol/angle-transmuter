@@ -64,8 +64,8 @@ library LibSwapper {
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
         uint256 oracleValue = Oracle.readMint(collatInfo.oracleConfig, collatInfo.oracleStorage);
-        amountIn = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
-        amountOut = quoteFees(collatInfo, 0, amountIn);
+        amountOut = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
+        amountOut = quoteFees(collatInfo, 0, amountOut);
     }
 
     function quoteMintExactOutput(
@@ -112,9 +112,11 @@ library LibSwapper {
         uint256 amountStable
     ) internal view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
-        uint256 _reserves = ks.normalizedStables;
-        uint256 _normalizer = ks.normalizer;
-        uint256 currentExposure = uint64((collatInfo.normalizedStables * BASE_9) / _reserves);
+        uint256 normalizedStablesMem = ks.normalizedStables;
+        uint256 normalizerMem = ks.normalizer;
+        uint256 currentExposure = normalizedStablesMem == 0
+            ? 0
+            : uint64((collatInfo.normalizedStables * BASE_9) / normalizedStablesMem);
 
         // Compute amount out.
         uint256 n = collatInfo.xFeeMint.length;
@@ -143,16 +145,16 @@ library LibSwapper {
                     upperExposure = collatInfo.xFeeMint[i + 1];
                     lowerFees = collatInfo.yFeeMint[i];
                     upperFees = collatInfo.yFeeMint[i + 1];
-                    amountToNextBreakPoint = ((_normalizer *
-                        (_reserves * upperExposure - collatInfo.normalizedStables)) /
+                    amountToNextBreakPoint = ((normalizerMem *
+                        (normalizedStablesMem * upperExposure - collatInfo.normalizedStables)) /
                         ((BASE_9 - upperExposure) * BASE_27));
                 } else {
                     lowerExposure = collatInfo.xFeeBurn[i];
                     upperExposure = collatInfo.xFeeBurn[i + 1];
                     lowerFees = collatInfo.yFeeBurn[i];
                     upperFees = collatInfo.yFeeBurn[i + 1];
-                    amountToNextBreakPoint = ((_normalizer *
-                        (collatInfo.normalizedStables - _reserves * upperExposure)) /
+                    amountToNextBreakPoint = ((normalizerMem *
+                        (collatInfo.normalizedStables - normalizedStablesMem * upperExposure)) /
                         ((BASE_9 - upperExposure) * BASE_27));
                 }
 
@@ -160,11 +162,11 @@ library LibSwapper {
                 int256 currentFees;
                 if (lowerExposure == currentExposure) currentFees = lowerFees;
                 else {
-                    uint256 amountFromPrevBreakPoint = ((_normalizer *
+                    uint256 amountFromPrevBreakPoint = ((normalizerMem *
                         (
                             quoteType < 2
-                                ? (collatInfo.normalizedStables - _reserves * lowerExposure)
-                                : (_reserves * lowerExposure - collatInfo.normalizedStables)
+                                ? (collatInfo.normalizedStables - normalizedStablesMem * lowerExposure)
+                                : (normalizedStablesMem * lowerExposure - collatInfo.normalizedStables)
                         )) / ((BASE_9 - lowerExposure) * BASE_27));
                     // upperFees - lowerFees > 0 because fees are an increasing function of exposure (for mint) and 1-exposure (for burn)
                     uint256 slope = (uint256(upperFees - lowerFees) /

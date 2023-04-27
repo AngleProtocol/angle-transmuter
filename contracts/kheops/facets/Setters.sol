@@ -50,27 +50,8 @@ contract Setters is AccessControl {
         if (manager != address(0)) collatInfo.hasManager = 1;
     }
 
-    function togglePause(address collateral, uint8 pausedType) external onlyGuardian {
-        if (pausedType == 0 || pausedType == 1) {
-            Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
-            if (collatInfo.decimals == 0) revert NotCollateral();
-            if (pausedType == 0) {
-                uint8 pausedStatus = collatInfo.unpausedMint;
-                collatInfo.unpausedMint = 1 - pausedStatus;
-            } else {
-                uint8 pausedStatus = collatInfo.unpausedBurn;
-                collatInfo.unpausedBurn = 1 - pausedStatus;
-            }
-        } else if (pausedType == 2) {
-            Module storage module = s.kheopsStorage().modules[collateral];
-            if (module.initialized == 0) revert NotModule();
-            uint8 pausedStatus = module.unpaused;
-            module.unpaused = 1 - pausedStatus;
-        } else {
-            KheopsStorage storage ks = s.kheopsStorage();
-            uint8 pausedStatus = ks.pausedRedemption;
-            ks.pausedRedemption = 1 - pausedStatus;
-        }
+    function togglePause(address collateral, PauseType pausedType) external onlyGuardian {
+        Lib.togglePause(collateral, pausedType);
     }
 
     function toggleTrusted(address sender) external onlyGovernor {

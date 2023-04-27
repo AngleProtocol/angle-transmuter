@@ -24,8 +24,8 @@ contract Test {
         ks.normalizer = BASE_27;
         ks.agToken = IAgToken(_agToken);
 
+        // Setup first collateral
         Setters.addCollateral(collateral);
-        bytes memory oracleStorage;
         AggregatorV3Interface[] memory circuitChainlink = new AggregatorV3Interface[](1);
         uint32[] memory stalePeriods = new uint32[](1);
         uint8[] memory circuitChainIsMultiplied = new uint8[](1);
@@ -38,7 +38,12 @@ contract Test {
         Setters.setOracle(
             collateral,
             abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleQuoteType.UNIT, OracleTargetType.STABLE, readData),
-            oracleStorage
+            ""
         );
+
+        // Unpause
+        Setters.togglePause(collateral, PauseType.Mint);
+        Setters.togglePause(collateral, PauseType.Burn);
+        Setters.togglePause(collateral, PauseType.Redeem);
     }
 }
