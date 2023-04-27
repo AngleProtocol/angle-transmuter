@@ -21,7 +21,7 @@ library Oracle {
     function getOracle(
         address collateral
     ) internal view returns (OracleReadType, OracleQuoteType, OracleTargetType, bytes memory) {
-        return parseOracle(s.kheopsStorage().collaterals[collateral].oracle);
+        return parseOracle(s.kheopsStorage().collaterals[collateral].oracleConfig);
     }
 
     function targetPrice(OracleTargetType targetType, bytes memory oracleStorage) internal view returns (uint256) {

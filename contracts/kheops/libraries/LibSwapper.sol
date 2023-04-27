@@ -16,7 +16,7 @@ import "../../interfaces/IAgToken.sol";
 import "../../interfaces/IModule.sol";
 import "../../interfaces/IManager.sol";
 
-library Swapper {
+library LibSwapper {
     using SafeERC20 for IERC20;
 
     function swap(
@@ -103,7 +103,7 @@ library Swapper {
         Collateral memory collatInfo,
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
-        uint256 oracleValue = Oracle.readMint(collatInfo.oracle, collatInfo.oracleStorage);
+        uint256 oracleValue = Oracle.readMint(collatInfo.oracleConfig, collatInfo.oracleStorage);
         amountIn = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
         amountOut = quoteFees(collatInfo, 0, amountIn);
     }
@@ -112,7 +112,7 @@ library Swapper {
         Collateral memory collatInfo,
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
-        uint256 oracleValue = Oracle.readMint(collatInfo.oracle, collatInfo.oracleStorage);
+        uint256 oracleValue = Oracle.readMint(collatInfo.oracleConfig, collatInfo.oracleStorage);
         amountIn = quoteFees(collatInfo, 1, amountOut);
         amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
@@ -123,7 +123,7 @@ library Swapper {
         Collateral memory collatInfo,
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
-        uint256 oracleValue = getBurnOracle(collatInfo.oracle, collatInfo.oracleStorage);
+        uint256 oracleValue = getBurnOracle(collatInfo.oracleConfig, collatInfo.oracleStorage);
         amountIn = (oracleValue * Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / BASE_18;
         amountIn = quoteFees(collatInfo, 3, amountIn);
     }
@@ -132,7 +132,7 @@ library Swapper {
         Collateral memory collatInfo,
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
-        uint256 oracleValue = getBurnOracle(collatInfo.oracle, collatInfo.oracleStorage);
+        uint256 oracleValue = getBurnOracle(collatInfo.oracleConfig, collatInfo.oracleStorage);
         amountOut = quoteFees(collatInfo, 2, amountIn);
         amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
@@ -260,20 +260,20 @@ library Swapper {
     }
 
     // To call this function the collateral must be whitelisted and therefore the oracleData must be set
-    function getBurnOracle(bytes memory oracleData, bytes memory oracleStorage) internal view returns (uint256) {
+    function getBurnOracle(bytes memory oracleConfig, bytes memory oracleStorage) internal view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 oracleValue;
         uint256 deviation;
         address[] memory collateralList = ks.collateralList;
         uint256 length = collateralList.length;
         for (uint256 i; i < length; ++i) {
-            bytes memory oracle = ks.collaterals[collateralList[i]].oracle;
+            bytes memory oracleConfigOther = ks.collaterals[collateralList[i]].oracleConfig;
             uint256 deviationValue = BASE_18;
             // low chances of collision - but this can be check from governance when setting
             // a new oracle that it doesn't collude with no other hash of an active oracle
-            if (keccak256(oracle) != keccak256(oracleData)) {
-                (, deviationValue) = Oracle.readBurn(oracleData, oracleStorage);
-            } else (oracleValue, deviationValue) = Oracle.readBurn(oracleData, oracleStorage);
+            if (keccak256(oracleConfigOther) != keccak256(oracleConfig)) {
+                (, deviationValue) = Oracle.readBurn(oracleConfigOther, oracleStorage);
+            } else (oracleValue, deviationValue) = Oracle.readBurn(oracleConfig, oracleStorage);
             if (deviationValue < deviation) deviation = deviationValue;
         }
         // Renormalizing by an overestimated value of the oracle

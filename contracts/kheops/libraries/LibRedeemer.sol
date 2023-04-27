@@ -9,7 +9,7 @@ import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 import { Storage as s } from "./Storage.sol";
 import "./Oracle.sol";
-import "./Swapper.sol";
+import "./LibSwapper.sol";
 import "../utils/Utils.sol";
 import "../Storage.sol";
 
@@ -17,7 +17,7 @@ import "../../interfaces/IAgToken.sol";
 import "../../interfaces/IModule.sol";
 import "../../interfaces/IManager.sol";
 
-library Redeemer {
+library LibRedeemer {
     using SafeERC20 for IERC20;
 
     function redeem(
@@ -30,7 +30,7 @@ library Redeemer {
         KheopsStorage storage ks = s.kheopsStorage();
         if (block.timestamp < deadline) revert TooLate();
         amounts = quoteRedemptionCurve(amount);
-        Swapper.updateAccumulator(amount, false);
+        LibSwapper.updateAccumulator(amount, false);
 
         // Settlement - burn the stable and send the redeemable tokens
         IAgToken(ks.agToken).burnSelf(amount, msg.sender);
@@ -105,8 +105,8 @@ library Redeemer {
             if (manager != address(0)) balance = IManager(manager).getUnderlyingBalance();
             else balance = IERC20(collateralList[i]).balanceOf(address(this));
             balances[i] = balance;
-            bytes memory oracle = ks.collaterals[collateralList[i]].oracle;
-            uint256 oracleValue = Oracle.readRedemption(oracle);
+            bytes memory oracleConfig = ks.collaterals[collateralList[i]].oracleConfig;
+            uint256 oracleValue = Oracle.readRedemption(oracleConfig);
             totalCollateralization +=
                 (oracleValue * Utils.convertDecimalTo(balance, ks.collaterals[collateralList[i]].decimals, 18)) /
                 BASE_18;

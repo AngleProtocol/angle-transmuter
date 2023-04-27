@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import { Redeemer as Lib } from "../libraries/Redeemer.sol";
+import { LibRedeemer as Lib } from "../libraries/LibRedeemer.sol";
 import { Storage as s } from "../libraries/Storage.sol";
 import "../Storage.sol";
 

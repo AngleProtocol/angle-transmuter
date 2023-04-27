@@ -62,7 +62,7 @@ struct Collateral {
     int64[] yFeeMint;
     uint64[] xFeeBurn;
     int64[] yFeeBurn;
-    bytes oracle;
+    bytes oracleConfig;
     bytes oracleStorage;
 }
 

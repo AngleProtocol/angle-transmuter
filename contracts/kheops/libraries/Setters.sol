@@ -29,12 +29,12 @@ library Setters {
         ks.collateralList.push(collateral);
     }
 
-    function setOracle(address collateral, bytes memory oracle, bytes memory oracleStorage) internal {
+    function setOracle(address collateral, bytes memory oracleConfig, bytes memory oracleStorage) internal {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
-        Oracle.readMint(oracle, oracleStorage); // Checks oracle validity
-        collatInfo.oracle = oracle;
+        Oracle.readMint(oracleConfig, oracleStorage); // Checks oracle validity
+        collatInfo.oracleConfig = oracleConfig;
         collatInfo.oracleStorage = oracleStorage;
     }
 

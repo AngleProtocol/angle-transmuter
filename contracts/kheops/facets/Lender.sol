@@ -4,7 +4,6 @@ pragma solidity ^0.8.12;
 
 import { Storage as s } from "../libraries/Storage.sol";
 import { AccessControl } from "../utils/AccessControl.sol";
-import { Redeemer } from "../libraries/Redeemer.sol";
 import { Diamond } from "../libraries/Diamond.sol";
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
