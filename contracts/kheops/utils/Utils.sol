@@ -3,23 +3,8 @@
 pragma solidity ^0.8.12;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-import "../../interfaces/IAgToken.sol";
-import "../../interfaces/IModule.sol";
-import "../../interfaces/IManager.sol";
 
 library Utils {
-    using SafeERC20 for IERC20;
-
-    function transferCollateral(address collateral, address manager, address to, uint256 amount) internal {
-        if (manager != address(0)) {
-            IManager(manager).transfer(to, amount, false);
-        } else {
-            IERC20(collateral).safeTransfer(to, amount);
-        }
-    }
-
     function convertDecimalTo(uint256 amount, uint8 fromDecimals, uint8 toDecimals) internal pure returns (uint256) {
         if (fromDecimals > toDecimals) return amount / 10 ** (fromDecimals - toDecimals);
         else if (fromDecimals < toDecimals) return amount * 10 ** (toDecimals - fromDecimals);

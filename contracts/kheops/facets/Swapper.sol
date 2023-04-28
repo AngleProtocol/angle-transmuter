@@ -34,7 +34,7 @@ contract Swapper {
         if (mint) return Lib.quoteMintExactInput(collatInfo, amountIn);
         else {
             uint256 amountOut = Lib.quoteBurnExactInput(collatInfo, amountIn);
-            Lib.checkAmounts(collatInfo, amountOut);
+            Lib.checkAmounts(tokenOut, collatInfo, amountOut);
             return amountOut;
         }
     }
@@ -43,7 +43,7 @@ contract Swapper {
         (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
         if (mint) return Lib.quoteMintExactOutput(collatInfo, amountOut);
         else {
-            Lib.checkAmounts(collatInfo, amountOut);
+            Lib.checkAmounts(tokenOut, collatInfo, amountOut);
             return Lib.quoteBurnExactOutput(collatInfo, amountOut);
         }
     }

@@ -5,11 +5,13 @@ pragma solidity ^0.8.0;
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { IManager } from "../../interfaces/IManager.sol";
 import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
 
 import { Storage as s } from "../libraries/Storage.sol";
+import { LibManager } from "../libraries/LibManager.sol";
 import { Setters as Lib } from "../libraries/Setters.sol";
+import { Helper as LibHelper } from "../libraries/Helper.sol";
+// import { Utils } from "../libraries/Utils.sol";
 import { AccessControl } from "../utils/AccessControl.sol";
 import { Oracle } from "../libraries/Oracle.sol";
 import "../../utils/Constants.sol";
@@ -20,10 +22,16 @@ import "../Storage.sol";
 contract Setters is AccessControl {
     using SafeERC20 for IERC20;
 
-    function recoverERC20(IERC20 token, address to, uint256 amount, bool manager) external onlyGovernor {
-        if (manager) {
-            IManager(s.kheopsStorage().collaterals[address(token)].manager).transfer(to, amount, false);
-        } else token.safeTransfer(to, amount);
+    function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external onlyGovernor {
+        KheopsStorage storage ks = s.kheopsStorage();
+        Collateral storage collatInfo = ks.collaterals[collateral];
+        LibHelper.transferCollateral(
+            collateral,
+            collatInfo.hasManager > 0 ? address(token) : address(0),
+            to,
+            amount,
+            false
+        );
     }
 
     function setAccessControlManager(IAccessControlManager _newAccessControlManager) external onlyGovernor {
@@ -34,13 +42,8 @@ contract Setters is AccessControl {
         Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         uint8 hasManager = collatInfo.hasManager;
-        if (hasManager > 0) IManager(collatInfo.manager).pullAll();
-        if (manager != address(0)) {
-            collatInfo.hasManager = 1;
-            IERC20(collateral).safeTransfer(manager, IERC20(collateral).balanceOf(address(this)));
-        }
-
-        collatInfo.manager = manager;
+        if (hasManager > 0) LibManager.pullAll(collateral, false);
+        if (manager != address(0)) collatInfo.hasManager = 1;
     }
 
     function togglePause(address collateral, uint8 pausedType) external onlyGuardian {

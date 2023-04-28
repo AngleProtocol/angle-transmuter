@@ -31,13 +31,14 @@ contract Redeemer {
         uint256 amountBurnt
     ) external view returns (address[] memory tokens, uint256[] memory amounts) {
         KheopsStorage storage ks = s.kheopsStorage();
-        amounts = Lib.quoteRedemptionCurve(amountBurnt);
+        uint256 nbrSubCollaterals;
+        (amounts, nbrSubCollaterals) = Lib.quoteRedemptionCurve(amountBurnt);
         address[] memory list = ks.collateralList;
         uint256 collateralLength = list.length;
         address[] memory depositModuleList = ks.redeemableModuleList;
         uint256 depositModuleLength = depositModuleList.length;
 
-        tokens = new address[](collateralLength + depositModuleLength);
+        tokens = new address[](amounts.length);
         for (uint256 i; i < collateralLength; ++i) {
             tokens[i] = list[i];
         }

@@ -263,6 +263,8 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         return (success, result);
     }
 
+    // ================================== SETTERS ==================================
+
     /// @notice Sets the proportion of the LP tokens that should be staked on StakeDAO with respect
     /// to Convex
     function setStakeDAOProportion(uint8 _newProp) external onlyGovernor {
@@ -460,7 +462,7 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
     }
 
     function _depegSafeguard() internal view returns (bool isOtherTokenDepegged) {
-        if (address(oracle) != address(0) && oracle.read() < (BASE_18 * oracleDeviationThreshold) / BASE_9)
+        if (address(oracle) != address(0) && oracle.read() < BASE_9 * oracleDeviationThreshold)
             isOtherTokenDepegged = true;
     }
 
