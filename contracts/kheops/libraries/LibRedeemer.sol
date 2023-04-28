@@ -30,14 +30,9 @@ library LibRedeemer {
     ) internal returns (address[] memory tokens, uint256[] memory amounts) {
         KheopsStorage storage ks = s.kheopsStorage();
         if (block.timestamp < deadline) revert TooLate();
-<<<<<<< HEAD
         uint256[] memory nbrSubCollaterals;
         (tokens, amounts, nbrSubCollaterals) = quoteRedemptionCurve(amount);
-        LibSwapper.updateAccumulator(amount, false);
-=======
-        amounts = quoteRedemptionCurve(amount);
         updateNormalizer(amount, false);
->>>>>>> bee31b7 (feat: continue review on the system)
 
         // Settlement - burn the stable and send the redeemable tokens
         IAgToken(ks.agToken).burnSelf(amount, msg.sender);
