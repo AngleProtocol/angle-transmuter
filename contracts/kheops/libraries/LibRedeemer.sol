@@ -39,30 +39,20 @@ library LibRedeemer {
 
         address[] memory collateralListMem = ks.collateralList;
         address[] memory depositModuleList = ks.redeemableModuleList;
-        uint256 amountsLength = amounts.length;
-        uint256 startTokenForfeit;
         uint256 indexCollateral;
-        for (uint256 i; i < amountsLength; ++i) {
-            if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
-            int256 indexFound = Utils.checkForfeit(tokens[i], startTokenForfeit, forfeitTokens);
+        for (uint256 i; i < amounts.length; ++i) {
+            int256 indexFound = Utils.checkForfeit(tokens[i], forfeitTokens);
             if (nbrSubCollaterals[indexCollateral] >= i) ++indexCollateral;
             if (indexFound < 0) {
-                if (i < collateralListLength)
+                if (i < collateralListMem.length)
                     LibHelper.transferCollateral(
-                        _collateralList[indexCollateral],
-                        (ks.collaterals[_collateralList[indexCollateral]].hasManager > 0) ? tokens[i] : address(0),
+                        collateralListMem[indexCollateral],
+                        (ks.collaterals[collateralListMem[indexCollateral]].hasManager > 0) ? tokens[i] : address(0),
                         to,
                         amounts[i],
                         true
                     );
-                else IModule(depositModuleList[i - collateralListLength]).transfer(to, amounts[i]);
-            } else {
-                // we force the user to give addresses in the order of collateralList and redeemableModuleList
-                // to save on going through array too many times/
-                // Not sure empirically worth it, it depends on many tokens will be supported + how many will be
-                // open to forfeit
-                startTokenForfeit = uint256(indexFound);
-                amounts[i] = 0;
+                else IModule(depositModuleList[i - collateralListMem.length]).transfer(to, amounts[i]);
             }
         }
     }

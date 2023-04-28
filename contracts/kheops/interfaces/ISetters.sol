@@ -5,7 +5,7 @@ pragma solidity ^0.8.12;
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 interface ISetters {
-    function recoverERC20(IERC20 token, address to, uint256 amount, bool manager) external;
+    function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external;
 
     function setAccessControlManager(address _newAccessControlManager) external;
 
