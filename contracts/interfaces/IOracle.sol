@@ -2,9 +2,15 @@
 
 pragma solidity ^0.8.12;
 
-/// @title IExternalOracle
+/// @title IOracle
 /// @author Angle Labs, Inc.
-interface IExternalOracle {
+interface IOracle {
+    function read() external view returns (uint256);
+}
+
+/// @title IKheopsOracle
+/// @author Angle Labs, Inc.
+interface IKheopsOracle {
     function readRedemption() external view returns (uint256);
 
     function readMint() external view returns (uint256);
@@ -13,7 +19,4 @@ interface IExternalOracle {
 
     // Function need access control
     function updateInternalData(uint256 amountIn, uint256 amountOut, bool mint) external;
-
-    // TODO delete when old oracle are removed
-    function read() external view returns (uint256);
 }

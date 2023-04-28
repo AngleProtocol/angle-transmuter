@@ -7,7 +7,7 @@ import { Storage as s } from "./Storage.sol";
 import "../Storage.sol";
 import "../../utils/Errors.sol";
 
-import "../../interfaces/IExternalOracle.sol";
+import { IKheopsOracle } from "../../interfaces/IOracle.sol";
 import "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
 import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
 
@@ -86,7 +86,7 @@ library Oracle {
     function readRedemption(bytes memory oracleData) internal view returns (uint256) {
         (OracleReadType readType, OracleQuoteType quoteType, , bytes memory data) = parseOracle(oracleData);
         if (readType == OracleReadType.EXTERNAL) {
-            IExternalOracle externalOracle = abi.decode(data, (IExternalOracle));
+            IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             return externalOracle.readRedemption();
         } else return read(readType, quoteType, data);
     }
@@ -99,7 +99,7 @@ library Oracle {
             bytes memory data
         ) = parseOracle(oracleData);
         if (readType == OracleReadType.EXTERNAL) {
-            IExternalOracle externalOracle = abi.decode(data, (IExternalOracle));
+            IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             return externalOracle.readMint();
         }
         oracleValue = read(readType, quoteType, data);
@@ -118,7 +118,7 @@ library Oracle {
             bytes memory data
         ) = parseOracle(oracleData);
         if (readType == OracleReadType.EXTERNAL) {
-            IExternalOracle externalOracle = abi.decode(data, (IExternalOracle));
+            IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             return externalOracle.readBurn();
         }
         oracleValue = read(readType, quoteType, data);
@@ -161,7 +161,7 @@ library Oracle {
                 decimalNormalizer
             );
         } else if (readType == OracleReadType.EXTERNAL) {
-            IExternalOracle externalOracle = abi.decode(data, (IExternalOracle));
+            IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             externalOracle.updateInternalData(amountIn, amountOut, mint);
         } else revert InvalidOracleType();
     }
