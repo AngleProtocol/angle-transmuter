@@ -54,7 +54,7 @@ contract Getters {
     }
 
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 reservesValue) {
-        (collatRatio, reservesValue, , ) = LibRedeemer.getCollateralRatio();
+        (collatRatio, reservesValue, , , ) = LibRedeemer.getCollateralRatio();
     }
 
     function getIssuedByCollateral(address collateral) external view returns (uint256, uint256) {

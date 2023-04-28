@@ -30,7 +30,7 @@ library LibRedeemer {
     ) internal returns (address[] memory tokens, uint256[] memory amounts) {
         KheopsStorage storage ks = s.kheopsStorage();
         if (block.timestamp < deadline) revert TooLate();
-        uint256 nbrSubCollaterals;
+        uint256[] memory nbrSubCollaterals;
         (tokens, amounts, nbrSubCollaterals) = quoteRedemptionCurve(amount);
         LibSwapper.updateAccumulator(amount, false);
 
@@ -41,29 +41,12 @@ library LibRedeemer {
         address[] memory depositModuleList = ks.redeemableModuleList;
         uint256 collateralListLength = _collateralList.length;
         uint256 amountsLength = amounts.length;
-        tokens = new address[](amountsLength);
         uint256 startTokenForfeit;
         uint256 indexCollateral;
-        uint256 indexSubCollateral;
         for (uint256 i; i < amountsLength; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
-            if (i < nbrSubCollaterals) {
-                if (ks.collaterals[_collateralList[indexCollateral]].hasManager > 0) {
-                    IERC20[] memory managerSubCollaterals = ks
-                        .collaterals[_collateralList[indexCollateral]]
-                        .managerStorage
-                        .subCollaterals;
-                    tokens[i] = address(managerSubCollaterals[indexSubCollateral]);
-                    if (indexSubCollateral == managerSubCollaterals.length - 1) {
-                        indexSubCollateral = 0;
-                        ++indexCollateral;
-                    } else ++indexSubCollateral;
-                } else {
-                    tokens[i] = _collateralList[indexCollateral];
-                    ++indexCollateral;
-                }
-            } else tokens[i] = ks.modules[depositModuleList[i - collateralListLength]].token;
             int256 indexFound = Utils.checkForfeit(tokens[i], startTokenForfeit, forfeitTokens);
+            if (nbrSubCollaterals[indexCollateral] >= i) ++indexCollateral;
             if (indexFound < 0) {
                 if (i < collateralListLength)
                     LibHelper.transferCollateral(
@@ -87,11 +70,11 @@ library LibRedeemer {
 
     function quoteRedemptionCurve(
         uint256 amountBurnt
-    ) internal view returns (uint256[] memory tokens, uint256[] memory balances, uint256 nbrSubCollaterals) {
+    ) internal view returns (address[] memory tokens, uint256[] memory balances, uint256[] memory nbrSubCollaterals) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint64 collatRatio;
         uint256 normalizedStablesValue;
-        (collatRatio, normalizedStablesValue, tokens, balances) = getCollateralRatio();
+        (collatRatio, normalizedStablesValue, tokens, balances, nbrSubCollaterals) = getCollateralRatio();
         uint64[] memory xRedemptionCurveMem = ks.xRedemptionCurve;
         uint64[] memory yRedemptionCurveMem = ks.yRedemptionCurve;
         uint64 penalty;
@@ -109,7 +92,13 @@ library LibRedeemer {
     function getCollateralRatio()
         internal
         view
-        returns (uint64 collatRatio, uint256 reservesValue, uint256[] memory balances, uint256 nbrSubCollaterals)
+        returns (
+            uint64 collatRatio,
+            uint256 reservesValue,
+            address[] memory tokens,
+            uint256[] memory balances,
+            uint256[] memory nbrSubCollaterals
+        )
     {
         KheopsStorage storage ks = s.kheopsStorage();
 
@@ -118,38 +107,42 @@ library LibRedeemer {
         uint256 collateralListLength = collateralList.length;
         address[] memory depositModuleList = ks.redeemableModuleList;
         uint256 depositModuleLength = depositModuleList.length;
-        nbrSubCollaterals;
+        uint256 subCollateralsLength;
+        nbrSubCollaterals = new uint256[](collateralListLength);
         for (uint256 i; i < collateralListLength; ++i) {
-            if (ks.collaterals[collateralList[i]].hasManager > 0) ++nbrSubCollaterals;
-            else nbrSubCollaterals += ks.collaterals[collateralList[i]].managerStorage.subCollaterals.length;
+            if (ks.collaterals[collateralList[i]].hasManager > 0) ++subCollateralsLength;
+            else subCollateralsLength += ks.collaterals[collateralList[i]].managerStorage.subCollaterals.length;
+            nbrSubCollaterals[i] = subCollateralsLength;
         }
-        balances = new uint256[](nbrSubCollaterals + depositModuleLength);
+        balances = new uint256[](subCollateralsLength + depositModuleLength);
+        tokens = new address[](subCollateralsLength + depositModuleLength);
 
         for (uint256 i; i < collateralListLength; ++i) {
             if (ks.collaterals[collateralList[i]].hasManager > 0) {
                 (uint256[] memory subCollateralsBalances, uint256 totalValue) = LibManager.getUnderlyingBalances(
                     ks.collaterals[collateralList[i]].managerStorage
                 );
-                uint256 subCollateralsLength = subCollateralsBalances.length;
-                for (uint256 k; k < subCollateralsLength; ++k) {
+                uint256 curNbrSubCollat = subCollateralsBalances.length;
+                for (uint256 k; k < curNbrSubCollat; ++k) {
+                    tokens[i + k] = address(ks.collaterals[collateralList[i]].managerStorage.subCollaterals[k]);
                     balances[i + k] = subCollateralsBalances[k];
                 }
-                i += subCollateralsLength;
                 totalCollateralization += totalValue;
             } else {
                 uint256 balance = IERC20(collateralList[i]).balanceOf(address(this));
+                tokens[i] = collateralList[i];
                 balances[i] = balance;
                 bytes memory oracleConfig = ks.collaterals[collateralList[i]].oracleConfig;
                 uint256 oracleValue = Oracle.readRedemption(oracleConfig);
                 totalCollateralization +=
                     (oracleValue * Utils.convertDecimalTo(balance, ks.collaterals[collateralList[i]].decimals, 18)) /
                     BASE_18;
-                ++i;
             }
         }
         for (uint256 i; i < depositModuleLength; ++i) {
             (uint256 balance, uint256 value) = IModule(depositModuleList[i]).getBalanceAndValue();
-            balances[nbrSubCollaterals + collateralListLength] = balance;
+            tokens[i] = ks.modules[depositModuleList[i]].token;
+            balances[subCollateralsLength + collateralListLength] = balance;
             totalCollateralization += value;
         }
         reservesValue = (ks.normalizedStables * ks.normalizer) / BASE_27;
