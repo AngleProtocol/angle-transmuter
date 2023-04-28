@@ -64,6 +64,8 @@ library Oracle {
                 );
             }
             return _quoteAmount;
+        } else if (readType == OracleReadType.NO_ORACLE) {
+            return quoteAmount(quoteType);
         }
         revert InvalidOracleType();
     }

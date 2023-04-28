@@ -16,7 +16,7 @@ interface IKheops {
 
     function agToken() external returns (IAgToken);
 
-    function repay(uint256 amount) external returns (uint256);
+    function repay(uint256 amount) external;
 
     function getModuleBorrowed(address module) external view returns (uint256);
 
@@ -26,5 +26,5 @@ interface IKheops {
 
     function getIssuedByCollateral(address collateral) external view returns (uint256, uint256);
 
-    function updateAccumulator(uint256 amount, bool increase) external returns (uint256);
+    function updateNormalizer(uint256 amount, bool increase) external returns (uint256);
 }

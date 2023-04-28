@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Diamond } from "../libraries/Diamond.sol";
 
 import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
 
@@ -12,6 +13,7 @@ import { LibManager } from "../libraries/LibManager.sol";
 import { Setters as Lib } from "../libraries/Setters.sol";
 import { Helper as LibHelper } from "../libraries/Helper.sol";
 // import { Utils } from "../libraries/Utils.sol";
+import "../libraries/LibRedeemer.sol";
 import { AccessControl } from "../utils/AccessControl.sol";
 import { Oracle } from "../libraries/Oracle.sol";
 import "../../utils/Constants.sol";
@@ -162,6 +164,12 @@ contract Setters is AccessControl {
         if (collatInfo.decimals == 0) revert NotCollateral();
         if (keccak256(oracleConfig) != keccak256("0x")) Oracle.readMint(oracleConfig, collatInfo.oracleStorage);
         collatInfo.oracleConfig = oracleConfig;
+    }
+
+    function updateNormalizer(uint256 amount, bool increase) external returns (uint256) {
+        // Trusted addresses can call the function (like a savings contract in the case of a LSD)
+        if (!Diamond.isGovernor(msg.sender) && s.kheopsStorage().isTrusted[msg.sender] == 0) revert NotTrusted();
+        return LibRedeemer.updateNormalizer(amount, increase);
     }
 
     // function _checkFees(uint64[] memory xFee, uint64[] memory yFee, uint8 setter) internal view {

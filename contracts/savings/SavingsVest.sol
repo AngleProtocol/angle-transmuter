@@ -140,7 +140,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
         (uint64 collatRatio, uint256 reserves) = _kheops.getCollateralRatio();
         if (collatRatio > BASE_9) {
             minted = (collatRatio * reserves) / BASE_9 - reserves;
-            _kheops.updateAccumulator(minted, true);
+            _kheops.updateNormalizer(minted, true);
             uint256 surplusForProtocol = (minted * protocolSafetyFee) / BASE_9;
             address _surplusManager = surplusManager;
             _surplusManager = _surplusManager == address(0) ? address(_kheops) : _surplusManager;
@@ -159,7 +159,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
                 vestingProfit -= missing;
                 lastUpdate = uint64(block.timestamp);
                 _agToken.burnSelf(missing, address(this));
-                _kheops.updateAccumulator(missing, false);
+                _kheops.updateNormalizer(missing, false);
             }
         }
     }
