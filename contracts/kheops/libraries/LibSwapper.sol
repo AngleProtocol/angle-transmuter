@@ -55,16 +55,6 @@ library LibSwapper {
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
             LibHelper.transferCollateral(tokenOut, collatInfo.hasManager > 0 ? tokenOut : address(0), to, amount, true);
         }
-        // if (collatInfo.hasOracleFallback > 0) {
-        //     Oracle.updateInternalData(
-        //         mint ? tokenIn : tokenOut,
-        //         collatInfo.oracle,
-        //         collatInfo.oracleStorage,
-        //         amountIn,
-        //         amountOut,
-        //         mint
-        //     );
-        // }
     }
 
     function updateAccumulator(uint256 amount, bool increase) internal returns (uint256 newAccumulatorValue) {

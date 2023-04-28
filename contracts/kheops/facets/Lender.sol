@@ -39,6 +39,7 @@ contract Lender is AccessControl {
     }
 
     function repay(uint256 amount) external returns (uint256) {
+        // TODO need to do something such that when the amount reported is greater than the reserves
         KheopsStorage storage ks = s.kheopsStorage();
         Module storage module = ks.modules[msg.sender];
         if (module.initialized == 0) revert NotModule();

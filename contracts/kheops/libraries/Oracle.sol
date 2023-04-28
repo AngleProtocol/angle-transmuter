@@ -24,16 +24,9 @@ library Oracle {
         return parseOracle(s.kheopsStorage().collaterals[collateral].oracleConfig);
     }
 
-    function targetPrice(OracleTargetType targetType, bytes memory oracleStorage) internal view returns (uint256) {
+    function targetPrice(OracleTargetType targetType, bytes memory) internal view returns (uint256) {
         if (targetType == OracleTargetType.STABLE) return BASE_18;
-        if (targetType == OracleTargetType.BONDS) {
-            (uint256 cumulativeVolume, uint256 cumulativePriceWeightedVolume, uint256 decimalNormalizer) = abi.decode(
-                oracleStorage,
-                (uint256, uint256, uint256)
-            );
-            return ((cumulativePriceWeightedVolume * BASE_18) * decimalNormalizer) / cumulativeVolume;
-        }
-        if (targetType == OracleTargetType.WSTETH) return STETH.getPooledEthByShares(1 ether);
+        else if (targetType == OracleTargetType.WSTETH) return STETH.getPooledEthByShares(1 ether);
         revert InvalidOracleType();
     }
 
@@ -42,7 +35,7 @@ library Oracle {
     // you can change this function and it will modify the value passed through Chainlink system
     function quoteAmount(OracleQuoteType quoteType) internal view returns (uint256) {
         if (quoteType == OracleQuoteType.UNIT) return BASE_18;
-        if (quoteType == OracleQuoteType.WSTETH) return STETH.getPooledEthByShares(1 ether);
+        else if (quoteType == OracleQuoteType.WSTETH) return STETH.getPooledEthByShares(1 ether);
         revert InvalidOracleType();
     }
 
@@ -129,41 +122,6 @@ library Oracle {
             // Overestimating the oracle value
             oracleValue = _targetPrice;
         }
-    }
-
-    // TODO: can we do better -> might in fact be problematic to use this as a target value as using this might fix the oracle since
-    // you'd always be acquiring at the lowest value -> which is potentially the initial value
-    function updateInternalData(
-        address collateral,
-        bytes memory oracleData,
-        bytes memory oracleStorage,
-        uint256 amountIn,
-        uint256 amountOut,
-        bool mint
-    ) internal {
-        (OracleReadType readType, , OracleTargetType targetType, bytes memory data) = parseOracle(oracleData);
-        if (targetType == OracleTargetType.BONDS) {
-            (uint256 cumulativeVolume, uint256 cumulativePriceWeightedVolume, uint256 decimalNormalizer) = abi.decode(
-                oracleStorage,
-                (uint256, uint256, uint256)
-            );
-            if (mint) {
-                // Price is amountIn/amountOut -> if you adjust by volume it makes amountIn
-                cumulativePriceWeightedVolume += amountIn;
-                cumulativeVolume += amountOut;
-            } else {
-                cumulativePriceWeightedVolume += amountOut;
-                cumulativeVolume += amountIn;
-            }
-            s.kheopsStorage().collaterals[collateral].oracleStorage = abi.encode(
-                cumulativeVolume,
-                cumulativePriceWeightedVolume,
-                decimalNormalizer
-            );
-        } else if (readType == OracleReadType.EXTERNAL) {
-            IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
-            externalOracle.updateInternalData(amountIn, amountOut, mint);
-        } else revert InvalidOracleType();
     }
 
     // ============================== SPECIFIC HELPERS =============================

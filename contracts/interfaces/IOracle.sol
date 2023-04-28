@@ -17,6 +17,6 @@ interface IKheopsOracle {
 
     function readBurn() external view returns (uint256 oracleValue, uint256 deviation);
 
-    // Function need access control
-    function updateInternalData(uint256 amountIn, uint256 amountOut, bool mint) external;
+    // TODO delete when old oracle are removed
+    function read() external view returns (uint256);
 }
