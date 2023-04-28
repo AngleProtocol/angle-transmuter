@@ -17,7 +17,7 @@ import "../interfaces/external/curve/IMetaPool2.sol";
 import "../interfaces/ICurveModule.sol";
 import "../interfaces/IKheops.sol";
 import "../interfaces/IModule.sol";
-import "../interfaces/IExternalOracle.sol";
+import { IOracle } from "../interfaces/IOracle.sol";
 
 import "../utils/Constants.sol";
 import "../utils/AccessControl.sol";
@@ -51,7 +51,7 @@ contract CurveModuleStorage is Initializable, AccessControl, FunctionUtils {
     IConvexBaseRewardPool public convexBaseRewardPool;
 
     /// @notice Oracle contract for the other token
-    IExternalOracle public oracle;
+    IOracle public oracle;
 
     /// @notice Address of the contract handling liquidations of rewards accumulated
     address public rewardHandler;

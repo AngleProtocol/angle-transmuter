@@ -60,9 +60,8 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
 
     // Balance solely estimated from LP Tokens here
     function getBalanceAndValue() external view returns (uint256, uint256) {
-        (uint256 lpTokenOwned, uint256 amountStablecoin, uint256 amountOtherToken) = _getNavOfInvestedAssets();
-        int128 _indexAgToken = int128(uint128(indexAgToken));
-        amountOtherToken = curvePool.get_dy(1 - _indexAgToken, _indexAgToken, amountOtherToken);
+        uint256 lpTokenOwned = _lpTokenBalance();
+
         /* TODO: estimate best option
         amountOtherToken = _convertToBase(amountOtherToken, decimalsOtherToken);
         if (address(oracle) != address(0)) {
@@ -263,6 +262,8 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         return (success, result);
     }
 
+    // ================================== SETTERS ==================================
+
     /// @notice Sets the proportion of the LP tokens that should be staked on StakeDAO with respect
     /// to Convex
     function setStakeDAOProportion(uint8 _newProp) external onlyGovernor {
@@ -294,7 +295,7 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         rewardTokens.pop();
     }
 
-    function setOracle(IExternalOracle _oracle) external onlyGovernor {
+    function setOracle(IOracle _oracle) external onlyGovernor {
         _oracle.read();
         oracle = _oracle;
     }
@@ -460,7 +461,7 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
     }
 
     function _depegSafeguard() internal view returns (bool isOtherTokenDepegged) {
-        if (address(oracle) != address(0) && oracle.read() < (BASE_18 * oracleDeviationThreshold) / BASE_9)
+        if (address(oracle) != address(0) && oracle.read() < BASE_9 * oracleDeviationThreshold)
             isOtherTokenDepegged = true;
     }
 

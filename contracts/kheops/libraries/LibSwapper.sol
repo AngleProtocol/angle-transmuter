@@ -8,13 +8,13 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 import { Storage as s } from "./Storage.sol";
+import { Helper as LibHelper } from "./Helper.sol";
 import "./Oracle.sol";
 import "../utils/Utils.sol";
 import "../Storage.sol";
+import "./LibManager.sol";
 
 import "../../interfaces/IAgToken.sol";
-import "../../interfaces/IModule.sol";
-import "../../interfaces/IManager.sol";
 
 library LibSwapper {
     using SafeERC20 for IERC20;
@@ -43,19 +43,17 @@ library LibSwapper {
             (amountIn, amountOut) = (otherAmount, amount);
         }
         if (mint) {
-            address toProtocolAddress = collatInfo.hasManager > 0 ? collatInfo.manager : address(this);
             uint256 changeAmount = (amountOut * BASE_27) / ks.normalizer;
             ks.collaterals[tokenOut].normalizedStables += changeAmount;
             ks.normalizedStables += changeAmount;
-            IERC20(tokenIn).safeTransferFrom(msg.sender, toProtocolAddress, amountIn);
+            IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
             IAgToken(tokenOut).mint(to, amountOut);
         } else {
             uint256 changeAmount = (amountIn * BASE_27) / ks.normalizer;
             ks.collaterals[tokenOut].normalizedStables -= changeAmount;
             ks.normalizedStables -= changeAmount;
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-            if (collatInfo.hasManager > 0) IManager(collatInfo.manager).transfer(to, amountOut, false);
-            else IERC20(tokenOut).safeTransfer(to, amountOut);
+            LibHelper.transferCollateral(tokenOut, collatInfo.hasManager > 0 ? tokenOut : address(0), to, amount, true);
         }
         // if (collatInfo.hasOracleFallback > 0) {
         //     Oracle.updateInternalData(
@@ -280,10 +278,9 @@ library LibSwapper {
         return (deviation * BASE_18) / oracleValue;
     }
 
-    function checkAmounts(Collateral memory collatInfo, uint256 amountOut) internal view {
+    function checkAmounts(address collateral, Collateral memory collatInfo, uint256 amountOut) internal view {
         // Checking if enough is available for collateral assets that involve manager addresses
-        if (collatInfo.manager != address(0) && IManager(collatInfo.manager).maxAvailable() < amountOut)
-            revert InvalidSwap();
+        if (collatInfo.hasManager > 0 && LibManager.maxAvailable(collateral) < amountOut) revert InvalidSwap();
     }
 
     function getMintBurn(

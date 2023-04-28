@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: CC0-1.0
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity ^0.8.12;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IAccessControlManager } from "../interfaces/IAccessControlManager.sol";
 import { IAgToken } from "../interfaces/IAgToken.sol";
 
@@ -52,7 +53,6 @@ enum OracleTargetType {
 }
 
 struct Collateral {
-    address manager;
     uint8 hasManager;
     uint8 unpausedMint;
     uint8 unpausedBurn;
@@ -64,6 +64,7 @@ struct Collateral {
     int64[] yFeeBurn;
     bytes oracleConfig;
     bytes oracleStorage;
+    ManagerStorage managerStorage;
 }
 
 struct Module {
@@ -88,4 +89,10 @@ struct KheopsStorage {
     mapping(address => Collateral) collaterals;
     mapping(address => Module) modules;
     mapping(address => uint256) isTrusted;
+}
+
+struct ManagerStorage {
+    IERC20 asset;
+    // Asset is also in the list
+    IERC20[] subCollaterals;
 }

@@ -12,6 +12,6 @@ interface IModule {
     /// to get out with more tokens than expected.
     function getBalanceAndValue() external view returns (uint256, uint256);
 
-    // It must return the address of the token
+    /// @notice Transfer an amount of token
     function transfer(address receiver, uint256 amount) external;
 }
