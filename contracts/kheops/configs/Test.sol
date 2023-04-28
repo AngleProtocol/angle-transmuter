@@ -40,6 +40,13 @@ contract Test {
             abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleQuoteType.UNIT, OracleTargetType.STABLE, readData),
             ""
         );
+        // Fees
+        uint64[] memory xFee = new uint64[](1);
+        xFee[0] = uint64(BASE_9);
+        int64[] memory yFee = new int64[](1);
+        yFee[0] = int64(uint64(BASE_9 / 10));
+        Setters.setFees(collateral, xFee, yFee, true);
+        Setters.setFees(collateral, xFee, yFee, false);
 
         // Unpause
         Setters.togglePause(collateral, PauseType.Mint);

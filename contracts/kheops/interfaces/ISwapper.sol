@@ -3,7 +3,7 @@
 pragma solidity ^0.8.12;
 
 interface ISwapper {
-    function swapExact(
+    function swapExactInput(
         uint256 amountIn,
         uint256 amountOutMin,
         address tokenIn,
@@ -12,7 +12,7 @@ interface ISwapper {
         uint256 deadline
     ) external returns (uint amountOut);
 
-    function swapForExact(
+    function swapExactOutput(
         uint256 amountOut,
         uint256 amountInMax,
         address tokenIn,

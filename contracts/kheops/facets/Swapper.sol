@@ -25,7 +25,7 @@ contract Swapper {
         uint256 deadline
     ) external returns (uint amountOut) {
         KheopsStorage storage ks = s.kheopsStorage();
-        if (block.timestamp < deadline) revert TooLate();
+        if (block.timestamp > deadline) revert TooLate();
         (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
 
         amountOut = mint
@@ -59,7 +59,7 @@ contract Swapper {
         uint256 deadline
     ) external returns (uint amountIn) {
         KheopsStorage storage ks = s.kheopsStorage();
-        if (block.timestamp < deadline) revert TooLate();
+        if (block.timestamp > deadline) revert TooLate();
         (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
 
         amountIn = mint

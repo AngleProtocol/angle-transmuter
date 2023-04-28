@@ -105,6 +105,7 @@ library LibSwapper {
         amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
 
+    // @dev Assumption: collatInfo.xFeeMint.length > 0
     function quoteFees(
         Collateral memory collatInfo,
         QuoteType quoteType,
@@ -117,7 +118,8 @@ library LibSwapper {
             ? 0
             : uint64((collatInfo.normalizedStables * BASE_9) / normalizedStablesMem);
 
-        // Compute amount out.
+        // Compute amount out
+
         uint256 n = collatInfo.xFeeMint.length;
         if (n == 1) {
             // First case: constant fees

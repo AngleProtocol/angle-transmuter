@@ -18,19 +18,36 @@ import "contracts/utils/Constants.sol";
 import { console } from "forge-std/console.sol";
 
 contract Fixture is Kheops {
-    IAccessControlManager accessControlManager;
-    IAgToken agToken;
-    AggregatorV3Interface oracle;
+    IAccessControlManager public accessControlManager;
+    IAgToken public agToken;
+    AggregatorV3Interface public oracle;
 
-    IERC20 collateral;
+    IERC20 public collateral;
 
-    address config;
+    address public config;
+
+    address public constant governor = 0xdC4e6DFe07EFCa50a197DF15D9200883eF4Eb1c8;
+    address public constant guardian = 0x0C2553e4B9dFA9f83b1A6D3EAB96c4bAaB42d430;
+    address public constant angle = 0x31429d1856aD1377A8A0079410B297e1a9e214c2;
+
+    address public constant alice = address(uint160(uint256(keccak256(abi.encodePacked("alice")))));
+    address public constant bob = address(uint160(uint256(keccak256(abi.encodePacked("bob")))));
+    address public constant charlie = address(uint160(uint256(keccak256(abi.encodePacked("charlie")))));
+    address public constant dylan = address(uint160(uint256(keccak256(abi.encodePacked("dylan")))));
 
     function setUp() public virtual {
+        vm.label(governor, "Governor");
+        vm.label(guardian, "Guardian");
+        vm.label(angle, "ANGLE");
+        vm.label(alice, "Alice");
+        vm.label(bob, "Bob");
+        vm.label(charlie, "Charlie");
+        vm.label(dylan, "Dylan");
+
         // Access Control
         accessControlManager = IAccessControlManager(address(new MockAccessControlManager()));
-        MockAccessControlManager(address(accessControlManager)).toggleGovernor(address(this));
-        MockAccessControlManager(address(accessControlManager)).toggleGuardian(address(this));
+        MockAccessControlManager(address(accessControlManager)).toggleGovernor(governor);
+        MockAccessControlManager(address(accessControlManager)).toggleGuardian(guardian);
 
         // agToken
         agToken = IAgToken(address(new MockTokenPermit("agEUR", "agEUR", 18)));

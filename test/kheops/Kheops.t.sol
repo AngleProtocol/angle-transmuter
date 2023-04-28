@@ -37,7 +37,23 @@ contract TestKheops is Fixture {
         }
     }
 
-    function testSimpleSwapScenario() public {
+    function testInterfaceCorrectlyImplemented() public {
+        bytes4[] memory selectors = generateSelectors("IKheops");
+        for (uint i = 0; i < selectors.length; i++) {
+            assertEq(kheops.isValidSelector(selectors[i]), true);
+        }
+    }
+
+    function testQuoteInScenario() public {
         console.log(kheops.quoteIn(BASE_18, address(collateral), address(agToken)));
+    }
+
+    function testSimpleSwapInScenario() public {
+        deal(address(collateral), alice, BASE_18);
+
+        startHoax(alice);
+        collateral.approve(address(kheops), BASE_18);
+        kheops.swapExactInput(BASE_18, 0, address(collateral), address(agToken), alice, block.timestamp + 1 hours);
+        console.log(agToken.balanceOf(alice));
     }
 }
