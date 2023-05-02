@@ -17,6 +17,8 @@ import "./LibManager.sol";
 import "../../interfaces/IAgToken.sol";
 
 struct LocalVariables {
+    bool isMint;
+    bool isInput;
     uint256 lowerExposure;
     uint256 upperExposure;
     int256 lowerFees;
@@ -111,38 +113,55 @@ library LibSwapper {
         QuoteType quoteType,
         uint256 amountStable
     ) internal view returns (uint256) {
+        LocalVariables memory l;
         KheopsStorage storage ks = s.kheopsStorage();
+
         uint256 normalizedStablesMem = ks.normalizedStables;
         uint256 normalizerMem = ks.normalizer;
-        uint256 currentExposure = normalizedStablesMem == 0
-            ? 0
-            : uint64((collatInfo.normalizedStables * BASE_9) / normalizedStablesMem);
+        l.isMint = _isMint(quoteType);
+        l.isInput = _isInput(quoteType);
 
-        // Compute amount out
-
-        uint256 n = collatInfo.xFeeMint.length;
-        if (n == 1) {
-            // First case: constant fees
+        // Handling the initialisation
+        if (normalizedStablesMem == 0) {
+            // In case the operation is a burn it will revert later on TODO Confirm with a test
             return
                 _isInput(quoteType)
                     ? applyFee(amountStable, collatInfo.yFeeMint[0])
                     : invertFee(amountStable, collatInfo.yFeeMint[0]);
+        }
+
+        uint256 currentExposure = uint64((collatInfo.normalizedStables * BASE_9) / normalizedStablesMem);
+        uint256 n = l.isMint ? collatInfo.xFeeMint.length : collatInfo.xFeeBurn.length;
+
+        if (n == 1) {
+            // First case: constant fees
+            if (l.isMint) {
+                return
+                    l.isInput
+                        ? applyFee(amountStable, collatInfo.yFeeMint[0])
+                        : invertFee(amountStable, collatInfo.yFeeMint[0]);
+            } else {
+                return
+                    l.isInput
+                        ? applyFee(amountStable, collatInfo.yFeeBurn[0])
+                        : invertFee(amountStable, collatInfo.yFeeBurn[0]);
+            }
         } else {
             uint256 amount;
             uint256 i = Utils.findUpperBound(
-                _isMint(quoteType),
-                _isMint(quoteType) ? collatInfo.xFeeMint : collatInfo.xFeeBurn,
+                l.isMint,
+                l.isMint ? collatInfo.xFeeMint : collatInfo.xFeeBurn,
                 uint64(currentExposure)
             );
 
-            LocalVariables memory l;
-            while (i < n) {
+            while (i <= n - 2) {
                 // We transform the linear function on exposure to a linear function depending on the amount swapped
-                if (_isMint(quoteType)) {
+                if (l.isMint) {
                     l.lowerExposure = collatInfo.xFeeMint[i];
                     l.upperExposure = collatInfo.xFeeMint[i + 1];
                     l.lowerFees = collatInfo.yFeeMint[i];
                     l.upperFees = collatInfo.yFeeMint[i + 1];
+
                     l.amountToNextBreakPoint = ((normalizerMem *
                         (normalizedStablesMem * l.upperExposure - collatInfo.normalizedStables)) /
                         ((BASE_9 - l.upperExposure) * BASE_27));
@@ -162,22 +181,22 @@ library LibSwapper {
                 else {
                     uint256 amountFromPrevBreakPoint = ((normalizerMem *
                         (
-                            _isMint(quoteType)
+                            l.isMint
                                 ? (collatInfo.normalizedStables - normalizedStablesMem * l.lowerExposure)
                                 : (normalizedStablesMem * l.lowerExposure - collatInfo.normalizedStables)
                         )) / ((BASE_9 - l.lowerExposure) * BASE_27));
-                    // upperFees - lowerFees > 0 because fees are an increasing function of exposure (for mint) and 1-exposure (for burn)
-                    uint256 slope = (uint256(l.upperFees - l.lowerFees) /
+                    // upperFees - lowerFees >= 0 because fees are an increasing function of exposure (for mint) and 1-exposure (for burn)
+                    uint256 slope = ((uint256(l.upperFees - l.lowerFees) * BASE_18) /
                         (l.amountToNextBreakPoint + amountFromPrevBreakPoint));
-                    currentFees = l.lowerFees + int256(slope * amountFromPrevBreakPoint);
+                    currentFees = l.lowerFees + int256((slope * amountFromPrevBreakPoint) / BASE_18);
                 }
 
                 {
-                    uint256 amountToNextBreakPointWithFees = _isMint(quoteType)
+                    uint256 amountToNextBreakPointWithFees = !l.isMint && l.isInput
                         ? applyFee(l.amountToNextBreakPoint, int64(l.upperFees + currentFees) / 2)
                         : invertFee(l.amountToNextBreakPoint, int64(l.upperFees + currentFees) / 2);
 
-                    uint256 amountToNextBreakPointNormalizer = _isInput(quoteType)
+                    uint256 amountToNextBreakPointNormalizer = (l.isMint && l.isInput) || (!l.isMint && !l.isInput)
                         ? amountToNextBreakPointWithFees
                         : l.amountToNextBreakPoint;
                     if (amountToNextBreakPointNormalizer >= amountStable) {
@@ -189,12 +208,7 @@ library LibSwapper {
                                 int256(2 * amountToNextBreakPointNormalizer)
                         );
                         return
-                            amount +
-                            (
-                                (quoteType == QuoteType.MintExactOutput || quoteType == QuoteType.BurnExactOutput)
-                                    ? invertFee(amountStable, midFee)
-                                    : applyFee(amountStable, midFee)
-                            );
+                            amount + ((!l.isInput) ? invertFee(amountStable, midFee) : applyFee(amountStable, midFee));
                     } else {
                         amountStable -= amountToNextBreakPointNormalizer;
                         amount += (_isInput(quoteType) ? l.amountToNextBreakPoint : amountToNextBreakPointWithFees);
@@ -203,6 +217,7 @@ library LibSwapper {
                     }
                 }
             }
+            // Now i == n-1 so we are in an area where fees are constant
             return
                 amount +
                 (

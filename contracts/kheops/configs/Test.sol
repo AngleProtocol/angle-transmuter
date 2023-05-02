@@ -52,16 +52,17 @@ contract Test {
         xMintFee[0] = uint64(0);
         xMintFee[1] = uint64((40 * BASE_9) / 100);
         xMintFee[2] = uint64((45 * BASE_9) / 100);
-        xMintFee[3] = uint64(BASE_9);
+        xMintFee[3] = uint64((70 * BASE_9) / 100);
 
         // Linear at 1%, 3% at 45%, then steep to 100%
-        int64[] memory yMintFee = new int64[](3);
+        int64[] memory yMintFee = new int64[](4);
         yMintFee[0] = int64(uint64(BASE_9 / 100));
         yMintFee[1] = int64(uint64(BASE_9 / 100));
         yMintFee[2] = int64(uint64((3 * BASE_9) / 100));
         yMintFee[3] = int64(uint64(BASE_9));
 
         Setters.setFees(eur_A.collateral, xMintFee, yMintFee, true);
+        Setters.togglePause(eur_A.collateral, PauseType.Mint);
 
         uint64[] memory xBurnFee = new uint64[](4);
         xBurnFee[0] = uint64(BASE_9);
@@ -70,18 +71,116 @@ contract Test {
         xBurnFee[3] = uint64(0);
 
         // Linear at 1%, 3% at 35%, then steep to 100%
-        int64[] memory yBurnFee = new int64[](3);
+        int64[] memory yBurnFee = new int64[](4);
         yBurnFee[0] = int64(uint64(BASE_9 / 100));
         yBurnFee[1] = int64(uint64(BASE_9 / 100));
         yBurnFee[2] = int64(uint64((3 * BASE_9) / 100));
         yBurnFee[3] = int64(uint64(BASE_9));
 
         Setters.setFees(eur_A.collateral, xBurnFee, yBurnFee, false);
-
-        // Unpause
-        Setters.togglePause(eur_A.collateral, PauseType.Mint);
         Setters.togglePause(eur_A.collateral, PauseType.Burn);
 
+        // Setup second collateral
+        Setters.addCollateral(eur_B.collateral);
+        circuitChainlink = new AggregatorV3Interface[](1);
+        stalePeriods = new uint32[](1);
+        circuitChainIsMultiplied = new uint8[](1);
+        chainlinkDecimals = new uint8[](1);
+        circuitChainlink[0] = AggregatorV3Interface(eur_B.oracle);
+        stalePeriods[0] = 1 hours;
+        circuitChainIsMultiplied[0] = 1;
+        chainlinkDecimals[0] = 8;
+        readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals);
+        Setters.setOracle(
+            eur_B.collateral,
+            abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleQuoteType.UNIT, OracleTargetType.STABLE, readData),
+            ""
+        );
+
+        // Fees
+        xMintFee = new uint64[](4);
+        xMintFee[0] = uint64(0);
+        xMintFee[1] = uint64((40 * BASE_9) / 100);
+        xMintFee[2] = uint64((42 * BASE_9) / 100);
+        xMintFee[3] = uint64((70 * BASE_9) / 100);
+
+        // Linear at 1%, 5% at 42%, then steep to 100%
+        yMintFee = new int64[](4);
+        yMintFee[0] = int64(uint64(BASE_9 / 100));
+        yMintFee[1] = int64(uint64(BASE_9 / 100));
+        yMintFee[2] = int64(uint64((5 * BASE_9) / 100));
+        yMintFee[3] = int64(uint64(BASE_9));
+
+        Setters.setFees(eur_B.collateral, xMintFee, yMintFee, true);
+        Setters.togglePause(eur_B.collateral, PauseType.Mint);
+
+        xBurnFee = new uint64[](4);
+        xBurnFee[0] = uint64(BASE_9);
+        xBurnFee[1] = uint64((40 * BASE_9) / 100);
+        xBurnFee[2] = uint64((37 * BASE_9) / 100);
+        xBurnFee[3] = uint64(0);
+
+        // Linear at 1%, 5% at 37%, then steep to 100%
+        yBurnFee = new int64[](4);
+        yBurnFee[0] = int64(uint64(BASE_9 / 100));
+        yBurnFee[1] = int64(uint64(BASE_9 / 100));
+        yBurnFee[2] = int64(uint64((5 * BASE_9) / 100));
+        yBurnFee[3] = int64(uint64(BASE_9));
+
+        Setters.setFees(eur_B.collateral, xBurnFee, yBurnFee, false);
+        Setters.togglePause(eur_B.collateral, PauseType.Burn);
+
+        // Setup third collateral
+        Setters.addCollateral(eur_Y.collateral);
+        circuitChainlink = new AggregatorV3Interface[](1);
+        stalePeriods = new uint32[](1);
+        circuitChainIsMultiplied = new uint8[](1);
+        chainlinkDecimals = new uint8[](1);
+        circuitChainlink[0] = AggregatorV3Interface(eur_Y.oracle);
+        stalePeriods[0] = 1 hours;
+        circuitChainIsMultiplied[0] = 1;
+        chainlinkDecimals[0] = 8;
+        readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals);
+        Setters.setOracle(
+            eur_Y.collateral,
+            abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleQuoteType.UNIT, OracleTargetType.STABLE, readData),
+            ""
+        );
+
+        // Fees
+        xMintFee = new uint64[](4);
+        xMintFee[0] = uint64(0);
+        xMintFee[1] = uint64((40 * BASE_9) / 100);
+        xMintFee[2] = uint64((42 * BASE_9) / 100);
+        xMintFee[3] = uint64((70 * BASE_9) / 100);
+
+        // Linear at 1%, 5% at 42%, then steep to 100%
+        yMintFee = new int64[](4);
+        yMintFee[0] = int64(uint64(BASE_9 / 100));
+        yMintFee[1] = int64(uint64(BASE_9 / 100));
+        yMintFee[2] = int64(uint64((5 * BASE_9) / 100));
+        yMintFee[3] = int64(uint64(BASE_9));
+
+        Setters.setFees(eur_Y.collateral, xMintFee, yMintFee, true);
+        Setters.togglePause(eur_Y.collateral, PauseType.Mint);
+
+        xBurnFee = new uint64[](4);
+        xBurnFee[0] = uint64(BASE_9);
+        xBurnFee[1] = uint64((40 * BASE_9) / 100);
+        xBurnFee[2] = uint64((37 * BASE_9) / 100);
+        xBurnFee[3] = uint64(0);
+
+        // Linear at 1%, 5% at 37%, then steep to 100%
+        yBurnFee = new int64[](4);
+        yBurnFee[0] = int64(uint64(BASE_9 / 100));
+        yBurnFee[1] = int64(uint64(BASE_9 / 100));
+        yBurnFee[2] = int64(uint64((5 * BASE_9) / 100));
+        yBurnFee[3] = int64(uint64(BASE_9));
+
+        Setters.setFees(eur_Y.collateral, xBurnFee, yBurnFee, false);
+        Setters.togglePause(eur_Y.collateral, PauseType.Burn);
+
+        // Redeem
         Setters.togglePause(eur_A.collateral, PauseType.Redeem);
     }
 }

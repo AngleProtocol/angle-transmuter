@@ -23,6 +23,7 @@ error IncorrectFacetCutAction(uint8 _action);
 error InitializationFunctionReverted(address _initializationContractAddress, bytes _calldata);
 error Initializing();
 error InsufficientAllowance();
+error InsufficientReserves();
 error InvalidChainlinkRate();
 error InvalidOracleType();
 error InvalidParam();

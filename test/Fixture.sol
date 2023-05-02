@@ -11,7 +11,7 @@ import { Kheops } from "./utils/Kheops.sol";
 import { AggregatorV3Interface } from "contracts/interfaces/external/chainlink/AggregatorV3Interface.sol";
 import { IAccessControlManager } from "contracts/interfaces/IAccessControlManager.sol";
 import { IAgToken } from "contracts/interfaces/IAgToken.sol";
-import { Test } from "contracts/kheops/configs/Test.sol";
+import { CollateralSetup, Test } from "contracts/kheops/configs/Test.sol";
 import "contracts/utils/Errors.sol";
 import "contracts/utils/Constants.sol";
 
@@ -20,9 +20,13 @@ import { console } from "forge-std/console.sol";
 contract Fixture is Kheops {
     IAccessControlManager public accessControlManager;
     IAgToken public agToken;
-    AggregatorV3Interface public oracle;
 
-    IERC20 public collateral;
+    IERC20 public eur_A;
+    AggregatorV3Interface public oracle_A;
+    IERC20 public eur_B;
+    AggregatorV3Interface public oracle_B;
+    IERC20 public eur_Y;
+    AggregatorV3Interface public oracle_Y;
 
     address public config;
 
@@ -52,18 +56,31 @@ contract Fixture is Kheops {
         // agToken
         agToken = IAgToken(address(new MockTokenPermit("agEUR", "agEUR", 18)));
 
-        // collateral
-        collateral = IERC20(address(new MockTokenPermit("EUROC", "EUROC", 6)));
+        // Collaterals
+        eur_A = IERC20(address(new MockTokenPermit("EUR_A", "EUR_A", 6)));
+        oracle_A = AggregatorV3Interface(address(new MockChainlinkOracle()));
+        MockChainlinkOracle(address(oracle_A)).setLatestAnswer(int256(BASE_8));
 
-        // oracle
-        oracle = AggregatorV3Interface(address(new MockChainlinkOracle()));
-        MockChainlinkOracle(address(oracle)).setLatestAnswer(int256(BASE_18));
+        eur_B = IERC20(address(new MockTokenPermit("EUR_B", "EUR_B", 12)));
+        oracle_B = AggregatorV3Interface(address(new MockChainlinkOracle()));
+        MockChainlinkOracle(address(oracle_B)).setLatestAnswer(int256(BASE_8));
+
+        eur_Y = IERC20(address(new MockTokenPermit("EUR_Y", "EUR_Y", 18)));
+        oracle_Y = AggregatorV3Interface(address(new MockChainlinkOracle()));
+        MockChainlinkOracle(address(oracle_Y)).setLatestAnswer(int256(BASE_8));
 
         // Config
         config = address(new Test());
         deployKheops(
             config,
-            abi.encodeWithSelector(Test.initialize.selector, accessControlManager, agToken, collateral, oracle)
+            abi.encodeWithSelector(
+                Test.initialize.selector,
+                accessControlManager,
+                agToken,
+                CollateralSetup(address(eur_A), address(oracle_A)),
+                CollateralSetup(address(eur_B), address(oracle_B)),
+                CollateralSetup(address(eur_Y), address(oracle_Y))
+            )
         );
     }
 }

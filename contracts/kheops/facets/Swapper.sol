@@ -81,7 +81,7 @@ contract Swapper {
         } else {
             uint256 changeAmount = (amountIn * BASE_27) / ks.normalizer;
             ks.collaterals[tokenOut].normalizedStables -= changeAmount;
-            ks.normalizedStables -= changeAmount;
+            ks.normalizedStables -= changeAmount; // Will overflow if the operation is impossible
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
             LibHelper.transferCollateral(
                 tokenOut,
