@@ -58,17 +58,10 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
 
     // =============================== VIEW FUNCTIONS ==============================
 
-    // Balance solely estimated from LP Tokens here
-    function getBalanceAndValue() external view returns (uint256, uint256) {
-        uint256 lpTokenOwned = _lpTokenBalance();
-
-        /* TODO: estimate best option
-        amountOtherToken = _convertToBase(amountOtherToken, decimalsOtherToken);
-        if (address(oracle) != address(0)) {
-            amountOtherToken = (oracle.read() * amountOtherToken) / _BASE_18;
-        }
-        */
-        return (lpTokenOwned, amountStablecoin + amountOtherToken);
+    // Solely estimated from LP Tokens and oracles
+    function getBalanceAndValue() public view returns (uint256, uint256) {
+        uint256 lpTokenOwned = _lpTokenAndStakedBalance();
+        return (lpTokenOwned, _computeLpTokenValue(lpTokenOwned));
     }
 
     // Assuming here that everything that is controlled is the LP tokens and only outstanding balances are profits
@@ -90,12 +83,9 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
     }
 
     function estimateProfit() public view returns (int256 agTokenProfit) {
-        (, uint256 amountStablecoin, uint256 amountOtherToken) = nav();
-        int128 _indexAgToken = int128(uint128(indexAgToken));
-        agTokenProfit =
-            int256(amountStablecoin) +
-            int256(curvePool.get_dy(1 - _indexAgToken, _indexAgToken, amountOtherToken)) -
-            int256(kheops.getModuleBorrowed(address(this)));
+        (, uint256 totValue) = getBalanceAndValue();
+        // current totValue should be gigantic to be overflowed
+        agTokenProfit = int256(totValue) - int256(kheops.getModuleBorrowed(address(this)));
     }
 
     function hasOtherTokenDepegged() external view returns (bool) {
@@ -163,11 +153,9 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         } else {
             if (addLiquidity) {
                 uint256 agTokenBalance = agToken.balanceOf(address(this));
-                amountAgToken = amountAgToken > agTokenBalance ? amountAgToken - agTokenBalance : 0;
-                if (amountAgToken > 0) {
-                    uint256 amountBorrowed = kheops.borrow(amountAgToken);
-                    agTokenBalance += amountBorrowed;
-                    amountAgToken = amountAgToken > agTokenBalance ? agTokenBalance : amountAgToken;
+                if (amountAgToken > agTokenBalance) {
+                    uint256 amountBorrowed = kheops.borrow(amountAgToken - agTokenBalance);
+                    amountAgToken = agTokenBalance + amountBorrowed;
                 }
                 if (amountAgToken > 0 || amountOtherToken > 0) {
                     _curvePoolDeposit(amountAgToken, amountOtherToken);
@@ -336,7 +324,7 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         view
         returns (uint256 lpTokenOwned, uint256 amountStablecoin, uint256 amountOtherToken)
     {
-        lpTokenOwned = _lpTokenBalance();
+        lpTokenOwned = _lpTokenAndStakedBalance();
         if (lpTokenOwned != 0) {
             uint256 lpSupply = curvePool.totalSupply();
             uint256[2] memory balances = curvePool.get_balances();
@@ -373,22 +361,31 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
     }
 
     function _curvePoolDeposit(uint256 amountAgToken, uint256 amountOtherToken) internal {
-        // TODO slippage
-        if (indexAgToken == 0) curvePool.add_liquidity([amountAgToken, amountOtherToken], 0);
-        else curvePool.add_liquidity([amountOtherToken, amountAgToken], 0);
+        uint256 valueLpToken = _computeLpTokenValue(BASE_18);
+        uint256 amountOtherTokenBase18 = _convertDecimalTo(amountOtherToken, decimalsOtherToken, 18);
+        // valueLpToken is a lower bound on lp token price, such that minAmount will most surely be higher
+        // than the value receive. We need to add a Slippage on top of that to not revert
+        // agToken are considered to always be in base 18
+        uint256 minAmount = ((amountOtherTokenBase18 + amountAgToken) * BASE_9 * slippage) / valueLpToken;
+        if (indexAgToken == 0) curvePool.add_liquidity([amountAgToken, amountOtherToken], minAmount);
+        else curvePool.add_liquidity([amountOtherToken, amountAgToken], minAmount);
     }
 
     function _curvePoolWithdraw(uint256 amountAgToken, uint256 amountOtherToken) internal {
         if (amountAgToken > 0 || amountOtherToken > 0) {
-            // TODO Slippage -> probably a better way to do this
             uint256[2] memory removalAmounts;
             uint256 _indexAgToken = indexAgToken;
             removalAmounts[_indexAgToken] = amountAgToken;
             removalAmounts[1 - indexAgToken] = amountOtherToken;
-            uint256 burntAmount = curvePool.calc_token_amount(removalAmounts, false);
             uint256 lpTokenOwned = _lpTokenBalance();
-            if (burntAmount > lpTokenOwned) curvePool.remove_liquidity(lpTokenOwned, removalAmounts);
-            else curvePool.remove_liquidity_imbalance(removalAmounts, burntAmount);
+            uint256 valueLpToken = _computeLpTokenValue(BASE_18);
+            uint256 amountOtherTokenBase18 = _convertDecimalTo(amountOtherToken, decimalsOtherToken, 18);
+            uint256 maxAmount = ((amountOtherTokenBase18 + amountAgToken) * BASE_18) / valueLpToken;
+            if (maxAmount > lpTokenOwned) {
+                removalAmounts[_indexAgToken] = (removalAmounts[_indexAgToken] * lpTokenOwned) / maxAmount;
+                removalAmounts[1 - _indexAgToken] = (removalAmounts[1 - _indexAgToken] * lpTokenOwned) / maxAmount;
+                curvePool.remove_liquidity(lpTokenOwned, removalAmounts);
+            } else curvePool.remove_liquidity_imbalance(removalAmounts, maxAmount);
         }
     }
 
@@ -444,8 +441,12 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
 
     // ========================== INTERNAL VIEW FUNCTIONS ==========================
 
-    function _lpTokenBalance() internal view returns (uint256) {
+    function _lpTokenAndStakedBalance() internal view returns (uint256) {
         return curvePool.balanceOf(address(this)) + _convexLPStaked() + _stakeDAOLPStaked();
+    }
+
+    function _lpTokenBalance() internal view returns (uint256) {
+        return curvePool.balanceOf(address(this));
     }
 
     /// @notice Get the balance of the Curve LP tokens staked on StakeDAO for the pool
@@ -476,5 +477,14 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
         uint256 myLpSupply
     ) internal pure returns (uint256 tokenWithdrawn) {
         if (totalLpSupply > 0) tokenWithdrawn = (tokenSupply * myLpSupply) / totalLpSupply;
+    }
+
+    // Estimated from external oracles
+    function _computeLpTokenValue(uint256 balanceLpToken) internal view returns (uint256) {
+        uint256 oracleOtherToken = oracle.read();
+        uint256 virtualPrice = curvePool.get_virtual_price();
+        oracleOtherToken = oracleOtherToken < BASE_18 ? oracleOtherToken : BASE_18;
+        // value decimals: lpTokenOwned,oracleOtherToken,virtualPrice are in base 18
+        return (balanceLpToken * virtualPrice * oracleOtherToken) / BASE_36;
     }
 }
