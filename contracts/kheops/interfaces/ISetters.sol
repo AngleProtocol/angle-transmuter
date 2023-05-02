@@ -32,4 +32,6 @@ interface ISetters {
     function setModuleMaxExposure(address moduleAddress, uint64 maxExposure) external;
 
     function setOracle(address collateral, bytes memory oracleConfig, bytes memory oracleStorage) external;
+
+    function updateNormalizer(uint256 amount, bool increase) external returns (uint256);
 }

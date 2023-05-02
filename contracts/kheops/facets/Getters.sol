@@ -20,6 +20,10 @@ contract Getters {
         return s.diamondStorage().accessControlManager;
     }
 
+    function agToken() external view returns (IAgToken) {
+        return s.kheopsStorage().agToken;
+    }
+
     /// @notice Checks whether `admin` has the governor role
     function isGovernor(address admin) external view returns (bool) {
         return Diamond.isGovernor(admin);

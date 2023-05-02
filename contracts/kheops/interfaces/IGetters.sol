@@ -3,11 +3,14 @@
 pragma solidity ^0.8.12;
 
 import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
+import { IAgToken } from "../../interfaces/IAgToken.sol";
 
 interface IGetters {
     function isValidSelector(bytes4 selector) external view returns (bool);
 
     function accessControlManager() external view returns (IAccessControlManager);
+
+    function agToken() external view returns (IAgToken);
 
     function isGovernor(address admin) external view returns (bool);
 

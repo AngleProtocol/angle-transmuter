@@ -45,7 +45,7 @@ import "../utils/Constants.sol";
 
 import "../interfaces/IERC4626.sol";
 import "../interfaces/IAgToken.sol";
-import "../interfaces/IKheops.sol";
+import "../kheops/interfaces/IKheops.sol";
 
 /// @title SavingsVest
 /// @author Angle Labs, Inc.

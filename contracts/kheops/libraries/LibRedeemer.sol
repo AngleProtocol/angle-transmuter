@@ -41,6 +41,8 @@ library LibRedeemer {
         address[] memory depositModuleList = ks.redeemableModuleList;
         uint256 indexCollateral;
         for (uint256 i; i < amounts.length; ++i) {
+            if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
+
             int256 indexFound = Utils.checkForfeit(tokens[i], forfeitTokens);
             if (nbrSubCollaterals[indexCollateral] >= i) ++indexCollateral;
             if (indexFound < 0) {
