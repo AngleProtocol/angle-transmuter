@@ -483,12 +483,13 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
 
     // Estimated from external oracles
     function _computeLpTokenValue(uint256 balanceLpToken) internal view returns (uint256) {
-        uint256 oracleOtherToken;
-        address oracleMem = address(oracle);
-        if (oracleMem != address(0)) oracleOtherToken = oracle.read();
-        else oracleOtherToken = BASE_18;
         uint256 virtualPrice = curvePool.get_virtual_price();
-        oracleOtherToken = oracleOtherToken < BASE_18 ? oracleOtherToken : BASE_18;
+        address oracleMem = address(oracle);
+        uint256 oracleOtherToken = BASE_18;
+        if (oracleMem != address(0)) {
+            oracleOtherToken = IOracle(oracleMem).read();
+            oracleOtherToken = oracleOtherToken < BASE_18 ? oracleOtherToken : BASE_18;
+        }
         // value decimals: lpTokenOwned,oracleOtherToken,virtualPrice are in base 18
         return (balanceLpToken * virtualPrice * oracleOtherToken) / BASE_36;
     }
