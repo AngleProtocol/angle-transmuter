@@ -145,11 +145,12 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
     {
         (isOtherTokenDepegged, addLiquidity, amountAgToken, amountOtherToken) = currentState();
         if (isOtherTokenDepegged) {
-            // TODO: in this case we don't repay the debt, but should we do something particular beyond or just wait
-            // How do we repay debt in this case
             _unstakeLPTokens();
-            uint256[2] memory minAmounts;
-            curvePool.remove_liquidity(_lpTokenBalance(), minAmounts);
+            uint256 balanceLpToken = _lpTokenBalance();
+            uint256 valueLpToken = _computeLpTokenValue(balanceLpToken);
+            uint256 minAmount = (valueLpToken * slippage) / BASE_9;
+            curvePool.remove_liquidity_one_coin(balanceLpToken, int128(int16(indexAgToken)), minAmount);
+            kheops.repay(agToken.balanceOf(address(this)));
         } else {
             if (addLiquidity) {
                 uint256 agTokenBalance = agToken.balanceOf(address(this));
@@ -298,6 +299,7 @@ contract CurveModule is ICurveModule, CurveModuleStorage {
             if (param > depositThreshold) revert InvalidParam();
             withdrawThreshold = param;
         } else if (what == "O") oracleDeviationThreshold = param;
+        else if (what == "S") slippage = param;
     }
 
     function setConvexStakeData(
