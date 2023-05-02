@@ -50,26 +50,11 @@ contract Lender is AccessControl {
         if (amountCorrected > currentR) {
             module.normalizedStables = 0;
             ks.normalizedStables -= currentR;
-            // Potential rounding issue
+            // TODO: Potential rounding issue here
             LibRedeemer.updateNormalizer(amount - (currentR * normalizer) / BASE_27, false);
         } else {
             module.normalizedStables -= amountCorrected;
             ks.normalizedStables -= amountCorrected;
-        }
-    }
-
-    /// @dev amount is an absolute amount (like not normalized) -> need to pay attention to this
-    /// Why not normalising directly here? easier for Governance
-    function adjustReserve(address collateral, uint256 amount, bool addOrRemove) external onlyGovernor {
-        KheopsStorage storage ks = s.kheopsStorage();
-        Collateral storage collatInfo = ks.collaterals[collateral];
-        if (collatInfo.decimals == 0) revert NotCollateral();
-        if (addOrRemove) {
-            collatInfo.normalizedStables += amount;
-            ks.normalizedStables += amount;
-        } else {
-            collatInfo.normalizedStables -= amount;
-            ks.normalizedStables -= amount;
         }
     }
 }
