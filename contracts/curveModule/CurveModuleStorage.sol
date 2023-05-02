@@ -64,6 +64,9 @@ contract CurveModuleStorage is Initializable, AccessControl, FunctionUtils {
     /// @notice Deviation threshold from which the other token is considered as depegged and liquidity must be pulled
     uint64 public oracleDeviationThreshold;
 
+    /// @notice Slippage authorization when depositing/withdrawing from the pool
+    uint64 public slippage;
+
     /// @notice Target proportion of `AgToken` in the pool
     uint64 public depositThreshold;
 
