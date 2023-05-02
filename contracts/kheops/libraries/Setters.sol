@@ -112,13 +112,15 @@ library Setters {
             // Checking that the mint fee is still bigger than the smallest burn fee everywhere
             for (uint256 i; i < length; ++i) {
                 int64[] memory burnFees = ks.collaterals[collateralListMem[i]].yFeeBurn;
-                if (burnFees[0] + yFee[0] < 0) revert InvalidParams();
+                if ((int256(BASE_9) - burnFees[0]) * (int256(BASE_9) - yFee[0]) >= int256(BASE_18))
+                    revert InvalidParams();
             }
         }
         if (setter == 1 && yFee[0] < 0) {
             for (uint256 i; i < length; ++i) {
                 int64[] memory mintFees = ks.collaterals[collateralListMem[i]].yFeeMint;
-                if (mintFees[0] + yFee[0] < 0) revert InvalidParams();
+                if ((int256(BASE_9) - mintFees[0]) * (int256(BASE_9) - yFee[0]) >= int256(BASE_18))
+                    revert InvalidParams();
             }
         }
     }
