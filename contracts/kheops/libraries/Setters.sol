@@ -79,20 +79,30 @@ library Setters {
         }
     }
 
-    // TODO: with burn fees in decreasing mode
+    /// @notice Set fees for {mint}/{burn}/{redeem} these are all piecewise linear function
+    /// @param xFee Inflexion points array
+    /// @param yFee Fees associated to the inflexion point
+    /// @param setter Whether to set the mint fees (=0), the burn fees (=1) or the redeem fees(=2)
+    /// @dev Mint/redeem xFee should be increasing and burn should be decreasing
+    /// @dev Mint/redeem yFee should be increasing in their respective xFee referential
     function checkFees(uint64[] memory xFee, int64[] memory yFee, uint8 setter) internal view {
         uint256 n = xFee.length;
         if (n != yFee.length || n == 0) revert InvalidParams();
+
+        // All inflexion point mint xFee should be in ]0,BASE_9[
+        // All inflexion point burn xFee should be in [0,BASE_9[
+        // yFee should all be <= BASE_9
+        if (
+            (setter == 0 && (xFee[n - 1] >= BASE_9 || xFee[0] != 0)) ||
+            (setter == 1 && (xFee[n - 1] < 0 || xFee[0] != BASE_9)) ||
+            yFee[n - 1] > int256(BASE_9)
+        ) revert InvalidParams();
+
         for (uint256 i = 0; i < n - 1; ++i) {
-            if (
-                (xFee[i] >= xFee[i + 1]) ||
-                (setter == 0 && (yFee[i + 1] < yFee[i])) ||
-                (setter == 1 && (yFee[i + 1] > yFee[i])) ||
-                (setter == 2 && yFee[i] < 0) ||
-                xFee[i] > uint64(BASE_9) ||
-                yFee[i] < -int64(uint64(BASE_9)) ||
-                yFee[i] > int64(uint64(BASE_9))
-            ) revert InvalidParams();
+            // xFee should be strictly monotonic, yFee monotonic (for setter == (0 || 1)) and yFee>=0 for redeem
+            if (setter == 0 && (xFee[i] >= xFee[i + 1] || (yFee[i + 1] < yFee[i]))) revert InvalidParams();
+            if (setter == 1 && (xFee[i] <= xFee[i + 1] || (yFee[i + 1] < yFee[i]))) revert InvalidParams();
+            if (setter == 2 && (xFee[i] >= xFee[i + 1] || yFee[i] < 0)) revert InvalidParams();
         }
 
         KheopsStorage storage ks = s.kheopsStorage();
@@ -102,13 +112,13 @@ library Setters {
             // Checking that the mint fee is still bigger than the smallest burn fee everywhere
             for (uint256 i; i < length; ++i) {
                 int64[] memory burnFees = ks.collaterals[collateralListMem[i]].yFeeBurn;
-                if (burnFees[burnFees.length - 1] + yFee[0] < 0) revert InvalidParams();
+                if (burnFees[0] + yFee[0] < 0) revert InvalidParams();
             }
         }
-        if (setter == 1 && yFee[n - 1] < 0) {
+        if (setter == 1 && yFee[0] < 0) {
             for (uint256 i; i < length; ++i) {
                 int64[] memory mintFees = ks.collaterals[collateralListMem[i]].yFeeMint;
-                if (mintFees[0] + yFee[n - 1] < 0) revert InvalidParams();
+                if (mintFees[0] + yFee[0] < 0) revert InvalidParams();
             }
         }
     }
