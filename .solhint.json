@@ -3,7 +3,7 @@
   "plugins": ["prettier"],
   "rules": {
     "avoid-call-value": "warn",
-    "avoid-low-level-calls": "warn",
+    "avoid-low-level-calls": "off",
     "avoid-tx-origin": "warn",
     "const-name-snakecase": "warn",
     "contract-name-camelcase": "warn",
@@ -18,6 +18,8 @@
     "compiler-version": "off",
     "private-vars-leading-underscore": "warn",
     "reentrancy": "warn",
+    "no-inline-assembly": "off",
+    "no-complex-fallback": "off",
     "reason-string": "off",
     "func-visibility": ["warn", { "ignoreConstructors": true }]
   }

@@ -38,23 +38,8 @@ library Setters {
         collatInfo.oracleStorage = oracleStorage;
     }
 
-    function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) internal {
-        KheopsStorage storage ks = s.kheopsStorage();
-        Collateral storage collatInfo = ks.collaterals[collateral];
-        if (collatInfo.decimals == 0) revert NotCollateral();
-        uint8 setter;
-        if (!mint) setter = 1;
-        _checkFees(xFee, yFee, setter);
-        if (mint) {
-            collatInfo.xFeeMint = xFee;
-            collatInfo.yFeeMint = yFee;
-        } else {
-            collatInfo.xFeeBurn = xFee;
-            collatInfo.yFeeBurn = yFee;
-        }
-    }
-
-    function _checkFees(uint64[] memory xFee, int64[] memory yFee, uint8 setter) private view {
+    // TODO: with burn fees in decreasing mode
+    function checkFees(uint64[] memory xFee, int64[] memory yFee, uint8 setter) internal view {
         uint256 n = xFee.length;
         if (n != yFee.length || n == 0) revert InvalidParams();
         for (uint256 i = 0; i < n - 1; ++i) {

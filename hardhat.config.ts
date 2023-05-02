@@ -185,7 +185,7 @@ const config: HardhatUserConfig = {
   },
   spdxLicenseIdentifier: {
     overwrite: true,
-    runOnCompile: true,
+    runOnCompile: false,
   },
   abiExporter: {
     path: './export/abi',
