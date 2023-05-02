@@ -109,17 +109,20 @@ library Setters {
         address[] memory collateralListMem = ks.collateralList;
         uint256 length = collateralListMem.length;
         if (setter == 0 && yFee[0] < 0) {
-            // Checking that the mint fee is still bigger than the smallest burn fee everywhere
+            // To not be exposed to direct arbitrage - an account atomically minting and then burning (from any collateral) -
+            // we need to ensure that any product of fees will give you less than the initial value
+            // if setter = 0, it can be mathematically expressed by (1-min_c(burnFee_c))(1-mintFee[0])<=1
             for (uint256 i; i < length; ++i) {
                 int64[] memory burnFees = ks.collaterals[collateralListMem[i]].yFeeBurn;
-                if ((int256(BASE_9) - burnFees[0]) * (int256(BASE_9) - yFee[0]) >= int256(BASE_18))
+                if ((int256(BASE_9) - burnFees[0]) * (int256(BASE_9) - yFee[0]) > int256(BASE_18))
                     revert InvalidParams();
             }
         }
+        // if setter = 1, it can be mathematically expressed by (1-min_c(mintFee_c))(1-burnFee[0])<=1
         if (setter == 1 && yFee[0] < 0) {
             for (uint256 i; i < length; ++i) {
                 int64[] memory mintFees = ks.collaterals[collateralListMem[i]].yFeeMint;
-                if ((int256(BASE_9) - mintFees[0]) * (int256(BASE_9) - yFee[0]) >= int256(BASE_18))
+                if ((int256(BASE_9) - mintFees[0]) * (int256(BASE_9) - yFee[0]) > int256(BASE_18))
                     revert InvalidParams();
             }
         }
