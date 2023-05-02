@@ -1,9 +1,11 @@
-// SPDX-License-Identifier: CC0-1.0
+// SPDX-License-Identifier: GPL-3.0
 
 pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { Diamond } from "../libraries/Diamond.sol";
 
 import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
 
@@ -12,6 +14,7 @@ import { LibManager } from "../libraries/LibManager.sol";
 import { Setters as Lib } from "../libraries/Setters.sol";
 import { Helper as LibHelper } from "../libraries/Helper.sol";
 // import { Utils } from "../libraries/Utils.sol";
+import "../libraries/LibRedeemer.sol";
 import { AccessControl } from "../utils/AccessControl.sol";
 import { Oracle } from "../libraries/Oracle.sol";
 import "../../utils/Constants.sol";
@@ -21,6 +24,7 @@ import "../Storage.sol";
 
 contract Setters is AccessControl {
     using SafeERC20 for IERC20;
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
@@ -80,6 +84,21 @@ contract Setters is AccessControl {
         Lib.addCollateral(collateral);
     }
 
+    /// @dev amount is an absolute amount (like not normalized) -> need to pay attention to this
+    /// Why not normalising directly here? easier for Governance
+    function adjustReserve(address collateral, uint256 amount, bool addOrRemove) external onlyGovernor {
+        KheopsStorage storage ks = s.kheopsStorage();
+        Collateral storage collatInfo = ks.collaterals[collateral];
+        if (collatInfo.decimals == 0) revert NotCollateral();
+        if (addOrRemove) {
+            collatInfo.normalizedStables += amount;
+            ks.normalizedStables += amount;
+        } else {
+            collatInfo.normalizedStables -= amount;
+            ks.normalizedStables -= amount;
+        }
+    }
+
     function addModule(address moduleAddress, address token, uint8 redeemable) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
         Module storage module = ks.modules[moduleAddress];
@@ -133,7 +152,7 @@ contract Setters is AccessControl {
         if (collatInfo.decimals == 0) revert NotCollateral();
         uint8 setter;
         if (!mint) setter = 1;
-        // _checkFees(xFee, yFee, setter);
+        Lib.checkFees(xFee, yFee, setter);
         if (mint) {
             collatInfo.xFeeMint = xFee;
             collatInfo.yFeeMint = yFee;
@@ -157,43 +176,17 @@ contract Setters is AccessControl {
         module.maxExposure = maxExposure;
     }
 
-    function setOracle(address collateral, bytes memory oracleConfig) external onlyGovernor {
-        Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
-        if (collatInfo.decimals == 0) revert NotCollateral();
-        if (keccak256(oracleConfig) != keccak256("0x")) Oracle.readMint(oracleConfig, collatInfo.oracleStorage);
-        collatInfo.oracleConfig = oracleConfig;
+    function setOracle(
+        address collateral,
+        bytes memory oracleConfig,
+        bytes memory oracleStorage
+    ) external onlyGovernor {
+        Lib.setOracle(collateral, oracleConfig, oracleStorage);
     }
 
-    // function _checkFees(uint64[] memory xFee, uint64[] memory yFee, uint8 setter) internal view {
-    //     uint256 n = xFee.length;
-    //     if (n != yFee.length || n == 0) revert InvalidParams();
-    //     for (uint256 i = 0; i < n - 1; ++i) {
-    //         if (
-    //             (xFee[i] >= xFee[i + 1]) ||
-    //             (setter == 0 && (yFee[i + 1] < yFee[i])) ||
-    //             (setter == 1 && (yFee[i + 1] > yFee[i])) ||
-    //             (setter == 2 && yFee[i] < 0) ||
-    //             xFee[i] > uint64(BASE_9) ||
-    //             yFee[i] < -int64(uint64(BASE_9)) ||
-    //             yFee[i] > int64(uint64(BASE_9))
-    //         ) revert InvalidParams();
-    //     }
-
-    //     KheopsStorage storage ks = s.kheopsStorage();
-    //     address[] memory collateralListMem = ks.collateralList;
-    //     uint256 length = collateralListMem.length;
-    //     if (setter == 0 && yFee[0] < 0) {
-    //         // Checking that the mint fee is still bigger than the smallest burn fee everywhere
-    //         for (uint256 i; i < length; ++i) {
-    //             int64[] memory burnFees = ks.collaterals[collateralListMem[i]].yFeeBurn;
-    //             if (burnFees[burnFees.length - 1] + yFee[0] < 0) revert InvalidParams();
-    //         }
-    //     }
-    //     if (setter == 1 && yFee[n - 1] < 0) {
-    //         for (uint256 i; i < length; ++i) {
-    //             int64[] memory mintFees = ks.collaterals[collateralListMem[i]].yFeeMint;
-    //             if (mintFees[0] + yFee[n - 1] < 0) revert InvalidParams();
-    //         }
-    //     }
-    // }
+    function updateNormalizer(uint256 amount, bool increase) external returns (uint256) {
+        // Trusted addresses can call the function (like a savings contract in the case of a LSD)
+        if (!Diamond.isGovernor(msg.sender) && s.kheopsStorage().isTrusted[msg.sender] == 0) revert NotTrusted();
+        return LibRedeemer.updateNormalizer(amount, increase);
+    }
 }

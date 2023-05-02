@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: CC0-1.0
+// SPDX-License-Identifier: GPL-3.0
 
 pragma solidity ^0.8.12;
 
 import { Storage as s } from "../libraries/Storage.sol";
 import { AccessControl } from "../utils/AccessControl.sol";
 import { Diamond } from "../libraries/Diamond.sol";
+import "../libraries/LibRedeemer.sol";
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 
@@ -38,31 +39,22 @@ contract Lender is AccessControl {
         return amount;
     }
 
-    function repay(uint256 amount) external returns (uint256) {
+    function repay(uint256 amount) external {
         KheopsStorage storage ks = s.kheopsStorage();
         Module storage module = ks.modules[msg.sender];
         if (module.initialized == 0) revert NotModule();
+        uint256 normalizer = ks.normalizer;
+        uint256 amountCorrected = (amount * BASE_27) / normalizer;
         uint256 currentR = module.normalizedStables;
-        amount = amount > currentR ? currentR : amount;
-        uint256 amountCorrected = (amount * BASE_27) / ks.normalizer;
-        module.normalizedStables -= amountCorrected;
-        ks.normalizedStables -= amountCorrected;
         IAgToken(ks.agToken).burnSelf(amount, msg.sender);
-        return amount;
-    }
-
-    /// @dev amount is an absolute amount (like not normalized) -> need to pay attention to this
-    /// Why not normalising directly here? easier for Governance
-    function adjustReserve(address collateral, uint256 amount, bool addOrRemove) external onlyGovernor {
-        KheopsStorage storage ks = s.kheopsStorage();
-        Collateral storage collatInfo = ks.collaterals[collateral];
-        if (collatInfo.decimals == 0) revert NotCollateral();
-        if (addOrRemove) {
-            collatInfo.normalizedStables += amount;
-            ks.normalizedStables += amount;
+        if (amountCorrected > currentR) {
+            module.normalizedStables = 0;
+            ks.normalizedStables -= currentR;
+            // TODO: Potential rounding issue here
+            LibRedeemer.updateNormalizer(amount - (currentR * normalizer) / BASE_27, false);
         } else {
-            collatInfo.normalizedStables -= amount;
-            ks.normalizedStables -= amount;
+            module.normalizedStables -= amountCorrected;
+            ks.normalizedStables -= amountCorrected;
         }
     }
 }

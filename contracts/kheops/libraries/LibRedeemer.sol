@@ -32,7 +32,7 @@ library LibRedeemer {
         if (block.timestamp < deadline) revert TooLate();
         uint256[] memory nbrSubCollaterals;
         (tokens, amounts, nbrSubCollaterals) = quoteRedemptionCurve(amount);
-        LibSwapper.updateAccumulator(amount, false);
+        updateNormalizer(amount, false);
 
         // Settlement - burn the stable and send the redeemable tokens
         IAgToken(ks.agToken).burnSelf(amount, msg.sender);
@@ -148,5 +148,33 @@ library LibRedeemer {
         reservesValue = (ks.normalizedStables * ks.normalizer) / BASE_27;
         if (reservesValue > 0) collatRatio = uint64((totalCollateralization * BASE_9) / reservesValue);
         else collatRatio = type(uint64).max;
+    }
+
+    function updateNormalizer(uint256 amount, bool increase) internal returns (uint256 newAccumulatorValue) {
+        KheopsStorage storage ks = s.kheopsStorage();
+        uint256 _normalizer = ks.normalizer;
+        uint256 _reserves = ks.normalizedStables;
+        if (_reserves == 0) newAccumulatorValue = BASE_27;
+        else if (increase) {
+            newAccumulatorValue = _normalizer + (amount * BASE_27) / _reserves;
+        } else {
+            newAccumulatorValue = _normalizer - (amount * BASE_27) / _reserves;
+            // TODO check if it remains consistent when it gets too small
+            if (newAccumulatorValue == 0) {
+                address[] memory _collateralList = ks.collateralList;
+                address[] memory depositModuleList = ks.redeemableModuleList;
+                uint256 collateralListLength = _collateralList.length;
+                uint256 depositModuleListLength = depositModuleList.length;
+                for (uint256 i; i < collateralListLength; ++i) {
+                    ks.collaterals[_collateralList[i]].normalizedStables = 0;
+                }
+                for (uint256 i; i < depositModuleListLength; ++i) {
+                    ks.modules[depositModuleList[i]].normalizedStables = 0;
+                }
+                ks.normalizedStables = 0;
+                newAccumulatorValue = BASE_27;
+            }
+        }
+        ks.normalizer = newAccumulatorValue;
     }
 }

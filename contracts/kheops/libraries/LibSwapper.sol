@@ -55,44 +55,6 @@ library LibSwapper {
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
             LibHelper.transferCollateral(tokenOut, collatInfo.hasManager > 0 ? tokenOut : address(0), to, amount, true);
         }
-        // if (collatInfo.hasOracleFallback > 0) {
-        //     Oracle.updateInternalData(
-        //         mint ? tokenIn : tokenOut,
-        //         collatInfo.oracle,
-        //         collatInfo.oracleStorage,
-        //         amountIn,
-        //         amountOut,
-        //         mint
-        //     );
-        // }
-    }
-
-    function updateAccumulator(uint256 amount, bool increase) internal returns (uint256 newAccumulatorValue) {
-        KheopsStorage storage ks = s.kheopsStorage();
-        uint256 _normalizer = ks.normalizer;
-        uint256 _reserves = ks.normalizedStables;
-        if (_reserves == 0) newAccumulatorValue = BASE_27;
-        else if (increase) {
-            newAccumulatorValue = _normalizer + (amount * BASE_27) / _reserves;
-        } else {
-            newAccumulatorValue = _normalizer - (amount * BASE_27) / _reserves;
-            // TODO check if it remains consistent when it gets too small
-            if (newAccumulatorValue == 0) {
-                address[] memory _collateralList = ks.collateralList;
-                address[] memory depositModuleList = ks.redeemableModuleList;
-                uint256 collateralListLength = _collateralList.length;
-                uint256 depositModuleListLength = depositModuleList.length;
-                for (uint256 i; i < collateralListLength; ++i) {
-                    ks.collaterals[_collateralList[i]].normalizedStables = 0;
-                }
-                for (uint256 i; i < depositModuleListLength; ++i) {
-                    ks.modules[depositModuleList[i]].normalizedStables = 0;
-                }
-                ks.normalizedStables = 0;
-                newAccumulatorValue = BASE_27;
-            }
-        }
-        ks.normalizer = newAccumulatorValue;
     }
 
     // TODO put comment on setter to showcase this feature
@@ -138,9 +100,9 @@ library LibSwapper {
     // quoteType can be {1,2,3,4}
     // 1 - represent a mint with a given number for stables,
     // in this case amountStable represent the net stable that should be minted
-    // 2 - represent a mint with a colateral equivalent amount of stables,
+    // 2 - represent a mint with a collateral equivalent amount of stables,
     // in this case amountStable represent the brut stable (not accounting for fees) that should be minted
-    // 3 - represent a burn with a colateral equivalent amount of stables
+    // 3 - represent a burn with a collateral equivalent amount of stables
     // in this case amountStable represent the brut stable (not accounting for fees) that should be burnt
     // 4 - represent a burn with a given number for stables
     // in this case amountStable represent the net stable that should be burnt
@@ -252,9 +214,9 @@ library LibSwapper {
         else amountOut = ((BASE_9 + uint256(int256(-fees))) * amountIn) / BASE_9;
     }
 
-    function invertFee(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
-        if (fees >= 0) amountOut = (BASE_9 * amountIn) / (BASE_9 - uint256(int256(fees)));
-        else amountOut = (BASE_9 * amountIn) / (BASE_9 + uint256(int256(-fees)));
+    function invertFee(uint256 amountOut, int64 fees) internal pure returns (uint256 amountIn) {
+        if (fees >= 0) amountIn = (BASE_9 * amountOut) / (BASE_9 - uint256(int256(fees)));
+        else amountIn = (BASE_9 * amountOut) / (BASE_9 + uint256(int256(-fees)));
     }
 
     // To call this function the collateral must be whitelisted and therefore the oracleData must be set
@@ -274,7 +236,6 @@ library LibSwapper {
             } else (oracleValue, deviationValue) = Oracle.readBurn(oracleConfig, oracleStorage);
             if (deviationValue < deviation) deviation = deviationValue;
         }
-        // Renormalizing by an overestimated value of the oracle
         return (deviation * BASE_18) / oracleValue;
     }
 

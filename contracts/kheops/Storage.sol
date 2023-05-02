@@ -38,7 +38,8 @@ struct DiamondStorage {
 
 enum OracleReadType {
     CHAINLINK_FEEDS,
-    EXTERNAL
+    EXTERNAL,
+    NO_ORACLE
 }
 
 enum OracleQuoteType {
@@ -48,8 +49,7 @@ enum OracleQuoteType {
 
 enum OracleTargetType {
     STABLE,
-    WSTETH,
-    BONDS
+    WSTETH
 }
 
 struct Collateral {
