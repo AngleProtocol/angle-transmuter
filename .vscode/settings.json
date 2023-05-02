@@ -8,5 +8,7 @@
   },
   "editor.codeActionsOnSave": {
     "source.fixAll": true
-  }
+  },
+  "slither.solcPath": "",
+  "slither.hiddenDetectors": []
 }

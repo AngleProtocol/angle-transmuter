@@ -20,9 +20,9 @@ contract Test {
     function initialize(
         IAccessControlManager _accessControlManager,
         address _agToken,
-        CollateralSetup calldata eur_A,
-        CollateralSetup calldata eur_B,
-        CollateralSetup calldata eur_Y
+        CollateralSetup calldata eurA,
+        CollateralSetup calldata eurB,
+        CollateralSetup calldata eurY
     ) external {
         Setters.setAccessControlManager(_accessControlManager);
 
@@ -31,18 +31,18 @@ contract Test {
         ks.agToken = IAgToken(_agToken);
 
         // Setup first collateral
-        Setters.addCollateral(eur_A.collateral);
+        Setters.addCollateral(eurA.collateral);
         AggregatorV3Interface[] memory circuitChainlink = new AggregatorV3Interface[](1);
         uint32[] memory stalePeriods = new uint32[](1);
         uint8[] memory circuitChainIsMultiplied = new uint8[](1);
         uint8[] memory chainlinkDecimals = new uint8[](1);
-        circuitChainlink[0] = AggregatorV3Interface(eur_A.oracle);
+        circuitChainlink[0] = AggregatorV3Interface(eurA.oracle);
         stalePeriods[0] = 1 hours;
         circuitChainIsMultiplied[0] = 1;
         chainlinkDecimals[0] = 8;
         bytes memory readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals);
         Setters.setOracle(
-            eur_A.collateral,
+            eurA.collateral,
             abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleQuoteType.UNIT, OracleTargetType.STABLE, readData),
             ""
         );
@@ -61,8 +61,8 @@ contract Test {
         yMintFee[2] = int64(uint64((3 * BASE_9) / 100));
         yMintFee[3] = int64(uint64(BASE_9));
 
-        Setters.setFees(eur_A.collateral, xMintFee, yMintFee, true);
-        Setters.togglePause(eur_A.collateral, PauseType.Mint);
+        Setters.setFees(eurA.collateral, xMintFee, yMintFee, true);
+        Setters.togglePause(eurA.collateral, PauseType.Mint);
 
         uint64[] memory xBurnFee = new uint64[](4);
         xBurnFee[0] = uint64(BASE_9);
@@ -77,22 +77,22 @@ contract Test {
         yBurnFee[2] = int64(uint64((3 * BASE_9) / 100));
         yBurnFee[3] = int64(uint64(BASE_9));
 
-        Setters.setFees(eur_A.collateral, xBurnFee, yBurnFee, false);
-        Setters.togglePause(eur_A.collateral, PauseType.Burn);
+        Setters.setFees(eurA.collateral, xBurnFee, yBurnFee, false);
+        Setters.togglePause(eurA.collateral, PauseType.Burn);
 
         // Setup second collateral
-        Setters.addCollateral(eur_B.collateral);
+        Setters.addCollateral(eurB.collateral);
         circuitChainlink = new AggregatorV3Interface[](1);
         stalePeriods = new uint32[](1);
         circuitChainIsMultiplied = new uint8[](1);
         chainlinkDecimals = new uint8[](1);
-        circuitChainlink[0] = AggregatorV3Interface(eur_B.oracle);
+        circuitChainlink[0] = AggregatorV3Interface(eurB.oracle);
         stalePeriods[0] = 1 hours;
         circuitChainIsMultiplied[0] = 1;
         chainlinkDecimals[0] = 8;
         readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals);
         Setters.setOracle(
-            eur_B.collateral,
+            eurB.collateral,
             abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleQuoteType.UNIT, OracleTargetType.STABLE, readData),
             ""
         );
@@ -111,8 +111,8 @@ contract Test {
         yMintFee[2] = int64(uint64((5 * BASE_9) / 100));
         yMintFee[3] = int64(uint64(BASE_9));
 
-        Setters.setFees(eur_B.collateral, xMintFee, yMintFee, true);
-        Setters.togglePause(eur_B.collateral, PauseType.Mint);
+        Setters.setFees(eurB.collateral, xMintFee, yMintFee, true);
+        Setters.togglePause(eurB.collateral, PauseType.Mint);
 
         xBurnFee = new uint64[](4);
         xBurnFee[0] = uint64(BASE_9);
@@ -127,22 +127,22 @@ contract Test {
         yBurnFee[2] = int64(uint64((5 * BASE_9) / 100));
         yBurnFee[3] = int64(uint64(BASE_9));
 
-        Setters.setFees(eur_B.collateral, xBurnFee, yBurnFee, false);
-        Setters.togglePause(eur_B.collateral, PauseType.Burn);
+        Setters.setFees(eurB.collateral, xBurnFee, yBurnFee, false);
+        Setters.togglePause(eurB.collateral, PauseType.Burn);
 
         // Setup third collateral
-        Setters.addCollateral(eur_Y.collateral);
+        Setters.addCollateral(eurY.collateral);
         circuitChainlink = new AggregatorV3Interface[](1);
         stalePeriods = new uint32[](1);
         circuitChainIsMultiplied = new uint8[](1);
         chainlinkDecimals = new uint8[](1);
-        circuitChainlink[0] = AggregatorV3Interface(eur_Y.oracle);
+        circuitChainlink[0] = AggregatorV3Interface(eurY.oracle);
         stalePeriods[0] = 1 hours;
         circuitChainIsMultiplied[0] = 1;
         chainlinkDecimals[0] = 8;
         readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals);
         Setters.setOracle(
-            eur_Y.collateral,
+            eurY.collateral,
             abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleQuoteType.UNIT, OracleTargetType.STABLE, readData),
             ""
         );
@@ -161,8 +161,8 @@ contract Test {
         yMintFee[2] = int64(uint64((5 * BASE_9) / 100));
         yMintFee[3] = int64(uint64(BASE_9));
 
-        Setters.setFees(eur_Y.collateral, xMintFee, yMintFee, true);
-        Setters.togglePause(eur_Y.collateral, PauseType.Mint);
+        Setters.setFees(eurY.collateral, xMintFee, yMintFee, true);
+        Setters.togglePause(eurY.collateral, PauseType.Mint);
 
         xBurnFee = new uint64[](4);
         xBurnFee[0] = uint64(BASE_9);
@@ -177,10 +177,10 @@ contract Test {
         yBurnFee[2] = int64(uint64((5 * BASE_9) / 100));
         yBurnFee[3] = int64(uint64(BASE_9));
 
-        Setters.setFees(eur_Y.collateral, xBurnFee, yBurnFee, false);
-        Setters.togglePause(eur_Y.collateral, PauseType.Burn);
+        Setters.setFees(eurY.collateral, xBurnFee, yBurnFee, false);
+        Setters.togglePause(eurY.collateral, PauseType.Burn);
 
         // Redeem
-        Setters.togglePause(eur_A.collateral, PauseType.Redeem);
+        Setters.togglePause(eurA.collateral, PauseType.Redeem);
     }
 }

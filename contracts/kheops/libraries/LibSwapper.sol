@@ -113,13 +113,13 @@ library LibSwapper {
         QuoteType quoteType,
         uint256 amountStable
     ) internal view returns (uint256) {
-        LocalVariables memory l;
+        LocalVariables memory v;
         KheopsStorage storage ks = s.kheopsStorage();
 
         uint256 normalizedStablesMem = ks.normalizedStables;
         uint256 normalizerMem = ks.normalizer;
-        l.isMint = _isMint(quoteType);
-        l.isInput = _isInput(quoteType);
+        v.isMint = _isMint(quoteType);
+        v.isInput = _isInput(quoteType);
 
         // Handling the initialisation
         if (normalizedStablesMem == 0) {
@@ -131,88 +131,88 @@ library LibSwapper {
         }
 
         uint256 currentExposure = uint64((collatInfo.normalizedStables * BASE_9) / normalizedStablesMem);
-        uint256 n = l.isMint ? collatInfo.xFeeMint.length : collatInfo.xFeeBurn.length;
+        uint256 n = v.isMint ? collatInfo.xFeeMint.length : collatInfo.xFeeBurn.length;
 
         if (n == 1) {
             // First case: constant fees
-            if (l.isMint) {
+            if (v.isMint) {
                 return
-                    l.isInput
+                    v.isInput
                         ? applyFee(amountStable, collatInfo.yFeeMint[0])
                         : invertFee(amountStable, collatInfo.yFeeMint[0]);
             } else {
                 return
-                    l.isInput
+                    v.isInput
                         ? applyFee(amountStable, collatInfo.yFeeBurn[0])
                         : invertFee(amountStable, collatInfo.yFeeBurn[0]);
             }
         } else {
             uint256 amount;
             uint256 i = Utils.findUpperBound(
-                l.isMint,
-                l.isMint ? collatInfo.xFeeMint : collatInfo.xFeeBurn,
+                v.isMint,
+                v.isMint ? collatInfo.xFeeMint : collatInfo.xFeeBurn,
                 uint64(currentExposure)
             );
 
             while (i <= n - 2) {
                 // We transform the linear function on exposure to a linear function depending on the amount swapped
-                if (l.isMint) {
-                    l.lowerExposure = collatInfo.xFeeMint[i];
-                    l.upperExposure = collatInfo.xFeeMint[i + 1];
-                    l.lowerFees = collatInfo.yFeeMint[i];
-                    l.upperFees = collatInfo.yFeeMint[i + 1];
+                if (v.isMint) {
+                    v.lowerExposure = collatInfo.xFeeMint[i];
+                    v.upperExposure = collatInfo.xFeeMint[i + 1];
+                    v.lowerFees = collatInfo.yFeeMint[i];
+                    v.upperFees = collatInfo.yFeeMint[i + 1];
 
-                    l.amountToNextBreakPoint = ((normalizerMem *
-                        (normalizedStablesMem * l.upperExposure - collatInfo.normalizedStables)) /
-                        ((BASE_9 - l.upperExposure) * BASE_27));
+                    v.amountToNextBreakPoint = ((normalizerMem *
+                        (normalizedStablesMem * v.upperExposure - collatInfo.normalizedStables)) /
+                        ((BASE_9 - v.upperExposure) * BASE_27));
                 } else {
-                    l.lowerExposure = collatInfo.xFeeBurn[i];
-                    l.upperExposure = collatInfo.xFeeBurn[i + 1];
-                    l.lowerFees = collatInfo.yFeeBurn[i];
-                    l.upperFees = collatInfo.yFeeBurn[i + 1];
-                    l.amountToNextBreakPoint = ((normalizerMem *
-                        (collatInfo.normalizedStables - normalizedStablesMem * l.upperExposure)) /
-                        ((BASE_9 - l.upperExposure) * BASE_27));
+                    v.lowerExposure = collatInfo.xFeeBurn[i];
+                    v.upperExposure = collatInfo.xFeeBurn[i + 1];
+                    v.lowerFees = collatInfo.yFeeBurn[i];
+                    v.upperFees = collatInfo.yFeeBurn[i + 1];
+                    v.amountToNextBreakPoint = ((normalizerMem *
+                        (collatInfo.normalizedStables - normalizedStablesMem * v.upperExposure)) /
+                        ((BASE_9 - v.upperExposure) * BASE_27));
                 }
 
                 // TODO Safe casts
                 int256 currentFees;
-                if (l.lowerExposure == currentExposure) currentFees = l.lowerFees;
+                if (v.lowerExposure == currentExposure) currentFees = v.lowerFees;
                 else {
                     uint256 amountFromPrevBreakPoint = ((normalizerMem *
                         (
-                            l.isMint
-                                ? (collatInfo.normalizedStables - normalizedStablesMem * l.lowerExposure)
-                                : (normalizedStablesMem * l.lowerExposure - collatInfo.normalizedStables)
-                        )) / ((BASE_9 - l.lowerExposure) * BASE_27));
+                            v.isMint
+                                ? (collatInfo.normalizedStables - normalizedStablesMem * v.lowerExposure)
+                                : (normalizedStablesMem * v.lowerExposure - collatInfo.normalizedStables)
+                        )) / ((BASE_9 - v.lowerExposure) * BASE_27));
                     // upperFees - lowerFees >= 0 because fees are an increasing function of exposure (for mint) and 1-exposure (for burn)
-                    uint256 slope = ((uint256(l.upperFees - l.lowerFees) * BASE_18) /
-                        (l.amountToNextBreakPoint + amountFromPrevBreakPoint));
-                    currentFees = l.lowerFees + int256((slope * amountFromPrevBreakPoint) / BASE_18);
+                    uint256 slope = ((uint256(v.upperFees - v.lowerFees) * BASE_18) /
+                        (v.amountToNextBreakPoint + amountFromPrevBreakPoint));
+                    currentFees = v.lowerFees + int256((slope * amountFromPrevBreakPoint) / BASE_18);
                 }
 
                 {
-                    uint256 amountToNextBreakPointWithFees = !l.isMint && l.isInput
-                        ? applyFee(l.amountToNextBreakPoint, int64(l.upperFees + currentFees) / 2)
-                        : invertFee(l.amountToNextBreakPoint, int64(l.upperFees + currentFees) / 2);
+                    uint256 amountToNextBreakPointWithFees = !v.isMint && v.isInput
+                        ? applyFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
+                        : invertFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
 
-                    uint256 amountToNextBreakPointNormalizer = (l.isMint && l.isInput) || (!l.isMint && !l.isInput)
+                    uint256 amountToNextBreakPointNormalizer = (v.isMint && v.isInput) || (!v.isMint && !v.isInput)
                         ? amountToNextBreakPointWithFees
-                        : l.amountToNextBreakPoint;
+                        : v.amountToNextBreakPoint;
                     if (amountToNextBreakPointNormalizer >= amountStable) {
                         int64 midFee = int64(
-                            (l.upperFees *
+                            (v.upperFees *
                                 int256(amountStable) +
                                 currentFees *
                                 int256(2 * amountToNextBreakPointNormalizer - amountStable)) /
                                 int256(2 * amountToNextBreakPointNormalizer)
                         );
                         return
-                            amount + ((!l.isInput) ? invertFee(amountStable, midFee) : applyFee(amountStable, midFee));
+                            amount + ((!v.isInput) ? invertFee(amountStable, midFee) : applyFee(amountStable, midFee));
                     } else {
                         amountStable -= amountToNextBreakPointNormalizer;
-                        amount += (_isInput(quoteType) ? l.amountToNextBreakPoint : amountToNextBreakPointWithFees);
-                        currentExposure = l.upperExposure;
+                        amount += (_isInput(quoteType) ? v.amountToNextBreakPoint : amountToNextBreakPointWithFees);
+                        currentExposure = v.upperExposure;
                         ++i;
                     }
                 }
