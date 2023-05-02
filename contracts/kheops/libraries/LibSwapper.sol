@@ -16,6 +16,16 @@ import "./LibManager.sol";
 
 import "../../interfaces/IAgToken.sol";
 
+struct LocalVariables {
+    bool isMint;
+    bool isInput;
+    uint256 lowerExposure;
+    uint256 upperExposure;
+    int256 lowerFees;
+    int256 upperFees;
+    uint256 amountToNextBreakPoint;
+}
+
 library LibSwapper {
     using SafeERC20 for IERC20;
 
@@ -64,8 +74,8 @@ library LibSwapper {
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
         uint256 oracleValue = Oracle.readMint(collatInfo.oracleConfig, collatInfo.oracleStorage);
-        amountIn = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
-        amountOut = quoteFees(collatInfo, 0, amountIn);
+        amountOut = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
+        amountOut = quoteFees(collatInfo, QuoteType.MintExactInput, amountOut);
     }
 
     function quoteMintExactOutput(
@@ -73,7 +83,7 @@ library LibSwapper {
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
         uint256 oracleValue = Oracle.readMint(collatInfo.oracleConfig, collatInfo.oracleStorage);
-        amountIn = quoteFees(collatInfo, 1, amountOut);
+        amountIn = quoteFees(collatInfo, QuoteType.MintExactOutput, amountOut);
         amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
 
@@ -85,7 +95,7 @@ library LibSwapper {
     ) internal view returns (uint256 amountIn) {
         uint256 oracleValue = getBurnOracle(collatInfo.oracleConfig, collatInfo.oracleStorage);
         amountIn = (oracleValue * Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / BASE_18;
-        amountIn = quoteFees(collatInfo, 3, amountIn);
+        amountIn = quoteFees(collatInfo, QuoteType.BurnExactInput, amountIn);
     }
 
     function quoteBurnExactInput(
@@ -93,120 +103,137 @@ library LibSwapper {
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
         uint256 oracleValue = getBurnOracle(collatInfo.oracleConfig, collatInfo.oracleStorage);
-        amountOut = quoteFees(collatInfo, 2, amountIn);
+        amountOut = quoteFees(collatInfo, QuoteType.BurnExactOutput, amountIn);
         amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
 
-    // quoteType can be {1,2,3,4}
-    // 1 - represent a mint with a given number for stables,
-    // in this case amountStable represent the net stable that should be minted
-    // 2 - represent a mint with a collateral equivalent amount of stables,
-    // in this case amountStable represent the brut stable (not accounting for fees) that should be minted
-    // 3 - represent a burn with a collateral equivalent amount of stables
-    // in this case amountStable represent the brut stable (not accounting for fees) that should be burnt
-    // 4 - represent a burn with a given number for stables
-    // in this case amountStable represent the net stable that should be burnt
+    // @dev Assumption: collatInfo.xFeeMint.length > 0
     function quoteFees(
         Collateral memory collatInfo,
-        uint8 quoteType,
+        QuoteType quoteType,
         uint256 amountStable
     ) internal view returns (uint256) {
+        LocalVariables memory l;
         KheopsStorage storage ks = s.kheopsStorage();
-        uint256 _reserves = ks.normalizedStables;
-        uint256 _normalizer = ks.normalizer;
-        uint256 currentExposure = uint64((collatInfo.normalizedStables * BASE_9) / _reserves);
 
-        // Compute amount out.
-        uint256 n = collatInfo.xFeeMint.length;
+        uint256 normalizedStablesMem = ks.normalizedStables;
+        uint256 normalizerMem = ks.normalizer;
+        l.isMint = _isMint(quoteType);
+        l.isInput = _isInput(quoteType);
+
+        // Handling the initialisation
+        if (normalizedStablesMem == 0) {
+            // In case the operation is a burn it will revert later on TODO Confirm with a test
+            return
+                _isInput(quoteType)
+                    ? applyFee(amountStable, collatInfo.yFeeMint[0])
+                    : invertFee(amountStable, collatInfo.yFeeMint[0]);
+        }
+
+        uint256 currentExposure = uint64((collatInfo.normalizedStables * BASE_9) / normalizedStablesMem);
+        uint256 n = l.isMint ? collatInfo.xFeeMint.length : collatInfo.xFeeBurn.length;
+
         if (n == 1) {
             // First case: constant fees
-            return
-                quoteType % 2 == 0
-                    ? invertFee(amountStable, collatInfo.yFeeMint[0])
-                    : applyFee(amountStable, collatInfo.yFeeMint[0]);
+            if (l.isMint) {
+                return
+                    l.isInput
+                        ? applyFee(amountStable, collatInfo.yFeeMint[0])
+                        : invertFee(amountStable, collatInfo.yFeeMint[0]);
+            } else {
+                return
+                    l.isInput
+                        ? applyFee(amountStable, collatInfo.yFeeBurn[0])
+                        : invertFee(amountStable, collatInfo.yFeeBurn[0]);
+            }
         } else {
             uint256 amount;
             uint256 i = Utils.findUpperBound(
-                quoteType < 2,
-                quoteType < 2 ? collatInfo.xFeeMint : collatInfo.xFeeBurn,
+                l.isMint,
+                l.isMint ? collatInfo.xFeeMint : collatInfo.xFeeBurn,
                 uint64(currentExposure)
             );
-            uint256 lowerExposure;
-            uint256 upperExposure;
-            int256 lowerFees;
-            int256 upperFees;
-            while (i < n) {
+
+            while (i <= n - 2) {
                 // We transform the linear function on exposure to a linear function depending on the amount swapped
-                uint256 amountToNextBreakPoint;
-                if (quoteType < 2) {
-                    lowerExposure = collatInfo.xFeeMint[i];
-                    upperExposure = collatInfo.xFeeMint[i + 1];
-                    lowerFees = collatInfo.yFeeMint[i];
-                    upperFees = collatInfo.yFeeMint[i + 1];
-                    amountToNextBreakPoint = ((_normalizer *
-                        (_reserves * upperExposure - collatInfo.normalizedStables)) /
-                        ((BASE_9 - upperExposure) * BASE_27));
+                if (l.isMint) {
+                    l.lowerExposure = collatInfo.xFeeMint[i];
+                    l.upperExposure = collatInfo.xFeeMint[i + 1];
+                    l.lowerFees = collatInfo.yFeeMint[i];
+                    l.upperFees = collatInfo.yFeeMint[i + 1];
+
+                    l.amountToNextBreakPoint = ((normalizerMem *
+                        (normalizedStablesMem * l.upperExposure - collatInfo.normalizedStables)) /
+                        ((BASE_9 - l.upperExposure) * BASE_27));
                 } else {
-                    lowerExposure = collatInfo.xFeeBurn[i];
-                    upperExposure = collatInfo.xFeeBurn[i + 1];
-                    lowerFees = collatInfo.yFeeBurn[i];
-                    upperFees = collatInfo.yFeeBurn[i + 1];
-                    amountToNextBreakPoint = ((_normalizer *
-                        (collatInfo.normalizedStables - _reserves * upperExposure)) /
-                        ((BASE_9 - upperExposure) * BASE_27));
+                    l.lowerExposure = collatInfo.xFeeBurn[i];
+                    l.upperExposure = collatInfo.xFeeBurn[i + 1];
+                    l.lowerFees = collatInfo.yFeeBurn[i];
+                    l.upperFees = collatInfo.yFeeBurn[i + 1];
+                    l.amountToNextBreakPoint = ((normalizerMem *
+                        (collatInfo.normalizedStables - normalizedStablesMem * l.upperExposure)) /
+                        ((BASE_9 - l.upperExposure) * BASE_27));
                 }
 
                 // TODO Safe casts
                 int256 currentFees;
-                if (lowerExposure == currentExposure) currentFees = lowerFees;
+                if (l.lowerExposure == currentExposure) currentFees = l.lowerFees;
                 else {
-                    uint256 amountFromPrevBreakPoint = ((_normalizer *
+                    uint256 amountFromPrevBreakPoint = ((normalizerMem *
                         (
-                            quoteType < 2
-                                ? (collatInfo.normalizedStables - _reserves * lowerExposure)
-                                : (_reserves * lowerExposure - collatInfo.normalizedStables)
-                        )) / ((BASE_9 - lowerExposure) * BASE_27));
-                    // upperFees - lowerFees > 0 because fees are an increasing function of exposure (for mint) and 1-exposure (for burn)
-                    uint256 slope = (uint256(upperFees - lowerFees) /
-                        (amountToNextBreakPoint + amountFromPrevBreakPoint));
-                    currentFees = lowerFees + int256(slope * amountFromPrevBreakPoint);
+                            l.isMint
+                                ? (collatInfo.normalizedStables - normalizedStablesMem * l.lowerExposure)
+                                : (normalizedStablesMem * l.lowerExposure - collatInfo.normalizedStables)
+                        )) / ((BASE_9 - l.lowerExposure) * BASE_27));
+                    // upperFees - lowerFees >= 0 because fees are an increasing function of exposure (for mint) and 1-exposure (for burn)
+                    uint256 slope = ((uint256(l.upperFees - l.lowerFees) * BASE_18) /
+                        (l.amountToNextBreakPoint + amountFromPrevBreakPoint));
+                    currentFees = l.lowerFees + int256((slope * amountFromPrevBreakPoint) / BASE_18);
                 }
 
-                uint256 amountToNextBreakPointWithFees = quoteType == 3
-                    ? applyFee(amountToNextBreakPoint, int64(upperFees + currentFees) / 2)
-                    : invertFee(amountToNextBreakPoint, int64(upperFees + currentFees) / 2);
+                {
+                    uint256 amountToNextBreakPointWithFees = !l.isMint && l.isInput
+                        ? applyFee(l.amountToNextBreakPoint, int64(l.upperFees + currentFees) / 2)
+                        : invertFee(l.amountToNextBreakPoint, int64(l.upperFees + currentFees) / 2);
 
-                uint256 amountToNextBreakPointNormalizer = (quoteType == 0 || quoteType == 3)
-                    ? amountToNextBreakPoint
-                    : amountToNextBreakPointWithFees;
-                if (amountToNextBreakPointNormalizer >= amountStable) {
-                    int64 midFee = int64(
-                        (upperFees *
-                            int256(amountStable) +
-                            currentFees *
-                            int256(2 * amountToNextBreakPointNormalizer - amountStable)) /
-                            int256(2 * amountToNextBreakPointNormalizer)
-                    );
-                    return
-                        amount +
-                        ((quoteType % 2 == 0) ? invertFee(amountStable, midFee) : applyFee(amountStable, midFee));
-                } else {
-                    amountStable -= amountToNextBreakPointNormalizer;
-                    amount += (quoteType == 0 || quoteType == 3)
+                    uint256 amountToNextBreakPointNormalizer = (l.isMint && l.isInput) || (!l.isMint && !l.isInput)
                         ? amountToNextBreakPointWithFees
-                        : amountToNextBreakPoint;
-                    currentExposure = upperExposure;
-                    ++i;
+                        : l.amountToNextBreakPoint;
+                    if (amountToNextBreakPointNormalizer >= amountStable) {
+                        int64 midFee = int64(
+                            (l.upperFees *
+                                int256(amountStable) +
+                                currentFees *
+                                int256(2 * amountToNextBreakPointNormalizer - amountStable)) /
+                                int256(2 * amountToNextBreakPointNormalizer)
+                        );
+                        return
+                            amount + ((!l.isInput) ? invertFee(amountStable, midFee) : applyFee(amountStable, midFee));
+                    } else {
+                        amountStable -= amountToNextBreakPointNormalizer;
+                        amount += (_isInput(quoteType) ? l.amountToNextBreakPoint : amountToNextBreakPointWithFees);
+                        currentExposure = l.upperExposure;
+                        ++i;
+                    }
                 }
             }
+            // Now i == n-1 so we are in an area where fees are constant
             return
                 amount +
                 (
-                    (quoteType % 2 == 0)
+                    (quoteType == QuoteType.MintExactOutput || quoteType == QuoteType.BurnExactOutput)
                         ? invertFee(amountStable, collatInfo.yFeeMint[n - 1])
                         : applyFee(amountStable, collatInfo.yFeeMint[n - 1])
                 );
         }
+    }
+
+    function _isMint(QuoteType quoteType) private pure returns (bool) {
+        return quoteType == QuoteType.MintExactInput || quoteType == QuoteType.MintExactOutput;
+    }
+
+    function _isInput(QuoteType quoteType) private pure returns (bool) {
+        return quoteType == QuoteType.MintExactInput || quoteType == QuoteType.BurnExactInput;
     }
 
     function applyFee(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {

@@ -15,7 +15,7 @@ import "../interfaces/external/stakeDAO/IClaimerRewards.sol";
 import "../interfaces/external/stakeDAO/ILiquidityGauge.sol";
 import "../interfaces/external/curve/IMetaPool2.sol";
 import "../interfaces/ICurveModule.sol";
-import "../interfaces/IKheops.sol";
+import "../kheops/interfaces/IKheops.sol";
 import "../interfaces/IModule.sol";
 import { IOracle } from "../interfaces/IOracle.sol";
 

@@ -14,6 +14,7 @@ bytes32 constant KHEOPS_STORAGE_POSITION = keccak256("diamond.standard.kheops.st
 // =================================== MATHS ===================================
 
 uint256 constant BASE_6 = 1e6;
+uint256 constant BASE_8 = 1e8;
 uint256 constant BASE_9 = 1e9;
 uint256 constant BASE_12 = 1e12;
 uint256 constant BASE_18 = 1e18;

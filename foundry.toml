@@ -7,11 +7,15 @@ script = 'scripts/foundry'
 cache_path = 'cache-forge'
 gas_reports = ["*"]
 via_ir = true
+sizes = true
 optimizer_runs=1000
-
-# solc_version = '0.8.19'
+solc_version = '0.8.19'
 
 ffi = true
+
+[profile.dev]
+src = 'test'
+via_ir = false
 
 [fuzz]
 runs = 500

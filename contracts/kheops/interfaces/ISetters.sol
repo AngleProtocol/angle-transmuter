@@ -5,7 +5,9 @@ pragma solidity ^0.8.12;
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 interface ISetters {
-    function recoverERC20(IERC20 token, address to, uint256 amount, bool manager) external;
+    function adjustReserve(address collateral, uint256 amount, bool addOrRemove) external;
+
+    function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external;
 
     function setAccessControlManager(address _newAccessControlManager) external;
 
@@ -29,5 +31,7 @@ interface ISetters {
 
     function setModuleMaxExposure(address moduleAddress, uint64 maxExposure) external;
 
-    function setOracle(address collateral, bytes memory oracle) external;
+    function setOracle(address collateral, bytes memory oracleConfig, bytes memory oracleStorage) external;
+
+    function updateNormalizer(uint256 amount, bool increase) external returns (uint256);
 }

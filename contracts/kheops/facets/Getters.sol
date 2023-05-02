@@ -12,8 +12,16 @@ import { IAccessControlManager } from "../../interfaces/IAccessControlManager.so
 import "../Storage.sol";
 
 contract Getters {
+    function isValidSelector(bytes4 selector) external view returns (bool) {
+        return s.diamondStorage().facetAddressAndSelectorPosition[selector].facetAddress != address(0);
+    }
+
     function accessControlManager() external view returns (IAccessControlManager) {
         return s.diamondStorage().accessControlManager;
+    }
+
+    function agToken() external view returns (IAgToken) {
+        return s.kheopsStorage().agToken;
     }
 
     /// @notice Checks whether `admin` has the governor role

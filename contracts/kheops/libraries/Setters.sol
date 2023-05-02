@@ -38,6 +38,47 @@ library Setters {
         collatInfo.oracleStorage = oracleStorage;
     }
 
+    function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) internal {
+        KheopsStorage storage ks = s.kheopsStorage();
+        Collateral storage collatInfo = ks.collaterals[collateral];
+        if (collatInfo.decimals == 0) revert NotCollateral();
+        uint8 setter;
+        if (!mint) setter = 1;
+        // _checkFees(xFee, yFee, setter);
+        if (mint) {
+            collatInfo.xFeeMint = xFee;
+            collatInfo.yFeeMint = yFee;
+        } else {
+            collatInfo.xFeeBurn = xFee;
+            collatInfo.yFeeBurn = yFee;
+        }
+    }
+
+    function togglePause(address collateral, PauseType pausedType) internal {
+        if (pausedType == PauseType.Mint || pausedType == PauseType.Burn) {
+            Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
+            if (collatInfo.decimals == 0) revert NotCollateral();
+            // _checkFees(collatInfo.xFeeMint, collatInfo.yFeeMint, 0);
+            // _checkFees(collatInfo.xFeeBurn, collatInfo.yFeeBurn, 1);
+            if (pausedType == PauseType.Mint) {
+                uint8 pausedStatus = collatInfo.unpausedMint;
+                collatInfo.unpausedMint = 1 - pausedStatus;
+            } else {
+                uint8 pausedStatus = collatInfo.unpausedBurn;
+                collatInfo.unpausedBurn = 1 - pausedStatus;
+            }
+        } else if (pausedType == PauseType.Module) {
+            Module storage module = s.kheopsStorage().modules[collateral];
+            if (module.initialized == 0) revert NotModule();
+            uint8 pausedStatus = module.unpaused;
+            module.unpaused = 1 - pausedStatus;
+        } else {
+            KheopsStorage storage ks = s.kheopsStorage();
+            uint8 pausedStatus = ks.pausedRedemption;
+            ks.pausedRedemption = 1 - pausedStatus;
+        }
+    }
+
     // TODO: with burn fees in decreasing mode
     function checkFees(uint64[] memory xFee, int64[] memory yFee, uint8 setter) internal view {
         uint256 n = xFee.length;
