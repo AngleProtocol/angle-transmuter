@@ -53,14 +53,6 @@ contract Getters {
         return (ks.xRedemptionCurve, ks.yRedemptionCurve);
     }
 
-    function getRedeemableModuleList() external view returns (address[] memory) {
-        return s.kheopsStorage().redeemableModuleList;
-    }
-
-    function getUnredeemableModuleList() external view returns (address[] memory) {
-        return s.kheopsStorage().unredeemableModuleList;
-    }
-
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 reservesValue) {
         (collatRatio, reservesValue, , , ) = LibRedeemer.getCollateralRatio();
     }
@@ -72,14 +64,5 @@ contract Getters {
             (ks.collaterals[collateral].normalizedStables * _normalizer) / BASE_27,
             (ks.normalizedStables * _normalizer) / BASE_27
         );
-    }
-
-    function getModuleBorrowed(address module) external view returns (uint256) {
-        KheopsStorage storage ks = s.kheopsStorage();
-        return (ks.modules[module].normalizedStables * ks.normalizer) / BASE_27;
-    }
-
-    function isModule(address module) external view returns (bool) {
-        return s.kheopsStorage().modules[module].initialized > 0;
     }
 }

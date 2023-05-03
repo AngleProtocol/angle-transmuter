@@ -9,7 +9,6 @@ import { DiamondCut } from "contracts/kheops/facets/DiamondCut.sol";
 import { DiamondLoupe } from "contracts/kheops/facets/DiamondLoupe.sol";
 import { Swapper } from "contracts/kheops/facets/Swapper.sol";
 import { Getters } from "contracts/kheops/facets/Getters.sol";
-import { Lender } from "contracts/kheops/facets/Lender.sol";
 import { Redeemer } from "contracts/kheops/facets/Redeemer.sol";
 import { Setters } from "contracts/kheops/facets/Setters.sol";
 
@@ -35,9 +34,6 @@ abstract contract Kheops is Helper {
 
         facetNames.push("Getters");
         facetAddressList.push(address(new Getters()));
-
-        facetNames.push("Lender");
-        facetAddressList.push(address(new Lender()));
 
         facetNames.push("Redeemer");
         facetAddressList.push(address(new Redeemer()));

@@ -80,17 +80,6 @@ contract Setters is AccessControl {
         }
     }
 
-    function addModule(address moduleAddress, address token, uint8 redeemable) external onlyGovernor {
-        KheopsStorage storage ks = s.kheopsStorage();
-        Module storage module = ks.modules[moduleAddress];
-        if (module.initialized != 0) revert AlreadyAdded();
-        module.token = token;
-        module.redeemable = redeemable;
-        module.initialized = 1;
-        if (redeemable > 0) ks.redeemableModuleList.push(moduleAddress);
-        else ks.unredeemableModuleList.push(moduleAddress);
-    }
-
     function revokeCollateral(address collateral) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral memory collatInfo = ks.collaterals[collateral];
@@ -108,39 +97,8 @@ contract Setters is AccessControl {
         ks.collateralList.pop();
     }
 
-    function revokeModule(address moduleAddress) external onlyGovernor {
-        KheopsStorage storage ks = s.kheopsStorage();
-        Module storage module = ks.modules[moduleAddress];
-        if (module.initialized == 0 || module.normalizedStables > 0) revert NotModule();
-        if (module.redeemable > 0) {
-            address[] memory redeemableModuleListMem = ks.redeemableModuleList;
-            uint256 length = redeemableModuleListMem.length;
-            // We already know that it is in the list
-            for (uint256 i; i < length - 1; ++i) {
-                if (ks.redeemableModuleList[i] == moduleAddress) {
-                    ks.redeemableModuleList[i] = redeemableModuleListMem[length - 1];
-                    break;
-                }
-            }
-            ks.redeemableModuleList.pop();
-        }
-        // No need to remove from the unredeemable module list -> it is never actually queried
-        delete ks.modules[moduleAddress];
-    }
-
     function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) external onlyGuardian {
-        Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
-        if (collatInfo.decimals == 0) revert NotCollateral();
-        uint8 setter;
-        if (!mint) setter = 1;
-        Lib.checkFees(xFee, yFee, setter);
-        if (mint) {
-            collatInfo.xFeeMint = xFee;
-            collatInfo.yFeeMint = yFee;
-        } else {
-            collatInfo.xFeeBurn = xFee;
-            collatInfo.yFeeBurn = yFee;
-        }
+        Lib.setFees(collateral, xFee, yFee, mint);
     }
 
     function setRedemptionCurveParams(uint64[] memory xFee, uint64[] memory yFee) external onlyGuardian {
@@ -148,13 +106,6 @@ contract Setters is AccessControl {
         // _checkFees(xFee, yFee, 2);
         ks.xRedemptionCurve = xFee;
         ks.yRedemptionCurve = yFee;
-    }
-
-    function setModuleMaxExposure(address moduleAddress, uint64 maxExposure) external onlyGuardian {
-        Module storage module = s.kheopsStorage().modules[moduleAddress];
-        if (module.initialized == 0) revert NotModule();
-        if (maxExposure > BASE_9) revert InvalidParam();
-        module.maxExposure = maxExposure;
     }
 
     function setOracle(
