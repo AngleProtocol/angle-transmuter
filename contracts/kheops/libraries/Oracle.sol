@@ -119,11 +119,7 @@ library Oracle {
         oracleValue = read(readType, quoteType, data);
         uint256 _targetPrice = targetPrice(targetType, oracleStorage);
         deviation = BASE_18;
-        if (oracleValue < _targetPrice) {
-            deviation = (oracleValue * BASE_18) / _targetPrice;
-            // Overestimating the oracle value
-            oracleValue = _targetPrice;
-        }
+        if (oracleValue < _targetPrice) deviation = (oracleValue * BASE_18) / _targetPrice;
     }
 
     // ============================== SPECIFIC HELPERS =============================
