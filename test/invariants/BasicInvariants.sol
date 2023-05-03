@@ -7,6 +7,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { Calls } from "./Calls.sol";
 
+import { console } from "forge-std/console.sol";
+
 contract BasicInvariants is Calls {
     function setUp() public virtual override {
         super.setUp();

@@ -12,7 +12,7 @@ import { Fixture } from "../Fixture.sol";
 
 import { console } from "forge-std/console.sol";
 
-contract Calls is Fixture {
+contract T {
     mapping(bytes32 => uint256) public calls;
 
     modifier countCall(bytes32 key) {
@@ -28,46 +28,45 @@ contract Calls is Fixture {
         console.log("-------------------");
     }
 
-    function swap(uint256 quoteTypeUint, uint256 collatNumber, uint256 amount) public countCall("swap") {
-        QuoteType quoteType = QuoteType(bound(collatNumber, 0, 3));
-        collatNumber = bound(collatNumber, 0, 2);
-
-        collatNumber = bound(collatNumber, 0, 2);
-        address collateral;
-        if (collatNumber == 0) {
-            collateral = address(eurA);
-        } else if (collatNumber == 1) {
-            collateral = address(eurB);
-        } else {
-            collateral = address(eurY);
-        }
-        uint8 decimals = IERC20Metadata(collateral).decimals();
-        uint256 amountIn;
-        uint256 amountOut;
-        address tokenIn;
-        address tokenOut;
-        if (quoteType == QuoteType.MintExactInput) {
-            tokenIn = collateral;
-            tokenOut = address(agToken);
-            amountIn = amount * 10 ** decimals;
-            amountOut = kheops.quoteIn(amountIn, tokenIn, tokenOut);
-        } else if (quoteType == QuoteType.BurnExactInput) {
-            tokenIn = address(agToken);
-            tokenOut = collateral;
-            amountIn = amount * BASE_18;
-            // amountOut = kheops.quoteIn(amountIn, tokenIn, tokenOut);
-        } else if (quoteType == QuoteType.MintExactOutput) {
-            tokenIn = collateral;
-            tokenOut = address(agToken);
-            amountOut = amount * 10 ** BASE_18;
-            // amountIn = kheops.quoteOut(amountOut, tokenIn, tokenOut);
-        } else if (quoteType == QuoteType.BurnExactOutput) {
-            tokenIn = address(agToken);
-            tokenOut = collateral;
-            amountOut = amount * 10 ** decimals;
-            // amountIn = kheops.quoteOut(amountOut, tokenIn, tokenOut);
-        }
-
+    function swap(QuoteType quoteType, uint256 collatNumber, uint256 amount) public countCall("swap") {
+        // console.log("Test");
+        // collatNumber = bound(collatNumber, 0, 2);
+        // address collateral;
+        // if (collatNumber == 0) {
+        //     collateral = address(eurA);
+        // } else if (collatNumber == 1) {
+        //     collateral = address(eurB);
+        // } else {
+        //     collateral = address(eurY);
+        // }
+        // uint8 decimals = IERC20Metadata(collateral).decimals();
+        // uint256 amountIn;
+        // uint256 amountOut;
+        // address tokenIn;
+        // address tokenOut;
+        // console.log("Swap type: ", uint256(quoteType));
+        // if (quoteType == QuoteType.MintExactInput) {
+        //     tokenIn = collateral;
+        //     tokenOut = address(agToken);
+        //     amountIn = amount * 10 ** decimals;
+        //     amountOut = kheops.quoteIn(amountIn, tokenIn, tokenOut);
+        // } else if (quoteType == QuoteType.BurnExactInput) {
+        //     tokenIn = address(agToken);
+        //     tokenOut = collateral;
+        //     amountIn = amount * BASE_18;
+        //     amountOut = kheops.quoteIn(amountIn, tokenIn, tokenOut);
+        // } else if (quoteType == QuoteType.MintExactOutput) {
+        //     tokenIn = collateral;
+        //     tokenOut = address(agToken);
+        //     amountOut = amount * 10 ** BASE_18;
+        //     amountIn = kheops.quoteOut(amountOut, tokenIn, tokenOut);
+        // } else if (quoteType == QuoteType.BurnExactOutput) {
+        //     tokenIn = address(agToken);
+        //     tokenOut = collateral;
+        //     amountOut = amount * 10 ** decimals;
+        //     amountIn = kheops.quoteOut(amountOut, tokenIn, tokenOut);
+        // }
+        // console.log("Quote successful");
         // // If burning we can't burn more than the reserves
         // if (quoteType == QuoteType.BurnExactInput || quoteType == QuoteType.BurnExactOutput) {
         //     if (amountOut > IERC20(tokenOut).balanceOf(address(kheops))) {
