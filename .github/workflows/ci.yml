@@ -40,7 +40,6 @@ jobs:
           restore-keys: yarn-
       - name: Install dependencies
         run: |
-          npm config set //registry.npmjs.org/
           yarn install --frozen-lockfile
       - name: Run solhint
         run: yarn solhint --fix --max-warnings 20 'contracts/**/*.sol'
