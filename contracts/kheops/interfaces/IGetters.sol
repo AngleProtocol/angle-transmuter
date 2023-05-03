@@ -24,15 +24,7 @@ interface IGetters {
 
     function getRedemptionFees() external view returns (uint64[] memory, uint64[] memory);
 
-    function getRedeemableModuleList() external view returns (address[] memory);
-
-    function getUnredeemableModuleList() external view returns (address[] memory);
-
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 reservesValue);
 
     function getIssuedByCollateral(address collateral) external view returns (uint256, uint256);
-
-    function getModuleBorrowed(address module) external view returns (uint256);
-
-    function isModule(address module) external view returns (bool);
 }

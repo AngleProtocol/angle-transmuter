@@ -44,7 +44,7 @@ library Setters {
         if (collatInfo.decimals == 0) revert NotCollateral();
         uint8 setter;
         if (!mint) setter = 1;
-        // _checkFees(xFee, yFee, setter);
+        checkFees(xFee, yFee, setter);
         if (mint) {
             collatInfo.xFeeMint = xFee;
             collatInfo.yFeeMint = yFee;
@@ -58,8 +58,6 @@ library Setters {
         if (pausedType == PauseType.Mint || pausedType == PauseType.Burn) {
             Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
             if (collatInfo.decimals == 0) revert NotCollateral();
-            // _checkFees(collatInfo.xFeeMint, collatInfo.yFeeMint, 0);
-            // _checkFees(collatInfo.xFeeBurn, collatInfo.yFeeBurn, 1);
             if (pausedType == PauseType.Mint) {
                 uint8 pausedStatus = collatInfo.unpausedMint;
                 collatInfo.unpausedMint = 1 - pausedStatus;
@@ -67,11 +65,6 @@ library Setters {
                 uint8 pausedStatus = collatInfo.unpausedBurn;
                 collatInfo.unpausedBurn = 1 - pausedStatus;
             }
-        } else if (pausedType == PauseType.Module) {
-            Module storage module = s.kheopsStorage().modules[collateral];
-            if (module.initialized == 0) revert NotModule();
-            uint8 pausedStatus = module.unpaused;
-            module.unpaused = 1 - pausedStatus;
         } else {
             KheopsStorage storage ks = s.kheopsStorage();
             uint8 pausedStatus = ks.pausedRedemption;

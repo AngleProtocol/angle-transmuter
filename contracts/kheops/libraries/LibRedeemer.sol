@@ -16,7 +16,6 @@ import "../utils/Utils.sol";
 import "../Storage.sol";
 
 import "../../interfaces/IAgToken.sol";
-import "../../interfaces/IModule.sol";
 
 library LibRedeemer {
     using SafeERC20 for IERC20;
@@ -38,7 +37,6 @@ library LibRedeemer {
         IAgToken(ks.agToken).burnSelf(amount, msg.sender);
 
         address[] memory collateralListMem = ks.collateralList;
-        address[] memory depositModuleList = ks.redeemableModuleList;
         uint256 indexCollateral;
         for (uint256 i; i < amounts.length; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
@@ -54,7 +52,6 @@ library LibRedeemer {
                         amounts[i],
                         true
                     );
-                else IModule(depositModuleList[i - collateralListMem.length]).transfer(to, amounts[i]);
             }
         }
     }
@@ -96,8 +93,6 @@ library LibRedeemer {
         uint256 totalCollateralization;
         address[] memory collateralList = ks.collateralList;
         uint256 collateralListLength = collateralList.length;
-        address[] memory depositModuleList = ks.redeemableModuleList;
-        uint256 depositModuleLength = depositModuleList.length;
         uint256 subCollateralsLength;
         nbrSubCollaterals = new uint256[](collateralListLength);
         for (uint256 i; i < collateralListLength; ++i) {
@@ -105,8 +100,8 @@ library LibRedeemer {
             else subCollateralsLength += ks.collaterals[collateralList[i]].managerStorage.subCollaterals.length;
             nbrSubCollaterals[i] = subCollateralsLength;
         }
-        balances = new uint256[](subCollateralsLength + depositModuleLength);
-        tokens = new address[](subCollateralsLength + depositModuleLength);
+        balances = new uint256[](subCollateralsLength);
+        tokens = new address[](subCollateralsLength);
 
         for (uint256 i; i < collateralListLength; ++i) {
             if (ks.collaterals[collateralList[i]].hasManager > 0) {
@@ -130,12 +125,6 @@ library LibRedeemer {
                     BASE_18;
             }
         }
-        for (uint256 i; i < depositModuleLength; ++i) {
-            (uint256 balance, uint256 value) = IModule(depositModuleList[i]).getBalanceAndValue();
-            tokens[i] = ks.modules[depositModuleList[i]].token;
-            balances[subCollateralsLength + collateralListLength] = balance;
-            totalCollateralization += value;
-        }
         reservesValue = (ks.normalizedStables * ks.normalizer) / BASE_27;
         if (reservesValue > 0) collatRatio = uint64((totalCollateralization * BASE_9) / reservesValue);
         else collatRatio = type(uint64).max;
@@ -153,14 +142,9 @@ library LibRedeemer {
             // TODO check if it remains consistent when it gets too small
             if (newAccumulatorValue == 0) {
                 address[] memory _collateralList = ks.collateralList;
-                address[] memory depositModuleList = ks.redeemableModuleList;
                 uint256 collateralListLength = _collateralList.length;
-                uint256 depositModuleListLength = depositModuleList.length;
                 for (uint256 i; i < collateralListLength; ++i) {
                     ks.collaterals[_collateralList[i]].normalizedStables = 0;
-                }
-                for (uint256 i; i < depositModuleListLength; ++i) {
-                    ks.modules[depositModuleList[i]].normalizedStables = 0;
                 }
                 ks.normalizedStables = 0;
                 newAccumulatorValue = BASE_27;

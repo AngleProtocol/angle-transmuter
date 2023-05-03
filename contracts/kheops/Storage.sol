@@ -39,7 +39,6 @@ struct DiamondStorage {
 enum PauseType {
     Mint,
     Burn,
-    Module,
     Redeem
 }
 
@@ -81,28 +80,17 @@ struct Collateral {
     ManagerStorage managerStorage;
 }
 
-struct Module {
-    address token;
-    uint64 maxExposure;
-    uint8 initialized;
-    uint8 redeemable;
-    uint8 unpaused;
-    uint256 normalizedStables;
-}
-
 struct KheopsStorage {
     IAgToken agToken;
     uint8 pausedRedemption;
     uint256 normalizedStables;
     uint256 normalizer;
     address[] collateralList;
-    address[] redeemableModuleList;
-    address[] unredeemableModuleList;
     uint64[] xRedemptionCurve;
     uint64[] yRedemptionCurve;
     mapping(address => Collateral) collaterals;
-    mapping(address => Module) modules;
     mapping(address => uint256) isTrusted;
+    mapping(address => uint256) isSellerTrusted;
 }
 
 struct ManagerStorage {
