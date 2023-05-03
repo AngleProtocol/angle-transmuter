@@ -45,16 +45,16 @@ contract TestKheops is Fixture {
     }
 
     function testQuoteInScenario() public {
-        uint256 quote = (kheops.quoteIn(BASE_6, address(eur_A), address(agToken)));
+        uint256 quote = (kheops.quoteIn(BASE_6, address(eurA), address(agToken)));
         assertEq(quote, (99 * BASE_18) / 100);
     }
 
     function testSimpleSwapInScenario() public {
-        deal(address(eur_A), alice, BASE_6);
+        deal(address(eurA), alice, BASE_6);
 
         startHoax(alice);
-        eur_A.approve(address(kheops), BASE_6);
-        kheops.swapExactInput(BASE_6, 0, address(eur_A), address(agToken), alice, block.timestamp + 1 hours);
+        eurA.approve(address(kheops), BASE_6);
+        kheops.swapExactInput(BASE_6, 0, address(eurA), address(agToken), alice, block.timestamp + 1 hours);
 
         assertEq(agToken.balanceOf(alice), (99 * BASE_18) / 100);
     }
