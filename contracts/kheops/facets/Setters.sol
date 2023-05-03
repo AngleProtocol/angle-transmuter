@@ -60,6 +60,12 @@ contract Setters is AccessControl {
         ks.isTrusted[sender] = trustedStatus;
     }
 
+    function toggleSellerTrusted(address seller) external onlyGovernor {
+        KheopsStorage storage ks = s.kheopsStorage();
+        uint256 trustedStatus = 1 - ks.isSellerTrusted[seller];
+        ks.isSellerTrusted[seller] = trustedStatus;
+    }
+
     // Need to be followed by a call to set fees and set oracle and unpaused
     function addCollateral(address collateral) external onlyGovernor {
         Lib.addCollateral(collateral);

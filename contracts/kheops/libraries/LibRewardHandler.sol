@@ -22,7 +22,7 @@ library LibRewardHandler {
         address tokenToSwapFor
     ) internal returns (uint256 amountOut) {
         KheopsStorage storage ks = s.kheopsStorage();
-        if (!Diamond.isGovernor(msg.sender) && ks.isTrusted[msg.sender] == 0) revert NotTrusted();
+        if (!Diamond.isGovernor(msg.sender) && ks.isSellerTrusted[msg.sender] == 0) revert NotTrusted();
 
         address[] memory list = ks.collateralList;
         uint256 listLength = list.length;
