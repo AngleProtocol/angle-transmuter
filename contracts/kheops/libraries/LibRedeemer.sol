@@ -122,9 +122,11 @@ library LibRedeemer {
                 balances[i] = balance;
                 bytes memory oracleConfig = ks.collaterals[collateralList[i]].oracleConfig;
                 uint256 oracleValue = Oracle.readRedemption(oracleConfig);
+                console.log("oracleValue ", oracleValue);
                 totalCollateralization +=
                     (oracleValue * Utils.convertDecimalTo(balance, ks.collaterals[collateralList[i]].decimals, 18)) /
                     BASE_18;
+                console.log("totalCollateralization ", totalCollateralization);
             }
         }
         reservesValue = (ks.normalizedStables * ks.normalizer) / BASE_27;
