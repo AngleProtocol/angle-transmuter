@@ -41,7 +41,7 @@ library Utils {
         if (array.length == 0) {
             return 0;
         }
-        uint256 low = 0;
+        uint256 low = 1;
         uint256 high = array.length;
 
         if ((increasingArray && array[high - 1] <= element) || (!increasingArray && array[high - 1] >= element))
@@ -60,7 +60,8 @@ library Utils {
         }
 
         // At this point `low` is the exclusive upper bound.
-        return low;
+        // `low - 1` is the inclusive lower bound.
+        return low - 1;
     }
 
     function piecewiseLinear(

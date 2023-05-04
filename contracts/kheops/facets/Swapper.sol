@@ -36,7 +36,7 @@ contract Swapper {
 
         if (mint) {
             uint256 changeAmount = (amountOut * BASE_27) / ks.normalizer;
-            ks.collaterals[tokenOut].normalizedStables += changeAmount;
+            ks.collaterals[tokenIn].normalizedStables += changeAmount;
             ks.normalizedStables += changeAmount;
             IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
             IAgToken(tokenOut).mint(to, amountOut);
@@ -74,7 +74,7 @@ contract Swapper {
 
         if (mint) {
             uint256 changeAmount = (amountOut * BASE_27) / ks.normalizer;
-            ks.collaterals[tokenOut].normalizedStables += changeAmount;
+            ks.collaterals[tokenIn].normalizedStables += changeAmount;
             ks.normalizedStables += changeAmount;
             IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
             IAgToken(tokenOut).mint(to, amountOut);

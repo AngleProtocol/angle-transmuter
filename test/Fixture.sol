@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+
+pragma solidity ^0.8.17;
 
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
@@ -21,12 +22,12 @@ contract Fixture is Kheops {
     IAccessControlManager public accessControlManager;
     IAgToken public agToken;
 
-    IERC20 public eur_A;
-    AggregatorV3Interface public oracle_A;
-    IERC20 public eur_B;
-    AggregatorV3Interface public oracle_B;
-    IERC20 public eur_Y;
-    AggregatorV3Interface public oracle_Y;
+    IERC20 public eurA;
+    AggregatorV3Interface public oracleA;
+    IERC20 public eurB;
+    AggregatorV3Interface public oracleB;
+    IERC20 public eurY;
+    AggregatorV3Interface public oracleY;
 
     address public config;
 
@@ -57,17 +58,17 @@ contract Fixture is Kheops {
         agToken = IAgToken(address(new MockTokenPermit("agEUR", "agEUR", 18)));
 
         // Collaterals
-        eur_A = IERC20(address(new MockTokenPermit("EUR_A", "EUR_A", 6)));
-        oracle_A = AggregatorV3Interface(address(new MockChainlinkOracle()));
-        MockChainlinkOracle(address(oracle_A)).setLatestAnswer(int256(BASE_8));
+        eurA = IERC20(address(new MockTokenPermit("EUR_A", "EUR_A", 6)));
+        oracleA = AggregatorV3Interface(address(new MockChainlinkOracle()));
+        MockChainlinkOracle(address(oracleA)).setLatestAnswer(int256(BASE_8));
 
-        eur_B = IERC20(address(new MockTokenPermit("EUR_B", "EUR_B", 12)));
-        oracle_B = AggregatorV3Interface(address(new MockChainlinkOracle()));
-        MockChainlinkOracle(address(oracle_B)).setLatestAnswer(int256(BASE_8));
+        eurB = IERC20(address(new MockTokenPermit("EUR_B", "EUR_B", 12)));
+        oracleB = AggregatorV3Interface(address(new MockChainlinkOracle()));
+        MockChainlinkOracle(address(oracleB)).setLatestAnswer(int256(BASE_8));
 
-        eur_Y = IERC20(address(new MockTokenPermit("EUR_Y", "EUR_Y", 18)));
-        oracle_Y = AggregatorV3Interface(address(new MockChainlinkOracle()));
-        MockChainlinkOracle(address(oracle_Y)).setLatestAnswer(int256(BASE_8));
+        eurY = IERC20(address(new MockTokenPermit("EUR_Y", "EUR_Y", 18)));
+        oracleY = AggregatorV3Interface(address(new MockChainlinkOracle()));
+        MockChainlinkOracle(address(oracleY)).setLatestAnswer(int256(BASE_8));
 
         // Config
         config = address(new Test());
@@ -77,9 +78,9 @@ contract Fixture is Kheops {
                 Test.initialize.selector,
                 accessControlManager,
                 agToken,
-                CollateralSetup(address(eur_A), address(oracle_A)),
-                CollateralSetup(address(eur_B), address(oracle_B)),
-                CollateralSetup(address(eur_Y), address(oracle_Y))
+                CollateralSetup(address(eurA), address(oracleA)),
+                CollateralSetup(address(eurB), address(oracleB)),
+                CollateralSetup(address(eurY), address(oracleY))
             )
         );
     }
