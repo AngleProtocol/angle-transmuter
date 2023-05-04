@@ -23,11 +23,11 @@ contract Fixture is Kheops {
     IAgToken public agToken;
 
     IERC20 public eurA;
-    AggregatorV3Interface public oracle_A;
+    AggregatorV3Interface public oracleA;
     IERC20 public eurB;
-    AggregatorV3Interface public oracle_B;
+    AggregatorV3Interface public oracleB;
     IERC20 public eurY;
-    AggregatorV3Interface public oracle_Y;
+    AggregatorV3Interface public oracleY;
 
     address public config;
 
@@ -59,16 +59,16 @@ contract Fixture is Kheops {
 
         // Collaterals
         eurA = IERC20(address(new MockTokenPermit("EUR_A", "EUR_A", 6)));
-        oracle_A = AggregatorV3Interface(address(new MockChainlinkOracle()));
-        MockChainlinkOracle(address(oracle_A)).setLatestAnswer(int256(BASE_8));
+        oracleA = AggregatorV3Interface(address(new MockChainlinkOracle()));
+        MockChainlinkOracle(address(oracleA)).setLatestAnswer(int256(BASE_8));
 
         eurB = IERC20(address(new MockTokenPermit("EUR_B", "EUR_B", 12)));
-        oracle_B = AggregatorV3Interface(address(new MockChainlinkOracle()));
-        MockChainlinkOracle(address(oracle_B)).setLatestAnswer(int256(BASE_8));
+        oracleB = AggregatorV3Interface(address(new MockChainlinkOracle()));
+        MockChainlinkOracle(address(oracleB)).setLatestAnswer(int256(BASE_8));
 
         eurY = IERC20(address(new MockTokenPermit("EUR_Y", "EUR_Y", 18)));
-        oracle_Y = AggregatorV3Interface(address(new MockChainlinkOracle()));
-        MockChainlinkOracle(address(oracle_Y)).setLatestAnswer(int256(BASE_8));
+        oracleY = AggregatorV3Interface(address(new MockChainlinkOracle()));
+        MockChainlinkOracle(address(oracleY)).setLatestAnswer(int256(BASE_8));
 
         // Config
         config = address(new Test());
@@ -78,9 +78,9 @@ contract Fixture is Kheops {
                 Test.initialize.selector,
                 accessControlManager,
                 agToken,
-                CollateralSetup(address(eurA), address(oracle_A)),
-                CollateralSetup(address(eurB), address(oracle_B)),
-                CollateralSetup(address(eurY), address(oracle_Y))
+                CollateralSetup(address(eurA), address(oracleA)),
+                CollateralSetup(address(eurB), address(oracleB)),
+                CollateralSetup(address(eurY), address(oracleY))
             )
         );
     }

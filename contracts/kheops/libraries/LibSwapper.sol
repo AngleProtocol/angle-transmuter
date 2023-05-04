@@ -31,44 +31,6 @@ struct LocalVariables {
 library LibSwapper {
     using SafeERC20 for IERC20;
 
-    function swap(
-        uint256 amount,
-        uint256 slippage,
-        address tokenIn,
-        address tokenOut,
-        address to,
-        uint256 deadline,
-        bool exactIn
-    ) internal returns (uint256 otherAmount) {
-        KheopsStorage storage ks = s.kheopsStorage();
-        if (block.timestamp < deadline) revert TooLate();
-        (bool mint, Collateral memory collatInfo) = getMintBurn(tokenIn, tokenOut);
-        uint256 amountIn;
-        uint256 amountOut;
-        if (exactIn) {
-            otherAmount = mint ? quoteMintExactInput(collatInfo, amount) : quoteBurnExactInput(collatInfo, amount);
-            if (otherAmount < slippage) revert TooSmallAmountOut();
-            (amountIn, amountOut) = (amount, otherAmount);
-        } else {
-            otherAmount = mint ? quoteMintExactOutput(collatInfo, amount) : quoteBurnExactOutput(collatInfo, amount);
-            if (otherAmount > slippage) revert TooBigAmountIn();
-            (amountIn, amountOut) = (otherAmount, amount);
-        }
-        if (mint) {
-            uint256 changeAmount = (amountOut * BASE_27) / ks.normalizer;
-            ks.collaterals[tokenOut].normalizedStables += changeAmount;
-            ks.normalizedStables += changeAmount;
-            IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
-            IAgToken(tokenOut).mint(to, amountOut);
-        } else {
-            uint256 changeAmount = (amountIn * BASE_27) / ks.normalizer;
-            ks.collaterals[tokenOut].normalizedStables -= changeAmount;
-            ks.normalizedStables -= changeAmount;
-            IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-            LibHelper.transferCollateral(tokenOut, collatInfo.hasManager > 0 ? tokenOut : address(0), to, amount, true);
-        }
-    }
-
     // TODO put comment on setter to showcase this feature
     // Should always be xFeeMint[0] = 0 and xFeeBurn[0] = 1. This is for Arrays.findUpperBound(...)>0, the index exclusive upper bound is never 0
     function quoteMintExactInput(

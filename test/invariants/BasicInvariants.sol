@@ -13,31 +13,41 @@ contract BasicInvariants is Calls {
     function setUp() public virtual override {
         super.setUp();
 
-        bytes4[] memory selectors = new bytes4[](1);
+        bytes4[] memory selectors = new bytes4[](2);
         selectors[0] = Calls.swap.selector;
+        selectors[1] = Calls.changeOracle.selector;
 
+        targetSelector(FuzzSelector({ addr: address(this), selectors: selectors }));
         targetSelector(FuzzSelector({ addr: address(this), selectors: selectors }));
         targetContract(address(this));
     }
 
     function invariantReservesAboveIssued() public {
-        (uint256 issued, ) = kheops.getIssuedByCollateral(address(eurA));
+        (uint256 issuedA, ) = kheops.getIssuedByCollateral(address(eurA));
         assertLe(
-            issued,
+            issuedA,
             IERC20(eurA).balanceOf(address(kheops)) * 10 ** (18 - IERC20Metadata(address(eurA)).decimals())
         );
+        (uint256 issuedB, ) = kheops.getIssuedByCollateral(address(eurB));
         assertLe(
-            issued,
+            issuedB,
             IERC20(eurB).balanceOf(address(kheops)) * 10 ** (18 - IERC20Metadata(address(eurB)).decimals())
         );
     }
 
-    function invariant_callSummary() public view {
-        callSummary();
+    function invariantIssuedCoherent() public {
+        (uint256 issuedA, uint256 issued) = kheops.getIssuedByCollateral(address(eurA));
+        (uint256 issuedB, ) = kheops.getIssuedByCollateral(address(eurB));
+        (uint256 issuedY, ) = kheops.getIssuedByCollateral(address(eurY));
+        assertEq(issued, issuedA + issuedB + issuedY);
+    }
+
+    function invariantSystemState() public view {
+        systemState();
     }
 
     // Use the following invariant to inspect logs and the stack trace
-    function invariant_failure() public {
-        assertLe(calls["swap"], 15);
-    }
+    // function invariant_failure() public {
+    //     assertLe(calls["swap"], 15);
+    // }
 }

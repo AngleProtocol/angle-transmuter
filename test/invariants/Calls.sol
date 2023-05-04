@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { QuoteType } from "../../contracts/kheops/Storage.sol";
 import "../../contracts/utils/Constants.sol";
 
+import { MockChainlinkOracle } from "../mock/MockChainlinkOracle.sol";
 import { Fixture } from "../Fixture.sol";
 
 import { console } from "forge-std/console.sol";
@@ -20,12 +21,24 @@ contract Calls is Fixture {
         _;
     }
 
-    function callSummary() public view {
+    function systemState() public view {
         console.log("");
-        console.log("Call summary:");
+        console.log("SYSTEM STATE");
+        console.log("");
+        console.log("Calls summary:");
         console.log("-------------------");
         console.log("swap", calls["swap"]);
+        console.log("oracle", calls["oracle"]);
         console.log("-------------------");
+        console.log("");
+
+        (uint256 issuedA, uint256 issued) = kheops.getIssuedByCollateral(address(eurA));
+        (uint256 issuedB, ) = kheops.getIssuedByCollateral(address(eurB));
+        (uint256 issuedY, ) = kheops.getIssuedByCollateral(address(eurY));
+        console.log("Issued A: ", issuedA);
+        console.log("Issued B: ", issuedB);
+        console.log("Issued Y: ", issuedY);
+        console.log("Issued Total: ", issued);
     }
 
     function swap(uint256 quoteTypeUint, uint256 collatNumber, uint256 amount) public countCall("swap") {
@@ -94,15 +107,35 @@ contract Calls is Fixture {
             deal(address(tokenIn), msg.sender, amountIn - IERC20(tokenIn).balanceOf(msg.sender));
         }
 
-        // Swap
+        // Approval
         hoax(msg.sender);
         IERC20(tokenIn).approve(address(kheops), amountIn);
+
+        // Swap
         hoax(msg.sender);
-        if (quoteType == QuoteType.MintExactInput) {
-            // || quoteType == QuoteType.BurnExactInput
+        if (quoteType == QuoteType.MintExactInput || quoteType == QuoteType.BurnExactInput) {
             kheops.swapExactInput(amountIn, amountOut, tokenIn, tokenOut, msg.sender, block.timestamp + 1 hours);
-        } else if (quoteType == QuoteType.MintExactOutput) {
+        } else {
             kheops.swapExactOutput(amountOut, amountIn, tokenIn, tokenOut, msg.sender, block.timestamp + 1 hours);
         }
+    }
+
+    // Random oracle change of at most 1%
+    function changeOracle(uint256 collatNumber, uint256 change) public countCall("oracle") {
+        collatNumber = bound(collatNumber, 0, 2);
+        change = bound(change, 0, (2 * BASE_18) / 100); // Between 0 and 2%
+
+        MockChainlinkOracle oracle;
+        if (collatNumber == 0) {
+            oracle = MockChainlinkOracle(address(oracleA));
+        } else if (collatNumber == 1) {
+            oracle = MockChainlinkOracle(address(oracleB));
+        } else {
+            oracle = MockChainlinkOracle(address(oracleY));
+        }
+
+        (, int256 answer, , , ) = oracle.latestRoundData();
+        answer = (answer * int256(change + (99 * BASE_18) / 100)) / int256(BASE_18);
+        oracle.setLatestAnswer(answer);
     }
 }
