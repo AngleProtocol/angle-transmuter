@@ -52,7 +52,7 @@ library Utils {
 
             // Note that mid will always be strictly less than high (i.e. it will be a valid array index)
             // because Math.average rounds down (it does integer division with truncation).
-            if (increasingArray ? array[mid] > element : array[mid] < element) {
+            if (increasingArray ? array[mid] >= element : array[mid] <= element) {
                 high = mid;
             } else {
                 low = mid + 1;

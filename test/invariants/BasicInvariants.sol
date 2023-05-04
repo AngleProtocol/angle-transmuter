@@ -35,4 +35,9 @@ contract BasicInvariants is Calls {
     function invariant_callSummary() public view {
         callSummary();
     }
+
+    // Use the following invariant to inspect logs and the stack trace
+    function invariant_failure() public {
+        assertLe(calls["swap"], 10);
+    }
 }

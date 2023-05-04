@@ -16,6 +16,8 @@ import "./LibManager.sol";
 
 import "../../interfaces/IAgToken.sol";
 
+import { console } from "forge-std/console.sol";
+
 struct LocalVariables {
     bool isMint;
     bool isInput;
@@ -103,6 +105,7 @@ library LibSwapper {
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
         uint256 oracleValue = getBurnOracle(collatInfo.oracleConfig, collatInfo.oracleStorage);
+        console.log("Burn Oracle", oracleValue);
         amountOut = quoteFees(collatInfo, QuoteType.BurnExactOutput, amountIn);
         amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
@@ -174,11 +177,15 @@ library LibSwapper {
                         (collatInfo.normalizedStables - normalizedStablesMem * v.upperExposure)) /
                         ((BASE_9 - v.upperExposure) * BASE_27));
                 }
+                console.log("Lower: ", v.lowerExposure);
+                console.log("Current: ", currentExposure);
+                console.log("Upper: ", v.upperExposure);
 
                 // TODO Safe casts
                 int256 currentFees;
                 if (v.lowerExposure == currentExposure) currentFees = v.lowerFees;
                 else {
+                    console.log("DIVISER A: ", BASE_9 - v.lowerExposure);
                     uint256 amountFromPrevBreakPoint = ((normalizerMem *
                         (
                             v.isMint
@@ -186,6 +193,7 @@ library LibSwapper {
                                 : (normalizedStablesMem * v.lowerExposure - collatInfo.normalizedStables)
                         )) / ((BASE_9 - v.lowerExposure) * BASE_27));
                     // upperFees - lowerFees >= 0 because fees are an increasing function of exposure (for mint) and 1-exposure (for burn)
+                    console.log("DIVISER B: ", v.amountToNextBreakPoint + amountFromPrevBreakPoint);
                     uint256 slope = ((uint256(v.upperFees - v.lowerFees) * BASE_18) /
                         (v.amountToNextBreakPoint + amountFromPrevBreakPoint));
                     currentFees = v.lowerFees + int256((slope * amountFromPrevBreakPoint) / BASE_18);
@@ -200,6 +208,7 @@ library LibSwapper {
                         ? amountToNextBreakPointWithFees
                         : v.amountToNextBreakPoint;
                     if (amountToNextBreakPointNormalizer >= amountStable) {
+                        console.log("DIVISER D: ", 2 * amountToNextBreakPointNormalizer);
                         int64 midFee = int64(
                             (v.upperFees *
                                 int256(amountStable) +
@@ -250,19 +259,20 @@ library LibSwapper {
     function getBurnOracle(bytes memory oracleConfig, bytes memory oracleStorage) internal view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 oracleValue;
-        uint256 deviation;
+        uint256 deviation = BASE_18;
         address[] memory collateralList = ks.collateralList;
         uint256 length = collateralList.length;
         for (uint256 i; i < length; ++i) {
             bytes memory oracleConfigOther = ks.collaterals[collateralList[i]].oracleConfig;
-            uint256 deviationValue = BASE_18;
+            uint256 deviationObserved = BASE_18;
             // low chances of collision - but this can be check from governance when setting
             // a new oracle that it doesn't collude with no other hash of an active oracle
             if (keccak256(oracleConfigOther) != keccak256(oracleConfig)) {
-                (, deviationValue) = Oracle.readBurn(oracleConfigOther, oracleStorage);
-            } else (oracleValue, deviationValue) = Oracle.readBurn(oracleConfig, oracleStorage);
-            if (deviationValue < deviation) deviation = deviationValue;
+                (, deviationObserved) = Oracle.readBurn(oracleConfigOther, oracleStorage);
+            } else (oracleValue, deviationObserved) = Oracle.readBurn(oracleConfig, oracleStorage);
+            if (deviationObserved < deviation) deviation = deviationObserved;
         }
+        console.log("Deviation", deviation);
         return (deviation * BASE_18) / oracleValue;
     }
 
