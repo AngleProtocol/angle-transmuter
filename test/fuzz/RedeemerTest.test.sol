@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
 import "../Fixture.sol";
 
-contract BaseLevSwapperTest is Fixture {
-    using stdStorage for StdStorage;
+contract RedeemerTest is Fixture {
     using SafeERC20 for IERC20;
 
     IERC20[] internal _collaterals;
@@ -16,31 +16,37 @@ contract BaseLevSwapperTest is Fixture {
         super.setUp();
 
         // set Fees to 0 on all collaterals
-        uint64[] memory xFee = new uint64[](1);
-        xMintFee[0] = uint64(0);
-        int64[] memory yMintFee = new int64[](4);
-        yMintFee[0] = 0;
-        Setters.setFees(eurA.collateral, xFee, yFee, true);
-        Setters.setFees(eurA.collateral, xFee, yFee, false);
-        Setters.setFees(eurB.collateral, xFee, yFee, true);
-        Setters.setFees(eurB.collateral, xFee, yFee, false);
-        Setters.setFees(eurC.collateral, xFee, yFee, true);
-        Setters.setFees(eurC.collateral, xFee, yFee, false);
+        uint64[] memory xFeeMint = new uint64[](1);
+        xFeeMint[0] = uint64(0);
+        uint64[] memory xFeeBurn = new uint64[](1);
+        xFeeBurn[0] = uint64(BASE_9);
+        int64[] memory yFee = new int64[](1);
+        yFee[0] = 0;
+        uint64[] memory yFeeRedemption = new uint64[](1);
+        yFeeRedemption[0] = 0;
+        vm.startPrank(governor);
+        kheops.setFees(address(eurA), xFeeMint, yFee, true);
+        kheops.setFees(address(eurA), xFeeBurn, yFee, false);
+        kheops.setFees(address(eurB), xFeeMint, yFee, true);
+        kheops.setFees(address(eurB), xFeeBurn, yFee, false);
+        kheops.setFees(address(eurY), xFeeMint, yFee, true);
+        kheops.setFees(address(eurY), xFeeBurn, yFee, false);
+        kheops.setRedemptionCurveParams(xFeeMint, yFeeRedemption);
+        vm.stopPrank();
 
-        _collaterals = new IERC20[]();
-        _oracles = new AggregatorV3Interface[]();
-        _maxTokenAmount = new uint256[]();
-        _collaterals.push(eur_A);
-        _collaterals.push(eur_B);
-        _collaterals.push(eur_Y);
-        _oracles.push(oracle_A);
-        _oracles.push(oracle_B);
-        _oracles.push(oracle_Y);
+        // _collaterals = new IERC20[]();
+        // _oracles = new AggregatorV3Interface[]();
+        // _maxTokenAmount = new uint256[]();
+        _collaterals.push(eurA);
+        _collaterals.push(eurB);
+        _collaterals.push(eurY);
+        _oracles.push(oracleA);
+        _oracles.push(oracleB);
+        _oracles.push(oracleY);
 
-        decimalToken = IERC20Metadata(address(asset)).decimals();
-        _maxTokenAmount.push(10 ** 15 * 10 ** IERC20Metadata(address(_collaterals[0])).decimals().decimals());
-        _maxTokenAmount.push(10 ** 15 * 10 ** IERC20Metadata(address(_collaterals[1])).decimals().decimals());
-        _maxTokenAmount.push(10 ** 15 * 10 ** IERC20Metadata(address(_collaterals[2])).decimals().decimals());
+        _maxTokenAmount.push(10 ** 15 * 10 ** IERC20Metadata(address(_collaterals[0])).decimals());
+        _maxTokenAmount.push(10 ** 15 * 10 ** IERC20Metadata(address(_collaterals[1])).decimals());
+        _maxTokenAmount.push(10 ** 15 * 10 ** IERC20Metadata(address(_collaterals[2])).decimals());
     }
 
     // ================================ QUOTEREDEEM ================================
@@ -48,17 +54,17 @@ contract BaseLevSwapperTest is Fixture {
     function testQuoteRedemptionCurve(uint256[3] memory initialAmounts) public {
         // let's first load the reserves of the protocol
         uint256 mintedStables;
-        vm.startPrank(_alice);
+        vm.startPrank(alice);
         for (uint256 i; i < _collaterals.length; i++) {
-            initialAmounts[i] = bound(initialAmounts[i], 0, maxTokenAmount[i]);
-            deal(address(_collaterals[i]), address(_alice), initialAmounts[i]);
+            initialAmounts[i] = bound(initialAmounts[i], 0, _maxTokenAmount[i]);
+            deal(address(_collaterals[i]), alice, initialAmounts[i]);
             _collaterals[i].approve(address(kheops), initialAmounts[i]);
             mintedStables += kheops.swapExactInput(
                 initialAmounts[i],
                 0,
                 address(_collaterals[i]),
                 address(agToken),
-                _alice,
+                alice,
                 block.timestamp * 2
             );
         }

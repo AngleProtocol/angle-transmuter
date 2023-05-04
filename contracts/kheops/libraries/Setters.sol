@@ -82,20 +82,20 @@ library Setters {
         uint256 n = xFee.length;
         if (n != yFee.length || n == 0) revert InvalidParams();
 
-        // All inflexion point mint xFee should be in ]0,BASE_9[
+        // All inflexion point mint xFee should be in [0,BASE_9[
         // All inflexion point burn xFee should be in [0,BASE_9[
         // yFee should all be <= BASE_9
         if (
             (setter == 0 && (xFee[n - 1] >= BASE_9 || xFee[0] != 0)) ||
-            (setter == 1 && (xFee[n - 1] < 0 || xFee[0] != BASE_9)) ||
-            yFee[n - 1] > int256(BASE_9)
+            (setter == 1 && (xFee[n - 1] < 0 || xFee[0] != BASE_9))
         ) revert InvalidParams();
 
         for (uint256 i = 0; i < n - 1; ++i) {
             // xFee should be strictly monotonic, yFee monotonic (for setter == (0 || 1)) and yFee>=0 for redeem
             if (setter == 0 && (xFee[i] >= xFee[i + 1] || (yFee[i + 1] < yFee[i]))) revert InvalidParams();
             if (setter == 1 && (xFee[i] <= xFee[i + 1] || (yFee[i + 1] < yFee[i]))) revert InvalidParams();
-            if (setter == 2 && (xFee[i] >= xFee[i + 1] || yFee[i] < 0)) revert InvalidParams();
+            if (setter == 2 && (xFee[i] >= xFee[i + 1] || yFee[i] < 0 || yFee[i] > int256(BASE_9)))
+                revert InvalidParams();
         }
 
         KheopsStorage storage ks = s.kheopsStorage();
