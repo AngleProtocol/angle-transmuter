@@ -38,6 +38,6 @@ contract BasicInvariants is Calls {
 
     // Use the following invariant to inspect logs and the stack trace
     function invariant_failure() public {
-        assertLe(calls["swap"], 10);
+        assertLe(calls["swap"], 15);
     }
 }

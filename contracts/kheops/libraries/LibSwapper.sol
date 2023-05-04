@@ -185,7 +185,8 @@ library LibSwapper {
                 int256 currentFees;
                 if (v.lowerExposure == currentExposure) currentFees = v.lowerFees;
                 else {
-                    console.log("DIVISER A: ", BASE_9 - v.lowerExposure);
+                    console.log("DIVISER A");
+                    console.log(BASE_9 - v.lowerExposure);
                     uint256 amountFromPrevBreakPoint = ((normalizerMem *
                         (
                             v.isMint
@@ -193,7 +194,8 @@ library LibSwapper {
                                 : (normalizedStablesMem * v.lowerExposure - collatInfo.normalizedStables)
                         )) / ((BASE_9 - v.lowerExposure) * BASE_27));
                     // upperFees - lowerFees >= 0 because fees are an increasing function of exposure (for mint) and 1-exposure (for burn)
-                    console.log("DIVISER B: ", v.amountToNextBreakPoint + amountFromPrevBreakPoint);
+                    console.log("DIVISER B");
+                    console.log(v.amountToNextBreakPoint + amountFromPrevBreakPoint);
                     uint256 slope = ((uint256(v.upperFees - v.lowerFees) * BASE_18) /
                         (v.amountToNextBreakPoint + amountFromPrevBreakPoint));
                     currentFees = v.lowerFees + int256((slope * amountFromPrevBreakPoint) / BASE_18);
@@ -251,8 +253,12 @@ library LibSwapper {
     }
 
     function invertFee(uint256 amountOut, int64 fees) internal pure returns (uint256 amountIn) {
-        if (fees >= 0) amountIn = (BASE_9 * amountOut) / (BASE_9 - uint256(int256(fees)));
-        else amountIn = (BASE_9 * amountOut) / (BASE_9 + uint256(int256(-fees)));
+        if (fees >= 0) {
+            if (uint256(int256(fees)) == BASE_9) {
+                revert InvalidSwap();
+            }
+            amountIn = (BASE_9 * amountOut) / (BASE_9 - uint256(int256(fees)));
+        } else amountIn = (BASE_9 * amountOut) / (BASE_9 + uint256(int256(-fees)));
     }
 
     // To call this function the collateral must be whitelisted and therefore the oracleData must be set
