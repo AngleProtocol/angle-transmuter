@@ -23,7 +23,7 @@ contract RedeemerTest is Fixture {
         int64[] memory yFee = new int64[](1);
         yFee[0] = 0;
         uint64[] memory yFeeRedemption = new uint64[](1);
-        yFeeRedemption[0] = 0;
+        yFeeRedemption[0] = uint64(BASE_9);
         vm.startPrank(governor);
         kheops.setFees(address(eurA), xFeeMint, yFee, true);
         kheops.setFees(address(eurA), xFeeBurn, yFee, false);
@@ -34,9 +34,6 @@ contract RedeemerTest is Fixture {
         kheops.setRedemptionCurveParams(xFeeMint, yFeeRedemption);
         vm.stopPrank();
 
-        // _collaterals = new IERC20[]();
-        // _oracles = new AggregatorV3Interface[]();
-        // _maxTokenAmount = new uint256[]();
         _collaterals.push(eurA);
         _collaterals.push(eurB);
         _collaterals.push(eurY);
@@ -51,7 +48,7 @@ contract RedeemerTest is Fixture {
 
     // ================================ QUOTEREDEEM ================================
 
-    function testQuoteRedemptionCurve(uint256[3] memory initialAmounts) public {
+    function testQuoteRedemptionCurve(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         // let's first load the reserves of the protocol
         uint256 mintedStables;
         vm.startPrank(alice);
@@ -68,14 +65,35 @@ contract RedeemerTest is Fixture {
                 block.timestamp * 2
             );
         }
+
+        // Send a proportion of these to another user just to complexify the case
+        transferProportion = bound(transferProportion, 0, BASE_9);
+        agToken.transfer(dylan, (mintedStables * transferProportion) / BASE_9);
         vm.stopPrank();
 
-        // currently oracles are all set to 1 --> collateral ratio = 1 -->
+        // check collateral ratio first
+        (uint64 collatRatio, uint256 reservesValue) = kheops.getCollateralRatio();
+        assertEq(collatRatio, BASE_9);
+        assertEq(reservesValue, mintedStables);
 
-        // assertEq(staker.balanceOf(_alice), amount);
-        // assertEq(staker.balanceOf(address(swapper)), 0);
-        // assertEq(asset.balanceOf(_alice), 0);
-        // assertEq(asset.balanceOf(address(swapper)), 0);
-        // assertEq(asset.balanceOf(address(staker)), amount);
+        // currently oracles are all set to 1 --> collateral ratio = 1
+        // --> redemption should be exactly in proportion of current balances
+        vm.startPrank(alice);
+        uint256 amountBurnt = agToken.balanceOf(alice);
+        if (mintedStables == 0) vm.expectRevert("Division or modulo by 0");
+        (address[] memory tokens, uint256[] memory amounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        vm.stopPrank();
+
+        if (mintedStables == 0) return;
+
+        assertEq(tokens.length, 3);
+        assertEq(tokens.length, amounts.length);
+        assertEq(tokens[0], address(eurA));
+        assertEq(tokens[1], address(eurB));
+        assertEq(tokens[2], address(eurY));
+
+        assertEq(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt) / mintedStables);
+        assertEq(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt) / mintedStables);
+        assertEq(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt) / mintedStables);
     }
 }

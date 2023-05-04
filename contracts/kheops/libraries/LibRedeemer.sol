@@ -56,6 +56,8 @@ library LibRedeemer {
         }
     }
 
+    ///@dev If 'normalizedStablesValue==0' it will revert but calling this function is useless in this case as there aren't
+    /// any stable
     function quoteRedemptionCurve(
         uint256 amountBurnt
     ) internal view returns (address[] memory tokens, uint256[] memory balances, uint256[] memory nbrSubCollaterals) {
@@ -96,7 +98,7 @@ library LibRedeemer {
         uint256 subCollateralsLength;
         nbrSubCollaterals = new uint256[](collateralListLength);
         for (uint256 i; i < collateralListLength; ++i) {
-            if (ks.collaterals[collateralList[i]].hasManager > 0) ++subCollateralsLength;
+            if (ks.collaterals[collateralList[i]].hasManager == 0) ++subCollateralsLength;
             else subCollateralsLength += ks.collaterals[collateralList[i]].managerStorage.subCollaterals.length;
             nbrSubCollaterals[i] = subCollateralsLength;
         }

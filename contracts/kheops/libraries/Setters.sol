@@ -84,10 +84,12 @@ library Setters {
 
         // All inflexion point mint xFee should be in [0,BASE_9[
         // All inflexion point burn xFee should be in [0,BASE_9[
+        // All inflexion point burn xFee should be in [0,BASE_9[
         // yFee should all be <= BASE_9
         if (
             (setter == 0 && (xFee[n - 1] >= BASE_9 || xFee[0] != 0)) ||
-            (setter == 1 && (xFee[n - 1] < 0 || xFee[0] != BASE_9))
+            (setter == 1 && (xFee[n - 1] < 0 || xFee[0] != BASE_9)) ||
+            (setter == 2 && (xFee[n - 1] > BASE_9 || xFee[0] != 0))
         ) revert InvalidParams();
 
         for (uint256 i = 0; i < n - 1; ++i) {

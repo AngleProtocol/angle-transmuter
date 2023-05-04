@@ -33,7 +33,7 @@ library Utils {
      *
      * `array` is expected to be sorted, and to contain no repeated elements.
      */
-    function findUpperBound(
+    function findLowerBound(
         bool increasingArray,
         uint64[] memory array,
         uint64 element
@@ -45,7 +45,7 @@ library Utils {
         uint256 high = array.length;
 
         if ((increasingArray && array[high - 1] <= element) || (!increasingArray && array[high - 1] >= element))
-            return high;
+            return high - 1;
 
         while (low < high) {
             uint256 mid = Math.average(low, high);
@@ -70,19 +70,19 @@ library Utils {
         uint64[] memory xArray,
         uint64[] memory yArray
     ) internal pure returns (uint64) {
-        uint256 indexUpperBound = findUpperBound(increasingArray, xArray, x);
+        uint256 indexLowerBound = findLowerBound(increasingArray, xArray, x);
 
-        if (indexUpperBound == xArray.length) return yArray[xArray.length - 1];
+        if (indexLowerBound == xArray.length - 1) return yArray[xArray.length - 1];
         if (increasingArray) {
             return
-                yArray[indexUpperBound - 1] +
-                ((yArray[indexUpperBound] - yArray[indexUpperBound - 1]) * (x - xArray[indexUpperBound - 1])) /
-                (xArray[indexUpperBound] - xArray[indexUpperBound - 1]);
+                yArray[indexLowerBound] +
+                ((yArray[indexLowerBound + 1] - yArray[indexLowerBound]) * (x - xArray[indexLowerBound])) /
+                (xArray[indexLowerBound + 1] - xArray[indexLowerBound]);
         } else {
             return
-                yArray[indexUpperBound - 1] -
-                ((yArray[indexUpperBound] - yArray[indexUpperBound - 1]) * (xArray[indexUpperBound - 1] - x)) /
-                (xArray[indexUpperBound - 1] - xArray[indexUpperBound]);
+                yArray[indexLowerBound] +
+                ((yArray[indexLowerBound + 1] - yArray[indexLowerBound]) * (xArray[indexLowerBound] - x)) /
+                (xArray[indexLowerBound] - xArray[indexLowerBound + 1]);
         }
     }
 }

@@ -32,7 +32,7 @@ library LibSwapper {
     using SafeERC20 for IERC20;
 
     // TODO put comment on setter to showcase this feature
-    // Should always be xFeeMint[0] = 0 and xFeeBurn[0] = 1. This is for Arrays.findUpperBound(...)>0, the index exclusive upper bound is never 0
+    // Should always be xFeeMint[0] = 0 and xFeeBurn[0] = 1. This is for Arrays.findLowerBound(...)>0, the index exclusive upper bound is never 0
     function quoteMintExactInput(
         Collateral memory collatInfo,
         uint256 amountIn
@@ -113,7 +113,7 @@ library LibSwapper {
             }
         } else {
             uint256 amount;
-            uint256 i = Utils.findUpperBound(
+            uint256 i = Utils.findLowerBound(
                 v.isMint,
                 v.isMint ? collatInfo.xFeeMint : collatInfo.xFeeBurn,
                 uint64(currentExposure)
