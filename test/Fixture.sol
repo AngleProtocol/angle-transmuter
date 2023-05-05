@@ -4,9 +4,9 @@ pragma solidity ^0.8.17;
 
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
-import { MockAccessControlManager } from "./mock/MockAccessControlManager.sol";
-import { MockTokenPermit } from "./mock/MockTokenPermit.sol";
-import { MockChainlinkOracle } from "./mock/MockChainlinkOracle.sol";
+import { MockAccessControlManager } from "../contracts/mock/MockAccessControlManager.sol";
+import { MockTokenPermit } from "../contracts/mock/MockTokenPermit.sol";
+import { MockChainlinkOracle } from "../contracts/mock/MockChainlinkOracle.sol";
 import { Kheops } from "./utils/Kheops.sol";
 
 import { AggregatorV3Interface } from "contracts/interfaces/external/chainlink/AggregatorV3Interface.sol";

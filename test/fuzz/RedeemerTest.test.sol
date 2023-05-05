@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import { stdError } from "forge-std/Test.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
+import { IERC20Metadata } from "../../contracts/mock/MockTokenPermit.sol";
 import "../Fixture.sol";
 import "../utils/FunctionUtils.sol";
 import "../../contracts/kheops/utils/Utils.sol";
