@@ -4,6 +4,7 @@ pragma solidity ^0.8.12;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -66,16 +67,17 @@ library LibRedeemer {
         uint256 normalizedStablesValue;
         (collatRatio, normalizedStablesValue, tokens, balances, nbrSubCollaterals) = getCollateralRatio();
         uint64[] memory xRedemptionCurveMem = ks.xRedemptionCurve;
-        uint64[] memory yRedemptionCurveMem = ks.yRedemptionCurve;
+        int64[] memory yRedemptionCurveMem = ks.yRedemptionCurve;
         uint64 penalty;
-        if (collatRatio >= BASE_9) {
-            penalty = (uint64(yRedemptionCurveMem[yRedemptionCurveMem.length - 1]) * uint64(BASE_9)) / collatRatio;
-        } else {
+        if (collatRatio < BASE_9)
             penalty = uint64(Utils.piecewiseLinear(collatRatio, true, xRedemptionCurveMem, yRedemptionCurveMem));
-        }
+
         uint256 balancesLength = balances.length;
         for (uint256 i; i < balancesLength; i++) {
-            balances[i] = (amountBurnt * balances[i] * penalty) / (normalizedStablesValue * BASE_9);
+            balances[i] = collatRatio >= BASE_9
+                ? (amountBurnt * balances[i] * (uint64(yRedemptionCurveMem[yRedemptionCurveMem.length - 1]))) /
+                    (normalizedStablesValue * collatRatio)
+                : (amountBurnt * balances[i] * penalty) / (normalizedStablesValue * BASE_9);
         }
     }
 
@@ -122,15 +124,14 @@ library LibRedeemer {
                 balances[i] = balance;
                 bytes memory oracleConfig = ks.collaterals[collateralList[i]].oracleConfig;
                 uint256 oracleValue = Oracle.readRedemption(oracleConfig);
-                console.log("oracleValue ", oracleValue);
                 totalCollateralization +=
                     (oracleValue * Utils.convertDecimalTo(balance, ks.collaterals[collateralList[i]].decimals, 18)) /
                     BASE_18;
-                console.log("totalCollateralization ", totalCollateralization);
             }
         }
-        reservesValue = (ks.normalizedStables * ks.normalizer) / BASE_27;
-        if (reservesValue > 0) collatRatio = uint64((totalCollateralization * BASE_9) / reservesValue);
+        reservesValue = Math.mulDiv(ks.normalizedStables, ks.normalizer, BASE_27, Math.Rounding.Up);
+        if (reservesValue > 0)
+            collatRatio = uint64(Math.mulDiv(totalCollateralization, BASE_9, reservesValue, Math.Rounding.Up));
         else collatRatio = type(uint64).max;
     }
 

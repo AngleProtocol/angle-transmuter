@@ -48,7 +48,7 @@ contract Getters {
         return (collateral.xFeeBurn, collateral.yFeeBurn);
     }
 
-    function getRedemptionFees() external view returns (uint64[] memory, uint64[] memory) {
+    function getRedemptionFees() external view returns (uint64[] memory, int64[] memory) {
         KheopsStorage storage ks = s.kheopsStorage();
         return (ks.xRedemptionCurve, ks.yRedemptionCurve);
     }

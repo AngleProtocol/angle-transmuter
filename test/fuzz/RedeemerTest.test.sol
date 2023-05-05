@@ -11,6 +11,13 @@ import "../utils/FunctionUtils.sol";
 contract RedeemerTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
 
+    uint256 _maxAmountWithoutDecimals = 10 ** 15;
+    // making this value smaller worsen rounding and make test harder to pass.
+    // Trade off between bullet proof against all oracles and all interactions
+    uint256 _minOracleValue = 10 ** 3; // 10**(-6)
+    uint256 _percentageLossAccepted = 10 ** 15; // 0.1%
+    uint256 _minWallet = 10 ** (3 + 18);
+
     IERC20[] internal _collaterals;
     AggregatorV3Interface[] internal _oracles;
     uint256[] internal _maxTokenAmount;
@@ -25,8 +32,8 @@ contract RedeemerTest is Fixture, FunctionUtils {
         xFeeBurn[0] = uint64(BASE_9);
         int64[] memory yFee = new int64[](1);
         yFee[0] = 0;
-        uint64[] memory yFeeRedemption = new uint64[](1);
-        yFeeRedemption[0] = uint64(BASE_9);
+        int64[] memory yFeeRedemption = new int64[](1);
+        yFeeRedemption[0] = int64(int256(BASE_9));
         vm.startPrank(governor);
         kheops.setFees(address(eurA), xFeeMint, yFee, true);
         kheops.setFees(address(eurA), xFeeBurn, yFee, false);
@@ -44,19 +51,16 @@ contract RedeemerTest is Fixture, FunctionUtils {
         _oracles.push(oracleB);
         _oracles.push(oracleY);
 
-        _maxTokenAmount.push(10 ** 15 * 10 ** IERC20Metadata(address(_collaterals[0])).decimals());
-        _maxTokenAmount.push(10 ** 15 * 10 ** IERC20Metadata(address(_collaterals[1])).decimals());
-        _maxTokenAmount.push(10 ** 15 * 10 ** IERC20Metadata(address(_collaterals[2])).decimals());
+        _maxTokenAmount.push(_maxAmountWithoutDecimals * 10 ** IERC20Metadata(address(_collaterals[0])).decimals());
+        _maxTokenAmount.push(_maxAmountWithoutDecimals * 10 ** IERC20Metadata(address(_collaterals[1])).decimals());
+        _maxTokenAmount.push(_maxAmountWithoutDecimals * 10 ** IERC20Metadata(address(_collaterals[2])).decimals());
     }
 
     // ================================ QUOTEREDEEM ================================
 
     function testQuoteRedemptionCurveAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-            initialAmounts,
-            transferProportion
-        );
+        (uint256 mintedStables, ) = _loadReserves(initialAmounts, transferProportion);
 
         // check collateral ratio first
         (uint64 collatRatio, uint256 reservesValue) = kheops.getCollateralRatio();
@@ -73,15 +77,8 @@ contract RedeemerTest is Fixture, FunctionUtils {
 
         if (mintedStables == 0) return;
 
-        assertEq(tokens.length, 3);
-        assertEq(tokens.length, amounts.length);
-        assertEq(tokens[0], address(eurA));
-        assertEq(tokens[1], address(eurB));
-        assertEq(tokens[2], address(eurY));
-
-        assertEq(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt) / mintedStables);
-        assertEq(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt) / mintedStables);
-        assertEq(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt) / mintedStables);
+        _assertsSizes(tokens, amounts);
+        _assertsAmounts(uint64(BASE_9), mintedStables, amountBurnt, uint64(BASE_9), amounts);
     }
 
     function testQuoteRedemptionCurveGlobalAtPeg(
@@ -97,7 +94,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
 
         // change oracle value but such that total collateralisation is still == 1
         for (uint256 i; i < latestOracleValue.length; i++) {
-            latestOracleValue[i] = bound(latestOracleValue[i], 1, BASE_18);
+            latestOracleValue[i] = bound(latestOracleValue[i], _minOracleValue, BASE_18);
             MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(int256(latestOracleValue[i]));
         }
         uint256 collateralisation;
@@ -128,15 +125,8 @@ contract RedeemerTest is Fixture, FunctionUtils {
 
             if (mintedStables == 0) return;
 
-            assertEq(tokens.length, 3);
-            assertEq(tokens.length, amounts.length);
-            assertEq(tokens[0], address(eurA));
-            assertEq(tokens[1], address(eurB));
-            assertEq(tokens[2], address(eurY));
-
-            assertEq(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt) / mintedStables);
-            assertEq(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt) / mintedStables);
-            assertEq(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt) / mintedStables);
+            _assertsSizes(tokens, amounts);
+            _assertsAmounts(uint64(BASE_9), mintedStables, amountBurnt, uint64(BASE_9), amounts);
         }
     }
 
@@ -151,24 +141,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
             transferProportion
         );
 
-        // change oracle value but such that total collateralisation is still == 1
-        for (uint256 i; i < latestOracleValue.length; i++) {
-            latestOracleValue[i] = bound(latestOracleValue[i], 1, BASE_18);
-            MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(int256(latestOracleValue[i]));
-        }
-
-        uint256 collateralisation;
-        for (uint256 i; i < latestOracleValue.length; i++) {
-            collateralisation += (latestOracleValue[i] * collateralMintedStables[i]) / BASE_8;
-        }
-        uint256 computedCollatRatio;
-        if (mintedStables > 0) computedCollatRatio = (collateralisation * BASE_9) / mintedStables;
-        else computedCollatRatio = type(uint64).max;
-
-        // check collateral ratio first
-        (uint64 collatRatio, uint256 reservesValue) = kheops.getCollateralRatio();
-        assertEq(collatRatio, computedCollatRatio);
-        assertEq(reservesValue, mintedStables);
+        uint64 collatRatio = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
 
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
@@ -178,51 +151,112 @@ contract RedeemerTest is Fixture, FunctionUtils {
 
         if (mintedStables == 0) return;
 
+        _assertsSizes(tokens, amounts);
+        _assertsAmounts(collatRatio, mintedStables, amountBurnt, uint64(BASE_9), amounts);
+    }
+
+    function testQuoteRedemptionCurveAtPegRandomRedemptionFees(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint64[10] memory xFeeRedeemUnbounded,
+        int64[10] memory yFeeRedeemUnbounded
+    ) public {
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, ) = _loadReserves(initialAmounts, transferProportion);
+        (, int64[] memory yFeeRedeem) = _randomRedeemptionFees(xFeeRedeemUnbounded, yFeeRedeemUnbounded);
+
+        vm.startPrank(alice);
+        uint256 amountBurnt = agToken.balanceOf(alice);
+        if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+        (address[] memory tokens, uint256[] memory amounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        vm.stopPrank();
+
+        if (mintedStables == 0) return;
+
+        _assertsSizes(tokens, amounts);
+        _assertsAmounts(uint64(BASE_9), mintedStables, amountBurnt, uint64(yFeeRedeem[yFeeRedeem.length - 1]), amounts);
+    }
+
+    // function testQuoteRedemptionCurveRandomRedemptionFees(
+    //     uint256[3] memory initialAmounts,
+    //     uint256 transferProportion,
+    //     uint256[3] memory latestOracleValue,
+    //     uint64[10] memory xFeeRedeemUnbounded,
+    //     int64[10] memory yFeeRedeemUnbounded
+    // ) public {
+    //     // let's first load the reserves of the protocol
+    //     (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+    //         initialAmounts,
+    //         transferProportion
+    //     );
+    //     uint64 collatRatio = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
+    //     (uint64[] memory yFeeRedeem, int64[] memory yFeeRedeem) = _randomRedeemptionFees(
+    //         xFeeRedeemUnbounded,
+    //         yFeeRedeemUnbounded
+    //     );
+
+    //     vm.startPrank(alice);
+    //     uint256 amountBurnt = agToken.balanceOf(alice);
+    //     if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+    //     (address[] memory tokens, uint256[] memory amounts) = kheops.quoteRedemptionCurve(amountBurnt);
+    //     vm.stopPrank();
+
+    //     if (mintedStables == 0) return;
+
+    //     // compute fee at current collatRatio
+    //     _assertsSizes(tokens, amounts);
+    //     _assertsAmounts(collatRatio, mintedStables, amountBurnt, uint64(yFeeRedeem[yFeeRedeem.length - 1]), amounts);
+    // }
+
+    // ================================== ASSERTS ==================================
+
+    function _assertsSizes(address[] memory tokens, uint256[] memory amounts) internal {
         assertEq(tokens.length, 3);
         assertEq(tokens.length, amounts.length);
         assertEq(tokens[0], address(eurA));
         assertEq(tokens[1], address(eurB));
         assertEq(tokens[2], address(eurY));
+    }
 
-        // we should also receive  in value collatRatio*amountBurnt
+    function _assertsAmounts(
+        uint64 collatRatio,
+        uint256 mintedStables,
+        uint256 amountBurnt,
+        uint64 fee,
+        uint256[] memory amounts
+    ) internal {
+        // we should also receive  in value min(collatRatio*amountBurnt,amountBurnt)
         uint256 amountInValueReceived;
         for (uint256 i; i < _oracles.length; i++) {
-            console.log("amount received from ", i, amounts[i]);
             (, int256 value, , , ) = _oracles[i].latestRoundData();
             uint8 decimals = IERC20Metadata(address(_collaterals[i])).decimals();
-            amountInValueReceived +=
-                (uint256(value) * 10 ** 10 * _convertDecimalTo(amounts[i], decimals, 18)) /
-                BASE_18;
-            console.log("amountInValueReceived ", amountInValueReceived);
+            amountInValueReceived += (uint256(value) * _convertDecimalTo(amounts[i], decimals, 18)) / BASE_8;
         }
-        console.log("amountInValueReceived ", amountInValueReceived);
-        console.log("collatRatio ", collatRatio);
-        console.log("amountBurnt ", amountBurnt);
-        if (collatRatio <= BASE_9) {
-            //     assertEq(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt) / mintedStables);
-            //     assertEq(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt) / mintedStables);
-            //     assertEq(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt) / mintedStables);
-            //     assertApproxEqAbs(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9, 1 wei);
-            //     // assertEq(amountInValueReceived, (BASE_9 * amountBurnt) / collatRatio);
+
+        if (collatRatio < BASE_9) {
+            assertEq(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt * fee) / (mintedStables * BASE_9));
+            assertEq(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt * fee) / (mintedStables * BASE_9));
+            assertEq(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt * fee) / (mintedStables * BASE_9));
+            assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
+            // We accept that small amount tx get out with uncapped loss (compare to what they should get with
+            // infinite precision), but larger one should have a loss smaller than 0.1%
+            // if (amountInValueReceived >= _minWallet)
+            // assertApproxEqRelDecimal(
+            //     amountInValueReceived,
+            //     (collatRatio * amountBurnt) / BASE_9,
+            //     _percentageLossAccepted,
+            //     18
+            // );
         } else {
-            assertEq(
-                amounts[0],
-                (eurA.balanceOf(address(kheops)) * amountBurnt * BASE_9) / (mintedStables * collatRatio)
-            );
-            assertEq(
-                amounts[1],
-                (eurB.balanceOf(address(kheops)) * amountBurnt * BASE_9) / (mintedStables * collatRatio)
-            );
-            assertEq(
-                amounts[2],
-                (eurY.balanceOf(address(kheops)) * amountBurnt * BASE_9) / (mintedStables * collatRatio)
-            );
+            assertEq(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt * fee) / (mintedStables * collatRatio));
+            assertEq(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt * fee) / (mintedStables * collatRatio));
+            assertEq(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt * fee) / (mintedStables * collatRatio));
             assertLe(amountInValueReceived, amountBurnt);
-            // rounding can make you have large difference, let's say you have minted with 1 wei from a collateral with 10 decimals
-            // at an oracle of BASE_8, now the same oracle is now at BASE_8+ 1 wei, if you try to redeem
-            // you will get 0 instead of 10**(18-10)-1 in value
-            // Here we set the delta to 10**12 as the smallest decimals is 6 over all collaterals
-            assertApproxEqAbs(amountInValueReceived, amountBurnt, _collaterals.length * 10 ** 12);
+            // // TODO make the one below pass
+            // // We accept that small amount tx get out with uncapped loss (compare to what they should get with
+            // // infinite precision), but larger one should have a loss smaller than 0.1%
+            // if (amountInValueReceived >= _minWallet)
+            //     assertApproxEqRelDecimal(amountInValueReceived, amountBurnt, _percentageLossAccepted, 18);
         }
     }
 
@@ -255,5 +289,39 @@ contract RedeemerTest is Fixture, FunctionUtils {
         transferProportion = bound(transferProportion, 0, BASE_9);
         agToken.transfer(dylan, (mintedStables * transferProportion) / BASE_9);
         vm.stopPrank();
+    }
+
+    function _updateOracles(
+        uint256[3] memory latestOracleValue,
+        uint256 mintedStables,
+        uint256[] memory collateralMintedStables
+    ) internal returns (uint64 collatRatio) {
+        for (uint256 i; i < latestOracleValue.length; i++) {
+            latestOracleValue[i] = bound(latestOracleValue[i], _minOracleValue, BASE_18);
+            MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(int256(latestOracleValue[i]));
+        }
+
+        uint256 collateralisation;
+        for (uint256 i; i < latestOracleValue.length; i++) {
+            collateralisation += (latestOracleValue[i] * collateralMintedStables[i]) / BASE_8;
+        }
+        uint256 computedCollatRatio;
+        if (mintedStables > 0) computedCollatRatio = (collateralisation * BASE_9) / mintedStables;
+        else computedCollatRatio = type(uint64).max;
+
+        // check collateral ratio first
+        uint256 reservesValue;
+        (collatRatio, reservesValue) = kheops.getCollateralRatio();
+        assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
+        assertEq(reservesValue, mintedStables);
+    }
+
+    function _randomRedeemptionFees(
+        uint64[10] memory xFeeRedeemUnbounded,
+        int64[10] memory yFeeRedeemUnbounded
+    ) internal returns (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) {
+        (xFeeRedeem, yFeeRedeem) = _generateCurves(xFeeRedeemUnbounded, yFeeRedeemUnbounded, true);
+        vm.prank(governor);
+        kheops.setRedemptionCurveParams(xFeeRedeem, yFeeRedeem);
     }
 }

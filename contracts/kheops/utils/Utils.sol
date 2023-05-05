@@ -68,21 +68,21 @@ library Utils {
         uint64 x,
         bool increasingArray,
         uint64[] memory xArray,
-        uint64[] memory yArray
-    ) internal pure returns (uint64) {
+        int64[] memory yArray
+    ) internal pure returns (int64) {
         uint256 indexLowerBound = findLowerBound(increasingArray, xArray, x);
 
         if (indexLowerBound == xArray.length - 1) return yArray[xArray.length - 1];
         if (increasingArray) {
             return
                 yArray[indexLowerBound] +
-                ((yArray[indexLowerBound + 1] - yArray[indexLowerBound]) * (x - xArray[indexLowerBound])) /
-                (xArray[indexLowerBound + 1] - xArray[indexLowerBound]);
+                ((yArray[indexLowerBound + 1] - yArray[indexLowerBound]) * int64(x - xArray[indexLowerBound])) /
+                int64(xArray[indexLowerBound + 1] - xArray[indexLowerBound]);
         } else {
             return
                 yArray[indexLowerBound] +
-                ((yArray[indexLowerBound + 1] - yArray[indexLowerBound]) * (xArray[indexLowerBound] - x)) /
-                (xArray[indexLowerBound] - xArray[indexLowerBound + 1]);
+                ((yArray[indexLowerBound + 1] - yArray[indexLowerBound]) * int64(xArray[indexLowerBound] - x)) /
+                int64(xArray[indexLowerBound] - xArray[indexLowerBound + 1]);
         }
     }
 }

@@ -23,7 +23,7 @@ interface ISetters {
 
     function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) external;
 
-    function setRedemptionCurveParams(uint64[] memory xFee, uint64[] memory yFee) external;
+    function setRedemptionCurveParams(uint64[] memory xFee, int64[] memory yFee) external;
 
     function setOracle(address collateral, bytes memory oracleConfig, bytes memory oracleStorage) external;
 

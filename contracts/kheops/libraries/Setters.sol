@@ -83,8 +83,8 @@ library Setters {
         if (n != yFee.length || n == 0) revert InvalidParams();
 
         // All inflexion point mint xFee should be in [0,BASE_9[
-        // All inflexion point burn xFee should be in [0,BASE_9[
-        // All inflexion point burn xFee should be in [0,BASE_9[
+        // All inflexion point burn xFee should be in ]0,BASE_9]
+        // All inflexion point redeem xFee should be in [0,BASE_9]
         // yFee should all be <= BASE_9
         if (
             (setter == 0 && (xFee[n - 1] >= BASE_9 || xFee[0] != 0)) ||

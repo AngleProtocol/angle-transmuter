@@ -87,7 +87,7 @@ struct KheopsStorage {
     uint256 normalizer;
     address[] collateralList;
     uint64[] xRedemptionCurve;
-    uint64[] yRedemptionCurve;
+    int64[] yRedemptionCurve;
     mapping(address => Collateral) collaterals;
     mapping(address => uint256) isTrusted;
     mapping(address => uint256) isSellerTrusted;

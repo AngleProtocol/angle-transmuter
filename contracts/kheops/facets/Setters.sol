@@ -107,9 +107,9 @@ contract Setters is AccessControl {
         Lib.setFees(collateral, xFee, yFee, mint);
     }
 
-    function setRedemptionCurveParams(uint64[] memory xFee, uint64[] memory yFee) external onlyGuardian {
+    function setRedemptionCurveParams(uint64[] memory xFee, int64[] memory yFee) external onlyGuardian {
         KheopsStorage storage ks = s.kheopsStorage();
-        // _checkFees(xFee, yFee, 2);
+        Lib.checkFees(xFee, yFee, 2);
         ks.xRedemptionCurve = xFee;
         ks.yRedemptionCurve = yFee;
     }
