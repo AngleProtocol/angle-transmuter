@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
 import "../Fixture.sol";
 import "../utils/FunctionUtils.sol";
+import "../../contracts/kheops/utils/Utils.sol";
 
 contract RedeemerTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
@@ -177,36 +178,39 @@ contract RedeemerTest is Fixture, FunctionUtils {
         _assertsAmounts(uint64(BASE_9), mintedStables, amountBurnt, uint64(yFeeRedeem[yFeeRedeem.length - 1]), amounts);
     }
 
-    // function testQuoteRedemptionCurveRandomRedemptionFees(
-    //     uint256[3] memory initialAmounts,
-    //     uint256 transferProportion,
-    //     uint256[3] memory latestOracleValue,
-    //     uint64[10] memory xFeeRedeemUnbounded,
-    //     int64[10] memory yFeeRedeemUnbounded
-    // ) public {
-    //     // let's first load the reserves of the protocol
-    //     (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-    //         initialAmounts,
-    //         transferProportion
-    //     );
-    //     uint64 collatRatio = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
-    //     (uint64[] memory yFeeRedeem, int64[] memory yFeeRedeem) = _randomRedeemptionFees(
-    //         xFeeRedeemUnbounded,
-    //         yFeeRedeemUnbounded
-    //     );
+    function testQuoteRedemptionCurveRandomRedemptionFees(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint256[3] memory latestOracleValue,
+        uint64[10] memory xFeeRedeemUnbounded,
+        int64[10] memory yFeeRedeemUnbounded
+    ) public {
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
+        uint64 collatRatio = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
+        (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) = _randomRedeemptionFees(
+            xFeeRedeemUnbounded,
+            yFeeRedeemUnbounded
+        );
 
-    //     vm.startPrank(alice);
-    //     uint256 amountBurnt = agToken.balanceOf(alice);
-    //     if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-    //     (address[] memory tokens, uint256[] memory amounts) = kheops.quoteRedemptionCurve(amountBurnt);
-    //     vm.stopPrank();
+        vm.startPrank(alice);
+        uint256 amountBurnt = agToken.balanceOf(alice);
+        if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+        (address[] memory tokens, uint256[] memory amounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        vm.stopPrank();
 
-    //     if (mintedStables == 0) return;
+        if (mintedStables == 0) return;
 
-    //     // compute fee at current collatRatio
-    //     _assertsSizes(tokens, amounts);
-    //     _assertsAmounts(collatRatio, mintedStables, amountBurnt, uint64(yFeeRedeem[yFeeRedeem.length - 1]), amounts);
-    // }
+        // compute fee at current collatRatio
+        _assertsSizes(tokens, amounts);
+        uint64 fee;
+        if (collatRatio >= BASE_9) fee = uint64(yFeeRedeem[yFeeRedeem.length - 1]);
+        else fee = uint64(Utils.piecewiseLinear(collatRatio, true, xFeeRedeem, yFeeRedeem));
+        _assertsAmounts(collatRatio, mintedStables, amountBurnt, fee, amounts);
+    }
 
     // ================================== ASSERTS ==================================
 
@@ -240,13 +244,13 @@ contract RedeemerTest is Fixture, FunctionUtils {
             assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
             // We accept that small amount tx get out with uncapped loss (compare to what they should get with
             // infinite precision), but larger one should have a loss smaller than 0.1%
-            // if (amountInValueReceived >= _minWallet)
-            // assertApproxEqRelDecimal(
-            //     amountInValueReceived,
-            //     (collatRatio * amountBurnt) / BASE_9,
-            //     _percentageLossAccepted,
-            //     18
-            // );
+            if (amountInValueReceived >= _minWallet)
+                assertApproxEqRelDecimal(
+                    amountInValueReceived,
+                    (collatRatio * amountBurnt * fee) / BASE_18,
+                    _percentageLossAccepted,
+                    18
+                );
         } else {
             assertEq(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt * fee) / (mintedStables * collatRatio));
             assertEq(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt * fee) / (mintedStables * collatRatio));
@@ -256,7 +260,12 @@ contract RedeemerTest is Fixture, FunctionUtils {
             // // We accept that small amount tx get out with uncapped loss (compare to what they should get with
             // // infinite precision), but larger one should have a loss smaller than 0.1%
             // if (amountInValueReceived >= _minWallet)
-            //     assertApproxEqRelDecimal(amountInValueReceived, amountBurnt, _percentageLossAccepted, 18);
+            //     assertApproxEqRelDecimal(
+            //         amountInValueReceived,
+            //         (amountBurnt * fee) / BASE_9,
+            //         _percentageLossAccepted,
+            //         18
+            //     );
         }
     }
 
