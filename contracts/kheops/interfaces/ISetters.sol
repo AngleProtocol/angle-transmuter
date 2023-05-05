@@ -1,9 +1,13 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.12;
 
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
+import "../Storage.sol";
+
+/// @title ISetters
+/// @author Angle Labs, Inc.
 interface ISetters {
     function adjustReserve(address collateral, uint256 amount, bool addOrRemove) external;
 
@@ -13,7 +17,9 @@ interface ISetters {
 
     function setCollateralManager(address collateral, address manager) external;
 
-    function togglePause(address collateral, uint8 pausedType) external;
+    function togglePause(address collateral, PauseType pausedType) external;
+
+    function toggleSellerTrusted(address seller) external;
 
     function toggleTrusted(address sender) external;
 

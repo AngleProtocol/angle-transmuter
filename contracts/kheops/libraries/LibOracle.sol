@@ -1,17 +1,19 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.12;
 
 import "../../utils/Constants.sol";
-import { Storage as s } from "./Storage.sol";
+import { LibStorage as s } from "./LibStorage.sol";
 import "../Storage.sol";
 import "../../utils/Errors.sol";
 
-import { IKheopsOracle } from "../../interfaces/IOracle.sol";
+import { IKheopsOracle } from "../../interfaces/IKheopsOracle.sol";
 import "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
 import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
 
-library Oracle {
+/// @title LibOracle
+/// @author Angle Labs, Inc.
+library LibOracle {
     function parseOracle(
         bytes memory oracleData
     ) internal pure returns (OracleReadType, OracleQuoteType, OracleTargetType, bytes memory) {

@@ -1,11 +1,13 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.12;
 
-import "../Storage.sol";
+import { DiamondStorage, KheopsStorage } from "../Storage.sol";
 import "../../utils/Constants.sol";
 
-library Storage {
+/// @title LibStorage
+/// @author Angle Labs, Inc.
+library LibStorage {
     function diamondStorage() internal pure returns (DiamondStorage storage ds) {
         bytes32 position = DIAMOND_STORAGE_POSITION;
         assembly {

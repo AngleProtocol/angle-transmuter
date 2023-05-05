@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.12;
 
@@ -8,16 +8,17 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
-import { Storage as s } from "./Storage.sol";
-import "./Oracle.sol";
-import { Helper as LibHelper } from "./Helper.sol";
-import "./LibManager.sol";
-import "./LibSwapper.sol";
+import { LibStorage as s } from "./LibStorage.sol";
+import { LibOracle } from "./LibOracle.sol";
+import { LibHelper } from "./LibHelper.sol";
+import { LibManager } from "./LibManager.sol";
 import "../utils/Utils.sol";
 import "../Storage.sol";
 
-import "../../interfaces/IAgToken.sol";
+import { IAgToken } from "../../interfaces/IAgToken.sol";
 
+/// @title LibRedeemer
+/// @author Angle Labs, Inc.
 library LibRedeemer {
     using SafeERC20 for IERC20;
 
@@ -124,7 +125,7 @@ library LibRedeemer {
                 tokens[i] = collateralList[i];
                 balances[i] = balance;
                 bytes memory oracleConfig = ks.collaterals[collateralList[i]].oracleConfig;
-                uint256 oracleValue = Oracle.readRedemption(oracleConfig);
+                uint256 oracleValue = LibOracle.readRedemption(oracleConfig);
                 totalCollateralization +=
                     (oracleValue * Utils.convertDecimalTo(balance, ks.collaterals[collateralList[i]].decimals, 18)) /
                     BASE_18;

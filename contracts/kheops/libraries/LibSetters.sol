@@ -1,17 +1,19 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.12;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { Storage as s } from "./Storage.sol";
+import { LibStorage as s } from "./LibStorage.sol";
 import { Utils } from "../utils/Utils.sol";
-import { Oracle } from "./Oracle.sol";
+import { LibOracle } from "./LibOracle.sol";
 import "../Storage.sol";
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 
-library Setters {
+/// @title LibSetters
+/// @author Angle Labs, Inc.
+library LibSetters {
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     function setAccessControlManager(IAccessControlManager _newAccessControlManager) internal {
@@ -33,7 +35,7 @@ library Setters {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
-        Oracle.readMint(oracleConfig, oracleStorage); // Checks oracle validity
+        LibOracle.readMint(oracleConfig, oracleStorage); // Checks oracle validity
         collatInfo.oracleConfig = oracleConfig;
         collatInfo.oracleStorage = oracleStorage;
     }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.0;
 
@@ -9,23 +9,26 @@ import { Diamond } from "../libraries/Diamond.sol";
 
 import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
 
-import { Storage as s } from "../libraries/Storage.sol";
+import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibManager } from "../libraries/LibManager.sol";
-import { Setters as Lib } from "../libraries/Setters.sol";
-import { Helper as LibHelper } from "../libraries/Helper.sol";
-// import { Utils } from "../libraries/Utils.sol";
-import "../libraries/LibRedeemer.sol";
-import { AccessControl } from "../utils/AccessControl.sol";
-import { Oracle } from "../libraries/Oracle.sol";
+import { LibSetters } from "../libraries/LibSetters.sol";
+import { LibHelper } from "../libraries/LibHelper.sol";
+import { LibRedeemer } from "../libraries/LibRedeemer.sol";
+import { AccessControlModifiers } from "../utils/AccessControlModifiers.sol";
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 
 import "../Storage.sol";
 
-contract Setters is AccessControl {
+import { ISetters } from "../interfaces/ISetters.sol";
+
+/// @title Setters
+/// @author Angle Labs, Inc.
+contract Setters is AccessControlModifiers, ISetters {
     using SafeERC20 for IERC20;
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
+    /// @inheritdoc ISetters
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
@@ -38,10 +41,12 @@ contract Setters is AccessControl {
         );
     }
 
-    function setAccessControlManager(IAccessControlManager _newAccessControlManager) external onlyGovernor {
-        Lib.setAccessControlManager(_newAccessControlManager);
+    /// @inheritdoc ISetters
+    function setAccessControlManager(address _newAccessControlManager) external onlyGovernor {
+        LibSetters.setAccessControlManager(IAccessControlManager(_newAccessControlManager));
     }
 
+    /// @inheritdoc ISetters
     function setCollateralManager(address collateral, address manager) external onlyGovernor {
         Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
@@ -50,27 +55,31 @@ contract Setters is AccessControl {
         if (manager != address(0)) collatInfo.hasManager = 1;
     }
 
+    /// @inheritdoc ISetters
     function togglePause(address collateral, PauseType pausedType) external onlyGuardian {
-        Lib.togglePause(collateral, pausedType);
+        LibSetters.togglePause(collateral, pausedType);
     }
 
+    /// @inheritdoc ISetters
     function toggleTrusted(address sender) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 trustedStatus = 1 - ks.isTrusted[sender];
         ks.isTrusted[sender] = trustedStatus;
     }
 
+    /// @inheritdoc ISetters
     function toggleSellerTrusted(address seller) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 trustedStatus = 1 - ks.isSellerTrusted[seller];
         ks.isSellerTrusted[seller] = trustedStatus;
     }
 
-    // Need to be followed by a call to set fees and set oracle and unpaused
+    /// @inheritdoc ISetters
     function addCollateral(address collateral) external onlyGovernor {
-        Lib.addCollateral(collateral);
+        LibSetters.addCollateral(collateral);
     }
 
+    /// @inheritdoc ISetters
     /// @dev amount is an absolute amount (like not normalized) -> need to pay attention to this
     /// Why not normalising directly here? easier for Governance
     function adjustReserve(address collateral, uint256 amount, bool addOrRemove) external onlyGovernor {
@@ -86,6 +95,7 @@ contract Setters is AccessControl {
         }
     }
 
+    /// @inheritdoc ISetters
     function revokeCollateral(address collateral) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral memory collatInfo = ks.collaterals[collateral];
@@ -103,25 +113,29 @@ contract Setters is AccessControl {
         ks.collateralList.pop();
     }
 
+    /// @inheritdoc ISetters
     function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) external onlyGuardian {
-        Lib.setFees(collateral, xFee, yFee, mint);
+        LibSetters.setFees(collateral, xFee, yFee, mint);
     }
 
+    /// @inheritdoc ISetters
     function setRedemptionCurveParams(uint64[] memory xFee, int64[] memory yFee) external onlyGuardian {
         KheopsStorage storage ks = s.kheopsStorage();
-        Lib.checkFees(xFee, yFee, 2);
+        LibSetters.checkFees(xFee, yFee, 2);
         ks.xRedemptionCurve = xFee;
         ks.yRedemptionCurve = yFee;
     }
 
+    /// @inheritdoc ISetters
     function setOracle(
         address collateral,
         bytes memory oracleConfig,
         bytes memory oracleStorage
     ) external onlyGovernor {
-        Lib.setOracle(collateral, oracleConfig, oracleStorage);
+        LibSetters.setOracle(collateral, oracleConfig, oracleStorage);
     }
 
+    /// @inheritdoc ISetters
     function updateNormalizer(uint256 amount, bool increase) external returns (uint256) {
         // Trusted addresses can call the function (like a savings contract in the case of a LSD)
         if (!Diamond.isGovernor(msg.sender) && s.kheopsStorage().isTrusted[msg.sender] == 0) revert NotTrusted();

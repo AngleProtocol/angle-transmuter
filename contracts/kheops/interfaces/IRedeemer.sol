@@ -1,7 +1,9 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.12;
 
+/// @title IRedeemer
+/// @author Angle Labs, Inc.
 interface IRedeemer {
     function redeem(
         uint256 amount,

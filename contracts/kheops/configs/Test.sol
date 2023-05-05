@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.0;
 
-import { Storage as s } from "../libraries/Storage.sol";
-import { Setters } from "../libraries/Setters.sol";
-import { Oracle } from "../libraries/Oracle.sol";
+import { LibStorage as s } from "../libraries/LibStorage.sol";
+import { LibSetters as Setters } from "../libraries/LibSetters.sol";
+import "../libraries/LibOracle.sol";
 import "../../utils/Constants.sol";
 import "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
 

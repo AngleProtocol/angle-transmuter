@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.0;
 
@@ -6,17 +6,21 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { LibSwapper as Lib } from "../libraries/LibSwapper.sol";
-import { Storage as s } from "../libraries/Storage.sol";
-import { Helper as LibHelper } from "../libraries/Helper.sol";
-import "../libraries/LibManager.sol";
+import { LibStorage as s } from "../libraries/LibStorage.sol";
+import { LibHelper } from "../libraries/LibHelper.sol";
 import "../Storage.sol";
 
 import "../../utils/Errors.sol";
 import "../../utils/Constants.sol";
 
-contract Swapper {
+import { ISwapper } from "../interfaces/ISwapper.sol";
+
+/// @title Swapper
+/// @author Angle Labs, Inc.
+contract Swapper is ISwapper {
     using SafeERC20 for IERC20;
 
+    /// @inheritdoc ISwapper
     function swapExactInput(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -55,6 +59,7 @@ contract Swapper {
         }
     }
 
+    /// @inheritdoc ISwapper
     function swapExactOutput(
         uint256 amountOut,
         uint256 amountInMax,
@@ -93,6 +98,7 @@ contract Swapper {
         }
     }
 
+    /// @inheritdoc ISwapper
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256) {
         (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
         if (mint) return Lib.quoteMintExactInput(collatInfo, amountIn);
@@ -103,6 +109,7 @@ contract Swapper {
         }
     }
 
+    /// @inheritdoc ISwapper
     function quoteOut(uint256 amountOut, address tokenIn, address tokenOut) external view returns (uint256) {
         (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
         if (mint) return Lib.quoteMintExactOutput(collatInfo, amountOut);

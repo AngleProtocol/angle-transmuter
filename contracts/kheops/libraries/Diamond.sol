@@ -6,7 +6,7 @@ pragma solidity ^0.8.0;
 * EIP-2535 Diamonds
 /******************************************************************************/
 
-import { Storage as s } from "./Storage.sol";
+import { LibStorage as s } from "./LibStorage.sol";
 import "../Storage.sol";
 import "../../utils/Errors.sol";
 
