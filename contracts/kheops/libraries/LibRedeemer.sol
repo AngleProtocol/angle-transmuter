@@ -22,26 +22,34 @@ import { IAgToken } from "../../interfaces/IAgToken.sol";
 library LibRedeemer {
     using SafeERC20 for IERC20;
 
+    event NormalizerUpdated(uint256 newNormalizerValue);
+    event Redeemed(
+        uint256 amount,
+        address[] tokens,
+        uint256[] amounts,
+        address[] forfeitTokens,
+        address indexed from,
+        address indexed to
+    );
+
     function redeem(
         uint256 amount,
         address to,
-        uint deadline,
+        uint256 deadline,
         uint256[] memory minAmountOuts,
         address[] memory forfeitTokens
     ) internal returns (address[] memory tokens, uint256[] memory amounts) {
         KheopsStorage storage ks = s.kheopsStorage();
         if (block.timestamp > deadline) revert TooLate();
-        uint256[] memory nbrSubCollaterals;
-        (tokens, amounts, nbrSubCollaterals) = quoteRedemptionCurve(amount);
+        uint256[] memory subCollateralsTracker;
+        (tokens, amounts, subCollateralsTracker) = quoteRedemptionCurve(amount);
         updateNormalizer(amount, false);
 
-        // Settlement - burn the stable and send the redeemable tokens
         IAgToken(ks.agToken).burnSelf(amount, msg.sender);
 
         address[] memory collateralListMem = ks.collateralList;
         uint256 indexCollateral;
         for (uint256 i; i < amounts.length; ++i) {
-            console.log("indexCollateral ", indexCollateral);
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
 
             int256 indexFound = Utils.checkForfeit(tokens[i], forfeitTokens);
@@ -49,30 +57,37 @@ library LibRedeemer {
                 if (i < collateralListMem.length)
                     LibHelper.transferCollateral(
                         collateralListMem[indexCollateral],
-                        (ks.collaterals[collateralListMem[indexCollateral]].hasManager > 0) ? tokens[i] : address(0),
+                        (ks.collaterals[collateralListMem[indexCollateral]].isManaged > 0) ? tokens[i] : address(0),
                         to,
                         amounts[i],
+                        // TODO are we sure of this true?
                         true
                     );
             }
-            if (nbrSubCollaterals[indexCollateral] - 1 >= i) ++indexCollateral;
+            if (subCollateralsTracker[indexCollateral] - 1 >= i) ++indexCollateral;
         }
+        emit Redeemed(amount, tokens, amounts, forfeitTokens, msg.sender, to);
     }
 
     ///@dev If 'normalizedStablesValue==0' it will revert but calling this function is useless in this case as there aren't
     /// any stable
     function quoteRedemptionCurve(
         uint256 amountBurnt
-    ) internal view returns (address[] memory tokens, uint256[] memory balances, uint256[] memory nbrSubCollaterals) {
+    )
+        internal
+        view
+        returns (address[] memory tokens, uint256[] memory balances, uint256[] memory subCollateralsTracker)
+    {
         KheopsStorage storage ks = s.kheopsStorage();
         uint64 collatRatio;
         uint256 normalizedStablesValue;
-        (collatRatio, normalizedStablesValue, tokens, balances, nbrSubCollaterals) = getCollateralRatio();
-        uint64[] memory xRedemptionCurveMem = ks.xRedemptionCurve;
+        (collatRatio, normalizedStablesValue, tokens, balances, subCollateralsTracker) = getCollateralRatio();
         int64[] memory yRedemptionCurveMem = ks.yRedemptionCurve;
         uint64 penalty;
-        if (collatRatio < BASE_9)
+        if (collatRatio < BASE_9) {
+            uint64[] memory xRedemptionCurveMem = ks.xRedemptionCurve;
             penalty = uint64(Utils.piecewiseLinear(collatRatio, true, xRedemptionCurveMem, yRedemptionCurveMem));
+        }
 
         uint256 balancesLength = balances.length;
         for (uint256 i; i < balancesLength; i++) {
@@ -91,32 +106,31 @@ library LibRedeemer {
             uint256 reservesValue,
             address[] memory tokens,
             uint256[] memory balances,
-            uint256[] memory nbrSubCollaterals
+            uint256[] memory subCollateralsTracker
         )
     {
         KheopsStorage storage ks = s.kheopsStorage();
-
         uint256 totalCollateralization;
         address[] memory collateralList = ks.collateralList;
         uint256 collateralListLength = collateralList.length;
-        uint256 subCollateralsLength;
-        nbrSubCollaterals = new uint256[](collateralListLength);
+        uint256 subCollateralsAmount;
+        subCollateralsTracker = new uint256[](collateralListLength);
         for (uint256 i; i < collateralListLength; ++i) {
-            if (ks.collaterals[collateralList[i]].hasManager == 0) ++subCollateralsLength;
-            else subCollateralsLength += ks.collaterals[collateralList[i]].managerStorage.subCollaterals.length;
-            nbrSubCollaterals[i] = subCollateralsLength;
+            if (ks.collaterals[collateralList[i]].isManaged == 0) ++subCollateralsAmount;
+            else subCollateralsAmount += ks.collaterals[collateralList[i]].managerData.subCollaterals.length;
+            subCollateralsTracker[i] = subCollateralsAmount;
         }
-        balances = new uint256[](subCollateralsLength);
-        tokens = new address[](subCollateralsLength);
+        balances = new uint256[](subCollateralsAmount);
+        tokens = new address[](subCollateralsAmount);
 
         for (uint256 i; i < collateralListLength; ++i) {
-            if (ks.collaterals[collateralList[i]].hasManager > 0) {
+            if (ks.collaterals[collateralList[i]].isManaged > 0) {
                 (uint256[] memory subCollateralsBalances, uint256 totalValue) = LibManager.getUnderlyingBalances(
-                    ks.collaterals[collateralList[i]].managerStorage
+                    ks.collaterals[collateralList[i]].managerData
                 );
                 uint256 curNbrSubCollat = subCollateralsBalances.length;
                 for (uint256 k; k < curNbrSubCollat; ++k) {
-                    tokens[i + k] = address(ks.collaterals[collateralList[i]].managerStorage.subCollaterals[k]);
+                    tokens[i + k] = address(ks.collaterals[collateralList[i]].managerData.subCollaterals[k]);
                     balances[i + k] = subCollateralsBalances[k];
                 }
                 totalCollateralization += totalValue;
@@ -124,8 +138,7 @@ library LibRedeemer {
                 uint256 balance = IERC20(collateralList[i]).balanceOf(address(this));
                 tokens[i] = collateralList[i];
                 balances[i] = balance;
-                bytes memory oracleConfig = ks.collaterals[collateralList[i]].oracleConfig;
-                uint256 oracleValue = LibOracle.readRedemption(oracleConfig);
+                uint256 oracleValue = LibOracle.readRedemption(ks.collaterals[collateralList[i]].oracleConfig);
                 totalCollateralization +=
                     (oracleValue * Utils.convertDecimalTo(balance, ks.collaterals[collateralList[i]].decimals, 18)) /
                     BASE_18;
@@ -137,26 +150,28 @@ library LibRedeemer {
         else collatRatio = type(uint64).max;
     }
 
-    function updateNormalizer(uint256 amount, bool increase) internal returns (uint256 newAccumulatorValue) {
+    function updateNormalizer(uint256 amount, bool increase) internal returns (uint256 newNormalizerValue) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 _normalizer = ks.normalizer;
-        uint256 _reserves = ks.normalizedStables;
-        if (_reserves == 0) newAccumulatorValue = BASE_27;
+        uint256 _normalizedStables = ks.normalizedStables;
+        if (_normalizedStables == 0) newNormalizerValue = BASE_27;
         else if (increase) {
-            newAccumulatorValue = _normalizer + (amount * BASE_27) / _reserves;
+            newNormalizerValue = _normalizer + (amount * BASE_27) / _normalizedStables;
         } else {
-            newAccumulatorValue = _normalizer - (amount * BASE_27) / _reserves;
-            // TODO check if it remains consistent when it gets too small
-            if (newAccumulatorValue == 0) {
-                address[] memory _collateralList = ks.collateralList;
-                uint256 collateralListLength = _collateralList.length;
+            newNormalizerValue = _normalizer - (amount * BASE_27) / _normalizedStables;
+            if (newNormalizerValue <= BASE_18) {
+                address[] memory collateralListMem = ks.collateralList;
+                uint256 collateralListLength = collateralListMem.length;
                 for (uint256 i; i < collateralListLength; ++i) {
-                    ks.collaterals[_collateralList[i]].normalizedStables = 0;
+                    ks.collaterals[collateralListMem[i]].normalizedStables =
+                        (ks.collaterals[collateralListMem[i]].normalizedStables * newNormalizerValue) /
+                        BASE_27;
                 }
-                ks.normalizedStables = 0;
-                newAccumulatorValue = BASE_27;
+                ks.normalizedStables = (_normalizedStables * newNormalizerValue) / BASE_27;
+                newNormalizerValue = BASE_27;
             }
         }
-        ks.normalizer = newAccumulatorValue;
+        ks.normalizer = newNormalizerValue;
+        emit NormalizerUpdated(newNormalizerValue);
     }
 }

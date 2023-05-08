@@ -72,7 +72,7 @@ enum OracleTargetType {
 
 struct Collateral {
     // Whether the collateral supports
-    uint8 hasManager;
+    uint8 isManaged;
     // Whether minting from this asset is unpaused
     uint8 unpausedMint;
     // Whether burning for this asset is unpaused
@@ -91,7 +91,7 @@ struct Collateral {
     // Data about the oracle used for the collateral
     bytes oracleConfig;
     // Storage params if this collateral is invested in other strategies
-    ManagerStorage managerStorage;
+    ManagerStorage managerData;
 }
 
 struct KheopsStorage {
@@ -117,7 +117,7 @@ struct KheopsStorage {
 }
 
 struct ManagerStorage {
-    IERC20 asset;
-    // Asset is also in the list
+    // The collateral corresponding to the manager must also be in the list
     IERC20[] subCollaterals;
+    bytes managerConfig;
 }

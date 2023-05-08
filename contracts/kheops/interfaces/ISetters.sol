@@ -25,6 +25,8 @@ interface ISetters {
 
     function revokeCollateral(address collateral) external;
 
+    function setManagerData(address collateral, ManagerStorage memory managerData) external;
+
     function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) external;
 
     function setRedemptionCurveParams(uint64[] memory xFee, int64[] memory yFee) external;

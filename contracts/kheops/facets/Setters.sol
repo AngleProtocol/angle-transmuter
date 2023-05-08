@@ -29,6 +29,7 @@ contract Setters is AccessControlModifiers, ISetters {
 
     event CollateralManagerSet(address indexed collateral, address indexed manager);
     event CollateralRevoked(address indexed collateral);
+    event ManagerDataSet(address indexed collateral, ManagerStorage managerData);
     event RedemptionCurveParamsSet(uint64[] xFee, int64[] yFee);
     event ReservesAdjusted(address indexed collateral, uint256 amount, bool addOrRemove);
     event TrustedToggled(address indexed sender, uint256 trustedStatus, uint8 trustedType);
@@ -39,7 +40,7 @@ contract Setters is AccessControlModifiers, ISetters {
         Collateral storage collatInfo = ks.collaterals[collateral];
         LibHelper.transferCollateral(
             collateral,
-            collatInfo.hasManager > 0 ? address(token) : address(0),
+            collatInfo.isManaged > 0 ? address(token) : address(0),
             to,
             amount,
             false
@@ -55,10 +56,16 @@ contract Setters is AccessControlModifiers, ISetters {
     function setCollateralManager(address collateral, address manager) external onlyGovernor {
         Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
-        uint8 hasManager = collatInfo.hasManager;
-        if (hasManager > 0) LibManager.pullAll(collateral, false);
-        if (manager != address(0)) collatInfo.hasManager = 1;
+        uint8 isManaged = collatInfo.isManaged;
+        if (isManaged > 0) LibManager.pullAll(collateral, collatInfo.managerData);
+        if (manager != address(0)) collatInfo.isManaged = 1;
         emit CollateralManagerSet(collateral, manager);
+    }
+
+    /// @inheritdoc ISetters
+    function setManagerData(address collateral, ManagerStorage memory managerData) external onlyGovernor {
+        s.kheopsStorage().collaterals[collateral].managerData = managerData;
+        emit ManagerDataSet(collateral, managerData);
     }
 
     /// @inheritdoc ISetters

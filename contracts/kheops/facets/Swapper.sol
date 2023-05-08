@@ -23,6 +23,7 @@ contract Swapper is ISwapper {
         address indexed tokenOut,
         uint256 amountIn,
         uint256 amountOut,
+        address from,
         address indexed to
     );
     using SafeERC20 for IERC20;
@@ -42,7 +43,7 @@ contract Swapper is ISwapper {
 
         amountOut = mint
             ? Lib.quoteMintExactInput(collatInfo, amountIn)
-            : Lib.quoteBurnExactInput(collatInfo, amountIn);
+            : Lib.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
         if (amountOut < amountOutMin) revert TooSmallAmountOut();
 
         if (mint) {
@@ -58,13 +59,13 @@ contract Swapper is ISwapper {
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
             LibHelper.transferCollateral(
                 tokenOut,
-                collatInfo.hasManager > 0 ? tokenOut : address(0),
+                collatInfo.isManaged > 0 ? tokenOut : address(0),
                 to,
                 amountOut,
                 true
             );
         }
-        emit Swap(tokenIn, tokenOut, amountIn, amountOut, to);
+        emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
     }
 
     /// @inheritdoc ISwapper
@@ -82,7 +83,7 @@ contract Swapper is ISwapper {
 
         amountIn = mint
             ? Lib.quoteMintExactOutput(collatInfo, amountOut)
-            : Lib.quoteBurnExactOutput(collatInfo, amountOut);
+            : Lib.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         if (amountIn > amountInMax) revert TooBigAmountIn();
 
         if (mint) {
@@ -98,13 +99,13 @@ contract Swapper is ISwapper {
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
             LibHelper.transferCollateral(
                 tokenOut,
-                collatInfo.hasManager > 0 ? tokenOut : address(0),
+                collatInfo.isManaged > 0 ? tokenOut : address(0),
                 to,
                 amountOut,
                 true
             );
         }
-        emit Swap(tokenIn, tokenOut, amountIn, amountOut, to);
+        emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
     }
 
     /// @inheritdoc ISwapper
@@ -112,7 +113,7 @@ contract Swapper is ISwapper {
         (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
         if (mint) return Lib.quoteMintExactInput(collatInfo, amountIn);
         else {
-            uint256 amountOut = Lib.quoteBurnExactInput(collatInfo, amountIn);
+            uint256 amountOut = Lib.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
             Lib.checkAmounts(tokenOut, collatInfo, amountOut);
             return amountOut;
         }
@@ -124,7 +125,7 @@ contract Swapper is ISwapper {
         if (mint) return Lib.quoteMintExactOutput(collatInfo, amountOut);
         else {
             Lib.checkAmounts(tokenOut, collatInfo, amountOut);
-            return Lib.quoteBurnExactOutput(collatInfo, amountOut);
+            return Lib.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         }
     }
 }

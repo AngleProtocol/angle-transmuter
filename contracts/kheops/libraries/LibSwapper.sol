@@ -54,19 +54,21 @@ library LibSwapper {
     // TODO put comment on setter to showcase this feature
     // xFeeBurn and yFeeBurn should be set in reverse, ie xFeeBurn = [1,0.9,0.5,0.2] and yFeeBurn = [0.01,0.01,0.1,1]
     function quoteBurnExactOutput(
+        address collateral,
         Collateral memory collatInfo,
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
-        uint256 oracleValue = getBurnOracle(collatInfo.oracleConfig);
+        uint256 oracleValue = getBurnOracle(collateral, collatInfo.oracleConfig);
         amountIn = (oracleValue * Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / BASE_18;
         amountIn = quoteFees(collatInfo, QuoteType.BurnExactInput, amountIn);
     }
 
     function quoteBurnExactInput(
+        address collateral,
         Collateral memory collatInfo,
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
-        uint256 oracleValue = getBurnOracle(collatInfo.oracleConfig);
+        uint256 oracleValue = getBurnOracle(collateral, collatInfo.oracleConfig);
         amountOut = quoteFees(collatInfo, QuoteType.BurnExactOutput, amountIn);
         amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
@@ -213,28 +215,27 @@ library LibSwapper {
         } else amountIn = (BASE_9 * amountOut) / (BASE_9 + uint256(int256(-fees)));
     }
 
-    function getBurnOracle(bytes memory oracleConfig) internal view returns (uint256) {
+    function getBurnOracle(address collateral, bytes memory oracleConfig) internal view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 oracleValue;
         uint256 deviation = BASE_18;
         address[] memory collateralList = ks.collateralList;
         uint256 length = collateralList.length;
         for (uint256 i; i < length; ++i) {
-            bytes memory oracleConfigOther = ks.collaterals[collateralList[i]].oracleConfig;
             uint256 deviationObserved = BASE_18;
-            // low chances of collision - but this can be check from governance when setting
-            // a new oracle that it doesn't collude with no other hash of an active oracle
-            if (keccak256(oracleConfigOther) != keccak256(oracleConfig)) {
-                (, deviationObserved) = LibOracle.readBurn(oracleConfigOther);
+            if (collateralList[i] != collateral) {
+                (, deviationObserved) = LibOracle.readBurn(ks.collaterals[collateralList[i]].oracleConfig);
             } else (oracleValue, deviationObserved) = LibOracle.readBurn(oracleConfig);
             if (deviationObserved < deviation) deviation = deviationObserved;
         }
-        return (deviation * BASE_18) / oracleValue;
+        if (oracleValue == 0) return type(uint256).max;
+        else return (deviation * BASE_18) / oracleValue;
     }
 
     function checkAmounts(address collateral, Collateral memory collatInfo, uint256 amountOut) internal view {
         // Checking if enough is available for collateral assets that involve manager addresses
-        if (collatInfo.hasManager > 0 && LibManager.maxAvailable(collateral) < amountOut) revert InvalidSwap();
+        if (collatInfo.isManaged > 0 && LibManager.maxAvailable(collateral, collatInfo.managerData) < amountOut)
+            revert InvalidSwap();
     }
 
     function getMintBurn(
