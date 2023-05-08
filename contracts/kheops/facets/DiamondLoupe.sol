@@ -8,7 +8,7 @@ import { LibStorage as s } from "../libraries/LibStorage.sol";
 import "../Storage.sol";
 
 /**
- * TODO: is this something we must sill do
+ * TODO: is this something we must sill do?
  * Who is the author of the contract
  */
 // Remember to add the loupe functions from DiamondLoupe to the diamond.

@@ -31,7 +31,7 @@ interface ISetters {
 
     function setRedemptionCurveParams(uint64[] memory xFee, int64[] memory yFee) external;
 
-    function setOracle(address collateral, bytes memory oracleConfig, bytes memory oracleStorage) external;
+    function setOracle(address collateral, bytes memory oracleConfig) external;
 
     function updateNormalizer(uint256 amount, bool increase) external returns (uint256);
 }

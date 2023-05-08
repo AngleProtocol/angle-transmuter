@@ -4,8 +4,10 @@ pragma solidity ^0.8.12;
 
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibRedeemer } from "../libraries/LibRedeemer.sol";
+import { LibOracle } from "../libraries/LibOracle.sol";
 import { Diamond } from "../libraries/Diamond.sol";
 import "../../utils/Constants.sol";
+import "../../utils/Errors.sol";
 
 import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
 import "../Storage.sol";
@@ -76,5 +78,19 @@ contract Getters is IGetters {
             (ks.collaterals[collateral].normalizedStables * _normalizer) / BASE_27,
             (ks.normalizedStables * _normalizer) / BASE_27
         );
+    }
+
+    /// @inheritdoc IGetters
+    function getOracleValues(address collateral) external view returns (uint256, uint256, uint256, uint256) {
+        bytes memory oracleConfig = s.kheopsStorage().collaterals[collateral].oracleConfig;
+        (uint256 burn, uint256 deviation) = LibOracle.readBurn(oracleConfig);
+        return (LibOracle.readMint(oracleConfig), burn, deviation, LibOracle.readRedemption(oracleConfig));
+    }
+
+    /// @inheritdoc IGetters
+    function getOracle(
+        address collateral
+    ) external view returns (OracleReadType, OracleQuoteType, OracleTargetType, bytes memory) {
+        return LibOracle.getOracle(collateral);
     }
 }

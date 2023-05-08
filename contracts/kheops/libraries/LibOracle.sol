@@ -15,9 +15,9 @@ import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
 /// @author Angle Labs, Inc.
 library LibOracle {
     function parseOracle(
-        bytes memory oracleData
+        bytes memory oracleConfig
     ) internal pure returns (OracleReadType, OracleQuoteType, OracleTargetType, bytes memory) {
-        return abi.decode(oracleData, (OracleReadType, OracleQuoteType, OracleTargetType, bytes));
+        return abi.decode(oracleConfig, (OracleReadType, OracleQuoteType, OracleTargetType, bytes));
     }
 
     function getOracle(
@@ -26,15 +26,12 @@ library LibOracle {
         return parseOracle(s.kheopsStorage().collaterals[collateral].oracleConfig);
     }
 
-    function targetPrice(OracleTargetType targetType, bytes memory) internal view returns (uint256) {
+    function targetPrice(OracleTargetType targetType) internal view returns (uint256) {
         if (targetType == OracleTargetType.STABLE) return BASE_18;
         else if (targetType == OracleTargetType.WSTETH) return STETH.getPooledEthByShares(1 ether);
         revert InvalidOracleType();
     }
 
-    // There aren't Chainlink oracles for wstETH to stETH, we need to tweak a bit the system
-    // For any other asset that is not referenced by Chainlink but have a reliable feed on chain
-    // you can change this function and it will modify the value passed through Chainlink system
     function quoteAmount(OracleQuoteType quoteType) internal view returns (uint256) {
         if (quoteType == OracleQuoteType.UNIT) return BASE_18;
         else if (quoteType == OracleQuoteType.WSTETH) return STETH.getPooledEthByShares(1 ether);
@@ -72,54 +69,43 @@ library LibOracle {
         revert InvalidOracleType();
     }
 
-    // Do we want to add a small buffer at the protocol advantage or are the fees enough?
-    // It shouldn't take into account the deviation nor target price as it would break the
-    // anti bank run process
-    // Also using readMint to underestimate the current collateral ratio is not possible either
-    // take the exemple of 2 assets one above its target price and the other below,
-    // such that real collateral ratio is above 1 but we would return a collateral ratio<1
-    // Then it is profitable to redeem as you would receive substantially more of the asset 1
-    // that you should have
-    function readRedemption(bytes memory oracleData) internal view returns (uint256) {
-        (OracleReadType readType, OracleQuoteType quoteType, , bytes memory data) = parseOracle(oracleData);
+    function readRedemption(bytes memory oracleConfig) internal view returns (uint256) {
+        (OracleReadType readType, OracleQuoteType quoteType, , bytes memory data) = parseOracle(oracleConfig);
         if (readType == OracleReadType.EXTERNAL) {
             IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             return externalOracle.readRedemption();
         } else return read(readType, quoteType, data);
     }
 
-    function readMint(bytes memory oracleData, bytes memory oracleStorage) internal view returns (uint256 oracleValue) {
+    function readMint(bytes memory oracleConfig) internal view returns (uint256 oracleValue) {
         (
             OracleReadType readType,
             OracleQuoteType quoteType,
             OracleTargetType targetType,
             bytes memory data
-        ) = parseOracle(oracleData);
+        ) = parseOracle(oracleConfig);
         if (readType == OracleReadType.EXTERNAL) {
             IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             return externalOracle.readMint();
         }
         oracleValue = read(readType, quoteType, data);
-        uint256 _targetPrice = targetPrice(targetType, oracleStorage);
+        uint256 _targetPrice = targetPrice(targetType);
         if (_targetPrice < oracleValue) oracleValue = _targetPrice;
     }
 
-    function readBurn(
-        bytes memory oracleData,
-        bytes memory oracleStorage
-    ) internal view returns (uint256 oracleValue, uint256 deviation) {
+    function readBurn(bytes memory oracleConfig) internal view returns (uint256 oracleValue, uint256 deviation) {
         (
             OracleReadType readType,
             OracleQuoteType quoteType,
             OracleTargetType targetType,
             bytes memory data
-        ) = parseOracle(oracleData);
+        ) = parseOracle(oracleConfig);
         if (readType == OracleReadType.EXTERNAL) {
             IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             return externalOracle.readBurn();
         }
         oracleValue = read(readType, quoteType, data);
-        uint256 _targetPrice = targetPrice(targetType, oracleStorage);
+        uint256 _targetPrice = targetPrice(targetType);
         deviation = BASE_18;
         if (oracleValue < _targetPrice) {
             deviation = (oracleValue * BASE_18) / _targetPrice;
@@ -153,6 +139,4 @@ library LibOracle {
         if (multiplied == 1) return (_quoteAmount * castedRatio) / (10 ** decimals);
         else return (_quoteAmount * (10 ** decimals)) / castedRatio;
     }
-
-    // TODO Add getters for data
 }

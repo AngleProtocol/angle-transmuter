@@ -37,7 +37,7 @@ library LibSwapper {
         Collateral memory collatInfo,
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
-        uint256 oracleValue = LibOracle.readMint(collatInfo.oracleConfig, collatInfo.oracleStorage);
+        uint256 oracleValue = LibOracle.readMint(collatInfo.oracleConfig);
         amountOut = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
         amountOut = quoteFees(collatInfo, QuoteType.MintExactInput, amountOut);
     }
@@ -46,18 +46,18 @@ library LibSwapper {
         Collateral memory collatInfo,
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
-        uint256 oracleValue = LibOracle.readMint(collatInfo.oracleConfig, collatInfo.oracleStorage);
+        uint256 oracleValue = LibOracle.readMint(collatInfo.oracleConfig);
         amountIn = quoteFees(collatInfo, QuoteType.MintExactOutput, amountOut);
         amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
 
     // TODO put comment on setter to showcase this feature
-    // xFeeBurn and yFeeBurn should be set in reverse, ie xFeeBurn = [1, 0.9,0.5,0.2] and yFeeBurn = [0.01,0.01,0.1,1]
+    // xFeeBurn and yFeeBurn should be set in reverse, ie xFeeBurn = [1,0.9,0.5,0.2] and yFeeBurn = [0.01,0.01,0.1,1]
     function quoteBurnExactOutput(
         Collateral memory collatInfo,
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
-        uint256 oracleValue = getBurnOracle(collatInfo.oracleConfig, collatInfo.oracleStorage);
+        uint256 oracleValue = getBurnOracle(collatInfo.oracleConfig);
         amountIn = (oracleValue * Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / BASE_18;
         amountIn = quoteFees(collatInfo, QuoteType.BurnExactInput, amountIn);
     }
@@ -66,7 +66,7 @@ library LibSwapper {
         Collateral memory collatInfo,
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
-        uint256 oracleValue = getBurnOracle(collatInfo.oracleConfig, collatInfo.oracleStorage);
+        uint256 oracleValue = getBurnOracle(collatInfo.oracleConfig);
         amountOut = quoteFees(collatInfo, QuoteType.BurnExactOutput, amountIn);
         amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
@@ -213,8 +213,7 @@ library LibSwapper {
         } else amountIn = (BASE_9 * amountOut) / (BASE_9 + uint256(int256(-fees)));
     }
 
-    // To call this function the collateral must be whitelisted and therefore the oracleData must be set
-    function getBurnOracle(bytes memory oracleConfig, bytes memory oracleStorage) internal view returns (uint256) {
+    function getBurnOracle(bytes memory oracleConfig) internal view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 oracleValue;
         uint256 deviation = BASE_18;
@@ -226,8 +225,8 @@ library LibSwapper {
             // low chances of collision - but this can be check from governance when setting
             // a new oracle that it doesn't collude with no other hash of an active oracle
             if (keccak256(oracleConfigOther) != keccak256(oracleConfig)) {
-                (, deviationObserved) = LibOracle.readBurn(oracleConfigOther, oracleStorage);
-            } else (oracleValue, deviationObserved) = LibOracle.readBurn(oracleConfig, oracleStorage);
+                (, deviationObserved) = LibOracle.readBurn(oracleConfigOther);
+            } else (oracleValue, deviationObserved) = LibOracle.readBurn(oracleConfig);
             if (deviationObserved < deviation) deviation = deviationObserved;
         }
         return (deviation * BASE_18) / oracleValue;

@@ -4,6 +4,7 @@ pragma solidity ^0.8.12;
 
 import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
 import { IAgToken } from "../../interfaces/IAgToken.sol";
+import "../Storage.sol";
 
 /// @title IGetters
 /// @author Angle Labs, Inc.
@@ -29,4 +30,10 @@ interface IGetters {
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 reservesValue);
 
     function getIssuedByCollateral(address collateral) external view returns (uint256, uint256);
+
+    function getOracleValues(address collateral) external view returns (uint256, uint256, uint256, uint256);
+
+    function getOracle(
+        address collateral
+    ) external view returns (OracleReadType, OracleQuoteType, OracleTargetType, bytes memory);
 }

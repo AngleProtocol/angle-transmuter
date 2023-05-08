@@ -31,13 +31,13 @@ library LibSetters {
         ks.collateralList.push(collateral);
     }
 
-    function setOracle(address collateral, bytes memory oracleConfig, bytes memory oracleStorage) internal {
+    function setOracle(address collateral, bytes memory oracleConfig) internal {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
-        LibOracle.readMint(oracleConfig, oracleStorage); // Checks oracle validity
+        // Checks oracle validity
+        LibOracle.readMint(oracleConfig);
         collatInfo.oracleConfig = oracleConfig;
-        collatInfo.oracleStorage = oracleStorage;
     }
 
     function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) internal {

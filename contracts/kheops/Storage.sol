@@ -88,9 +88,8 @@ struct Collateral {
     uint64[] xFeeBurn;
     // Burn fees at the exposures specified in `xFeeBurn`
     int64[] yFeeBurn;
-    // TODO: naming for oracle config and oracle storage seems odd -> what's the actual difference between both
+    // Data about the oracle used for the collateral
     bytes oracleConfig;
-    bytes oracleStorage;
     // Storage params if this collateral is invested in other strategies
     ManagerStorage managerStorage;
 }

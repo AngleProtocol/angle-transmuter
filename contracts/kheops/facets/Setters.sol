@@ -127,12 +127,8 @@ contract Setters is AccessControlModifiers, ISetters {
     }
 
     /// @inheritdoc ISetters
-    function setOracle(
-        address collateral,
-        bytes memory oracleConfig,
-        bytes memory oracleStorage
-    ) external onlyGovernor {
-        LibSetters.setOracle(collateral, oracleConfig, oracleStorage);
+    function setOracle(address collateral, bytes memory oracleConfig) external onlyGovernor {
+        LibSetters.setOracle(collateral, oracleConfig);
     }
 
     /// @inheritdoc ISetters
