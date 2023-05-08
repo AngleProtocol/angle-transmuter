@@ -26,7 +26,12 @@ import { ISetters } from "../interfaces/ISetters.sol";
 /// @author Angle Labs, Inc.
 contract Setters is AccessControlModifiers, ISetters {
     using SafeERC20 for IERC20;
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    event CollateralManagerSet(address indexed collateral, address indexed manager);
+    event CollateralRevoked(address indexed collateral);
+    event RedemptionCurveParamsSet(uint64[] xFee, int64[] yFee);
+    event ReservesAdjusted(address indexed collateral, uint256 amount, bool addOrRemove);
+    event TrustedToggled(address indexed sender, uint256 trustedStatus, uint8 trustedType);
 
     /// @inheritdoc ISetters
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external onlyGovernor {
@@ -53,6 +58,7 @@ contract Setters is AccessControlModifiers, ISetters {
         uint8 hasManager = collatInfo.hasManager;
         if (hasManager > 0) LibManager.pullAll(collateral, false);
         if (manager != address(0)) collatInfo.hasManager = 1;
+        emit CollateralManagerSet(collateral, manager);
     }
 
     /// @inheritdoc ISetters
@@ -61,17 +67,17 @@ contract Setters is AccessControlModifiers, ISetters {
     }
 
     /// @inheritdoc ISetters
-    function toggleTrusted(address sender) external onlyGovernor {
+    function toggleTrusted(address sender, uint8 trustedType) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
-        uint256 trustedStatus = 1 - ks.isTrusted[sender];
-        ks.isTrusted[sender] = trustedStatus;
-    }
-
-    /// @inheritdoc ISetters
-    function toggleSellerTrusted(address seller) external onlyGovernor {
-        KheopsStorage storage ks = s.kheopsStorage();
-        uint256 trustedStatus = 1 - ks.isSellerTrusted[seller];
-        ks.isSellerTrusted[seller] = trustedStatus;
+        uint256 trustedStatus;
+        if (trustedType == 0) {
+            trustedStatus = 1 - ks.isTrusted[sender];
+            ks.isTrusted[sender] = trustedStatus;
+        } else {
+            trustedStatus = 1 - ks.isSellerTrusted[sender];
+            ks.isSellerTrusted[sender] = trustedStatus;
+        }
+        emit TrustedToggled(sender, trustedStatus, trustedType);
     }
 
     /// @inheritdoc ISetters
@@ -93,6 +99,7 @@ contract Setters is AccessControlModifiers, ISetters {
             collatInfo.normalizedStables -= amount;
             ks.normalizedStables -= amount;
         }
+        emit ReservesAdjusted(collateral, amount, addOrRemove);
     }
 
     /// @inheritdoc ISetters
@@ -100,10 +107,10 @@ contract Setters is AccessControlModifiers, ISetters {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral memory collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0 || collatInfo.normalizedStables > 0) revert NotCollateral();
+        // TODO: pull all if has manager?
         delete ks.collaterals[collateral];
         address[] memory collateralListMem = ks.collateralList;
         uint256 length = collateralListMem.length;
-        // We already know that it is in the list
         for (uint256 i; i < length - 1; ++i) {
             if (collateralListMem[i] == collateral) {
                 ks.collateralList[i] = collateralListMem[length - 1];
@@ -111,6 +118,7 @@ contract Setters is AccessControlModifiers, ISetters {
             }
         }
         ks.collateralList.pop();
+        emit CollateralRevoked(collateral);
     }
 
     /// @inheritdoc ISetters
@@ -124,6 +132,7 @@ contract Setters is AccessControlModifiers, ISetters {
         LibSetters.checkFees(xFee, yFee, 2);
         ks.xRedemptionCurve = xFee;
         ks.yRedemptionCurve = yFee;
+        emit RedemptionCurveParamsSet(xFee, yFee);
     }
 
     /// @inheritdoc ISetters

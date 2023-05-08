@@ -18,6 +18,13 @@ import { ISwapper } from "../interfaces/ISwapper.sol";
 /// @title Swapper
 /// @author Angle Labs, Inc.
 contract Swapper is ISwapper {
+    event Swap(
+        address indexed tokenIn,
+        address indexed tokenOut,
+        uint256 amountIn,
+        uint256 amountOut,
+        address indexed to
+    );
     using SafeERC20 for IERC20;
 
     /// @inheritdoc ISwapper
@@ -57,6 +64,7 @@ contract Swapper is ISwapper {
                 true
             );
         }
+        emit Swap(tokenIn, tokenOut, amountIn, amountOut, to);
     }
 
     /// @inheritdoc ISwapper
@@ -96,6 +104,7 @@ contract Swapper is ISwapper {
                 true
             );
         }
+        emit Swap(tokenIn, tokenOut, amountIn, amountOut, to);
     }
 
     /// @inheritdoc ISwapper

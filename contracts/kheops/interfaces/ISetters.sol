@@ -19,9 +19,7 @@ interface ISetters {
 
     function togglePause(address collateral, PauseType pausedType) external;
 
-    function toggleSellerTrusted(address seller) external;
-
-    function toggleTrusted(address sender) external;
+    function toggleTrusted(address sender, uint8 trustedType) external;
 
     function addCollateral(address collateral) external;
 
