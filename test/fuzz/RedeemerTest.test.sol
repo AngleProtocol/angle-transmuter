@@ -395,18 +395,20 @@ contract RedeemerTest is Fixture, FunctionUtils {
         for (uint256 i; i < _collaterals.length; i++) {
             uint256 stableIssuedByCollateral;
             (stableIssuedByCollateral, totalStable) = kheops.getIssuedByCollateral(_collaterals[i]);
+            uint256 realStableIssueByCollateralLeft = (collateralMintedStables[i] * (mintedStables - amountBurntBob)) /
+                (mintedStables + amountBurnt);
             _assertApproxEqRelDecimalWithTolerance(
-                (collateralMintedStables[i] * (mintedStables - amountBurntBob)) / (mintedStables + amountBurnt),
+                realStableIssueByCollateralLeft,
                 stableIssuedByCollateral,
-                (collateralMintedStables[i] * (mintedStables - amountBurntBob)) / (mintedStables + amountBurnt),
+                realStableIssueByCollateralLeft,
                 _MAX_PERCENTAGE_DEVIATION,
                 18
             );
         }
         _assertApproxEqRelDecimalWithTolerance(
-            mintedStables - amountBurnt,
+            mintedStables - amountBurntBob,
             totalStable,
-            mintedStables - amountBurnt,
+            mintedStables - amountBurntBob,
             _MAX_PERCENTAGE_DEVIATION,
             18
         );
