@@ -27,7 +27,7 @@ import { ISetters } from "../interfaces/ISetters.sol";
 contract Setters is AccessControlModifiers, ISetters {
     using SafeERC20 for IERC20;
 
-    event CollateralManagerSet(address indexed collateral, address indexed manager);
+    event CollateralManagerSet(address indexed collateral, ManagerStorage managerData);
     event CollateralRevoked(address indexed collateral);
     event ManagerDataSet(address indexed collateral, ManagerStorage managerData);
     event RedemptionCurveParamsSet(uint64[] xFee, int64[] yFee);
@@ -53,13 +53,13 @@ contract Setters is AccessControlModifiers, ISetters {
     }
 
     /// @inheritdoc ISetters
-    function setCollateralManager(address collateral, address manager) external onlyGovernor {
+    function setCollateralManager(address collateral, ManagerStorage memory managerData) external onlyGovernor {
         Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         uint8 isManaged = collatInfo.isManaged;
         if (isManaged > 0) LibManager.pullAll(collateral, collatInfo.managerData);
-        if (manager != address(0)) collatInfo.isManaged = 1;
-        emit CollateralManagerSet(collateral, manager);
+        if (managerData.managerConfig.length != 0) collatInfo.isManaged = 1;
+        emit CollateralManagerSet(collateral, managerData);
     }
 
     /// @inheritdoc ISetters

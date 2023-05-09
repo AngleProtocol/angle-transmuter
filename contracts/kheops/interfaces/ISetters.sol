@@ -15,7 +15,7 @@ interface ISetters {
 
     function setAccessControlManager(address _newAccessControlManager) external;
 
-    function setCollateralManager(address collateral, address manager) external;
+    function setCollateralManager(address collateral, ManagerStorage memory managerData) external;
 
     function togglePause(address collateral, PauseType pausedType) external;
 
