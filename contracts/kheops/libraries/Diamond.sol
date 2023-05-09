@@ -6,7 +6,7 @@ pragma solidity ^0.8.0;
 * EIP-2535 Diamonds
 /******************************************************************************/
 
-import { Storage as s } from "./Storage.sol";
+import { LibStorage as s } from "./LibStorage.sol";
 import "../Storage.sol";
 import "../../utils/Errors.sol";
 
@@ -58,7 +58,7 @@ library Diamond {
         (bool success, bytes memory error) = _init.delegatecall(_calldata);
         if (!success) {
             if (error.length > 0) {
-                // bubble up error
+                // Bubble up error
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(error)
@@ -101,7 +101,7 @@ library Diamond {
         for (uint256 selectorIndex; selectorIndex < _functionSelectors.length; selectorIndex++) {
             bytes4 selector = _functionSelectors[selectorIndex];
             address oldFacetAddress = ds.facetAddressAndSelectorPosition[selector].facetAddress;
-            // can't replace immutable functions -- functions defined directly in the diamond in this case
+            // Can't replace immutable functions -- functions defined directly in the diamond in this case
             if (oldFacetAddress == address(this)) {
                 revert CannotReplaceImmutableFunction(selector);
             }
@@ -111,7 +111,7 @@ library Diamond {
             if (oldFacetAddress == address(0)) {
                 revert CannotReplaceFunctionThatDoesNotExists(selector);
             }
-            // replace old facet address
+            // Replace old facet address
             ds.facetAddressAndSelectorPosition[selector].facetAddress = _facetAddress;
         }
     }
@@ -130,11 +130,11 @@ library Diamond {
                 revert CannotRemoveFunctionThatDoesNotExist(selector);
             }
 
-            // can't remove immutable functions -- functions defined directly in the diamond
+            // Can't remove immutable functions -- functions defined directly in the diamond
             if (oldFacetAddressAndSelectorPosition.facetAddress == address(this)) {
                 revert CannotRemoveImmutableFunction(selector);
             }
-            // replace selector with last selector
+            // Replace selector with last selector
             selectorCount--;
             if (oldFacetAddressAndSelectorPosition.selectorPosition != selectorCount) {
                 bytes4 lastSelector = ds.selectors[selectorCount];
@@ -142,7 +142,7 @@ library Diamond {
                 ds.facetAddressAndSelectorPosition[lastSelector].selectorPosition = oldFacetAddressAndSelectorPosition
                     .selectorPosition;
             }
-            // delete last selector
+            // Delete last selector
             ds.selectors.pop();
             delete ds.facetAddressAndSelectorPosition[selector];
         }

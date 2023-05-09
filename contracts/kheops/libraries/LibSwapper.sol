@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.12;
 
@@ -7,16 +7,14 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
-import { Storage as s } from "./Storage.sol";
-import { Helper as LibHelper } from "./Helper.sol";
-import "./Oracle.sol";
+import { LibStorage as s } from "./LibStorage.sol";
+import { LibHelper } from "./LibHelper.sol";
+import { LibOracle } from "./LibOracle.sol";
 import "../utils/Utils.sol";
 import "../Storage.sol";
-import "./LibManager.sol";
+import { LibManager } from "./LibManager.sol";
 
-import "../../interfaces/IAgToken.sol";
-
-import { console } from "forge-std/console.sol";
+import { IAgToken } from "../../interfaces/IAgToken.sol";
 
 struct LocalVariables {
     bool isMint;
@@ -28,6 +26,8 @@ struct LocalVariables {
     uint256 amountToNextBreakPoint;
 }
 
+/// @title LibSwapper
+/// @author Angle Labs, Inc.
 library LibSwapper {
     using SafeERC20 for IERC20;
 
@@ -37,7 +37,7 @@ library LibSwapper {
         Collateral memory collatInfo,
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
-        uint256 oracleValue = Oracle.readMint(collatInfo.oracleConfig, collatInfo.oracleStorage);
+        uint256 oracleValue = LibOracle.readMint(collatInfo.oracleConfig);
         amountOut = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
         amountOut = quoteFees(collatInfo, QuoteType.MintExactInput, amountOut);
     }
@@ -46,28 +46,29 @@ library LibSwapper {
         Collateral memory collatInfo,
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
-        uint256 oracleValue = Oracle.readMint(collatInfo.oracleConfig, collatInfo.oracleStorage);
+        uint256 oracleValue = LibOracle.readMint(collatInfo.oracleConfig);
         amountIn = quoteFees(collatInfo, QuoteType.MintExactOutput, amountOut);
         amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
 
     // TODO put comment on setter to showcase this feature
-    // xFeeBurn and yFeeBurn should be set in reverse, ie xFeeBurn = [1, 0.9,0.5,0.2] and yFeeBurn = [0.01,0.01,0.1,1]
+    // xFeeBurn and yFeeBurn should be set in reverse, ie xFeeBurn = [1,0.9,0.5,0.2] and yFeeBurn = [0.01,0.01,0.1,1]
     function quoteBurnExactOutput(
+        address collateral,
         Collateral memory collatInfo,
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
-        uint256 oracleValue = getBurnOracle(collatInfo.oracleConfig, collatInfo.oracleStorage);
+        uint256 oracleValue = getBurnOracle(collateral, collatInfo.oracleConfig);
         amountIn = (oracleValue * Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / BASE_18;
         amountIn = quoteFees(collatInfo, QuoteType.BurnExactInput, amountIn);
     }
 
     function quoteBurnExactInput(
+        address collateral,
         Collateral memory collatInfo,
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
-        uint256 oracleValue = getBurnOracle(collatInfo.oracleConfig, collatInfo.oracleStorage);
-        console.log("Burn Oracle", oracleValue);
+        uint256 oracleValue = getBurnOracle(collateral, collatInfo.oracleConfig);
         amountOut = quoteFees(collatInfo, QuoteType.BurnExactOutput, amountIn);
         amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
@@ -139,25 +140,17 @@ library LibSwapper {
                         (collatInfo.normalizedStables - normalizedStablesMem * v.upperExposure)) /
                         ((BASE_9 - v.upperExposure) * BASE_27));
                 }
-                console.log("Lower: ", v.lowerExposure);
-                console.log("Current: ", currentExposure);
-                console.log("Upper: ", v.upperExposure);
 
                 // TODO Safe casts
                 int256 currentFees;
                 if (v.lowerExposure == currentExposure) currentFees = v.lowerFees;
                 else {
-                    console.log("DIVISER A");
-                    console.log(BASE_9 - v.lowerExposure);
                     uint256 amountFromPrevBreakPoint = ((normalizerMem *
                         (
                             v.isMint
                                 ? (collatInfo.normalizedStables - normalizedStablesMem * v.lowerExposure)
                                 : (normalizedStablesMem * v.lowerExposure - collatInfo.normalizedStables)
                         )) / ((BASE_9 - v.lowerExposure) * BASE_27));
-                    // upperFees - lowerFees >= 0 because fees are an increasing function of exposure (for mint) and 1-exposure (for burn)
-                    console.log("DIVISER B");
-                    console.log(v.amountToNextBreakPoint + amountFromPrevBreakPoint);
                     uint256 slope = ((uint256(v.upperFees - v.lowerFees) * BASE_18) /
                         (v.amountToNextBreakPoint + amountFromPrevBreakPoint));
                     currentFees = v.lowerFees + int256((slope * amountFromPrevBreakPoint) / BASE_18);
@@ -172,7 +165,6 @@ library LibSwapper {
                         ? amountToNextBreakPointWithFees
                         : v.amountToNextBreakPoint;
                     if (amountToNextBreakPointNormalizer >= amountStable) {
-                        console.log("DIVISER D: ", 2 * amountToNextBreakPointNormalizer);
                         int64 midFee = int64(
                             (v.upperFees *
                                 int256(amountStable) +
@@ -223,30 +215,27 @@ library LibSwapper {
         } else amountIn = (BASE_9 * amountOut) / (BASE_9 + uint256(int256(-fees)));
     }
 
-    // To call this function the collateral must be whitelisted and therefore the oracleData must be set
-    function getBurnOracle(bytes memory oracleConfig, bytes memory oracleStorage) internal view returns (uint256) {
+    function getBurnOracle(address collateral, bytes memory oracleConfig) internal view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 oracleValue;
         uint256 deviation = BASE_18;
         address[] memory collateralList = ks.collateralList;
         uint256 length = collateralList.length;
         for (uint256 i; i < length; ++i) {
-            bytes memory oracleConfigOther = ks.collaterals[collateralList[i]].oracleConfig;
             uint256 deviationObserved = BASE_18;
-            // low chances of collision - but this can be check from governance when setting
-            // a new oracle that it doesn't collude with no other hash of an active oracle
-            if (keccak256(oracleConfigOther) != keccak256(oracleConfig)) {
-                (, deviationObserved) = Oracle.readBurn(oracleConfigOther, oracleStorage);
-            } else (oracleValue, deviationObserved) = Oracle.readBurn(oracleConfig, oracleStorage);
+            if (collateralList[i] != collateral) {
+                (, deviationObserved) = LibOracle.readBurn(ks.collaterals[collateralList[i]].oracleConfig);
+            } else (oracleValue, deviationObserved) = LibOracle.readBurn(oracleConfig);
             if (deviationObserved < deviation) deviation = deviationObserved;
         }
-        console.log("Deviation", deviation);
+        // Reverting if `oracleValue == 0`
         return (deviation * BASE_18) / oracleValue;
     }
 
     function checkAmounts(address collateral, Collateral memory collatInfo, uint256 amountOut) internal view {
         // Checking if enough is available for collateral assets that involve manager addresses
-        if (collatInfo.hasManager > 0 && LibManager.maxAvailable(collateral) < amountOut) revert InvalidSwap();
+        if (collatInfo.isManaged > 0 && LibManager.maxAvailable(collateral, collatInfo.managerData) < amountOut)
+            revert InvalidSwap();
     }
 
     function getMintBurn(

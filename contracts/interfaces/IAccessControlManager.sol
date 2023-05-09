@@ -3,7 +3,7 @@
 pragma solidity ^0.8.12;
 
 /// @title IAccessControlManager
-/// @author Angle Labs
+/// @author Angle Labs, Inc.
 interface IAccessControlManager {
     /// @notice Checks whether an address is governor of the Angle Protocol or not
     /// @param admin Address to check

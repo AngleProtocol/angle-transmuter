@@ -1,12 +1,12 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.12;
 
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
-import { MockAccessControlManager } from "../mock/MockAccessControlManager.sol";
-import { MockTokenPermit } from "../mock/MockTokenPermit.sol";
-import { MockChainlinkOracle } from "../mock/MockChainlinkOracle.sol";
+import { MockAccessControlManager } from "contracts/mock/MockAccessControlManager.sol";
+import { MockTokenPermit } from "contracts/mock/MockTokenPermit.sol";
+import { MockChainlinkOracle } from "contracts/mock/MockChainlinkOracle.sol";
 
 import { AggregatorV3Interface } from "contracts/interfaces/external/chainlink/AggregatorV3Interface.sol";
 import { IAccessControlManager } from "contracts/interfaces/IAccessControlManager.sol";

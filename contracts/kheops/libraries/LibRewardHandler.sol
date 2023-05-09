@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.12;
 
@@ -9,18 +9,14 @@ import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 import "../Storage.sol";
 import { Diamond } from "./Diamond.sol";
-import { Storage as s } from "./Storage.sol";
+import { LibStorage as s } from "./LibStorage.sol";
 
 library LibRewardHandler {
     using SafeERC20 for IERC20;
 
-    event Recovered(address tokenAddress, uint256 amountReceived);
+    event RewardsSoldFor(address indexed tokenObtained, uint256 balanceUpdate);
 
-    function sellRewards(
-        uint256 minAmountOut,
-        bytes memory payload,
-        address tokenToSwapFor
-    ) internal returns (uint256 amountOut) {
+    function sellRewards(uint256 minAmountOut, bytes memory payload) internal returns (uint256 amountOut) {
         KheopsStorage storage ks = s.kheopsStorage();
         if (!Diamond.isGovernor(msg.sender) && ks.isSellerTrusted[msg.sender] == 0) revert NotTrusted();
 
@@ -39,10 +35,12 @@ library LibRewardHandler {
         for (uint256 i; i < listLength; ++i) {
             uint256 newBalance = IERC20(list[i]).balanceOf(address(this));
             if (newBalance < balances[i]) revert InvalidSwap();
-            else if (newBalance > balances[i]) hasIncreased = true;
+            else if (newBalance > balances[i]) {
+                hasIncreased = true;
+                emit RewardsSoldFor(list[i], newBalance - balances[i]);
+            }
         }
         if (!hasIncreased) revert InvalidSwap();
-        emit Recovered(tokenToSwapFor, amountOut);
     }
 
     /// @notice Processes 1Inch revert messages

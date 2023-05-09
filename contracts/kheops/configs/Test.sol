@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.0;
 
-import { Storage as s } from "../libraries/Storage.sol";
-import { Setters } from "../libraries/Setters.sol";
-import { Oracle } from "../libraries/Oracle.sol";
+import { LibStorage as s } from "../libraries/LibStorage.sol";
+import { LibSetters as Setters } from "../libraries/LibSetters.sol";
+import "../libraries/LibOracle.sol";
 import "../../utils/Constants.sol";
 import "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
 
@@ -43,8 +43,7 @@ contract Test {
         bytes memory readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals);
         Setters.setOracle(
             eurA.collateral,
-            abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleQuoteType.UNIT, OracleTargetType.STABLE, readData),
-            ""
+            abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleQuoteType.UNIT, OracleTargetType.STABLE, readData)
         );
 
         // Fees
@@ -93,8 +92,7 @@ contract Test {
         readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals);
         Setters.setOracle(
             eurB.collateral,
-            abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleQuoteType.UNIT, OracleTargetType.STABLE, readData),
-            ""
+            abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleQuoteType.UNIT, OracleTargetType.STABLE, readData)
         );
 
         // Fees
@@ -143,8 +141,7 @@ contract Test {
         readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals);
         Setters.setOracle(
             eurY.collateral,
-            abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleQuoteType.UNIT, OracleTargetType.STABLE, readData),
-            ""
+            abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleQuoteType.UNIT, OracleTargetType.STABLE, readData)
         );
 
         // Fees
