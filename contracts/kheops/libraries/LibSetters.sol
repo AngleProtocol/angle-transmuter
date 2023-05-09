@@ -91,8 +91,8 @@ library LibSetters {
             yFee[n - 1] > int256(BASE_9) ||
             // Mint inflexion points should be in [0,BASE_9[
             (setter == 0 && (xFee[n - 1] >= BASE_9 || xFee[0] != 0)) ||
-            // Burn inflexion points should be in ]0,BASE_9]
-            (setter == 1 && (xFee[n - 1] <= 0 || xFee[0] != BASE_9)) ||
+            // Burn inflexion points should be in [0,BASE_9]
+            (setter == 1 && (xFee[n - 1] < 0 || xFee[0] != BASE_9)) ||
             // Redemption inflexion points should be in [0,BASE_9]
             (setter == 2 && xFee[n - 1] > BASE_9)
         ) revert InvalidParams();

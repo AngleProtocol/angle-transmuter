@@ -31,6 +31,9 @@ contract Fixture is Kheops {
 
     address public config;
 
+    // Percentage tolerance on test - 0.0001%
+    uint256 internal constant _MAX_PERCENTAGE_DEVIATION = 1e12;
+
     address public constant governor = 0xdC4e6DFe07EFCa50a197DF15D9200883eF4Eb1c8;
     address public constant guardian = 0x0C2553e4B9dFA9f83b1A6D3EAB96c4bAaB42d430;
     address public constant angle = 0x31429d1856aD1377A8A0079410B297e1a9e214c2;
@@ -84,5 +87,23 @@ contract Fixture is Kheops {
                 CollateralSetup(address(eurY), address(oracleY))
             )
         );
+    }
+
+    // ================================= ASSERTIONS ================================
+
+    // Allow to have larger deviation for very small amounts
+    function _assertApproxEqRelDecimalWithTolerance(
+        uint256 a,
+        uint256 b,
+        uint256 condition,
+        uint256 maxPercentDelta, // An 18 decimal fixed point number, where 1e18 == 100%
+        uint256 decimals
+    ) internal virtual {
+        for (uint256 tol = BASE_18 / maxPercentDelta; tol > 0; tol /= 10) {
+            if (condition > tol) {
+                assertApproxEqRelDecimal(a, b, tol == 0 ? BASE_18 : (BASE_18 / tol), decimals);
+                break;
+            }
+        }
     }
 }

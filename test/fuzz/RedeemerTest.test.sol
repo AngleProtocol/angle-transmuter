@@ -79,7 +79,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
         if (mintedStables == 0) return;
 
         _assertsSizes(tokens, amounts);
-        _assertsAmounts(uint64(BASE_9), mintedStables, amountBurnt, uint64(BASE_9), amounts);
+        _assertsQuoteAmounts(uint64(BASE_9), mintedStables, amountBurnt, uint64(BASE_9), amounts);
     }
 
     function testQuoteRedemptionCurveGlobalAtPeg(
@@ -127,7 +127,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
             if (mintedStables == 0) return;
 
             _assertsSizes(tokens, amounts);
-            _assertsAmounts(uint64(BASE_9), mintedStables, amountBurnt, uint64(BASE_9), amounts);
+            _assertsQuoteAmounts(uint64(BASE_9), mintedStables, amountBurnt, uint64(BASE_9), amounts);
         }
     }
 
@@ -153,7 +153,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
         if (mintedStables == 0) return;
 
         _assertsSizes(tokens, amounts);
-        _assertsAmounts(collatRatio, mintedStables, amountBurnt, uint64(BASE_9), amounts);
+        _assertsQuoteAmounts(collatRatio, mintedStables, amountBurnt, uint64(BASE_9), amounts);
     }
 
     function testQuoteRedemptionCurveAtPegRandomRedemptionFees(
@@ -175,7 +175,13 @@ contract RedeemerTest is Fixture, FunctionUtils {
         if (mintedStables == 0) return;
 
         _assertsSizes(tokens, amounts);
-        _assertsAmounts(uint64(BASE_9), mintedStables, amountBurnt, uint64(yFeeRedeem[yFeeRedeem.length - 1]), amounts);
+        _assertsQuoteAmounts(
+            uint64(BASE_9),
+            mintedStables,
+            amountBurnt,
+            uint64(yFeeRedeem[yFeeRedeem.length - 1]),
+            amounts
+        );
     }
 
     function testQuoteRedemptionCurveRandomRedemptionFees(
@@ -209,23 +215,25 @@ contract RedeemerTest is Fixture, FunctionUtils {
         uint64 fee;
         if (collatRatio >= BASE_9) fee = uint64(yFeeRedeem[yFeeRedeem.length - 1]);
         else fee = uint64(Utils.piecewiseLinear(collatRatio, true, xFeeRedeem, yFeeRedeem));
-        _assertsAmounts(collatRatio, mintedStables, amountBurnt, fee, amounts);
+        _assertsQuoteAmounts(collatRatio, mintedStables, amountBurnt, fee, amounts);
     }
 
     // =================================== REDEEM ==================================
 
     function testRedemptionCurveAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, ) = _loadReserves(initialAmounts, transferProportion);
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
 
         _sweepBalances(alice, _collaterals);
         // currently oracles are all set to 1 --> collateral ratio = 1
         // --> redemption should be exactly in proportion of current balances
         vm.startPrank(alice);
-
-        (, uint256[] memory quoteAmounts) = kheops.quoteRedemptionCurve(amountBurnt);
-
         uint256 amountBurnt = agToken.balanceOf(alice);
+        if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+        (, uint256[] memory quoteAmounts) = kheops.quoteRedemptionCurve(amountBurnt);
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
         uint256[] memory forfeitTokens = new uint256[](0);
         uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
@@ -239,8 +247,169 @@ contract RedeemerTest is Fixture, FunctionUtils {
 
         if (mintedStables == 0) return;
 
+        assertEq(amounts, quoteAmounts);
         _assertsSizes(tokens, amounts);
         _assertsTransfers(alice, _collaterals, amounts);
+
+        // Testing implicitly the ks.normalizer and ks.normalizedStables
+        for (uint256 i; i < _collaterals.length; i++) {
+            (uint256 stableIssuedByCollateral, uint256 totalStable) = kheops.getIssuedByCollateral(_collaterals[i]);
+            assertApproxEqAbs(
+                stableIssuedByCollateral,
+                (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
+                1 wei
+            );
+            assertEq(totalStable, mintedStables - amountBurnt);
+        }
+    }
+
+    function testRedemptionCurveRandomRedemptionFees(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint256[3] memory latestOracleValue,
+        uint64[10] memory xFeeRedeemUnbounded,
+        int64[10] memory yFeeRedeemUnbounded
+    ) public {
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
+        uint64 collatRatio = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
+        (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) = _randomRedeemptionFees(
+            xFeeRedeemUnbounded,
+            yFeeRedeemUnbounded
+        );
+
+        _sweepBalances(alice, _collaterals);
+
+        vm.startPrank(alice);
+        uint256 amountBurnt = agToken.balanceOf(alice);
+        if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+        (, uint256[] memory quoteAmounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+        address[] memory tokens;
+        uint256[] memory amounts;
+        {
+            uint256[] memory forfeitTokens = new uint256[](0);
+            uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
+            (tokens, amounts) = kheops.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
+        }
+        vm.stopPrank();
+
+        if (mintedStables == 0) return;
+
+        // compute fee at current collatRatio
+        assertEq(amounts, quoteAmounts);
+        _assertsSizes(tokens, amounts);
+        _assertsTransfers(alice, _collaterals, amounts);
+
+        // Testing implicitly the ks.normalizer and ks.normalizedStables
+        for (uint256 i; i < _collaterals.length; i++) {
+            (uint256 stableIssuedByCollateral, uint256 totalStable) = kheops.getIssuedByCollateral(_collaterals[i]);
+            assertApproxEqAbs(
+                stableIssuedByCollateral,
+                (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
+                1 wei
+            );
+            assertEq(totalStable, mintedStables - amountBurnt);
+        }
+    }
+
+    function testMultiRedemptionCurveRandomRedemptionFees(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint256 redeemProportion,
+        uint256[3] memory latestOracleValue,
+        uint64[10] memory xFeeRedeemUnbounded,
+        int64[10] memory yFeeRedeemUnbounded
+    ) public {
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
+        _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
+        _randomRedeemptionFees(xFeeRedeemUnbounded, yFeeRedeemUnbounded);
+        _sweepBalances(alice, _collaterals);
+        _sweepBalances(bob, _collaterals);
+
+        // first redeem
+        vm.startPrank(alice);
+        uint256 amountBurnt = agToken.balanceOf(alice);
+        uint256 amountBurntBob;
+        if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+        (, uint256[] memory quoteAmounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+        {
+            address[] memory tokens;
+            uint256[] memory amounts;
+            {
+                uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
+                (tokens, amounts) = kheops.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
+            }
+            vm.stopPrank();
+
+            if (mintedStables == 0) return;
+
+            // compute fee at current collatRatio
+            assertEq(amounts, quoteAmounts);
+            _assertsSizes(tokens, amounts);
+            _assertsTransfers(alice, _collaterals, amounts);
+
+            // Testing implicitly the ks.normalizer and ks.normalizedStables
+            for (uint256 i; i < _collaterals.length; i++) {
+                (uint256 stableIssuedByCollateral, uint256 totalStable) = kheops.getIssuedByCollateral(_collaterals[i]);
+                assertApproxEqAbs(
+                    stableIssuedByCollateral,
+                    (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
+                    1 wei
+                );
+                assertEq(totalStable, mintedStables - amountBurnt);
+            }
+            mintedStables -= amountBurnt;
+
+            // now do a second redeem to test with non trivial ks.normalizer and ks.normalizedStables
+            vm.startPrank(bob);
+            redeemProportion = bound(redeemProportion, 0, BASE_9);
+            amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
+            if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+            (, quoteAmounts) = kheops.quoteRedemptionCurve(amountBurntBob);
+            if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+            {
+                uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
+                (tokens, amounts) = kheops.redeem(amountBurntBob, bob, block.timestamp + 1 days, minAmountOuts);
+            }
+            vm.stopPrank();
+
+            if (mintedStables == 0) return;
+
+            // compute fee at current collatRatio
+            assertEq(amounts, quoteAmounts);
+            _assertsSizes(tokens, amounts);
+            _assertsTransfers(bob, _collaterals, amounts);
+        }
+
+        // Testing implicitly the ks.normalizer and ks.normalizedStables
+        uint256 totalStable;
+        for (uint256 i; i < _collaterals.length; i++) {
+            uint256 stableIssuedByCollateral;
+            (stableIssuedByCollateral, totalStable) = kheops.getIssuedByCollateral(_collaterals[i]);
+            _assertApproxEqRelDecimalWithTolerance(
+                (collateralMintedStables[i] * (mintedStables - amountBurntBob)) / (mintedStables + amountBurnt),
+                stableIssuedByCollateral,
+                (collateralMintedStables[i] * (mintedStables - amountBurntBob)) / (mintedStables + amountBurnt),
+                _MAX_PERCENTAGE_DEVIATION,
+                18
+            );
+        }
+        _assertApproxEqRelDecimalWithTolerance(
+            mintedStables - amountBurnt,
+            totalStable,
+            mintedStables - amountBurnt,
+            _MAX_PERCENTAGE_DEVIATION,
+            18
+        );
     }
 
     // ================================== ASSERTS ==================================
@@ -335,7 +504,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
 
         // Send a proportion of these to another account user just to complexify the case
         transferProportion = bound(transferProportion, 0, BASE_9);
-        agToken.transfer(dylan, (mintedStables * transferProportion) / BASE_9);
+        agToken.transfer(bob, (mintedStables * transferProportion) / BASE_9);
         vm.stopPrank();
     }
 
