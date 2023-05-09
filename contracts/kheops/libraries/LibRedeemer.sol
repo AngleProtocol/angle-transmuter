@@ -29,7 +29,7 @@ library LibRedeemer {
         address[] memory forfeitTokens
     ) internal returns (address[] memory tokens, uint256[] memory amounts) {
         KheopsStorage storage ks = s.kheopsStorage();
-        if (block.timestamp < deadline) revert TooLate();
+        if (block.timestamp > deadline) revert TooLate();
         uint256[] memory nbrSubCollaterals;
         (tokens, amounts, nbrSubCollaterals) = quoteRedemptionCurve(amount);
         updateNormalizer(amount, false);
@@ -40,10 +40,10 @@ library LibRedeemer {
         address[] memory collateralListMem = ks.collateralList;
         uint256 indexCollateral;
         for (uint256 i; i < amounts.length; ++i) {
+            console.log("indexCollateral ", indexCollateral);
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
 
             int256 indexFound = Utils.checkForfeit(tokens[i], forfeitTokens);
-            if (nbrSubCollaterals[indexCollateral] >= i) ++indexCollateral;
             if (indexFound < 0) {
                 if (i < collateralListMem.length)
                     LibHelper.transferCollateral(
@@ -54,6 +54,7 @@ library LibRedeemer {
                         true
                     );
             }
+            if (nbrSubCollaterals[indexCollateral] - 1 >= i) ++indexCollateral;
         }
     }
 

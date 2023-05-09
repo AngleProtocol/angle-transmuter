@@ -39,6 +39,7 @@ contract Fixture is Kheops {
     address public constant bob = address(uint160(uint256(keccak256(abi.encodePacked("bob")))));
     address public constant charlie = address(uint160(uint256(keccak256(abi.encodePacked("charlie")))));
     address public constant dylan = address(uint160(uint256(keccak256(abi.encodePacked("dylan")))));
+    address public constant sweeper = address(uint160(uint256(keccak256(abi.encodePacked("sweeper")))));
 
     function setUp() public virtual {
         vm.label(governor, "Governor");
