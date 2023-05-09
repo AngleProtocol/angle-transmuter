@@ -16,7 +16,14 @@ library LibManager {
     /// @param collateral Helps find the manager storage
     /// @param token Is the actual token we want to send
     // TODO add element potentially for a refund or not
-    function transfer(address collateral, address token, address to, uint256 amount, bool revertIfNotEnough) internal {}
+    function transfer(
+        address collateral,
+        address token,
+        address to,
+        uint256 amount,
+        bool revertIfNotEnough,
+        ManagerStorage memory managerData
+    ) internal {}
 
     /// @notice Tries to remove all funds from the manager, except the underlying as reserves can handle it
     function pullAll(address collateral, ManagerStorage memory managerData) internal {}

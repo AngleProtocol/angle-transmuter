@@ -54,15 +54,19 @@ library LibRedeemer {
 
             int256 indexFound = Utils.checkForfeit(tokens[i], forfeitTokens);
             if (indexFound < 0) {
-                if (i < collateralListMem.length)
+                if (i < collateralListMem.length) {
+                    bool isManaged = ks.collaterals[collateralListMem[indexCollateral]].isManaged > 0;
+                    ManagerStorage memory emptyManagerData;
                     LibHelper.transferCollateral(
                         collateralListMem[indexCollateral],
-                        (ks.collaterals[collateralListMem[indexCollateral]].isManaged > 0) ? tokens[i] : address(0),
+                        isManaged ? tokens[i] : address(0),
                         to,
                         amounts[i],
                         // TODO are we sure of this true?
-                        true
+                        true,
+                        isManaged ? ks.collaterals[collateralListMem[indexCollateral]].managerData : emptyManagerData
                     );
+                }
             }
             if (subCollateralsTracker[indexCollateral] - 1 >= i) ++indexCollateral;
         }

@@ -38,12 +38,15 @@ contract Setters is AccessControlModifiers, ISetters {
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
+        bool isManaged = collatInfo.isManaged > 0;
+        ManagerStorage memory emptyManagerData;
         LibHelper.transferCollateral(
             collateral,
-            collatInfo.isManaged > 0 ? address(token) : address(0),
+            isManaged ? address(token) : address(0),
             to,
             amount,
-            false
+            false,
+            isManaged ? collatInfo.managerData : emptyManagerData
         );
     }
 

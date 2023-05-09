@@ -4,6 +4,7 @@ pragma solidity ^0.8.12;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { LibManager } from "../libraries/LibManager.sol";
+import "../Storage.sol";
 
 /// @title LibHelper
 /// @author Angle Labs, Inc.
@@ -15,9 +16,10 @@ library LibHelper {
         address token,
         address to,
         uint256 amount,
-        bool revertIfNotEnough
+        bool revertIfNotEnough,
+        ManagerStorage memory managerData
     ) internal {
-        if (token != address(0)) LibManager.transfer(collateral, token, to, amount, revertIfNotEnough);
+        if (token != address(0)) LibManager.transfer(collateral, token, to, amount, revertIfNotEnough, managerData);
         else IERC20(collateral).safeTransfer(to, amount);
     }
 }
