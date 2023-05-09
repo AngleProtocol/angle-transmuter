@@ -61,6 +61,11 @@ contract Setters is AccessControlModifiers, ISetters {
         uint8 isManaged = collatInfo.isManaged;
         if (isManaged > 0) LibManager.pullAll(collateral, collatInfo.managerData);
         if (managerData.managerConfig.length != 0) collatInfo.isManaged = 1;
+        else {
+            ManagerStorage memory emptyManagerData;
+            managerData = emptyManagerData;
+        }
+        collatInfo.managerData = managerData;
         emit CollateralManagerSet(collateral, managerData);
     }
 

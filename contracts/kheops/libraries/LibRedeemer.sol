@@ -58,7 +58,6 @@ library LibRedeemer {
                         tokens[i],
                         to,
                         amounts[i],
-                        // TODO are we sure of this true?
                         true,
                         ks.collaterals[collateralListMem[indexCollateral]].isManaged > 0
                             ? ks.collaterals[collateralListMem[indexCollateral]].managerData
@@ -157,21 +156,19 @@ library LibRedeemer {
         uint256 _normalizer = ks.normalizer;
         uint256 _normalizedStables = ks.normalizedStables;
         if (_normalizedStables == 0) newNormalizerValue = BASE_27;
-        else if (increase) {
-            newNormalizerValue = _normalizer + (amount * BASE_27) / _normalizedStables;
-        } else {
-            newNormalizerValue = _normalizer - (amount * BASE_27) / _normalizedStables;
-            if (newNormalizerValue <= BASE_18) {
-                address[] memory collateralListMem = ks.collateralList;
-                uint256 collateralListLength = collateralListMem.length;
-                for (uint256 i; i < collateralListLength; ++i) {
-                    ks.collaterals[collateralListMem[i]].normalizedStables =
-                        (ks.collaterals[collateralListMem[i]].normalizedStables * newNormalizerValue) /
-                        BASE_27;
-                }
-                ks.normalizedStables = (_normalizedStables * newNormalizerValue) / BASE_27;
-                newNormalizerValue = BASE_27;
+        else if (increase) newNormalizerValue = _normalizer + (amount * BASE_27) / _normalizedStables;
+        else newNormalizerValue = _normalizer - (amount * BASE_27) / _normalizedStables;
+
+        if (newNormalizerValue <= BASE_18 || newNormalizerValue >= BASE_36) {
+            address[] memory collateralListMem = ks.collateralList;
+            uint256 collateralListLength = collateralListMem.length;
+            for (uint256 i; i < collateralListLength; ++i) {
+                ks.collaterals[collateralListMem[i]].normalizedStables =
+                    (ks.collaterals[collateralListMem[i]].normalizedStables * newNormalizerValue) /
+                    BASE_27;
             }
+            ks.normalizedStables = (_normalizedStables * newNormalizerValue) / BASE_27;
+            newNormalizerValue = BASE_27;
         }
         ks.normalizer = newNormalizerValue;
         emit NormalizerUpdated(newNormalizerValue);

@@ -14,7 +14,7 @@ import { LibStorage as s } from "./LibStorage.sol";
 library LibRewardHandler {
     using SafeERC20 for IERC20;
 
-    event RewardsSoldFor(address indexed tokenObtained, uint256 newBalance);
+    event RewardsSoldFor(address indexed tokenObtained, uint256 balanceUpdate);
 
     function sellRewards(uint256 minAmountOut, bytes memory payload) internal returns (uint256 amountOut) {
         KheopsStorage storage ks = s.kheopsStorage();
@@ -37,7 +37,7 @@ library LibRewardHandler {
             if (newBalance < balances[i]) revert InvalidSwap();
             else if (newBalance > balances[i]) {
                 hasIncreased = true;
-                emit RewardsSoldFor(list[i], newBalance);
+                emit RewardsSoldFor(list[i], newBalance - balances[i]);
             }
         }
         if (!hasIncreased) revert InvalidSwap();

@@ -228,8 +228,8 @@ library LibSwapper {
             } else (oracleValue, deviationObserved) = LibOracle.readBurn(oracleConfig);
             if (deviationObserved < deviation) deviation = deviationObserved;
         }
-        if (oracleValue == 0) return type(uint256).max;
-        else return (deviation * BASE_18) / oracleValue;
+        // Reverting if `oracleValue == 0`
+        return (deviation * BASE_18) / oracleValue;
     }
 
     function checkAmounts(address collateral, Collateral memory collatInfo, uint256 amountOut) internal view {

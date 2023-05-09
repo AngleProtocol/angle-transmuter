@@ -71,7 +71,7 @@ enum OracleTargetType {
 }
 
 struct Collateral {
-    // Whether the collateral supports
+    // Whether the collateral supports strategies
     uint8 isManaged;
     // Whether minting from this asset is unpaused
     uint8 unpausedMint;
@@ -108,7 +108,7 @@ struct KheopsStorage {
     uint64[] xRedemptionCurve;
     // Value of the redemption fees at the collateral ratios specified in `xRedemptionCurve`
     int64[] yRedemptionCurve;
-    // Maps an asset to its
+    // Maps a collateral asset to its parameters
     mapping(address => Collateral) collaterals;
     // Whether an address is trusted to update the normalizer value
     mapping(address => uint256) isTrusted;

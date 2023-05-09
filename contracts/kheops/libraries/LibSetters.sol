@@ -99,11 +99,11 @@ library LibSetters {
 
         for (uint256 i = 0; i < n - 1; ++i) {
             if (
-                // xFee and yFee increasing for mints
+                // xFee strictly increasing and yFee increasing for mints
                 (setter == 0 && (xFee[i] >= xFee[i + 1] || (yFee[i + 1] < yFee[i]))) ||
-                // xFee decreasing and yFee increasing for burns
+                // xFee strictly decreasing and yFee increasing for burns
                 (setter == 1 && (xFee[i] <= xFee[i + 1] || (yFee[i + 1] < yFee[i]))) ||
-                // xFee increasing and yFee>=0 for redemptions
+                // xFee strictly increasing and yFee>=0 for redemptions
                 (setter == 2 && (xFee[i] >= xFee[i + 1] || yFee[i] < 0 || yFee[i] > int256(BASE_9)))
             ) revert InvalidParams();
         }
