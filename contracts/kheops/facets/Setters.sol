@@ -114,7 +114,6 @@ contract Setters is AccessControlModifiers, ISetters {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral memory collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0 || collatInfo.normalizedStables > 0) revert NotCollateral();
-        // TODO: pull all if has manager?
         delete ks.collaterals[collateral];
         address[] memory collateralListMem = ks.collateralList;
         uint256 length = collateralListMem.length;
