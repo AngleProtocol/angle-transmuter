@@ -41,8 +41,7 @@ contract Setters is AccessControlModifiers, ISetters {
         bool isManaged = collatInfo.isManaged > 0;
         ManagerStorage memory emptyManagerData;
         LibHelper.transferCollateral(
-            collateral,
-            isManaged ? address(token) : address(0),
+            isManaged ? address(token) : collateral,
             to,
             amount,
             false,

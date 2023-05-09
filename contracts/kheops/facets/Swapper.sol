@@ -57,15 +57,13 @@ contract Swapper is ISwapper {
             ks.collaterals[tokenOut].normalizedStables -= changeAmount;
             ks.normalizedStables -= changeAmount;
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-            bool isManaged = collatInfo.isManaged > 0;
             ManagerStorage memory emptyManagerData;
             LibHelper.transferCollateral(
                 tokenOut,
-                isManaged ? tokenOut : address(0),
                 to,
                 amountOut,
                 true,
-                isManaged ? collatInfo.managerData : emptyManagerData
+                collatInfo.isManaged > 0 ? collatInfo.managerData : emptyManagerData
             );
         }
         emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
@@ -100,16 +98,16 @@ contract Swapper is ISwapper {
             ks.collaterals[tokenOut].normalizedStables -= changeAmount;
             ks.normalizedStables -= changeAmount; // Will overflow if the operation is impossible
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-            bool isManaged = collatInfo.isManaged > 0;
-            ManagerStorage memory emptyManagerData;
-            LibHelper.transferCollateral(
-                tokenOut,
-                isManaged ? tokenOut : address(0),
-                to,
-                amountOut,
-                true,
-                isManaged ? collatInfo.managerData : emptyManagerData
-            );
+            {
+                ManagerStorage memory emptyManagerData;
+                LibHelper.transferCollateral(
+                    tokenOut,
+                    to,
+                    amountOut,
+                    true,
+                    collatInfo.isManaged > 0 ? collatInfo.managerData : emptyManagerData
+                );
+            }
         }
         emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
     }

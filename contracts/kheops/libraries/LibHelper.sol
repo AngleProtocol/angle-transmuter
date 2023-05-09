@@ -12,14 +12,13 @@ library LibHelper {
     using SafeERC20 for IERC20;
 
     function transferCollateral(
-        address collateral,
         address token,
         address to,
         uint256 amount,
         bool revertIfNotEnough,
         ManagerStorage memory managerData
     ) internal {
-        if (token != address(0)) LibManager.transfer(collateral, token, to, amount, revertIfNotEnough, managerData);
-        else IERC20(collateral).safeTransfer(to, amount);
+        if (token != address(0)) LibManager.transfer(token, to, amount, revertIfNotEnough, managerData);
+        else IERC20(token).safeTransfer(to, amount);
     }
 }

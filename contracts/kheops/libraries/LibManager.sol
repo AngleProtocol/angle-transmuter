@@ -13,11 +13,9 @@ library LibManager {
 
     // Should implement this function to transfer underlying tokens to the right address
     // The facet itself will handle itself how to free the funds necessary
-    /// @param collateral Helps find the manager storage
     /// @param token Is the actual token we want to send
     // TODO add element potentially for a refund or not
     function transfer(
-        address collateral,
         address token,
         address to,
         uint256 amount,

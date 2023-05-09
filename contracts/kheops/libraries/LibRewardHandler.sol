@@ -14,6 +14,8 @@ import { LibStorage as s } from "./LibStorage.sol";
 library LibRewardHandler {
     using SafeERC20 for IERC20;
 
+    event RewardsSoldFor(address indexed tokenObtained, uint256 newBalance);
+
     function sellRewards(uint256 minAmountOut, bytes memory payload) internal returns (uint256 amountOut) {
         KheopsStorage storage ks = s.kheopsStorage();
         if (!Diamond.isGovernor(msg.sender) && ks.isSellerTrusted[msg.sender] == 0) revert NotTrusted();
@@ -33,7 +35,10 @@ library LibRewardHandler {
         for (uint256 i; i < listLength; ++i) {
             uint256 newBalance = IERC20(list[i]).balanceOf(address(this));
             if (newBalance < balances[i]) revert InvalidSwap();
-            else if (newBalance > balances[i]) hasIncreased = true;
+            else if (newBalance > balances[i]) {
+                hasIncreased = true;
+                emit RewardsSoldFor(list[i], newBalance);
+            }
         }
         if (!hasIncreased) revert InvalidSwap();
     }
