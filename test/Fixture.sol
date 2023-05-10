@@ -33,6 +33,7 @@ contract Fixture is Kheops {
 
     // Percentage tolerance on test - 0.0001%
     uint256 internal constant _MAX_PERCENTAGE_DEVIATION = 1e12;
+    uint256 internal constant _MAX_SUB_COLLATERALS = 10;
 
     address public constant governor = 0xdC4e6DFe07EFCa50a197DF15D9200883eF4Eb1c8;
     address public constant guardian = 0x0C2553e4B9dFA9f83b1A6D3EAB96c4bAaB42d430;

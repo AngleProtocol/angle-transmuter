@@ -4,10 +4,16 @@ pragma solidity ^0.8.12;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { LibOracle, AggregatorV3Interface } from "./LibOracle.sol";
+import { LibStorage as s } from "./LibStorage.sol";
 import "../Storage.sol";
+import "../../utils/Constants.sol";
+import "../utils/Utils.sol";
+import "contracts/utils/Errors.sol";
 
 /// @title LibManager
 /// @author Angle Labs, Inc.
+/// Mock implementation of what would be needed if a collateral was linked to a manager
 library LibManager {
     using SafeERC20 for IERC20;
 
@@ -21,7 +27,18 @@ library LibManager {
         uint256 amount,
         bool revertIfNotEnough,
         ManagerStorage memory managerData
-    ) internal {}
+    ) internal {
+        IERC20[] memory subCollaterals = managerData.subCollaterals;
+        bool found;
+        for (uint256 i; i < subCollaterals.length; ++i) {
+            if (token == address(subCollaterals[i])) {
+                found = true;
+                break;
+            }
+        }
+        if (!found && revertIfNotEnough) revert NotCollateral();
+        IERC20(token).transfer(to, amount);
+    }
 
     /// @notice Tries to remove all funds from the manager, except the underlying as reserves can handle it
     function pullAll(address collateral, ManagerStorage memory managerData) internal {}
@@ -29,11 +46,47 @@ library LibManager {
     /// @notice Get all the token balances owned by the manager
     /// @return balances An array of size `subCollaterals` with current balances
     /// @return totalValue The sum of the balances corrected by an oracle
+    /// @dev 'subCollaterals' should always have as first token the collateral itself
     function getUnderlyingBalances(
         ManagerStorage memory managerData
-    ) internal view returns (uint256[] memory balances, uint256 totalValue) {}
+    ) internal view returns (uint256[] memory balances, uint256 totalValue) {
+        // not optimal but mock contract
+        KheopsStorage storage ks = s.kheopsStorage();
 
-    /// @notice Return available underlying tokens, for instanc if liquidity fully used and
+        IERC20[] memory subCollaterals = managerData.subCollaterals;
+        (
+            uint8[] memory tokenDecimals,
+            AggregatorV3Interface[] memory oracles,
+            uint32[] memory stalePeriods,
+            uint8[] memory oracleIsMultiplied,
+            uint8[] memory chainlinkDecimals
+        ) = abi.decode(managerData.managerConfig, (uint8[], AggregatorV3Interface[], uint32[], uint8[], uint8[]));
+        uint256 nbrCollaterals = subCollaterals.length;
+        balances = new uint256[](nbrCollaterals);
+        for (uint256 i = 0; i < nbrCollaterals; ++i) {
+            balances[i] = subCollaterals[i].balanceOf(address(this));
+            totalValue += i == 0
+                ? (LibOracle.readRedemption(ks.collaterals[address(subCollaterals[i])].oracleConfig) *
+                    Utils.convertDecimalTo(balances[i], tokenDecimals[i], 18)) / BASE_18
+                : Utils.convertDecimalTo(
+                    LibOracle.readChainlinkFeed(
+                        balances[i],
+                        oracles[i - 1],
+                        oracleIsMultiplied[i - 1],
+                        chainlinkDecimals[i - 1],
+                        stalePeriods[i - 1]
+                    ),
+                    tokenDecimals[i],
+                    18
+                );
+        }
+    }
+
+    /// @notice Return available underlying tokens, for instance if liquidity fully used and
     /// not withdrawable the function will return 0
-    function maxAvailable(address collateral, ManagerStorage memory managerData) internal view returns (uint256) {}
+    function maxAvailable(address collateral, ManagerStorage memory managerData) internal view returns (uint256) {
+        // silence compilation
+        managerData;
+        return IERC20(collateral).balanceOf(address(this));
+    }
 }

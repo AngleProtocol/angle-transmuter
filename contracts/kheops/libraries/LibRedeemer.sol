@@ -124,25 +124,32 @@ library LibRedeemer {
         balances = new uint256[](subCollateralsAmount);
         tokens = new address[](subCollateralsAmount);
 
-        for (uint256 i; i < collateralListLength; ++i) {
-            if (ks.collaterals[collateralList[i]].isManaged > 0) {
-                (uint256[] memory subCollateralsBalances, uint256 totalValue) = LibManager.getUnderlyingBalances(
-                    ks.collaterals[collateralList[i]].managerData
-                );
-                uint256 curNbrSubCollat = subCollateralsBalances.length;
-                for (uint256 k; k < curNbrSubCollat; ++k) {
-                    tokens[i + k] = address(ks.collaterals[collateralList[i]].managerData.subCollaterals[k]);
-                    balances[i + k] = subCollateralsBalances[k];
+        {
+            uint256 countCollat;
+            for (uint256 i; i < collateralListLength; ++i) {
+                if (ks.collaterals[collateralList[i]].isManaged > 0) {
+                    (uint256[] memory subCollateralsBalances, uint256 totalValue) = LibManager.getUnderlyingBalances(
+                        ks.collaterals[collateralList[i]].managerData
+                    );
+                    uint256 curNbrSubCollat = subCollateralsBalances.length;
+                    for (uint256 k; k < curNbrSubCollat; ++k) {
+                        tokens[countCollat + k] = address(
+                            ks.collaterals[collateralList[i]].managerData.subCollaterals[k]
+                        );
+                        balances[countCollat + k] = subCollateralsBalances[k];
+                    }
+                    countCollat += curNbrSubCollat;
+                    totalCollateralization += totalValue;
+                } else {
+                    uint256 balance = IERC20(collateralList[i]).balanceOf(address(this));
+                    tokens[countCollat] = collateralList[i];
+                    balances[countCollat++] = balance;
+                    uint256 oracleValue = LibOracle.readRedemption(ks.collaterals[collateralList[i]].oracleConfig);
+                    totalCollateralization +=
+                        (oracleValue *
+                            Utils.convertDecimalTo(balance, ks.collaterals[collateralList[i]].decimals, 18)) /
+                        BASE_18;
                 }
-                totalCollateralization += totalValue;
-            } else {
-                uint256 balance = IERC20(collateralList[i]).balanceOf(address(this));
-                tokens[i] = collateralList[i];
-                balances[i] = balance;
-                uint256 oracleValue = LibOracle.readRedemption(ks.collaterals[collateralList[i]].oracleConfig);
-                totalCollateralization +=
-                    (oracleValue * Utils.convertDecimalTo(balance, ks.collaterals[collateralList[i]].decimals, 18)) /
-                    BASE_18;
             }
         }
         reservesValue = Math.mulDiv(ks.normalizedStables, ks.normalizer, BASE_27, Math.Rounding.Up);

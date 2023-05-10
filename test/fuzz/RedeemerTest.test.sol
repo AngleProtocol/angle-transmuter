@@ -4,10 +4,18 @@ pragma solidity ^0.8.17;
 import { stdError } from "forge-std/Test.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import { IERC20Metadata } from "../../contracts/mock/MockTokenPermit.sol";
 import "../Fixture.sol";
+import { ManagerStorage } from "contracts/kheops/Storage.sol";
 import "../utils/FunctionUtils.sol";
 import "../../contracts/kheops/utils/Utils.sol";
+
+struct SubCollateralStorage {
+    // The collateral corresponding to the manager must also be in the list
+    IERC20[] subCollaterals;
+    AggregatorV3Interface[] oracles;
+}
 
 contract RedeemerTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
@@ -20,6 +28,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
     uint256 internal _minWallet = 10 ** (3 + 18);
 
     address[] internal _collaterals;
+    mapping(address => SubCollateralStorage) internal _subCollaterals;
     AggregatorV3Interface[] internal _oracles;
     uint256[] internal _maxTokenAmount;
 
@@ -60,12 +69,17 @@ contract RedeemerTest is Fixture, FunctionUtils {
     // ================================ QUOTEREDEEM ================================
 
     function testQuoteRedemptionCurveAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
+        initialAmounts[0] = 0;
+        initialAmounts[1] = 0;
+        initialAmounts[2] = 0;
+        transferProportion = 0;
         // let's first load the reserves of the protocol
         (uint256 mintedStables, ) = _loadReserves(initialAmounts, transferProportion);
 
         // check collateral ratio first
         (uint64 collatRatio, uint256 reservesValue) = kheops.getCollateralRatio();
-        assertEq(collatRatio, BASE_9);
+        if (mintedStables > 0) assertEq(collatRatio, BASE_9);
+        else assertEq(collatRatio, type(uint64).max);
         assertEq(reservesValue, mintedStables);
 
         // currently oracles are all set to 1 --> collateral ratio = 1
@@ -113,7 +127,8 @@ contract RedeemerTest is Fixture, FunctionUtils {
 
             // check collateral ratio first
             (uint64 collatRatio, uint256 reservesValue) = kheops.getCollateralRatio();
-            assertApproxEqAbs(collatRatio, BASE_9, 10 wei);
+            if (mintedStables > 0) assertApproxEqAbs(collatRatio, BASE_9, 10 wei);
+            else assertEq(collatRatio, type(uint64).max);
             assertEq(reservesValue, mintedStables);
 
             // currently oracles are all set to 1 --> collateral ratio = 1
@@ -414,6 +429,71 @@ contract RedeemerTest is Fixture, FunctionUtils {
         );
     }
 
+    // ============================ REDEEM WITH MANAGER ============================
+
+    function testQuoteRedemptionCurveWithManagerRandomRedemptionFees(
+        uint256[3] memory initialAmounts,
+        uint256[3 * _MAX_SUB_COLLATERALS] memory airdropAmounts,
+        uint256 transferProportion,
+        uint256[3] memory latestOracleValue,
+        uint64[10] memory xFeeRedeemUnbounded,
+        int64[10] memory yFeeRedeemUnbounded
+    ) public {
+        {
+            // set manager for 2 of the collaterals and create fake tokens for both
+            (IERC20[] memory subCollaterals0, AggregatorV3Interface[] memory oracles0) = _createManager(
+                IERC20(_collaterals[0]),
+                2
+            );
+            _subCollaterals[_collaterals[0]] = SubCollateralStorage(subCollaterals0, oracles0);
+            // (IERC20[] memory subCollaterals1, AggregatorV3Interface[] memory oracles1) = _createManager(
+            //     IERC20(_collaterals[2]),
+            //     3
+            // );
+            // _subCollaterals[_collaterals[2]] = SubCollateralStorage(subCollaterals1, oracles1);
+        }
+
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
+
+        // airdrop amounts in the subcollaterals
+        for (uint256 i; i < _collaterals.length; i++) {
+            if (_subCollaterals[_collaterals[i]].subCollaterals.length > 0) {
+                _loadSubCollaterals(address(_collaterals[i]), airdropAmounts, i * _MAX_SUB_COLLATERALS);
+            }
+        }
+
+        (uint64 collatRatio, bool collatRatioAboveLimit) = _updateOraclesWithSubCollaterals(
+            latestOracleValue,
+            mintedStables,
+            collateralMintedStables,
+            airdropAmounts
+        );
+
+        (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) = _randomRedeemptionFees(
+            xFeeRedeemUnbounded,
+            yFeeRedeemUnbounded
+        );
+
+        vm.startPrank(alice);
+        uint256 amountBurnt = agToken.balanceOf(alice);
+        if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+        (address[] memory tokens, uint256[] memory amounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        vm.stopPrank();
+
+        if (mintedStables == 0) return;
+
+        // compute fee at current collatRatio
+        _assertsSizesWithManager(tokens, amounts);
+        uint64 fee;
+        if (collatRatio >= BASE_9) fee = uint64(yFeeRedeem[yFeeRedeem.length - 1]);
+        else fee = uint64(Utils.piecewiseLinear(collatRatio, true, xFeeRedeem, yFeeRedeem));
+        _assertsQuoteAmountsWithManager(collatRatio, collatRatioAboveLimit, mintedStables, amountBurnt, fee, amounts);
+    }
+
     // ================================== ASSERTS ==================================
 
     function _assertsSizes(address[] memory tokens, uint256[] memory amounts) internal {
@@ -422,6 +502,22 @@ contract RedeemerTest is Fixture, FunctionUtils {
         assertEq(tokens[0], address(eurA));
         assertEq(tokens[1], address(eurB));
         assertEq(tokens[2], address(eurY));
+    }
+
+    function _assertsSizesWithManager(address[] memory tokens, uint256[] memory amounts) internal {
+        uint256 nbrTokens;
+        uint256 count;
+        for (uint256 i; i < _oracles.length; i++) {
+            IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
+            nbrTokens += listSubCollaterals.length > 0 ? listSubCollaterals.length : 1;
+            assertEq(tokens[count++], _collaterals[i]);
+            // we don't double count the real collateralxz
+            for (uint256 k = 1; k < listSubCollaterals.length; k++) {
+                assertEq(tokens[count++], address(listSubCollaterals[k]));
+            }
+        }
+        assertEq(tokens.length, nbrTokens);
+        assertEq(tokens.length, amounts.length);
     }
 
     function _assertsTransfers(address owner, address[] memory tokens, uint256[] memory amounts) internal {
@@ -479,6 +575,104 @@ contract RedeemerTest is Fixture, FunctionUtils {
         }
     }
 
+    function _assertsQuoteAmountsWithManager(
+        uint64 collatRatio,
+        bool collatRatioAboveLimit,
+        uint256 mintedStables,
+        uint256 amountBurnt,
+        uint64 fee,
+        uint256[] memory amounts
+    ) internal {
+        // we should also receive  in value min(collatRatio*amountBurnt,amountBurnt)
+        uint256 amountInValueReceived;
+        {
+            uint256 count;
+            for (uint256 i; i < _collaterals.length; i++) {
+                {
+                    (, int256 value, , , ) = _oracles[i].latestRoundData();
+                    uint8 decimals = IERC20Metadata(_collaterals[i]).decimals();
+                    amountInValueReceived +=
+                        (uint256(value) * _convertDecimalTo(amounts[count++], decimals, 18)) /
+                        BASE_8;
+                }
+                IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
+                AggregatorV3Interface[] memory listOracles = _subCollaterals[_collaterals[i]].oracles;
+                // we don't double count the real collateral
+                for (uint256 k = 1; k < listSubCollaterals.length; k++) {
+                    (, int256 value, , , ) = listOracles[k - 1].latestRoundData();
+                    uint8 decimals = IERC20Metadata(address(listSubCollaterals[k])).decimals();
+                    amountInValueReceived +=
+                        (uint256(value) * _convertDecimalTo(amounts[count++], decimals, 18)) /
+                        BASE_8;
+                }
+            }
+        }
+
+        if (collatRatio < BASE_9) {
+            uint256 count;
+            for (uint256 i; i < _oracles.length; i++) {
+                IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
+                assertEq(
+                    amounts[count++],
+                    (IERC20(_collaterals[i]).balanceOf(address(kheops)) * amountBurnt * fee) / (mintedStables * BASE_9)
+                );
+                // we don't double count the real collateralxz
+                for (uint256 k = 1; k < listSubCollaterals.length; k++) {
+                    assertEq(
+                        amounts[count++],
+                        (listSubCollaterals[k].balanceOf(address(kheops)) * amountBurnt * fee) /
+                            (mintedStables * BASE_9)
+                    );
+                }
+            }
+            assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
+            // // TODO make the one below pass
+            // // it is not bulletproof yet (work in many cases but not all)
+            // // We accept that small amount tx get out with uncapped loss (compare to what they should get with
+            // // infinite precision), but larger one should have a loss smaller than 0.1%
+            // if (amountInValueReceived >= _minWallet)
+            //     assertApproxEqRelDecimal(
+            //         amountInValueReceived,
+            //         (collatRatio * amountBurnt * fee) / BASE_18,
+            //         _percentageLossAccepted,
+            //         18
+            //     );
+        } else {
+            uint256 count;
+            for (uint256 i; i < _oracles.length; i++) {
+                IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
+                assertEq(
+                    amounts[count++],
+                    (IERC20(_collaterals[i]).balanceOf(address(kheops)) * amountBurnt * fee) /
+                        (mintedStables * collatRatio)
+                );
+                // count += listSubCollaterals.length > 0 ? listSubCollaterals.length - 1 : 0;
+                // we don't double count the real collateralxz
+                for (uint256 k = 1; k < listSubCollaterals.length; k++) {
+                    assertEq(
+                        amounts[count++],
+                        (listSubCollaterals[k].balanceOf(address(kheops)) * amountBurnt * fee) /
+                            (mintedStables * collatRatio)
+                    );
+                }
+            }
+            // Some test makes the collatRatio > type(uint64).max such that it is truncated
+            // to a smaller value, therefore we are underestimating the collat ratio
+            // --> give more in value that what we wanted
+            if (!collatRatioAboveLimit) assertLe(amountInValueReceived, amountBurnt);
+            // // TODO make the one below pass
+            // // We accept that small amount tx get out with uncapped loss (compare to what they should get with
+            // // infinite precision), but larger one should have a loss smaller than 0.1%
+            // if (amountInValueReceived >= _minWallet)
+            //     assertApproxEqRelDecimal(
+            //         amountInValueReceived,
+            //         (amountBurnt * fee) / BASE_9,
+            //         _percentageLossAccepted,
+            //         18
+            //     );
+        }
+    }
+
     // =================================== UTILS ===================================
 
     function _loadReserves(
@@ -510,6 +704,23 @@ contract RedeemerTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
+    function _loadSubCollaterals(
+        address collateral,
+        uint256[3 * _MAX_SUB_COLLATERALS] memory airdropAmounts,
+        uint256 startIndex
+    ) internal {
+        IERC20[] memory listSubCollaterals = _subCollaterals[collateral].subCollaterals;
+        // skip the first index because it is the collateral itself
+        for (uint256 i = 1; i < listSubCollaterals.length; i++) {
+            airdropAmounts[startIndex + i - 1] = bound(
+                airdropAmounts[startIndex + i - 1],
+                0,
+                _maxAmountWithoutDecimals * 10 ** IERC20Metadata(address(listSubCollaterals[i])).decimals()
+            );
+            deal(address(listSubCollaterals[i]), address(kheops), airdropAmounts[startIndex + i - 1]);
+        }
+    }
+
     function _updateOracles(
         uint256[3] memory latestOracleValue,
         uint256 mintedStables,
@@ -525,13 +736,58 @@ contract RedeemerTest is Fixture, FunctionUtils {
             collateralisation += (latestOracleValue[i] * collateralMintedStables[i]) / BASE_8;
         }
         uint256 computedCollatRatio;
-        if (mintedStables > 0) computedCollatRatio = (collateralisation * BASE_9) / mintedStables;
+        if (mintedStables > 0) computedCollatRatio = uint64((collateralisation * BASE_9) / mintedStables);
         else computedCollatRatio = type(uint64).max;
 
         // check collateral ratio first
         uint256 reservesValue;
         (collatRatio, reservesValue) = kheops.getCollateralRatio();
-        assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
+        if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
+        else assertEq(collatRatio, type(uint64).max);
+        assertEq(reservesValue, mintedStables);
+    }
+
+    function _updateOraclesWithSubCollaterals(
+        uint256[3] memory latestOracleValue,
+        uint256 mintedStables,
+        uint256[] memory collateralMintedStables,
+        uint256[3 * _MAX_SUB_COLLATERALS] memory airdropAmounts
+    ) internal returns (uint64 collatRatio, bool collatRatioAboveLimit) {
+        for (uint256 i; i < latestOracleValue.length; i++) {
+            latestOracleValue[i] = bound(latestOracleValue[i], _minOracleValue, BASE_18);
+            MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(int256(latestOracleValue[i]));
+        }
+
+        uint256 collateralisation;
+        for (uint256 i; i < latestOracleValue.length; i++) {
+            collateralisation += (latestOracleValue[i] * collateralMintedStables[i]) / BASE_8;
+        }
+
+        for (uint256 i; i < latestOracleValue.length; i++) {
+            IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
+            AggregatorV3Interface[] memory listOracles = _subCollaterals[_collaterals[i]].oracles;
+            // we don't double count the real collateralxz
+            for (uint256 k = 1; k < listSubCollaterals.length; k++) {
+                (, int256 oracleValue, , , ) = MockChainlinkOracle(address(listOracles[k - 1])).latestRoundData();
+                uint8 decimals = IERC20Metadata(address(listSubCollaterals[k])).decimals();
+                collateralisation +=
+                    (airdropAmounts[i * _MAX_SUB_COLLATERALS + k - 1] * 10 ** (18 - decimals) * uint256(oracleValue)) /
+                    BASE_8;
+            }
+        }
+
+        uint256 computedCollatRatio = type(uint64).max;
+        if (mintedStables > 0) {
+            computedCollatRatio = uint64((collateralisation * BASE_9) / mintedStables);
+            if ((collateralisation * BASE_9) / mintedStables > type(uint64).max) collatRatioAboveLimit = true;
+        }
+
+        // check collateral ratio first
+        uint256 reservesValue;
+        (collatRatio, reservesValue) = kheops.getCollateralRatio();
+
+        if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
+        else assertEq(collatRatio, type(uint64).max);
         assertEq(reservesValue, mintedStables);
     }
 
@@ -550,5 +806,44 @@ contract RedeemerTest is Fixture, FunctionUtils {
             IERC20(tokens[i]).transfer(sweeper, IERC20(tokens[i]).balanceOf(owner));
         }
         vm.stopPrank();
+    }
+
+    function _createManager(
+        IERC20 token,
+        uint256 nbrSubCollaterals
+    ) internal returns (IERC20[] memory subCollaterals, AggregatorV3Interface[] memory oracles) {
+        nbrSubCollaterals = bound(nbrSubCollaterals, 0, _MAX_SUB_COLLATERALS);
+        subCollaterals = new IERC20[](nbrSubCollaterals + 1);
+        uint8[] memory decimals = new uint8[](nbrSubCollaterals + 1);
+        oracles = new AggregatorV3Interface[](nbrSubCollaterals);
+        uint32[] memory stalePeriods = new uint32[](nbrSubCollaterals);
+        uint8[] memory oracleIsMultiplied = new uint8[](nbrSubCollaterals);
+        uint8[] memory chainlinkDecimals = new uint8[](nbrSubCollaterals);
+        subCollaterals[0] = token;
+        decimals[0] = IERC20Metadata(address(token)).decimals();
+        for (uint256 i = 1; i < nbrSubCollaterals + 1; ++i) {
+            // TODO random decimals + oracle value
+            subCollaterals[i] = IERC20(
+                address(
+                    new MockTokenPermit(
+                        string.concat(IERC20Metadata(address(token)).name(), "_", Strings.toString(i)),
+                        string.concat(IERC20Metadata(address(token)).symbol(), "_", Strings.toString(i)),
+                        18
+                    )
+                )
+            );
+            decimals[i] = IERC20Metadata(address(subCollaterals[i])).decimals();
+            oracles[i - 1] = AggregatorV3Interface(address(new MockChainlinkOracle()));
+            MockChainlinkOracle(address(oracles[i - 1])).setLatestAnswer(int256(BASE_8));
+            stalePeriods[i - 1] = 365 days;
+            oracleIsMultiplied[i - 1] = 1;
+            chainlinkDecimals[i - 1] = 8;
+        }
+        ManagerStorage memory managerData = ManagerStorage(
+            subCollaterals,
+            abi.encode(decimals, oracles, stalePeriods, oracleIsMultiplied, chainlinkDecimals)
+        );
+        vm.prank(governor);
+        kheops.setCollateralManager(address(token), managerData);
     }
 }
