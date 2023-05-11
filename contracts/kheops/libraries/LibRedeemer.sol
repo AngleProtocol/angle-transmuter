@@ -52,20 +52,18 @@ library LibRedeemer {
         for (uint256 i; i < amounts.length; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             if (Utils.checkForfeit(tokens[i], forfeitTokens) < 0) {
-                if (i < collateralListMem.length) {
-                    ManagerStorage memory emptyManagerData;
-                    LibHelper.transferCollateral(
-                        tokens[i],
-                        to,
-                        amounts[i],
-                        true,
-                        ks.collaterals[collateralListMem[indexCollateral]].isManaged > 0
-                            ? ks.collaterals[collateralListMem[indexCollateral]].managerData
-                            : emptyManagerData
-                    );
-                }
+                ManagerStorage memory emptyManagerData;
+                LibHelper.transferCollateral(
+                    tokens[i],
+                    to,
+                    amounts[i],
+                    true,
+                    ks.collaterals[collateralListMem[indexCollateral]].isManaged > 0
+                        ? ks.collaterals[collateralListMem[indexCollateral]].managerData
+                        : emptyManagerData
+                );
             }
-            if (subCollateralsTracker[indexCollateral] - 1 >= i) ++indexCollateral;
+            if (subCollateralsTracker[indexCollateral] - 1 <= i) ++indexCollateral;
         }
         emit Redeemed(amount, tokens, amounts, forfeitTokens, msg.sender, to);
     }
