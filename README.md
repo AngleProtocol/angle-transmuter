@@ -1,4 +1,4 @@
-# <img src="logo.svg" alt="Angle Borrowing Module" height="40px"> Angle - Kheops
+# <img src="logo.svg" alt="Kheops" height="40px"> Angle - Kheops
 
 [![CI](https://github.com/AngleProtocol/kheops/workflows/CI/badge.svg)](https://github.com/AngleProtocol/kheops/actions?query=workflow%3ACI)
 
@@ -7,18 +7,52 @@
 Kheops is an autonomous and modular price stability module for decentralized stablecoin protocols.
 
 - It suppor
+- It
+
+It is composable with any stablecoin systems. It should notably be used as a standalone module within the Angle Protocol for agEUR in parallel notably with the
 
 ---
 
 ## Contracts Architecture
 
+The Kheops system relies on a [diamond proxy pattern](https://eips.ethereum.org/EIPS/eip-2535). There is as such only one main contract (the `Kheops` contract) which delegates calls to different facets each with their own implementation. The main facets of the system are:
+
+- the [`Swapper`](./contracts/kheops/facets/Swapper.sol) facet with the logic associated to the mint and burn functionalities of the system
+- the [`Redeemer`](./contracts/kheops/facets/Redeemer.sol) facet for redemptions
+- the [`Getters`](./contracts/kheops/facets/Swapper.sol) facet with external getters for UIs and contracts built on top of `Kheops`
+- the [`Setters`] facet governance can use to update system parameters.
+
+The storage parameters of the system are defined in the [`Storage`](./contracts/kheops/Storage.sol).
+
+The Kheops system can come with optional [ERC4626](https://eips.ethereum.org/EIPS/eip-4626) [savings contracts](./contracts/savings/) which can be used to distribute a yield to the holders of the stablecoin issued through Kheops.
+
 ---
 
 ## Documentation
 
+- [Kheops Whitepaper](https://docs.angle.money/overview/whitepapers)
+- [Angle Documentation](https://docs.angle.money)
+- [Angle Developers Documentation](https://developers.angle.money)
+
+---
+
+## Security
+
+### Audits
+
+Audits for Kheops smart contracts can be found in the [audits](./audits/)' folder.
+
+### Bug Bounty
+
+A bug bounty is open on Immunefi and Hats Finance. The rewards and scope of the Immunefi are defined here.
+
 ---
 
 ## Deployment Addresses
+
+### agEUR - Kheops (Ethereum)
+
+- Kheops (agEUR):
 
 ---
 
@@ -34,7 +68,7 @@ For any question or feedback you can send an email to [contact@angle.money](mail
 
 ## Licensing
 
-The code is under the GNU AFFERO GENERAL PUBLIC LICENSE v3.0, see [`LICENSE`](./LICENSE).
+The primary license for this repository is the Business Source License 1.1 (`BUSL-1.1`). See [`LICENSE`](./LICENSE).
 
 This repository proposes a template that mixes hardhat and foundry frameworks. It also provides templates for EVM compatible smart contracts (in `./contracts/examples`), tests and deployment scripts.
 
