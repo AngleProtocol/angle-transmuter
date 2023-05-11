@@ -557,7 +557,142 @@ contract RedeemerTest is Fixture, FunctionUtils {
             // compute fee at current collatRatio
             assertEq(amounts, quoteAmounts);
             _assertsSizesWithManager(tokens, amounts);
-            _assertsTransfersWithManager(alice, _collaterals, amounts);
+            {
+                address[] memory forfeitTokens;
+                _assertsTransfersWithManager(alice, _collaterals, forfeitTokens, amounts);
+            }
+            // Testing implicitly the ks.normalizer and ks.normalizedStables
+            for (uint256 i; i < _collaterals.length; i++) {
+                (uint256 stableIssuedByCollateral, uint256 totalStable) = kheops.getIssuedByCollateral(_collaterals[i]);
+                assertApproxEqAbs(
+                    stableIssuedByCollateral,
+                    (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
+                    1 wei
+                );
+                assertEq(totalStable, mintedStables - amountBurnt);
+            }
+            mintedStables -= amountBurnt;
+
+            // now do a second redeem to test with non trivial ks.normalizer and ks.normalizedStables
+            vm.startPrank(bob);
+            redeemProportion = bound(redeemProportion, 0, BASE_9);
+            amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
+            if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+            (, quoteAmounts) = kheops.quoteRedemptionCurve(amountBurntBob);
+            if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+            {
+                uint256[] memory minAmountOuts = new uint256[](quoteAmounts.length);
+                (tokens, amounts) = kheops.redeem(amountBurntBob, bob, block.timestamp + 1 days, minAmountOuts);
+            }
+            vm.stopPrank();
+
+            if (mintedStables == 0) return;
+
+            // compute fee at current collatRatio
+            assertEq(amounts, quoteAmounts);
+            _assertsSizesWithManager(tokens, amounts);
+            {
+                address[] memory forfeitTokens;
+                _assertsTransfersWithManager(bob, _collaterals, forfeitTokens, amounts);
+            }
+        }
+
+        // Testing implicitly the ks.normalizer and ks.normalizedStables
+        uint256 totalStable;
+        for (uint256 i; i < _collaterals.length; i++) {
+            uint256 stableIssuedByCollateral;
+            (stableIssuedByCollateral, totalStable) = kheops.getIssuedByCollateral(_collaterals[i]);
+            uint256 realStableIssueByCollateralLeft = (collateralMintedStables[i] * (mintedStables - amountBurntBob)) /
+                (mintedStables + amountBurnt);
+            _assertApproxEqRelDecimalWithTolerance(
+                realStableIssueByCollateralLeft,
+                stableIssuedByCollateral,
+                realStableIssueByCollateralLeft,
+                _MAX_PERCENTAGE_DEVIATION,
+                18
+            );
+        }
+        _assertApproxEqRelDecimalWithTolerance(
+            mintedStables - amountBurntBob,
+            totalStable,
+            mintedStables - amountBurntBob,
+            _MAX_PERCENTAGE_DEVIATION,
+            18
+        );
+    }
+
+    // ============================ REDEEM WITH FORFEIT ============================
+
+    function testMultiForfeitRedemptionCurveWithManagerRandomRedemptionFees(
+        uint256[3] memory initialAmounts,
+        uint256[3] memory nbrSubCollaterals,
+        uint256[3 * _MAX_SUB_COLLATERALS] memory airdropAmounts,
+        uint256[3 * _MAX_SUB_COLLATERALS] memory latestSubCollatOracleValue,
+        uint256[3 * _MAX_SUB_COLLATERALS] memory subCollatDecimals,
+        bool[3 * (_MAX_SUB_COLLATERALS + 1)] memory areForfeit,
+        uint256 transferProportion,
+        uint256 redeemProportion,
+        uint256[3] memory latestOracleValue,
+        uint64[10] memory xFeeRedeemUnbounded,
+        int64[10] memory yFeeRedeemUnbounded
+    ) public {
+        for (uint256 i; i < _collaterals.length; i++) {
+            // Randomly set subcollaterals and manager if needed
+            (IERC20[] memory subCollaterals, AggregatorV3Interface[] memory oracles) = _createManager(
+                IERC20(_collaterals[i]),
+                nbrSubCollaterals[i],
+                i * _MAX_SUB_COLLATERALS,
+                latestSubCollatOracleValue,
+                subCollatDecimals
+            );
+            _subCollaterals[_collaterals[i]] = SubCollateralStorage(subCollaterals, oracles);
+        }
+
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
+        // airdrop amounts in the subcollaterals
+        for (uint256 i; i < _collaterals.length; i++) {
+            if (_subCollaterals[_collaterals[i]].subCollaterals.length > 0) {
+                _loadSubCollaterals(address(_collaterals[i]), airdropAmounts, i * _MAX_SUB_COLLATERALS);
+            }
+        }
+        _updateOraclesWithSubCollaterals(latestOracleValue, mintedStables, collateralMintedStables, airdropAmounts);
+        _randomRedeemptionFees(xFeeRedeemUnbounded, yFeeRedeemUnbounded);
+        _sweepBalancesWithManager(alice, _collaterals);
+        _sweepBalancesWithManager(bob, _collaterals);
+
+        // first redeem
+        vm.startPrank(alice);
+        uint256 amountBurnt = agToken.balanceOf(alice);
+        uint256 amountBurntBob;
+        if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+        (, uint256[] memory quoteAmounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        {
+            address[] memory tokens;
+            uint256[] memory amounts;
+            address[] memory forfeitTokens = _getForfeitTokens(areForfeit);
+            {
+                uint256[] memory minAmountOuts = new uint256[](quoteAmounts.length);
+                if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+                (tokens, amounts) = kheops.redeemWithForfeit(
+                    amountBurnt,
+                    alice,
+                    block.timestamp + 1 days,
+                    minAmountOuts,
+                    forfeitTokens
+                );
+            }
+            vm.stopPrank();
+
+            if (mintedStables == 0) return;
+
+            // compute fee at current collatRatio
+            assertEq(amounts, quoteAmounts);
+            _assertsSizesWithManager(tokens, amounts);
+            _assertsTransfersWithManager(alice, _collaterals, forfeitTokens, amounts);
 
             // Testing implicitly the ks.normalizer and ks.normalizedStables
             for (uint256 i; i < _collaterals.length; i++) {
@@ -589,7 +724,10 @@ contract RedeemerTest is Fixture, FunctionUtils {
             // compute fee at current collatRatio
             assertEq(amounts, quoteAmounts);
             _assertsSizesWithManager(tokens, amounts);
-            _assertsTransfersWithManager(bob, _collaterals, amounts);
+            {
+                address[] memory forfeitTokens;
+                _assertsTransfersWithManager(bob, _collaterals, forfeitTokens, amounts);
+            }
         }
 
         // Testing implicitly the ks.normalizer and ks.normalizedStables
@@ -648,14 +786,24 @@ contract RedeemerTest is Fixture, FunctionUtils {
         }
     }
 
-    function _assertsTransfersWithManager(address owner, address[] memory tokens, uint256[] memory amounts) internal {
+    function _assertsTransfersWithManager(
+        address owner,
+        address[] memory tokens,
+        address[] memory forfeitTokens,
+        uint256[] memory amounts
+    ) internal {
         uint256 count;
         for (uint256 i; i < tokens.length; i++) {
             IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
-            assertEq(IERC20(tokens[i]).balanceOf(owner), amounts[count++]);
+            if (!_inList(forfeitTokens, tokens[i])) assertEq(IERC20(tokens[i]).balanceOf(owner), amounts[count]);
+            else assertEq(IERC20(tokens[i]).balanceOf(owner), 0);
+            count++;
             // we don't double count the real collateral
             for (uint256 k = 1; k < listSubCollaterals.length; k++) {
-                assertEq(listSubCollaterals[k].balanceOf(owner), amounts[count++]);
+                if (!_inList(forfeitTokens, address(listSubCollaterals[k])))
+                    assertEq(listSubCollaterals[k].balanceOf(owner), amounts[count]);
+                else assertEq(IERC20(listSubCollaterals[k]).balanceOf(owner), 0);
+                count++;
             }
         }
     }
@@ -954,6 +1102,31 @@ contract RedeemerTest is Fixture, FunctionUtils {
             }
         }
         vm.stopPrank();
+    }
+
+    function _getForfeitTokens(
+        bool[3 * (_MAX_SUB_COLLATERALS + 1)] memory areForfeited
+    ) internal returns (address[] memory forfeitTokens) {
+        uint256 nbrForfeit;
+        for (uint256 i; i < areForfeited.length; ++i) {
+            if (areForfeited[i]) nbrForfeit++;
+        }
+        forfeitTokens = new address[](nbrForfeit);
+        uint256 index;
+        for (uint256 i; i < _collaterals.length; i++) {
+            IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
+            if (areForfeited[i * _MAX_SUB_COLLATERALS]) forfeitTokens[index++] = address(_collaterals[i]);
+            for (uint256 k = 1; k < listSubCollaterals.length; k++) {
+                if (areForfeited[i * _MAX_SUB_COLLATERALS + k]) forfeitTokens[index++] = address(listSubCollaterals[k]);
+            }
+        }
+    }
+
+    function _inList(address[] memory list, address element) internal returns (bool) {
+        for (uint256 i; i < list.length; i++) {
+            if (list[i] == element) return true;
+        }
+        return false;
     }
 
     function _createManager(
