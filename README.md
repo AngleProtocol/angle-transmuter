@@ -30,11 +30,11 @@ Warning: always keep your confidential information safe.
 
 ## Headers
 
-To automatically create headers, follow: https://github.com/Picodes/headers
+To automatically create headers, follow: <https://github.com/Picodes/headers>
 
 ## Hardhat Command line completion
 
-Follow these instructions to have hardhat command line arguments completion: https://hardhat.org/hardhat-runner/docs/guides/command-line-completion
+Follow these instructions to have hardhat command line arguments completion: <https://hardhat.org/hardhat-runner/docs/guides/command-line-completion>
 
 ## Foundry Installation
 
@@ -116,6 +116,12 @@ We recommend the use of this [vscode extension](ryanluker.vscode-coverage-gutter
 ```bash
 yarn hardhat:coverage
 yarn foundry:coverage
+```
+
+Otherwise you can install lcov `brew install lcov`:
+
+```bash
+genhtml lcov.info --output=coverage
 ```
 
 ### Gas report

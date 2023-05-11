@@ -12,7 +12,7 @@ pragma solidity ^0.8.0;
 import "stringutils/strings.sol";
 import "contracts/kheops/interfaces/IDiamondLoupe.sol";
 
-import { Test } from "forge-std/Test.sol";
+import { Test, stdError } from "forge-std/Test.sol";
 
 abstract contract Helper is Test {
     using strings for *;

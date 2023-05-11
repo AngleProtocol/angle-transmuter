@@ -1,7 +1,9 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.12;
 
+/// @title ISwapper
+/// @author Angle Labs, Inc.
 interface ISwapper {
     function swapExactInput(
         uint256 amountIn,

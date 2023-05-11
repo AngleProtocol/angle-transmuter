@@ -1,12 +1,17 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.0;
 
 import { LibRedeemer as Lib } from "../libraries/LibRedeemer.sol";
-import { Storage as s } from "../libraries/Storage.sol";
+import { LibStorage as s } from "../libraries/LibStorage.sol";
 import "../Storage.sol";
 
-contract Redeemer {
+import { IRedeemer } from "../interfaces/IRedeemer.sol";
+
+/// @title Redeemer
+/// @author Angle Labs, Inc.
+contract Redeemer is IRedeemer {
+    /// @inheritdoc IRedeemer
     function redeem(
         uint256 amount,
         address receiver,
@@ -17,6 +22,7 @@ contract Redeemer {
         return Lib.redeem(amount, receiver, deadline, minAmountOuts, forfeitTokens);
     }
 
+    /// @inheritdoc IRedeemer
     function redeemWithForfeit(
         uint256 amount,
         address receiver,
@@ -27,6 +33,7 @@ contract Redeemer {
         return Lib.redeem(amount, receiver, deadline, minAmountOuts, forfeitTokens);
     }
 
+    /// @inheritdoc IRedeemer
     function quoteRedemptionCurve(
         uint256 amountBurnt
     ) external view returns (address[] memory tokens, uint256[] memory amounts) {

@@ -1,10 +1,13 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.12;
 
 import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
 import { IAgToken } from "../../interfaces/IAgToken.sol";
+import "../Storage.sol";
 
+/// @title IGetters
+/// @author Angle Labs, Inc.
 interface IGetters {
     function isValidSelector(bytes4 selector) external view returns (bool);
 
@@ -22,9 +25,15 @@ interface IGetters {
 
     function getCollateralBurnFees(address collateralAddress) external view returns (uint64[] memory, int64[] memory);
 
-    function getRedemptionFees() external view returns (uint64[] memory, uint64[] memory);
+    function getRedemptionFees() external view returns (uint64[] memory, int64[] memory);
 
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 reservesValue);
 
     function getIssuedByCollateral(address collateral) external view returns (uint256, uint256);
+
+    function getOracleValues(address collateral) external view returns (uint256, uint256, uint256, uint256);
+
+    function getOracle(
+        address collateral
+    ) external view returns (OracleReadType, OracleQuoteType, OracleTargetType, bytes memory);
 }

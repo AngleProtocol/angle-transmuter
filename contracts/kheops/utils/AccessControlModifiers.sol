@@ -1,12 +1,13 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.12;
 
-import { Storage as s } from "../libraries/Storage.sol";
 import { Diamond } from "../libraries/Diamond.sol";
 import "../../utils/Errors.sol";
 
-contract AccessControl {
+/// @title AccessControlModifiers
+/// @author Angle Labs, Inc.
+contract AccessControlModifiers {
     /// @notice Checks whether the `msg.sender` has the governor role
     modifier onlyGovernor() {
         if (!Diamond.isGovernor(msg.sender)) revert NotGovernor();

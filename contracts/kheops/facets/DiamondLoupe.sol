@@ -4,9 +4,13 @@ pragma solidity ^0.8.12;
 
 import { IDiamondLoupe } from "../interfaces/IDiamondLoupe.sol";
 import { Diamond } from "../libraries/Diamond.sol";
-import { Storage as s } from "../libraries/Storage.sol";
+import { LibStorage as s } from "../libraries/LibStorage.sol";
 import "../Storage.sol";
 
+/**
+ * TODO: is this something we must sill do?
+ * Who is the author of the contract
+ */
 // Remember to add the loupe functions from DiamondLoupe to the diamond.
 // The loupe functions are required by the EIP2535 Diamonds standard
 
@@ -15,8 +19,7 @@ contract DiamondLoupe is IDiamondLoupe {
     ////////////////////////////////////////////////////////////////////
     /// These functions are expected to be called frequently by tools.
 
-    /// @notice Gets all facets and their selectors.
-    /// @return facets_ Facet
+    /// @inheritdoc IDiamondLoupe
     function facets() external view override returns (Facet[] memory facets_) {
         DiamondStorage storage ds = s.diamondStorage();
         uint256 selectorCount = ds.selectors.length;
@@ -66,9 +69,7 @@ contract DiamondLoupe is IDiamondLoupe {
         }
     }
 
-    /// @notice Gets all the function selectors supported by a specific facet.
-    /// @param _facet The facet address.
-    /// @return _facetFunctionSelectors The selectors associated with a facet address.
+    /// @inheritdoc IDiamondLoupe
     function facetFunctionSelectors(
         address _facet
     ) external view override returns (bytes4[] memory _facetFunctionSelectors) {
@@ -91,8 +92,7 @@ contract DiamondLoupe is IDiamondLoupe {
         }
     }
 
-    /// @notice Get all the facet addresses used by a diamond.
-    /// @return facetAddresses_
+    /// @inheritdoc IDiamondLoupe
     function facetAddresses() external view override returns (address[] memory facetAddresses_) {
         DiamondStorage storage ds = s.diamondStorage();
         uint256 selectorCount = ds.selectors.length;
@@ -126,10 +126,7 @@ contract DiamondLoupe is IDiamondLoupe {
         }
     }
 
-    /// @notice Gets the facet address that supports the given selector.
-    /// @dev If facet is not found return address(0).
-    /// @param _functionSelector The function selector.
-    /// @return facetAddress_ The facet address.
+    /// @inheritdoc IDiamondLoupe
     function facetAddress(bytes4 _functionSelector) external view override returns (address facetAddress_) {
         DiamondStorage storage ds = s.diamondStorage();
         facetAddress_ = ds.facetAddressAndSelectorPosition[_functionSelector].facetAddress;
