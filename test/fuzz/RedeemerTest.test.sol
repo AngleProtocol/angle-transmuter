@@ -433,24 +433,25 @@ contract RedeemerTest is Fixture, FunctionUtils {
 
     function testQuoteRedemptionCurveWithManagerRandomRedemptionFees(
         uint256[3] memory initialAmounts,
+        uint256[3] memory nbrSubCollaterals,
         uint256[3 * _MAX_SUB_COLLATERALS] memory airdropAmounts,
         uint256 transferProportion,
+        uint256[3 * _MAX_SUB_COLLATERALS] memory latestSubCollatOracleValue,
+        uint256[3 * _MAX_SUB_COLLATERALS] memory subCollatDecimals,
         uint256[3] memory latestOracleValue,
         uint64[10] memory xFeeRedeemUnbounded,
         int64[10] memory yFeeRedeemUnbounded
     ) public {
-        {
-            // set manager for 2 of the collaterals and create fake tokens for both
-            (IERC20[] memory subCollaterals0, AggregatorV3Interface[] memory oracles0) = _createManager(
-                IERC20(_collaterals[0]),
-                2
+        for (uint256 i; i < _collaterals.length; i++) {
+            // Randomly set subcollaterals and manager if needed
+            (IERC20[] memory subCollaterals, AggregatorV3Interface[] memory oracles) = _createManager(
+                IERC20(_collaterals[i]),
+                nbrSubCollaterals[i],
+                i * _MAX_SUB_COLLATERALS,
+                latestSubCollatOracleValue,
+                subCollatDecimals
             );
-            _subCollaterals[_collaterals[0]] = SubCollateralStorage(subCollaterals0, oracles0);
-            // (IERC20[] memory subCollaterals1, AggregatorV3Interface[] memory oracles1) = _createManager(
-            //     IERC20(_collaterals[2]),
-            //     3
-            // );
-            // _subCollaterals[_collaterals[2]] = SubCollateralStorage(subCollaterals1, oracles1);
+            _subCollaterals[_collaterals[i]] = SubCollateralStorage(subCollaterals, oracles);
         }
 
         // let's first load the reserves of the protocol
@@ -770,9 +771,9 @@ contract RedeemerTest is Fixture, FunctionUtils {
             for (uint256 k = 1; k < listSubCollaterals.length; k++) {
                 (, int256 oracleValue, , , ) = MockChainlinkOracle(address(listOracles[k - 1])).latestRoundData();
                 uint8 decimals = IERC20Metadata(address(listSubCollaterals[k])).decimals();
-                collateralisation +=
-                    (airdropAmounts[i * _MAX_SUB_COLLATERALS + k - 1] * 10 ** (18 - decimals) * uint256(oracleValue)) /
-                    BASE_8;
+                collateralisation += ((airdropAmounts[i * _MAX_SUB_COLLATERALS + k - 1] *
+                    10 ** (18 - decimals) *
+                    uint256(oracleValue)) / BASE_8);
             }
         }
 
@@ -810,7 +811,10 @@ contract RedeemerTest is Fixture, FunctionUtils {
 
     function _createManager(
         IERC20 token,
-        uint256 nbrSubCollaterals
+        uint256 nbrSubCollaterals,
+        uint256 startIndex,
+        uint256[3 * _MAX_SUB_COLLATERALS] memory subCollateralOracleValue,
+        uint256[3 * _MAX_SUB_COLLATERALS] memory subCollateralsDecimals
     ) internal returns (IERC20[] memory subCollaterals, AggregatorV3Interface[] memory oracles) {
         nbrSubCollaterals = bound(nbrSubCollaterals, 0, _MAX_SUB_COLLATERALS);
         subCollaterals = new IERC20[](nbrSubCollaterals + 1);
@@ -822,19 +826,25 @@ contract RedeemerTest is Fixture, FunctionUtils {
         subCollaterals[0] = token;
         decimals[0] = IERC20Metadata(address(token)).decimals();
         for (uint256 i = 1; i < nbrSubCollaterals + 1; ++i) {
-            // TODO random decimals + oracle value
+            decimals[i] = uint8(bound(subCollateralsDecimals[startIndex + i - 1], 5, 18));
             subCollaterals[i] = IERC20(
                 address(
                     new MockTokenPermit(
                         string.concat(IERC20Metadata(address(token)).name(), "_", Strings.toString(i)),
                         string.concat(IERC20Metadata(address(token)).symbol(), "_", Strings.toString(i)),
-                        18
+                        decimals[i]
                     )
                 )
             );
-            decimals[i] = IERC20Metadata(address(subCollaterals[i])).decimals();
             oracles[i - 1] = AggregatorV3Interface(address(new MockChainlinkOracle()));
-            MockChainlinkOracle(address(oracles[i - 1])).setLatestAnswer(int256(BASE_8));
+            subCollateralOracleValue[startIndex + i - 1] = bound(
+                subCollateralOracleValue[startIndex + i - 1],
+                _minOracleValue,
+                BASE_18
+            );
+            MockChainlinkOracle(address(oracles[i - 1])).setLatestAnswer(
+                int256(subCollateralOracleValue[startIndex + i - 1])
+            );
             stalePeriods[i - 1] = 365 days;
             oracleIsMultiplied[i - 1] = 1;
             chainlinkDecimals[i - 1] = 8;

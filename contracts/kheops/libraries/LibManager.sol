@@ -68,16 +68,12 @@ library LibManager {
             totalValue += i == 0
                 ? (LibOracle.readRedemption(ks.collaterals[address(subCollaterals[i])].oracleConfig) *
                     Utils.convertDecimalTo(balances[i], tokenDecimals[i], 18)) / BASE_18
-                : Utils.convertDecimalTo(
-                    LibOracle.readChainlinkFeed(
-                        balances[i],
-                        oracles[i - 1],
-                        oracleIsMultiplied[i - 1],
-                        chainlinkDecimals[i - 1],
-                        stalePeriods[i - 1]
-                    ),
-                    tokenDecimals[i],
-                    18
+                : LibOracle.readChainlinkFeed(
+                    Utils.convertDecimalTo(balances[i], tokenDecimals[i], 18),
+                    oracles[i - 1],
+                    oracleIsMultiplied[i - 1],
+                    chainlinkDecimals[i - 1],
+                    stalePeriods[i - 1]
                 );
         }
     }
