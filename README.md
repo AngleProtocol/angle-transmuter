@@ -1,10 +1,44 @@
-# <img src="logo.svg" alt="Angle Borrowing Module" height="40px"> Angle Project Boilerplate
+# <img src="logo.svg" alt="Angle Borrowing Module" height="40px"> Angle - Kheops
 
-[![CI](https://github.com/AngleProtocol/boilerplate/workflows/CI/badge.svg)](https://github.com/AngleProtocol/boilerplate/actions?query=workflow%3ACI)
+[![CI](https://github.com/AngleProtocol/kheops/workflows/CI/badge.svg)](https://github.com/AngleProtocol/kheops/actions?query=workflow%3ACI)
+
+## What is Kheops?
+
+Kheops is an autonomous and modular price stability module for decentralized stablecoin protocols.
+
+- It suppor
+
+---
+
+## Contracts Architecture
+
+---
+
+## Documentation
+
+---
+
+## Deployment Addresses
+
+---
+
+## Development
+
+---
+
+## Questions & Feedback
+
+For any question or feedback you can send an email to [contact@angle.money](mailto:contact@angle.money).
+
+---
+
+## Licensing
+
+The code is under the GNU AFFERO GENERAL PUBLIC LICENSE v3.0, see [`LICENSE`](./LICENSE).
 
 This repository proposes a template that mixes hardhat and foundry frameworks. It also provides templates for EVM compatible smart contracts (in `./contracts/examples`), tests and deployment scripts.
 
-## Starting
+### Getting started
 
 ### Install packages
 
