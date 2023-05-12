@@ -13,14 +13,14 @@ Kheops is compatible with other common mechanisms often used to issue stablecoin
 
 ---
 
-## Contracts Architecture
+## Contracts Architecture 🏘️
 
 The Kheops system relies on a [diamond proxy pattern](https://eips.ethereum.org/EIPS/eip-2535). There is as such only one main contract (the `Kheops` contract) which delegates calls to different facets each with their own implementation. The main facets of the system are:
 
 - the [`Swapper`](./contracts/kheops/facets/Swapper.sol) facet with the logic associated to the mint and burn functionalities of the system
 - the [`Redeemer`](./contracts/kheops/facets/Redeemer.sol) facet for redemptions
 - the [`Getters`](./contracts/kheops/facets/Swapper.sol) facet with external getters for UIs and contracts built on top of `Kheops`
-- the [`Setters`] facet protocols' governance can use to update system parameters.
+- the [`Setters`](./contracts/kheops/facets/Setters.sol) facet protocols' governance can use to update system parameters.
 
 The storage parameters of the system are defined in the [`Storage`](./contracts/kheops/Storage.sol).
 
@@ -28,7 +28,7 @@ The Kheops system can come with optional [ERC4626](https://eips.ethereum.org/EIP
 
 ---
 
-## Documentation
+## Documentation 📚
 
 - [Kheops Whitepaper](https://docs.angle.money/overview/whitepapers)
 - [Angle Documentation](https://docs.angle.money)
@@ -36,11 +36,13 @@ The Kheops system can come with optional [ERC4626](https://eips.ethereum.org/EIP
 
 ---
 
-## Security
+## Security ⛑️
 
 ### Audits
 
 Audits for Kheops smart contracts can be found in the [audits](./audits/)' folder.
+
+---
 
 ### Bug Bounty
 
@@ -48,7 +50,7 @@ For contracts deployed for the Angle Protocol, a bug bounty is open on [Immunefi
 
 ---
 
-## Deployment Addresses
+## Deployment Addresses 🚦
 
 ### agEUR - Kheops (Ethereum)
 
@@ -56,7 +58,7 @@ For contracts deployed for the Angle Protocol, a bug bounty is open on [Immunefi
 
 ---
 
-## Development
+## Development 🛠️
 
 This repository is built on [Foundry](https://github.com/foundry-rs/foundry). It also supports the [Hardhat](https://hardhat.org) development environment.
 
@@ -85,8 +87,6 @@ To update libraries:
 forge update
 ```
 
----
-
 #### Install packages
 
 You can install all dependencies by running
@@ -97,8 +97,6 @@ forge i
 ```
 
 If you don't have Foundr
-
----
 
 #### Create `.env` file
 
@@ -113,10 +111,6 @@ For additional keys, you can check the [`.env.example`](/.env.example) file.
 Warning: always keep your confidential information safe.
 
 ---
-
-## Headers
-
-To automatically create headers, follow: <https://github.com/Picodes/headers>
 
 ### Testing
 
@@ -146,12 +140,6 @@ There is an example script in the `scripts/foundry` folder. Then you can run:
 yarn foundry:deploy <FILE_NAME> --rpc-url <NETWORK_NAME>
 ```
 
-Example:
-
-```bash
-yarn foundry:deploy scripts/foundry/DeployMockAgEUR.s.sol --rpc-url goerli
-```
-
 ---
 
 ### Coverage
@@ -168,7 +156,9 @@ Otherwise you can install lcov `brew install lcov`:
 genhtml lcov.info --output=coverage
 ```
 
-### Gas report
+---
+
+### Gas report ⛽️
 
 ```bash
 yarn foundry:gas
@@ -181,8 +171,8 @@ yarn foundry:gas
 ```bash
 pip3 install slither-analyzer
 pip3 install solc-select
-solc-select install 0.8.11
-solc-select use 0.8.11
+solc-select install 0.8.17
+solc-select use 0.8.17
 slither .
 ```
 
