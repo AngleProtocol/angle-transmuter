@@ -77,11 +77,10 @@ struct Collateral {
     uint8 unpausedMint;
     // Whether burning for this asset is unpaused
     uint8 unpausedBurn;
-    // Amount
+    // Amount of decimals of the collateral
     uint8 decimals;
-    // TODO: normalizedStables could be encoded into something with lower bytes to gain some place
     // Normalized amount of stablecoins issued from this collateral
-    uint256 normalizedStables;
+    uint224 normalizedStables;
     uint64[] xFeeMint;
     // Mint fees at the exposures specified in `xFeeMint`
     int64[] yFeeMint;
@@ -100,9 +99,9 @@ struct KheopsStorage {
     // Whether redemption is paused
     uint8 pausedRedemption;
     // Normalized amount of stablecoins issued by the system
-    uint256 normalizedStables;
+    uint128 normalizedStables;
     // Value used to reconcile `normalizedStables` values with the actual amount that have been issued
-    uint256 normalizer;
+    uint128 normalizer;
     // List of collateral assets supported by the system
     address[] collateralList;
     uint64[] xRedemptionCurve;

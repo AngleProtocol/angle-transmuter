@@ -6,11 +6,12 @@ pragma solidity ^0.8.0;
 * EIP-2535 Diamonds
 /******************************************************************************/
 
+import "../interfaces/IDiamondCut.sol";
+
 import { LibStorage as s } from "./LibStorage.sol";
+
 import "../Storage.sol";
 import "../../utils/Errors.sol";
-
-import "../interfaces/IDiamondCut.sol";
 
 // Remember to add the loupe functions from DiamondLoupe to the diamond.
 // The loupe functions are required by the EIP2535 Diamonds standard

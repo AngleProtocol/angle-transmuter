@@ -2,14 +2,15 @@
 
 pragma solidity ^0.8.12;
 
-import "../../utils/Constants.sol";
-import { LibStorage as s } from "./LibStorage.sol";
-import "../Storage.sol";
-import "../../utils/Errors.sol";
-
 import { IKheopsOracle } from "../../interfaces/IKheopsOracle.sol";
-import "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
+import { AggregatorV3Interface } from "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
 import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
+
+import { LibStorage as s } from "./LibStorage.sol";
+
+import "../../utils/Errors.sol";
+import "../../utils/Constants.sol";
+import "../Storage.sol";
 
 /// @title LibOracle
 /// @author Angle Labs, Inc.

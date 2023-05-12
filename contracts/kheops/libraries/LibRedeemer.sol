@@ -6,16 +6,17 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "../../utils/Constants.sol";
-import "../../utils/Errors.sol";
+import { IAgToken } from "../../interfaces/IAgToken.sol";
+
 import { LibStorage as s } from "./LibStorage.sol";
 import { LibOracle } from "./LibOracle.sol";
 import { LibHelper } from "./LibHelper.sol";
 import { LibManager } from "./LibManager.sol";
+
+import "../../utils/Constants.sol";
+import "../../utils/Errors.sol";
 import "../utils/Utils.sol";
 import "../Storage.sol";
-
-import { IAgToken } from "../../interfaces/IAgToken.sol";
 
 /// @title LibRedeemer
 /// @author Angle Labs, Inc.
@@ -168,14 +169,14 @@ library LibRedeemer {
             address[] memory collateralListMem = ks.collateralList;
             uint256 collateralListLength = collateralListMem.length;
             for (uint256 i; i < collateralListLength; ++i) {
-                ks.collaterals[collateralListMem[i]].normalizedStables =
-                    (ks.collaterals[collateralListMem[i]].normalizedStables * newNormalizerValue) /
-                    BASE_27;
+                ks.collaterals[collateralListMem[i]].normalizedStables = uint224(
+                    (ks.collaterals[collateralListMem[i]].normalizedStables * newNormalizerValue) / BASE_27
+                );
             }
-            ks.normalizedStables = (_normalizedStables * newNormalizerValue) / BASE_27;
+            ks.normalizedStables = uint128((_normalizedStables * newNormalizerValue) / BASE_27);
             newNormalizerValue = BASE_27;
         }
-        ks.normalizer = newNormalizerValue;
+        ks.normalizer = uint128(newNormalizerValue);
         emit NormalizerUpdated(newNormalizerValue);
     }
 }

@@ -27,7 +27,7 @@ contract Test {
         Setters.setAccessControlManager(_accessControlManager);
 
         KheopsStorage storage ks = s.kheopsStorage();
-        ks.normalizer = BASE_27;
+        ks.normalizer = uint128(BASE_27);
         ks.agToken = IAgToken(_agToken);
 
         // Setup first collateral

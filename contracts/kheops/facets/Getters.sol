@@ -2,17 +2,18 @@
 
 pragma solidity ^0.8.12;
 
+import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
+import { IGetters } from "../interfaces/IGetters.sol";
+
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibRedeemer } from "../libraries/LibRedeemer.sol";
 import { LibOracle } from "../libraries/LibOracle.sol";
 import { Diamond } from "../libraries/Diamond.sol";
+
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 
-import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
 import "../Storage.sol";
-
-import { IGetters } from "../interfaces/IGetters.sol";
 
 /// @title Getters
 /// @author Angle Labs, Inc.
@@ -48,15 +49,15 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
-    function getCollateralMintFees(address collateralAddress) external view returns (uint64[] memory, int64[] memory) {
-        Collateral storage collateral = s.kheopsStorage().collaterals[collateralAddress];
-        return (collateral.xFeeMint, collateral.yFeeMint);
+    function getCollateralMintFees(address collateral) external view returns (uint64[] memory, int64[] memory) {
+        Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
+        return (collatInfo.xFeeMint, collatInfo.yFeeMint);
     }
 
     /// @inheritdoc IGetters
-    function getCollateralBurnFees(address collateralAddress) external view returns (uint64[] memory, int64[] memory) {
-        Collateral storage collateral = s.kheopsStorage().collaterals[collateralAddress];
-        return (collateral.xFeeBurn, collateral.yFeeBurn);
+    function getCollateralBurnFees(address collateral) external view returns (uint64[] memory, int64[] memory) {
+        Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
+        return (collatInfo.xFeeBurn, collatInfo.yFeeBurn);
     }
 
     /// @inheritdoc IGetters
