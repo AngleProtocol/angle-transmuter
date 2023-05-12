@@ -60,8 +60,11 @@ contract Setters is AccessControlModifiers, ISetters {
         if (collatInfo.decimals == 0) revert NotCollateral();
         uint8 isManaged = collatInfo.isManaged;
         if (isManaged > 0) LibManager.pullAll(collateral, collatInfo.managerData);
-        if (managerData.managerConfig.length != 0) collatInfo.isManaged = 1;
-        else {
+        if (managerData.managerConfig.length != 0) {
+            // The first subCollateral given should be the actual collateral asset
+            if (address(managerData.subCollaterals[0]) != collateral) revert InvalidParam();
+            collatInfo.isManaged = 1;
+        } else {
             ManagerStorage memory emptyManagerData;
             managerData = emptyManagerData;
         }
@@ -71,6 +74,8 @@ contract Setters is AccessControlModifiers, ISetters {
 
     /// @inheritdoc ISetters
     function setManagerData(address collateral, ManagerStorage memory managerData) external onlyGovernor {
+        if (managerData.managerConfig.length != 0 && address(managerData.subCollaterals[0]) != collateral)
+            revert InvalidParam();
         s.kheopsStorage().collaterals[collateral].managerData = managerData;
         emit ManagerDataSet(collateral, managerData);
     }

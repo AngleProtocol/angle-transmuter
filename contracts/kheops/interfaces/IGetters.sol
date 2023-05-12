@@ -54,7 +54,13 @@ interface IGetters {
         address collateral
     ) external view returns (uint256 mint, uint256 burn, uint256 deviation, uint256 redemption);
 
+    /// @notice Returns the data used to compute oracle values for `collateral`
+    /// @return readType Type of oracle (Chainlink, external smart contract, ...)
+    /// @return targetType Type of target price for the collateral: is it that of the stablecoin or evolve
+    /// following something like wstETH?
+    /// @return data Extra data needed to read the oracle. For Chainlink type of oracles, this data is supposed to give
+    /// the addresses of the Chainlink feeds to read, the stale periods for each feed, ...
     function getOracle(
         address collateral
-    ) external view returns (OracleReadType, OracleQuoteType, OracleTargetType, bytes memory);
+    ) external view returns (OracleReadType readType, OracleTargetType targetType, bytes memory data);
 }

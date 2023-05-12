@@ -20,8 +20,10 @@ library LibHelper {
         bool revertIfNotEnough,
         ManagerStorage memory managerData
     ) internal {
-        if (managerData.managerConfig.length != 0)
-            LibManager.transfer(token, to, amount, revertIfNotEnough, managerData);
-        else IERC20(token).safeTransfer(to, amount);
+        if (amount > 0) {
+            if (managerData.managerConfig.length != 0)
+                LibManager.transfer(token, to, amount, revertIfNotEnough, managerData);
+            else IERC20(token).safeTransfer(to, amount);
+        }
     }
 }
