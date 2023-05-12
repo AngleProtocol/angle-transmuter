@@ -8,7 +8,6 @@ import { IGetters } from "../interfaces/IGetters.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibRedeemer } from "../libraries/LibRedeemer.sol";
 import { LibOracle } from "../libraries/LibOracle.sol";
-import { Diamond } from "../libraries/Diamond.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -31,16 +30,6 @@ contract Getters is IGetters {
     /// @inheritdoc IGetters
     function agToken() external view returns (IAgToken) {
         return s.kheopsStorage().agToken;
-    }
-
-    /// @notice Checks whether `admin` has the governor role
-    function isGovernor(address admin) external view returns (bool) {
-        return Diamond.isGovernor(admin);
-    }
-
-    /// @notice Checks whether `admin` has the guardian role
-    function isGovernorOrGuardian(address admin) external view returns (bool) {
-        return Diamond.isGovernorOrGuardian(admin);
     }
 
     /// @inheritdoc IGetters
@@ -67,8 +56,8 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
-    function getCollateralRatio() external view returns (uint64 collatRatio, uint256 reservesValue) {
-        (collatRatio, reservesValue, , , ) = LibRedeemer.getCollateralRatio();
+    function getCollateralRatio() external view returns (uint64 collatRatio, uint256 stablecoinsIssued) {
+        (collatRatio, stablecoinsIssued, , , ) = LibRedeemer.getCollateralRatio();
     }
 
     /// @inheritdoc IGetters

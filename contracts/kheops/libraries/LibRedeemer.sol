@@ -103,7 +103,7 @@ library LibRedeemer {
         view
         returns (
             uint64 collatRatio,
-            uint256 reservesValue,
+            uint256 stablecoinsIssued,
             address[] memory tokens,
             uint256[] memory balances,
             uint256[] memory subCollateralsTracker
@@ -151,9 +151,9 @@ library LibRedeemer {
                 }
             }
         }
-        reservesValue = Math.mulDiv(ks.normalizedStables, ks.normalizer, BASE_27, Math.Rounding.Up);
-        if (reservesValue > 0)
-            collatRatio = uint64(Math.mulDiv(totalCollateralization, BASE_9, reservesValue, Math.Rounding.Up));
+        stablecoinsIssued = Math.mulDiv(ks.normalizedStables, ks.normalizer, BASE_27, Math.Rounding.Up);
+        if (stablecoinsIssued > 0)
+            collatRatio = uint64(Math.mulDiv(totalCollateralization, BASE_9, stablecoinsIssued, Math.Rounding.Up));
         else collatRatio = type(uint64).max;
     }
 
