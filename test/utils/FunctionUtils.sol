@@ -4,6 +4,7 @@ pragma solidity ^0.8.12;
 
 import { StdUtils } from "forge-std/Test.sol";
 import "contracts/utils/Constants.sol";
+//solhint-disable-next-line
 import { console } from "forge-std/console.sol";
 
 /// @title FunctionUtils

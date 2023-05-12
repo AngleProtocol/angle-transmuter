@@ -5,16 +5,17 @@ pragma solidity ^0.8.12;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../../utils/Constants.sol";
-import "../../utils/Errors.sol";
+import { IAgToken } from "../../interfaces/IAgToken.sol";
+
+import { LibManager } from "./LibManager.sol";
 import { LibStorage as s } from "./LibStorage.sol";
 import { LibHelper } from "./LibHelper.sol";
 import { LibOracle } from "./LibOracle.sol";
+
+import "../../utils/Constants.sol";
+import "../../utils/Errors.sol";
 import "../utils/Utils.sol";
 import "../Storage.sol";
-import { LibManager } from "./LibManager.sol";
-
-import { IAgToken } from "../../interfaces/IAgToken.sol";
 
 struct LocalVariables {
     bool isMint;

@@ -9,7 +9,7 @@ import "../Storage.sol";
 /// @title ISetters
 /// @author Angle Labs, Inc.
 interface ISetters {
-    function adjustReserve(address collateral, uint256 amount, bool addOrRemove) external;
+    function adjustReserve(address collateral, uint128 amount, bool addOrRemove) external;
 
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external;
 

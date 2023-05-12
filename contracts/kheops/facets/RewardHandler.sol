@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.12;
 
-import "../libraries/LibRewardHandler.sol";
+import { LibRewardHandler } from "../libraries/LibRewardHandler.sol";
 
 /// @title RewardHandler
 /// @author Angle Labs, Inc.

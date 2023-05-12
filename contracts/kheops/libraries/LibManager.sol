@@ -4,12 +4,14 @@ pragma solidity ^0.8.12;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 import { LibOracle, AggregatorV3Interface } from "./LibOracle.sol";
 import { LibStorage as s } from "./LibStorage.sol";
+
 import "../Storage.sol";
 import "../../utils/Constants.sol";
+import "../../utils/Errors.sol";
 import "../utils/Utils.sol";
-import "contracts/utils/Errors.sol";
 
 /// @title LibManager
 /// @author Angle Labs, Inc.

@@ -4,6 +4,7 @@ pragma solidity ^0.8.12;
 
 import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
 import { IAgToken } from "../../interfaces/IAgToken.sol";
+
 import "../Storage.sol";
 
 /// @title IGetters
@@ -21,9 +22,9 @@ interface IGetters {
 
     function getCollateralList() external view returns (address[] memory);
 
-    function getCollateralMintFees(address collateralAddress) external view returns (uint64[] memory, int64[] memory);
+    function getCollateralMintFees(address collateral) external view returns (uint64[] memory, int64[] memory);
 
-    function getCollateralBurnFees(address collateralAddress) external view returns (uint64[] memory, int64[] memory);
+    function getCollateralBurnFees(address collateral) external view returns (uint64[] memory, int64[] memory);
 
     function getRedemptionFees() external view returns (uint64[] memory, int64[] memory);
 

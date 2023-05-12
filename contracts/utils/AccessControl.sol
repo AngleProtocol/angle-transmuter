@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import "../interfaces/IAccessControlManager.sol";
+import { IAccessControlManager } from "../interfaces/IAccessControlManager.sol";
 
 import "../utils/Errors.sol";
 

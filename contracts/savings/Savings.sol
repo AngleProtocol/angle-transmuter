@@ -35,19 +35,16 @@
 
 pragma solidity ^0.8.17;
 
-import "../external/openZeppelinExtensions/ERC4626Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
+
+import { IAgToken } from "../interfaces/IAgToken.sol";
+
+import "../external/openZeppelinExtensions/ERC4626Upgradeable.sol";
 
 import "../utils/Errors.sol";
 import "../utils/Constants.sol";
 import { AccessControl, IAccessControlManager } from "../utils/AccessControl.sol";
-
-import { IAgToken } from "../interfaces/IAgToken.sol";
-
-/**
- * TODO: can we do better than the current design at initialization -> there is probably better that can be done
- */
 
 /// @title Savings
 /// @author Angle Labs, Inc.

@@ -5,15 +5,15 @@ pragma solidity ^0.8.0;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import { ISwapper } from "../interfaces/ISwapper.sol";
+
 import { LibSwapper as Lib } from "../libraries/LibSwapper.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibHelper } from "../libraries/LibHelper.sol";
-import "../Storage.sol";
 
+import "../Storage.sol";
 import "../../utils/Errors.sol";
 import "../../utils/Constants.sol";
-
-import { ISwapper } from "../interfaces/ISwapper.sol";
 
 /// @title Swapper
 /// @author Angle Labs, Inc.
@@ -36,7 +36,7 @@ contract Swapper is ISwapper {
         address tokenOut,
         address to,
         uint256 deadline
-    ) external returns (uint amountOut) {
+    ) external returns (uint256 amountOut) {
         KheopsStorage storage ks = s.kheopsStorage();
         if (block.timestamp > deadline) revert TooLate();
         (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
@@ -47,14 +47,14 @@ contract Swapper is ISwapper {
         if (amountOut < amountOutMin) revert TooSmallAmountOut();
 
         if (mint) {
-            uint256 changeAmount = (amountOut * BASE_27) / ks.normalizer;
-            ks.collaterals[tokenIn].normalizedStables += changeAmount;
+            uint128 changeAmount = uint128((amountOut * BASE_27) / ks.normalizer);
+            ks.collaterals[tokenIn].normalizedStables += uint224(changeAmount);
             ks.normalizedStables += changeAmount;
             IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
             IAgToken(tokenOut).mint(to, amountOut);
         } else {
-            uint256 changeAmount = (amountIn * BASE_27) / ks.normalizer;
-            ks.collaterals[tokenOut].normalizedStables -= changeAmount;
+            uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
+            ks.collaterals[tokenOut].normalizedStables -= uint224(changeAmount);
             ks.normalizedStables -= changeAmount;
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
             ManagerStorage memory emptyManagerData;
@@ -77,7 +77,7 @@ contract Swapper is ISwapper {
         address tokenOut,
         address to,
         uint256 deadline
-    ) external returns (uint amountIn) {
+    ) external returns (uint256 amountIn) {
         KheopsStorage storage ks = s.kheopsStorage();
         if (block.timestamp > deadline) revert TooLate();
         (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
@@ -88,15 +88,15 @@ contract Swapper is ISwapper {
         if (amountIn > amountInMax) revert TooBigAmountIn();
 
         if (mint) {
-            uint256 changeAmount = (amountOut * BASE_27) / ks.normalizer;
-            ks.collaterals[tokenIn].normalizedStables += changeAmount;
+            uint128 changeAmount = uint128((amountOut * BASE_27) / ks.normalizer);
+            ks.collaterals[tokenIn].normalizedStables += uint224(changeAmount);
             ks.normalizedStables += changeAmount;
             IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
             IAgToken(tokenOut).mint(to, amountOut);
         } else {
-            uint256 changeAmount = (amountIn * BASE_27) / ks.normalizer;
-            ks.collaterals[tokenOut].normalizedStables -= changeAmount;
-            ks.normalizedStables -= changeAmount; // Will overflow if the operation is impossible
+            uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
+            ks.collaterals[tokenOut].normalizedStables -= uint224(changeAmount);
+            ks.normalizedStables -= changeAmount; // Will underflow if the operation is impossible
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
             {
                 ManagerStorage memory emptyManagerData;

@@ -39,16 +39,12 @@ import "../external/openZeppelinExtensions/ERC4626Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 
-import "../utils/Errors.sol";
-import "../utils/Constants.sol";
-import { AccessControl, IAccessControlManager } from "../utils/AccessControl.sol";
-
 import { IAgToken } from "../interfaces/IAgToken.sol";
 import { IKheops } from "../kheops/interfaces/IKheops.sol";
 
-/**
- * TODO: can we do better than the current design at initialization -> there is probably better that can be done
- */
+import "../utils/Errors.sol";
+import "../utils/Constants.sol";
+import { AccessControl, IAccessControlManager } from "../utils/AccessControl.sol";
 
 /// @title SavingsVest
 /// @author Angle Labs, Inc.
@@ -64,29 +60,33 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
 
     // ========================== PARAMETERS / REFERENCES ==========================
 
+    /// @notice Address handling protocol surplus
     address public surplusManager;
 
     /// @notice Amount of profit that needs to be vested
     uint256 public vestingProfit;
 
+    /// @notice Reference to the Kheops contract
     IKheops public kheops;
 
     /// @notice Last time rewards were accrued
     uint64 public lastUpdate;
 
+    /// @notice Share of the surplus going to the protocol
     uint64 public protocolSafetyFee;
 
     /// @notice The period in seconds over which locked profit is unlocked
-    /// @dev Cannot be 0 as it opens harvests up to sandwich attacks
+    /// @dev Cannot be 0 as it opens the system to sandwich attacks
     uint32 public vestingPeriod;
 
+    /// @notice Minimum time between two calls to the `accrue` function
     uint32 public updateDelay;
 
     /// @notice Whether the contract is paused or not
     uint8 public paused;
 
     /// @notice Number of decimals for `_asset`
-    uint8 internal _assetDecimals;
+    uint8 internal _numDecimals;
 
     uint256[46] private __gap;
 
@@ -120,7 +120,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
         kheops = _kheops;
         accessControlManager = _accessControlManager;
         uint8 numDecimals = asset_.decimals();
-        _assetDecimals = numDecimals;
+        _numDecimals = numDecimals;
         _deposit(msg.sender, address(this), 10 ** numDecimals / divizer, BASE_18 / divizer);
     }
 
@@ -134,7 +134,8 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
 
     // =============================== CONTRACT LOGIC ==============================
 
-    /// @notice Accrues interest to this contract by minting agTokens
+    /// @notice Accrues interest to this contract by minting agTokens if the protocol is over-collateralized
+    /// or burning some if it is not collateralized
     function accrue() external returns (uint256 minted) {
         if (block.timestamp - lastUpdate < updateDelay && !accessControlManager.isGovernorOrGuardian(msg.sender))
             revert NotAllowed();
@@ -157,10 +158,14 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
         } else {
             uint256 missing = reserves - (collatRatio * reserves) / BASE_9;
             uint256 currentLockedProfit = lockedProfit();
-            missing = missing > currentLockedProfit ? currentLockedProfit : missing;
-            if (missing > 0) {
-                vestingProfit -= missing;
+            if (missing > currentLockedProfit) {
+                vestingProfit = 0;
+                missing = currentLockedProfit;
+            } else {
+                vestingProfit = currentLockedProfit - missing;
                 lastUpdate = uint64(block.timestamp);
+            }
+            if (missing > 0) {
                 _agToken.burnSelf(missing, address(this));
                 _kheops.updateNormalizer(missing, false);
             }
@@ -237,7 +242,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
         uint256 supply = totalSupply();
         return
             (assets == 0 || supply == 0)
-                ? assets.mulDiv(BASE_18, 10 ** _assetDecimals, rounding)
+                ? assets.mulDiv(BASE_18, 10 ** _numDecimals, rounding)
                 : assets.mulDiv(supply, totalAssets(), rounding);
     }
 
@@ -249,7 +254,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
         uint256 supply = totalSupply();
         return
             (supply == 0)
-                ? shares.mulDiv(10 ** _assetDecimals, BASE_18, rounding)
+                ? shares.mulDiv(10 ** _numDecimals, BASE_18, rounding)
                 : shares.mulDiv(totalAssets(), supply, rounding);
     }
 

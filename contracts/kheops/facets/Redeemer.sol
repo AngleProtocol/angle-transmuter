@@ -2,11 +2,12 @@
 
 pragma solidity ^0.8.0;
 
+import { IRedeemer } from "../interfaces/IRedeemer.sol";
+
 import { LibRedeemer as Lib } from "../libraries/LibRedeemer.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
-import "../Storage.sol";
 
-import { IRedeemer } from "../interfaces/IRedeemer.sol";
+import "../Storage.sol";
 
 /// @title Redeemer
 /// @author Angle Labs, Inc.

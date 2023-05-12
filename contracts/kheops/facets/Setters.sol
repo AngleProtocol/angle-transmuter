@@ -5,22 +5,22 @@ pragma solidity ^0.8.0;
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { Diamond } from "../libraries/Diamond.sol";
 
 import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
+import { ISetters } from "../interfaces/ISetters.sol";
 
+import { Diamond } from "../libraries/Diamond.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibManager } from "../libraries/LibManager.sol";
 import { LibSetters } from "../libraries/LibSetters.sol";
 import { LibHelper } from "../libraries/LibHelper.sol";
 import { LibRedeemer } from "../libraries/LibRedeemer.sol";
+
 import { AccessControlModifiers } from "../utils/AccessControlModifiers.sol";
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 
 import "../Storage.sol";
-
-import { ISetters } from "../interfaces/ISetters.sol";
 
 /// @title Setters
 /// @author Angle Labs, Inc.
@@ -102,15 +102,15 @@ contract Setters is AccessControlModifiers, ISetters {
     /// @inheritdoc ISetters
     /// @dev amount is an absolute amount (like not normalized) -> need to pay attention to this
     /// Why not normalising directly here? easier for Governance
-    function adjustReserve(address collateral, uint256 amount, bool addOrRemove) external onlyGovernor {
+    function adjustReserve(address collateral, uint128 amount, bool addOrRemove) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         if (addOrRemove) {
-            collatInfo.normalizedStables += amount;
+            collatInfo.normalizedStables += uint224(amount);
             ks.normalizedStables += amount;
         } else {
-            collatInfo.normalizedStables -= amount;
+            collatInfo.normalizedStables -= uint224(amount);
             ks.normalizedStables -= amount;
         }
         emit ReservesAdjusted(collateral, amount, addOrRemove);
@@ -119,7 +119,7 @@ contract Setters is AccessControlModifiers, ISetters {
     /// @inheritdoc ISetters
     function revokeCollateral(address collateral) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
-        Collateral memory collatInfo = ks.collaterals[collateral];
+        Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0 || collatInfo.normalizedStables > 0) revert NotCollateral();
         delete ks.collaterals[collateral];
         address[] memory collateralListMem = ks.collateralList;
