@@ -6,10 +6,10 @@
 
 Kheops is an autonomous and modular price stability module for decentralized stablecoin protocols.
 
-- It suppor
-- It
+- It is conceived as a basket of different assets (normally stablecoins) backing a stablecoin and comes with guarantees on the maximum exposure the stablecoin can have to each asset in the basket.
+- The stablecoin issued through Kheops can be minted at oracle value from any of the assets with adaptive fees, and it can be burnt for any of the assets in the backing with variable fees as well. It can also be redeemed at any time against a proportional amount of each asset in the backing.
 
-It is composable with any stablecoin systems. It should notably be used as a standalone module within the Angle Protocol for agEUR in parallel notably with the
+Kheops is compatible with other common mechanisms often used to issue stablecoins like collateralized-debt position models. It should notably be used as a standalone module within the Angle Protocol for agEUR in parallel with the Borrowing module.
 
 ---
 
@@ -20,7 +20,7 @@ The Kheops system relies on a [diamond proxy pattern](https://eips.ethereum.org/
 - the [`Swapper`](./contracts/kheops/facets/Swapper.sol) facet with the logic associated to the mint and burn functionalities of the system
 - the [`Redeemer`](./contracts/kheops/facets/Redeemer.sol) facet for redemptions
 - the [`Getters`](./contracts/kheops/facets/Swapper.sol) facet with external getters for UIs and contracts built on top of `Kheops`
-- the [`Setters`] facet governance can use to update system parameters.
+- the [`Setters`] facet protocols' governance can use to update system parameters.
 
 The storage parameters of the system are defined in the [`Storage`](./contracts/kheops/Storage.sol).
 
@@ -44,7 +44,7 @@ Audits for Kheops smart contracts can be found in the [audits](./audits/)' folde
 
 ### Bug Bounty
 
-A bug bounty is open on Immunefi and Hats Finance. The rewards and scope of the Immunefi are defined here.
+For contracts deployed for the Angle Protocol, a bug bounty is open on [Immunefi](https://immunefi.com) and [Hats Finance](https://hats.finance). The rewards and scope of the Angle Immunefi are defined [here](https://immunefi.com/bounty/angleprotocol/).
 
 ---
 
@@ -58,53 +58,11 @@ A bug bounty is open on Immunefi and Hats Finance. The rewards and scope of the 
 
 ## Development
 
----
-
-## Questions & Feedback
-
-For any question or feedback you can send an email to [contact@angle.money](mailto:contact@angle.money).
-
----
-
-## Licensing
-
-The primary license for this repository is the Business Source License 1.1 (`BUSL-1.1`). See [`LICENSE`](./LICENSE).
-
-This repository proposes a template that mixes hardhat and foundry frameworks. It also provides templates for EVM compatible smart contracts (in `./contracts/examples`), tests and deployment scripts.
+This repository is built on [Foundry](https://github.com/foundry-rs/foundry). It also supports the [Hardhat](https://hardhat.org) development environment.
 
 ### Getting started
 
-### Install packages
-
-You can install all dependencies by running
-
-```bash
-yarn
-forge i
-```
-
-### Create `.env` file
-
-In order to interact with non local networks, you must create an `.env` that has:
-
-- `PRIVATE_KEY`
-- `MNEMONIC`
-- network key (eg. `ALCHEMY_NETWORK_KEY`)
-- `ETHERSCAN_API_KEY`
-
-For additional keys, you can check the `.env.example` file.
-
-Warning: always keep your confidential information safe.
-
-## Headers
-
-To automatically create headers, follow: <https://github.com/Picodes/headers>
-
-## Hardhat Command line completion
-
-Follow these instructions to have hardhat command line arguments completion: <https://hardhat.org/hardhat-runner/docs/guides/command-line-completion>
-
-## Foundry Installation
+#### Install Foundry
 
 ```bash
 curl -L https://foundry.paradigm.xyz | bash
@@ -127,31 +85,46 @@ To update libraries:
 forge update
 ```
 
-### Foundry on Docker 🐳
+---
 
-**If you don’t want to install Rust and Foundry on your computer, you can use Docker**
-Image is available here [ghcr.io/foundry-rs/foundry](http://ghcr.io/foundry-rs/foundry).
+#### Install packages
 
-```bash
-docker pull ghcr.io/foundry-rs/foundry
-docker tag ghcr.io/foundry-rs/foundry:latest foundry:latest
-```
-
-To run the container:
+You can install all dependencies by running
 
 ```bash
-docker run -it --rm -v $(pwd):/app -w /app foundry sh
+yarn
+forge i
 ```
 
-Then you are inside the container and can run Foundry’s commands.
+If you don't have Foundr
 
-### Tests
+---
+
+#### Create `.env` file
+
+In order to interact with non local networks, you must create an `.env` that has:
+
+- a `MNEMONIC` for each of the chain you
+- a network key
+- an `ETHERSCAN_API_KEY`
+
+For additional keys, you can check the [`.env.example`](/.env.example) file.
+
+Warning: always keep your confidential information safe.
+
+---
+
+## Headers
+
+To automatically create headers, follow: <https://github.com/Picodes/headers>
+
+### Testing
 
 You can run tests as follows:
 
 ```bash
 forge test -vvvv --watch
-forge test -vvvv --match-path contracts/forge-tests/KeeperMulticall.t.sol
+forge test -vvvv --match-path test/fuzz/Redeemer.test.sol
 forge test -vvvv --match-test "testAbc*"
 forge test -vvvv --fork-url https://eth-mainnet.alchemyapi.io/v2/Lc7oIGYeL_QvInzI0Wiu_pOZZDEKBrdf
 ```
@@ -162,6 +135,8 @@ You can also list tests:
 forge test --list
 forge test --list --json --match-test "testXXX*"
 ```
+
+---
 
 ### Deploying
 
@@ -177,12 +152,13 @@ Example:
 yarn foundry:deploy scripts/foundry/DeployMockAgEUR.s.sol --rpc-url goerli
 ```
 
+---
+
 ### Coverage
 
 We recommend the use of this [vscode extension](ryanluker.vscode-coverage-gutters).
 
 ```bash
-yarn hardhat:coverage
 yarn foundry:coverage
 ```
 
@@ -198,7 +174,9 @@ genhtml lcov.info --output=coverage
 yarn foundry:gas
 ```
 
-## Slither
+---
+
+### [Slither](https://github.com/crytic/slither)
 
 ```bash
 pip3 install slither-analyzer
@@ -208,6 +186,14 @@ solc-select use 0.8.11
 slither .
 ```
 
-## Media
+---
 
-Don't hesitate to reach out on [Twitter](https://twitter.com/AngleProtocol) 🐦
+## Questions & Feedback
+
+For any question or feedback you can send an email to [contact@angle.money](mailto:contact@angle.money). Don't hesitate to reach out on [Twitter](https://twitter.com/AngleProtocol)🐦 as well.
+
+---
+
+## Licensing
+
+The primary license for this repository is the Business Source License 1.1 (`BUSL-1.1`). See [`LICENSE`](./LICENSE).

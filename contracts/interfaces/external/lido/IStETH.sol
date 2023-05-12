@@ -3,7 +3,6 @@
 pragma solidity ^0.8.12;
 
 /// @title IStETH
-/// @author Angle Labs, Inc.
 /// @notice Interface for the `StETH` contract
 interface IStETH {
     function getPooledEthByShares(uint256 _sharesAmount) external view returns (uint256);
