@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.12;
+pragma solidity >=0.5.0;
 
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 

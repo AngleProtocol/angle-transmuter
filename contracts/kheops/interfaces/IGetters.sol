@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.12;
+pragma solidity >=0.5.0;
 
 import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
 import { IAgToken } from "../../interfaces/IAgToken.sol";
@@ -34,7 +34,5 @@ interface IGetters {
 
     function getOracleValues(address collateral) external view returns (uint256, uint256, uint256, uint256);
 
-    function getOracle(
-        address collateral
-    ) external view returns (OracleReadType, OracleQuoteType, OracleTargetType, bytes memory);
+    function getOracle(address collateral) external view returns (OracleReadType, OracleTargetType, bytes memory);
 }

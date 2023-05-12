@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: CC0-1.0
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.17;
 
 /******************************************************************************\
 * Author: Nick Mudge <nick@perfectabstractions.com>, Twitter/Github: @mudgen

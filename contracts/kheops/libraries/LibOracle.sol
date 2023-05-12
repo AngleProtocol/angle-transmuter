@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.12;
+pragma solidity ^0.8.17;
 
 import { IKheopsOracle } from "../../interfaces/IKheopsOracle.sol";
 import { AggregatorV3Interface } from "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
 import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
+import { AggregatorV3Interface } from "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
 
 import { LibStorage as s } from "./LibStorage.sol";
 
@@ -17,33 +18,24 @@ import "../Storage.sol";
 library LibOracle {
     function parseOracle(
         bytes memory oracleConfig
-    ) internal pure returns (OracleReadType, OracleQuoteType, OracleTargetType, bytes memory) {
-        return abi.decode(oracleConfig, (OracleReadType, OracleQuoteType, OracleTargetType, bytes));
+    ) internal pure returns (OracleReadType, OracleTargetType, bytes memory) {
+        return abi.decode(oracleConfig, (OracleReadType, OracleTargetType, bytes));
     }
 
-    function getOracle(
-        address collateral
-    ) internal view returns (OracleReadType, OracleQuoteType, OracleTargetType, bytes memory) {
+    function getOracle(address collateral) internal view returns (OracleReadType, OracleTargetType, bytes memory) {
         return parseOracle(s.kheopsStorage().collaterals[collateral].oracleConfig);
     }
 
     function targetPrice(OracleTargetType targetType) internal view returns (uint256) {
         if (targetType == OracleTargetType.STABLE) return BASE_18;
         else if (targetType == OracleTargetType.WSTETH) return STETH.getPooledEthByShares(1 ether);
+        else if (targetType == OracleTargetType.CBETH) return CBETH.exchangeRate();
+        else if (targetType == OracleTargetType.RETH) return RETH.getExchangeRate();
+        else if (targetType == OracleTargetType.SFRXETH) return SFRXETH.pricePerShare();
         revert InvalidOracleType();
     }
 
-    function quoteAmount(OracleQuoteType quoteType) internal view returns (uint256) {
-        if (quoteType == OracleQuoteType.UNIT) return BASE_18;
-        else if (quoteType == OracleQuoteType.WSTETH) return STETH.getPooledEthByShares(1 ether);
-        revert InvalidOracleType();
-    }
-
-    function read(
-        OracleReadType readType,
-        OracleQuoteType quoteType,
-        bytes memory data
-    ) internal view returns (uint256) {
+    function read(OracleReadType readType, uint256 quotePrice, bytes memory data) internal view returns (uint256) {
         if (readType == OracleReadType.CHAINLINK_FEEDS) {
             (
                 AggregatorV3Interface[] memory circuitChainlink,
@@ -53,60 +45,49 @@ library LibOracle {
             ) = abi.decode(data, (AggregatorV3Interface[], uint32[], uint8[], uint8[]));
 
             uint256 listLength = circuitChainlink.length;
-            uint256 _quoteAmount = quoteAmount(quoteType);
             for (uint256 i; i < listLength; ++i) {
-                _quoteAmount = readChainlinkFeed(
-                    _quoteAmount,
+                quotePrice = readChainlinkFeed(
+                    quotePrice,
                     circuitChainlink[i],
                     circuitChainIsMultiplied[i],
                     chainlinkDecimals[i],
                     stalePeriods[i]
                 );
             }
-            return _quoteAmount;
+            return quotePrice;
         } else if (readType == OracleReadType.NO_ORACLE) {
-            return quoteAmount(quoteType);
+            return quotePrice;
         }
         revert InvalidOracleType();
     }
 
     function readRedemption(bytes memory oracleConfig) internal view returns (uint256) {
-        (OracleReadType readType, OracleQuoteType quoteType, , bytes memory data) = parseOracle(oracleConfig);
+        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = parseOracle(oracleConfig);
         if (readType == OracleReadType.EXTERNAL) {
             IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             return externalOracle.readRedemption();
-        } else return read(readType, quoteType, data);
+        } else return read(readType, targetPrice(targetType), data);
     }
 
     function readMint(bytes memory oracleConfig) internal view returns (uint256 oracleValue) {
-        (
-            OracleReadType readType,
-            OracleQuoteType quoteType,
-            OracleTargetType targetType,
-            bytes memory data
-        ) = parseOracle(oracleConfig);
+        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = parseOracle(oracleConfig);
         if (readType == OracleReadType.EXTERNAL) {
             IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             return externalOracle.readMint();
         }
-        oracleValue = read(readType, quoteType, data);
         uint256 _targetPrice = targetPrice(targetType);
+        oracleValue = read(readType, _targetPrice, data);
         if (_targetPrice < oracleValue) oracleValue = _targetPrice;
     }
 
     function readBurn(bytes memory oracleConfig) internal view returns (uint256 oracleValue, uint256 deviation) {
-        (
-            OracleReadType readType,
-            OracleQuoteType quoteType,
-            OracleTargetType targetType,
-            bytes memory data
-        ) = parseOracle(oracleConfig);
+        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = parseOracle(oracleConfig);
         if (readType == OracleReadType.EXTERNAL) {
             IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             return externalOracle.readBurn();
         }
-        oracleValue = read(readType, quoteType, data);
         uint256 _targetPrice = targetPrice(targetType);
+        oracleValue = read(readType, _targetPrice, data);
         deviation = BASE_18;
         if (oracleValue < _targetPrice) deviation = (oracleValue * BASE_18) / _targetPrice;
     }
