@@ -18,13 +18,14 @@ import "../../utils/Constants.sol";
 /// @title Swapper
 /// @author Angle Labs, Inc.
 contract Swapper is ISwapper {
+    // The `to` address is not indexed as there cannot be 4 indexed addresses in an event.
     event Swap(
         address indexed tokenIn,
         address indexed tokenOut,
         uint256 amountIn,
         uint256 amountOut,
-        address from,
-        address indexed to
+        address indexed from,
+        address to
     );
     using SafeERC20 for IERC20;
 
