@@ -88,7 +88,8 @@ struct Collateral {
     // Mint fees at the exposures specified in `xFeeMint`
     int64[] yFeeMint;
     uint64[] xFeeBurn;
-    // Burn fees at the exposures specified in `xFeeBurn`
+    // Burn fees at the exposures specified in `xFeeBurn`. Contrary to `xFeeMint`, the values
+    // in `xFeeBurn` are decreasing exposure values.
     int64[] yFeeBurn;
     // Data about the oracle used for the collateral
     bytes oracleConfig;

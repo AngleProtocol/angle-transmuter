@@ -18,18 +18,16 @@ import "../../utils/Constants.sol";
 /// @title Swapper
 /// @author Angle Labs, Inc.
 contract Swapper is ISwapper {
-    // The `to` address is not indexed as there cannot be 4 indexed addresses in an event.
-    event Swap(
-        address indexed tokenIn,
-        address indexed tokenOut,
-        uint256 amountIn,
-        uint256 amountOut,
-        address indexed from,
-        address to
-    );
     using SafeERC20 for IERC20;
 
+    // ========================= EXTERNAL ACTION FUNCTIONS =========================
+    /// The two functions below can be used for both mint and burn operations. In both cases, one of `tokenIn` or `tokenOut`
+    /// must be the stablecoin, and the other must be an accepted collateral: the functions revert otherwise.
+    /// They may be paused for some collateral assets (in the mint or in the burn sense), in which case they will revert.
+    /// An approval of `tokenIn` for this contract is also needed before interacting with it.
+
     /// @inheritdoc ISwapper
+    /// @dev `msg.sender` must have approved this contract for at least `amountIn` for `tokenIn` before calling this function
     function swapExactInput(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -38,39 +36,21 @@ contract Swapper is ISwapper {
         address to,
         uint256 deadline
     ) external returns (uint256 amountOut) {
-        KheopsStorage storage ks = s.kheopsStorage();
-        if (block.timestamp > deadline) revert TooLate();
+        // Checking whether this is a mint or a burn operation, and whether the collateral provided
+        // is paused or not
         (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
-
+        // Getting the `amountOut`
         amountOut = mint
             ? Lib.quoteMintExactInput(collatInfo, amountIn)
             : Lib.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
         if (amountOut < amountOutMin) revert TooSmallAmountOut();
-
-        if (mint) {
-            uint128 changeAmount = uint128((amountOut * BASE_27) / ks.normalizer);
-            ks.collaterals[tokenIn].normalizedStables += uint224(changeAmount);
-            ks.normalizedStables += changeAmount;
-            IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
-            IAgToken(tokenOut).mint(to, amountOut);
-        } else {
-            uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
-            ks.collaterals[tokenOut].normalizedStables -= uint224(changeAmount);
-            ks.normalizedStables -= changeAmount;
-            IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-            ManagerStorage memory emptyManagerData;
-            LibHelper.transferCollateral(
-                tokenOut,
-                to,
-                amountOut,
-                true,
-                collatInfo.isManaged > 0 ? collatInfo.managerData : emptyManagerData
-            );
-        }
-        emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
+        // Once the exact amounts are known, the system needs to update its internal metrics and process the transfers
+        Lib.swap(collatInfo, amountIn, amountOut, tokenIn, tokenOut, to, deadline, mint);
     }
 
     /// @inheritdoc ISwapper
+    /// @dev `msg.sender` must have approved this contract for an amount bigger than what `amountIn` will
+    /// be before calling this function. Approving the contract for `tokenIn` with `amountInMax` will always be enough.
     function swapExactOutput(
         uint256 amountOut,
         uint256 amountInMax,
@@ -79,53 +59,33 @@ contract Swapper is ISwapper {
         address to,
         uint256 deadline
     ) external returns (uint256 amountIn) {
-        KheopsStorage storage ks = s.kheopsStorage();
-        if (block.timestamp > deadline) revert TooLate();
         (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
-
         amountIn = mint
             ? Lib.quoteMintExactOutput(collatInfo, amountOut)
             : Lib.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         if (amountIn > amountInMax) revert TooBigAmountIn();
-
-        if (mint) {
-            uint128 changeAmount = uint128((amountOut * BASE_27) / ks.normalizer);
-            ks.collaterals[tokenIn].normalizedStables += uint224(changeAmount);
-            ks.normalizedStables += changeAmount;
-            IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
-            IAgToken(tokenOut).mint(to, amountOut);
-        } else {
-            uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
-            ks.collaterals[tokenOut].normalizedStables -= uint224(changeAmount);
-            ks.normalizedStables -= changeAmount; // Will underflow if the operation is impossible
-            IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-            {
-                ManagerStorage memory emptyManagerData;
-                LibHelper.transferCollateral(
-                    tokenOut,
-                    to,
-                    amountOut,
-                    true,
-                    collatInfo.isManaged > 0 ? collatInfo.managerData : emptyManagerData
-                );
-            }
-        }
-        emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
+        Lib.swap(collatInfo, amountIn, amountOut, tokenIn, tokenOut, to, deadline, mint);
     }
 
+    // ================================ VIEW HELPERS ===============================
+    /// The functions below revert if neither of `tokenIn` and `tokenOut` are the stablecoin, and if neither
+    /// of `tokenOut` and `tokenIn` are an accepted collateral.
+    /// In case of a burn, they will also revert if the system does not have an available balance of `amountOut` for `tokenOut`.
+    /// This balance must be available either directly on the contract or through the underlying strategies that manage the
+    /// collateral
+
     /// @inheritdoc ISwapper
-    function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256) {
+    function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256 amountOut) {
         (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
         if (mint) return Lib.quoteMintExactInput(collatInfo, amountIn);
         else {
-            uint256 amountOut = Lib.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
+            amountOut = Lib.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
             Lib.checkAmounts(tokenOut, collatInfo, amountOut);
-            return amountOut;
         }
     }
 
     /// @inheritdoc ISwapper
-    function quoteOut(uint256 amountOut, address tokenIn, address tokenOut) external view returns (uint256) {
+    function quoteOut(uint256 amountOut, address tokenIn, address tokenOut) external view returns (uint256 amountIn) {
         (bool mint, Collateral memory collatInfo) = Lib.getMintBurn(tokenIn, tokenOut);
         if (mint) return Lib.quoteMintExactOutput(collatInfo, amountOut);
         else {

@@ -13,16 +13,9 @@ import "../Storage.sol";
 library LibHelper {
     using SafeERC20 for IERC20;
 
-    function transferCollateral(
-        address token,
-        address to,
-        uint256 amount,
-        bool revertIfNotEnough,
-        ManagerStorage memory managerData
-    ) internal {
+    function transferCollateral(address token, address to, uint256 amount, ManagerStorage memory managerData) internal {
         if (amount > 0) {
-            if (managerData.managerConfig.length != 0)
-                LibManager.transfer(token, to, amount, revertIfNotEnough, managerData);
+            if (managerData.managerConfig.length != 0) LibManager.transfer(token, to, amount, managerData);
             else IERC20(token).safeTransfer(to, amount);
         }
     }

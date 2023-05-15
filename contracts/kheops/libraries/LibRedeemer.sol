@@ -24,8 +24,6 @@ library LibRedeemer {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
-    // =================================== EVENTS ==================================
-
     event NormalizerUpdated(uint256 newNormalizerValue);
     event Redeemed(
         uint256 amount,
@@ -65,7 +63,6 @@ library LibRedeemer {
                     tokens[i],
                     to,
                     amounts[i],
-                    true,
                     ks.collaterals[collateralListMem[indexCollateral]].isManaged > 0
                         ? ks.collaterals[collateralListMem[indexCollateral]].managerData
                         : emptyManagerData

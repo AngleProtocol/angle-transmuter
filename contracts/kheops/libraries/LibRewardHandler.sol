@@ -17,6 +17,7 @@ library LibRewardHandler {
 
     event RewardsSoldFor(address indexed tokenObtained, uint256 balanceUpdate);
 
+    /// @notice Internal version of the `sellRewards` function
     function sellRewards(uint256 minAmountOut, bytes memory payload) internal returns (uint256 amountOut) {
         KheopsStorage storage ks = s.kheopsStorage();
         if (!Diamond.isGovernor(msg.sender) && ks.isSellerTrusted[msg.sender] == 0) revert NotTrusted();
@@ -24,6 +25,8 @@ library LibRewardHandler {
         address[] memory list = ks.collateralList;
         uint256 listLength = list.length;
         uint256[] memory balances = new uint256[](listLength);
+        // Getting the balances of all collateral assets of the protocol to see if those do not decrease during
+        // the swap: this is the only way to check that collateral assets have not been sold
         for (uint256 i; i < listLength; ++i) {
             balances[i] = IERC20(list[i]).balanceOf(address(this));
         }

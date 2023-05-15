@@ -35,6 +35,8 @@ contract Setters is AccessControlModifiers, ISetters {
     event TrustedToggled(address indexed sender, uint256 trustedStatus, uint8 trustedType);
 
     /// @inheritdoc ISetters
+    /// @dev No check is made on the collateral that is redeemed: this function could typically be used by a governance
+    /// during a manual rebalance the reserves of the system
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
@@ -44,7 +46,6 @@ contract Setters is AccessControlModifiers, ISetters {
             isManaged ? address(token) : collateral,
             to,
             amount,
-            false,
             isManaged ? collatInfo.managerData : emptyManagerData
         );
     }
@@ -105,8 +106,7 @@ contract Setters is AccessControlModifiers, ISetters {
     }
 
     /// @inheritdoc ISetters
-    /// @dev amount is an absolute amount (like not normalized) -> need to pay attention to this
-    /// Why not normalising directly here? easier for Governance
+    /// @dev The amount passed here must be a normalized amount and not an absolute amount
     function adjustReserve(address collateral, uint128 amount, bool addOrRemove) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
@@ -122,10 +122,15 @@ contract Setters is AccessControlModifiers, ISetters {
     }
 
     /// @inheritdoc ISetters
+    /// @dev The system may still have a non null balance of the collateral that is revoked: this should later
+    /// be handled through a recoverERC20 call
     function revokeCollateral(address collateral) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0 || collatInfo.normalizedStables > 0) revert NotCollateral();
+        uint8 isManaged = collatInfo.isManaged;
+        // If the collateral is managed through strategies, pulling all available funds from there
+        if (isManaged > 0) LibManager.pullAll(collateral, collatInfo.managerData);
         delete ks.collaterals[collateral];
         address[] memory collateralListMem = ks.collateralList;
         uint256 length = collateralListMem.length;
@@ -159,8 +164,9 @@ contract Setters is AccessControlModifiers, ISetters {
     }
 
     /// @inheritdoc ISetters
+    /// @dev This function may be called by trusted addresses: these could be for instance savings contract
+    /// minting stablecoins when they notice a profit
     function updateNormalizer(uint256 amount, bool increase) external returns (uint256) {
-        // Trusted addresses can call the function (like a savings contract in the case of a LSD)
         if (!Diamond.isGovernor(msg.sender) && s.kheopsStorage().isTrusted[msg.sender] == 0) revert NotTrusted();
         return LibRedeemer.updateNormalizer(amount, increase);
     }
