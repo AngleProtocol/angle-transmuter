@@ -1,13 +1,6 @@
 // SPDX-License-Identifier: CC0-1.0
 pragma solidity ^0.8.17;
 
-/******************************************************************************\
-* Author: Nick Mudge <nick@perfectabstractions.com>, Twitter/Github: @mudgen
-* EIP-2535 Diamonds
-*
-* Implementation of a diamond.
-/******************************************************************************/
-
 import { LibDiamond } from "./libraries/LibDiamond.sol";
 import { LibStorage as s } from "./libraries/LibStorage.sol";
 
