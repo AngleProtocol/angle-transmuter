@@ -93,8 +93,8 @@ library LibSetters {
         uint256 n = xFee.length;
         if (n != yFee.length || n == 0) revert InvalidParams();
         if (
-            // yFee should all be <= BASE_9
-            yFee[n - 1] > int256(BASE_9) ||
+            // yFee should be <= BASE_9 for burn and redeem
+            (setter != 0 && yFee[n - 1] > int256(BASE_9)) ||
             // Mint inflexion points should be in [0,BASE_9[
             (setter == 0 && (xFee[n - 1] >= BASE_9 || xFee[0] != 0)) ||
             // Burn inflexion points should be in ]0,BASE_9]
