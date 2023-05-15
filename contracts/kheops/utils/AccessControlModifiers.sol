@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import { Diamond } from "../libraries/Diamond.sol";
+import { LibDiamond } from "../libraries/LibDiamond.sol";
 
 import "../../utils/Errors.sol";
 
@@ -11,13 +11,13 @@ import "../../utils/Errors.sol";
 contract AccessControlModifiers {
     /// @notice Checks whether the `msg.sender` has the governor role
     modifier onlyGovernor() {
-        if (!Diamond.isGovernor(msg.sender)) revert NotGovernor();
+        if (!LibDiamond.isGovernor(msg.sender)) revert NotGovernor();
         _;
     }
 
     /// @notice Checks whether the `msg.sender` has the guardian role
     modifier onlyGuardian() {
-        if (!Diamond.isGovernorOrGuardian(msg.sender)) revert NotGovernorOrGuardian();
+        if (!LibDiamond.isGovernorOrGuardian(msg.sender)) revert NotGovernorOrGuardian();
         _;
     }
 }

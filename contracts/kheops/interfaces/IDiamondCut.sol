@@ -4,8 +4,8 @@ pragma solidity >=0.5.0;
 import "../Storage.sol";
 
 /// @title IDiamondCut
-/// @dev EIP-235 Diamonds
 /// @author Nick Mudge <nick@perfectabstractions.com>, Twitter/Github: @mudgen
+/// @dev Reference: EIP-2535 Diamonds
 interface IDiamondCut {
     /// @notice Add/replace/remove any number of functions and optionally execute a function with delegatecall
     /// @param _diamondCut Contains the facet addresses and function selectors

@@ -4,18 +4,19 @@ pragma solidity ^0.8.17;
 
 import { IDiamondLoupe } from "../interfaces/IDiamondLoupe.sol";
 
-import { Diamond } from "../libraries/Diamond.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 
 import "../Storage.sol";
 
 /**
  * TODO: is this something we must sill do?
- * Who is the author of the contract
  */
 // Remember to add the loupe functions from DiamondLoupe to the diamond.
 // The loupe functions are required by the EIP2535 Diamonds standard
 
+/// @title DiamondLoupe
+/// @author Nick Mudge <nick@perfectabstractions.com>, Twitter/Github: @mudgen
+/// @dev Reference: EIP-2535 Diamonds
 contract DiamondLoupe is IDiamondLoupe {
     // Diamond Loupe Functions
     ////////////////////////////////////////////////////////////////////

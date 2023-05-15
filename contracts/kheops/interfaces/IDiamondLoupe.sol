@@ -4,8 +4,8 @@ pragma solidity >=0.5.0;
 import "../Storage.sol";
 
 /// @notice IDiamondLoupe
-/// @dev EIP-235 Diamonds
 /// @author Nick Mudge <nick@perfectabstractions.com>, Twitter/Github: @mudgen
+/// @dev Reference: EIP-2535 Diamonds
 /// @dev A loupe is a small magnifying glass used to look at diamonds. The functions here look at diamonds
 interface IDiamondLoupe {
     /// @notice Gets all facet addresses and their four byte function selectors.

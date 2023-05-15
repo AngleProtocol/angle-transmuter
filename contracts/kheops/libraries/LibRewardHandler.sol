@@ -5,7 +5,7 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { Diamond } from "./Diamond.sol";
+import { LibDiamond } from "./LibDiamond.sol";
 import { LibStorage as s } from "./LibStorage.sol";
 
 import "../../utils/Constants.sol";
@@ -20,7 +20,7 @@ library LibRewardHandler {
     /// @notice Internal version of the `sellRewards` function
     function sellRewards(uint256 minAmountOut, bytes memory payload) internal returns (uint256 amountOut) {
         KheopsStorage storage ks = s.kheopsStorage();
-        if (!Diamond.isGovernor(msg.sender) && ks.isSellerTrusted[msg.sender] == 0) revert NotTrusted();
+        if (!LibDiamond.isGovernor(msg.sender) && ks.isSellerTrusted[msg.sender] == 0) revert NotTrusted();
 
         address[] memory list = ks.collateralList;
         uint256 listLength = list.length;

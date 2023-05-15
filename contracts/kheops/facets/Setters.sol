@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
 import { ISetters } from "../interfaces/ISetters.sol";
 
-import { Diamond } from "../libraries/Diamond.sol";
+import { LibDiamond } from "../libraries/LibDiamond.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibManager } from "../libraries/LibManager.sol";
 import { LibSetters } from "../libraries/LibSetters.sol";
@@ -167,7 +167,7 @@ contract Setters is AccessControlModifiers, ISetters {
     /// @dev This function may be called by trusted addresses: these could be for instance savings contract
     /// minting stablecoins when they notice a profit
     function updateNormalizer(uint256 amount, bool increase) external returns (uint256) {
-        if (!Diamond.isGovernor(msg.sender) && s.kheopsStorage().isTrusted[msg.sender] == 0) revert NotTrusted();
+        if (!LibDiamond.isGovernor(msg.sender) && s.kheopsStorage().isTrusted[msg.sender] == 0) revert NotTrusted();
         return LibRedeemer.updateNormalizer(amount, increase);
     }
 }
