@@ -74,14 +74,6 @@ contract Setters is AccessControlModifiers, ISetters {
     }
 
     /// @inheritdoc ISetters
-    function setManagerData(address collateral, ManagerStorage memory managerData) external onlyGovernor {
-        if (managerData.managerConfig.length != 0 && address(managerData.subCollaterals[0]) != collateral)
-            revert InvalidParam();
-        s.kheopsStorage().collaterals[collateral].managerData = managerData;
-        emit ManagerDataSet(collateral, managerData);
-    }
-
-    /// @inheritdoc ISetters
     function togglePause(address collateral, PauseType pausedType) external onlyGuardian {
         LibSetters.togglePause(collateral, pausedType);
     }
@@ -107,7 +99,7 @@ contract Setters is AccessControlModifiers, ISetters {
 
     /// @inheritdoc ISetters
     /// @dev The amount passed here must be a normalized amount and not an absolute amount
-    function adjustReserve(address collateral, uint128 amount, bool addOrRemove) external onlyGovernor {
+    function adjustNormalizedStablecoins(address collateral, uint128 amount, bool addOrRemove) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();

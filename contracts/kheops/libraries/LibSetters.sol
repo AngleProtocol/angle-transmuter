@@ -21,6 +21,7 @@ library LibSetters {
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event PauseToggled(address indexed collateral, uint256 pausedType);
 
+    /// @notice Internal version of `setAccessControlManager`
     function setAccessControlManager(IAccessControlManager _newAccessControlManager) internal {
         DiamondStorage storage ds = s.diamondStorage();
         IAccessControlManager previousAccessControlManager = ds.accessControlManager;
@@ -28,6 +29,7 @@ library LibSetters {
         emit OwnershipTransferred(address(previousAccessControlManager), address(_newAccessControlManager));
     }
 
+    /// @notice Internal version of `addCollateral`
     function addCollateral(address collateral) internal {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
@@ -37,6 +39,7 @@ library LibSetters {
         emit CollateralAdded(collateral);
     }
 
+    /// @notice Internal version of `setOracle`
     function setOracle(address collateral, bytes memory oracleConfig) internal {
         Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
@@ -46,6 +49,7 @@ library LibSetters {
         emit OracleSet(collateral, oracleConfig);
     }
 
+    /// @notice Internal version of `setFees`
     function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) internal {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
@@ -63,6 +67,7 @@ library LibSetters {
         emit FeesSet(collateral, xFee, yFee, mint);
     }
 
+    /// @notice Internal version of `togglePause`
     function togglePause(address collateral, PauseType pausedType) internal {
         if (pausedType == PauseType.Mint || pausedType == PauseType.Burn) {
             Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
@@ -92,8 +97,8 @@ library LibSetters {
             yFee[n - 1] > int256(BASE_9) ||
             // Mint inflexion points should be in [0,BASE_9[
             (setter == 0 && (xFee[n - 1] >= BASE_9 || xFee[0] != 0)) ||
-            // Burn inflexion points should be in [0,BASE_9]
-            (setter == 1 && (xFee[n - 1] < 0 || xFee[0] != BASE_9)) ||
+            // Burn inflexion points should be in ]0,BASE_9]
+            (setter == 1 && (xFee[n - 1] <= 0 || xFee[0] != BASE_9)) ||
             // Redemption inflexion points should be in [0,BASE_9]
             (setter == 2 && xFee[n - 1] > BASE_9)
         ) revert InvalidParams();

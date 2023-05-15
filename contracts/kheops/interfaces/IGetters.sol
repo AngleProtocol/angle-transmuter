@@ -10,6 +10,8 @@ import "../Storage.sol";
 /// @title IGetters
 /// @author Angle Labs, Inc.
 interface IGetters {
+    /// @notice Checks whether a given `selector` is actually a valid selector corresponding to a function in one of the facets
+    /// of the proxy
     function isValidSelector(bytes4 selector) external view returns (bool);
 
     /// @notice Reference to the `accessControlManager` contract of the system

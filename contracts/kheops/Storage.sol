@@ -5,11 +5,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IAccessControlManager } from "../interfaces/IAccessControlManager.sol";
 import { IAgToken } from "../interfaces/IAgToken.sol";
 
-/**
- * TODO: should we put the elements that only concern one facet in the corresponding file?
- * Because we don't want to upgrade all files when just adding a new oracle type
- */
-
 enum FacetCutAction {
     Add,
     Replace,
