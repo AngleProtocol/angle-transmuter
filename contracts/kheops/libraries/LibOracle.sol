@@ -2,10 +2,9 @@
 
 pragma solidity ^0.8.17;
 
+import { AggregatorV3Interface } from "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
 import { IKheopsOracle } from "../../interfaces/IKheopsOracle.sol";
-import { AggregatorV3Interface } from "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
 import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
-import { AggregatorV3Interface } from "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
 
 import { LibStorage as s } from "./LibStorage.sol";
 
@@ -35,15 +34,22 @@ library LibOracle {
         revert InvalidOracleType();
     }
 
-    function read(OracleReadType readType, uint256 quotePrice, bytes memory data) internal view returns (uint256) {
+    function quoteAmount(OracleQuoteType quoteType, uint256 _targetPrice) internal pure returns (uint256) {
+        if (quoteType == OracleQuoteType.UNIT) return BASE_18;
+        else if (quoteType == OracleQuoteType.TARGET) return _targetPrice;
+        revert InvalidOracleType();
+    }
+
+    function read(OracleReadType readType, uint256 _targetPrice, bytes memory data) internal view returns (uint256) {
         if (readType == OracleReadType.CHAINLINK_FEEDS) {
             (
                 AggregatorV3Interface[] memory circuitChainlink,
                 uint32[] memory stalePeriods,
                 uint8[] memory circuitChainIsMultiplied,
-                uint8[] memory chainlinkDecimals
-            ) = abi.decode(data, (AggregatorV3Interface[], uint32[], uint8[], uint8[]));
-
+                uint8[] memory chainlinkDecimals,
+                OracleQuoteType quoteType
+            ) = abi.decode(data, (AggregatorV3Interface[], uint32[], uint8[], uint8[], OracleQuoteType));
+            uint256 quotePrice = quoteAmount(quoteType, _targetPrice);
             uint256 listLength = circuitChainlink.length;
             for (uint256 i; i < listLength; ++i) {
                 quotePrice = readChainlinkFeed(
@@ -56,7 +62,7 @@ library LibOracle {
             }
             return quotePrice;
         } else if (readType == OracleReadType.NO_ORACLE) {
-            return quotePrice;
+            return _targetPrice;
         }
         revert InvalidOracleType();
     }

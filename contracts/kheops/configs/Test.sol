@@ -40,7 +40,14 @@ contract Test {
         stalePeriods[0] = 1 hours;
         circuitChainIsMultiplied[0] = 1;
         chainlinkDecimals[0] = 8;
-        bytes memory readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals);
+        OracleQuoteType quoteType = OracleQuoteType.UNIT;
+        bytes memory readData = abi.encode(
+            circuitChainlink,
+            stalePeriods,
+            circuitChainIsMultiplied,
+            chainlinkDecimals,
+            quoteType
+        );
         Setters.setOracle(
             eurA.collateral,
             abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleTargetType.STABLE, readData)
@@ -89,7 +96,8 @@ contract Test {
         stalePeriods[0] = 1 hours;
         circuitChainIsMultiplied[0] = 1;
         chainlinkDecimals[0] = 8;
-        readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals);
+        quoteType = OracleQuoteType.UNIT;
+        readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals, quoteType);
         Setters.setOracle(
             eurB.collateral,
             abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleTargetType.STABLE, readData)
@@ -138,7 +146,8 @@ contract Test {
         stalePeriods[0] = 1 hours;
         circuitChainIsMultiplied[0] = 1;
         chainlinkDecimals[0] = 8;
-        readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals);
+        quoteType = OracleQuoteType.UNIT;
+        readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals, quoteType);
         Setters.setOracle(
             eurY.collateral,
             abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleTargetType.STABLE, readData)

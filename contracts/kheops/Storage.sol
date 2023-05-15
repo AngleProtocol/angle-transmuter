@@ -60,6 +60,11 @@ enum OracleReadType {
     NO_ORACLE
 }
 
+enum OracleQuoteType {
+    UNIT,
+    TARGET
+}
+
 enum OracleTargetType {
     STABLE,
     WSTETH,
