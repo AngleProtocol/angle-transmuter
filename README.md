@@ -1,42 +1,72 @@
-# <img src="logo.svg" alt="Angle Borrowing Module" height="40px"> Angle Project Boilerplate
+# <img src="logo.svg" alt="Kheops" height="40px"> Angle - Kheops
 
-[![CI](https://github.com/AngleProtocol/boilerplate/workflows/CI/badge.svg)](https://github.com/AngleProtocol/boilerplate/actions?query=workflow%3ACI)
+[![CI](https://github.com/AngleProtocol/kheops/workflows/CI/badge.svg)](https://github.com/AngleProtocol/kheops/actions?query=workflow%3ACI)
 
-This repository proposes a template that mixes hardhat and foundry frameworks. It also provides templates for EVM compatible smart contracts (in `./contracts/examples`), tests and deployment scripts.
+## What is Kheops?
 
-## Starting
+Kheops is an autonomous and modular price stability module for decentralized stablecoin protocols.
 
-### Install packages
+- It is conceived as a basket of different assets (normally stablecoins) backing a stablecoin and comes with guarantees on the maximum exposure the stablecoin can have to each asset in the basket.
+- The stablecoin issued through Kheops can be minted at oracle value from any of the assets with adaptive fees, and it can be burnt for any of the assets in the backing with variable fees as well. It can also be redeemed at any time against a proportional amount of each asset in the backing.
 
-You can install all dependencies by running
+Kheops is compatible with other common mechanisms often used to issue stablecoins like collateralized-debt position models. It should notably be used as a standalone module within the Angle Protocol for agEUR in parallel with the Borrowing module.
 
-```bash
-yarn
-forge i
-```
+---
 
-### Create `.env` file
+## Contracts Architecture 🏘️
 
-In order to interact with non local networks, you must create an `.env` that has:
+The Kheops system relies on a [diamond proxy pattern](https://eips.ethereum.org/EIPS/eip-2535). There is as such only one main contract (the `Kheops` contract) which delegates calls to different facets each with their own implementation. The main facets of the system are:
 
-- `PRIVATE_KEY`
-- `MNEMONIC`
-- network key (eg. `ALCHEMY_NETWORK_KEY`)
-- `ETHERSCAN_API_KEY`
+- the [`Swapper`](./contracts/kheops/facets/Swapper.sol) facet with the logic associated to the mint and burn functionalities of the system
+- the [`Redeemer`](./contracts/kheops/facets/Redeemer.sol) facet for redemptions
+- the [`Getters`](./contracts/kheops/facets/Swapper.sol) facet with external getters for UIs and contracts built on top of `Kheops`
+- the [`Setters`](./contracts/kheops/facets/Setters.sol) facet protocols' governance can use to update system parameters.
 
-For additional keys, you can check the `.env.example` file.
+The storage parameters of the system are defined in the [`Storage`](./contracts/kheops/Storage.sol).
 
-Warning: always keep your confidential information safe.
+The Kheops system can come with optional [ERC4626](https://eips.ethereum.org/EIPS/eip-4626) [savings contracts](./contracts/savings/) which can be used to distribute a yield to the holders of the stablecoin issued through Kheops.
 
-## Headers
+---
 
-To automatically create headers, follow: <https://github.com/Picodes/headers>
+## Documentation 📚
 
-## Hardhat Command line completion
+- [Kheops Whitepaper](https://docs.angle.money/overview/whitepapers)
+- [Angle Documentation](https://docs.angle.money)
+- [Angle Developers Documentation](https://developers.angle.money)
 
-Follow these instructions to have hardhat command line arguments completion: <https://hardhat.org/hardhat-runner/docs/guides/command-line-completion>
+---
 
-## Foundry Installation
+## Security ⛑️
+
+### Audits
+
+Audits for Kheops smart contracts can be found in the [audits](./audits/)' folder.
+
+---
+
+### Bug Bounty
+
+For contracts deployed for the Angle Protocol, a bug bounty is open on [Immunefi](https://immunefi.com) and [Hats Finance](https://hats.finance). The rewards and scope of the Angle Immunefi are defined [here](https://immunefi.com/bounty/angleprotocol/).
+
+---
+
+## Deployment Addresses 🚦
+
+### agEUR - Kheops (Ethereum)
+
+- Kheops (agEUR):
+
+---
+
+## Development 🛠️
+
+This repository is built on [Foundry](https://github.com/foundry-rs/foundry). It also supports the [Hardhat](https://hardhat.org) development environment.
+
+### Getting started
+
+#### Install Foundry
+
+If you don't have Foundry:
 
 ```bash
 curl -L https://foundry.paradigm.xyz | bash
@@ -59,31 +89,36 @@ To update libraries:
 forge update
 ```
 
-### Foundry on Docker 🐳
+#### Install packages
 
-**If you don’t want to install Rust and Foundry on your computer, you can use Docker**
-Image is available here [ghcr.io/foundry-rs/foundry](http://ghcr.io/foundry-rs/foundry).
-
-```bash
-docker pull ghcr.io/foundry-rs/foundry
-docker tag ghcr.io/foundry-rs/foundry:latest foundry:latest
-```
-
-To run the container:
+You can install all dependencies by running
 
 ```bash
-docker run -it --rm -v $(pwd):/app -w /app foundry sh
+yarn
+forge i
 ```
 
-Then you are inside the container and can run Foundry’s commands.
+#### Create `.env` file
 
-### Tests
+In order to interact with non local networks, you must create an `.env` that has:
+
+- a `MNEMONIC` for each of the chain you
+- a network key
+- an `ETHERSCAN_API_KEY`
+
+For additional keys, you can check the [`.env.example`](/.env.example) file.
+
+Warning: always keep your confidential information safe.
+
+---
+
+### Testing
 
 You can run tests as follows:
 
 ```bash
 forge test -vvvv --watch
-forge test -vvvv --match-path contracts/forge-tests/KeeperMulticall.t.sol
+forge test -vvvv --match-path test/fuzz/Redeemer.test.sol
 forge test -vvvv --match-test "testAbc*"
 forge test -vvvv --fork-url https://eth-mainnet.alchemyapi.io/v2/Lc7oIGYeL_QvInzI0Wiu_pOZZDEKBrdf
 ```
@@ -95,6 +130,8 @@ forge test --list
 forge test --list --json --match-test "testXXX*"
 ```
 
+---
+
 ### Deploying
 
 There is an example script in the `scripts/foundry` folder. Then you can run:
@@ -103,18 +140,13 @@ There is an example script in the `scripts/foundry` folder. Then you can run:
 yarn foundry:deploy <FILE_NAME> --rpc-url <NETWORK_NAME>
 ```
 
-Example:
-
-```bash
-yarn foundry:deploy scripts/foundry/DeployMockAgEUR.s.sol --rpc-url goerli
-```
+---
 
 ### Coverage
 
 We recommend the use of this [vscode extension](ryanluker.vscode-coverage-gutters).
 
 ```bash
-yarn hardhat:coverage
 yarn foundry:coverage
 ```
 
@@ -124,22 +156,34 @@ Otherwise you can install lcov `brew install lcov`:
 genhtml lcov.info --output=coverage
 ```
 
-### Gas report
+---
+
+### Gas report ⛽️
 
 ```bash
 yarn foundry:gas
 ```
 
-## Slither
+---
+
+### [Slither](https://github.com/crytic/slither)
 
 ```bash
 pip3 install slither-analyzer
 pip3 install solc-select
-solc-select install 0.8.11
-solc-select use 0.8.11
+solc-select install 0.8.17
+solc-select use 0.8.17
 slither .
 ```
 
-## Media
+---
 
-Don't hesitate to reach out on [Twitter](https://twitter.com/AngleProtocol) 🐦
+## Questions & Feedback
+
+For any question or feedback you can send an email to [contact@angle.money](mailto:contact@angle.money). Don't hesitate to reach out on [Twitter](https://twitter.com/AngleProtocol)🐦 as well.
+
+---
+
+## Licensing
+
+The primary license for this repository is the Business Source License 1.1 (`BUSL-1.1`). See [`LICENSE`](./LICENSE).

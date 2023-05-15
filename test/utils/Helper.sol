@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.17;
 
 /******************************************************************************\
 * Authors: Timo Neumann <timo@fyde.fi>
@@ -33,7 +33,7 @@ abstract contract Helper is Test {
         strings.slice memory delim = ":".toSlice();
         strings.slice memory delim2 = ",".toSlice();
         selectors = new bytes4[]((s.count(delim)));
-        for (uint i = 0; i < selectors.length; i++) {
+        for (uint i = 0; i < selectors.length; ++i) {
             s.split('"'.toSlice());
             selectors[i] = bytes4(s.split(delim).until('"'.toSlice()).keccak());
             s.split(delim2);
@@ -45,7 +45,7 @@ abstract contract Helper is Test {
     function removeElement(uint index, bytes4[] memory array) public pure returns (bytes4[] memory) {
         bytes4[] memory newarray = new bytes4[](array.length - 1);
         uint j = 0;
-        for (uint i = 0; i < array.length; i++) {
+        for (uint i = 0; i < array.length; ++i) {
             if (i != index) {
                 newarray[j] = array[i];
                 j += 1;
@@ -56,7 +56,7 @@ abstract contract Helper is Test {
 
     // helper to remove value from bytes4[] array
     function removeElement(bytes4 el, bytes4[] memory array) public pure returns (bytes4[] memory) {
-        for (uint i = 0; i < array.length; i++) {
+        for (uint i = 0; i < array.length; ++i) {
             if (array[i] == el) {
                 return removeElement(i, array);
             }
@@ -65,7 +65,7 @@ abstract contract Helper is Test {
     }
 
     function containsElement(bytes4[] memory array, bytes4 el) public pure returns (bool) {
-        for (uint i = 0; i < array.length; i++) {
+        for (uint i = 0; i < array.length; ++i) {
             if (array[i] == el) {
                 return true;
             }
@@ -75,7 +75,7 @@ abstract contract Helper is Test {
     }
 
     function containsElement(address[] memory array, address el) public pure returns (bool) {
-        for (uint i = 0; i < array.length; i++) {
+        for (uint i = 0; i < array.length; ++i) {
             if (array[i] == el) {
                 return true;
             }
@@ -88,7 +88,7 @@ abstract contract Helper is Test {
         if (array1.length != array2.length) {
             return false;
         }
-        for (uint i = 0; i < array1.length; i++) {
+        for (uint i = 0; i < array1.length; ++i) {
             if (containsElement(array1, array2[i])) {
                 return true;
             }
@@ -101,13 +101,13 @@ abstract contract Helper is Test {
         Facet[] memory facetList = IDiamondLoupe(diamondAddress).facets();
 
         uint len = 0;
-        for (uint i = 0; i < facetList.length; i++) {
+        for (uint i = 0; i < facetList.length; ++i) {
             len += facetList[i].functionSelectors.length;
         }
 
         uint pos = 0;
         bytes4[] memory selectors = new bytes4[](len);
-        for (uint i = 0; i < facetList.length; i++) {
+        for (uint i = 0; i < facetList.length; ++i) {
             for (uint j = 0; j < facetList[i].functionSelectors.length; j++) {
                 selectors[pos] = facetList[i].functionSelectors[j];
                 pos += 1;

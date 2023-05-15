@@ -2,7 +2,7 @@
 
 // OpenZeppelin Contracts (last updated v4.7.0) (proxy/utils/Initializable.sol)
 
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../../utils/Errors.sol";

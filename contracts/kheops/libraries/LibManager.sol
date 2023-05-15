@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.12;
+pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -23,13 +23,7 @@ library LibManager {
     // The facet itself will handle itself how to free the funds necessary
     /// @param token Is the actual token we want to send
     // TODO add element potentially for a refund or not
-    function transfer(
-        address token,
-        address to,
-        uint256 amount,
-        bool revertIfNotEnough,
-        ManagerStorage memory managerData
-    ) internal {
+    function transfer(address token, address to, uint256 amount, ManagerStorage memory managerData) internal {
         IERC20[] memory subCollaterals = managerData.subCollaterals;
         bool found;
         for (uint256 i; i < subCollaterals.length; ++i) {
@@ -38,7 +32,7 @@ library LibManager {
                 break;
             }
         }
-        if (!found && revertIfNotEnough) revert NotCollateral();
+        if (!found) revert NotCollateral();
         IERC20(token).transfer(to, amount);
     }
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.12;
+pragma solidity ^0.8.17;
 
 import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
 import { IGetters } from "../interfaces/IGetters.sol";
@@ -8,7 +8,6 @@ import { IGetters } from "../interfaces/IGetters.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibRedeemer } from "../libraries/LibRedeemer.sol";
 import { LibOracle } from "../libraries/LibOracle.sol";
-import { Diamond } from "../libraries/Diamond.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -33,46 +32,46 @@ contract Getters is IGetters {
         return s.kheopsStorage().agToken;
     }
 
-    /// @notice Checks whether `admin` has the governor role
-    function isGovernor(address admin) external view returns (bool) {
-        return Diamond.isGovernor(admin);
-    }
-
-    /// @notice Checks whether `admin` has the guardian role
-    function isGovernorOrGuardian(address admin) external view returns (bool) {
-        return Diamond.isGovernorOrGuardian(admin);
-    }
-
     /// @inheritdoc IGetters
     function getCollateralList() external view returns (address[] memory) {
         return s.kheopsStorage().collateralList;
     }
 
     /// @inheritdoc IGetters
-    function getCollateralMintFees(address collateral) external view returns (uint64[] memory, int64[] memory) {
+    function getCollateralMintFees(
+        address collateral
+    ) external view returns (uint64[] memory xFeeMint, int64[] memory yFeeMint) {
         Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
         return (collatInfo.xFeeMint, collatInfo.yFeeMint);
     }
 
     /// @inheritdoc IGetters
-    function getCollateralBurnFees(address collateral) external view returns (uint64[] memory, int64[] memory) {
+    function getCollateralBurnFees(
+        address collateral
+    ) external view returns (uint64[] memory xFeeBurn, int64[] memory yFeeBurn) {
         Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
         return (collatInfo.xFeeBurn, collatInfo.yFeeBurn);
     }
 
     /// @inheritdoc IGetters
-    function getRedemptionFees() external view returns (uint64[] memory, int64[] memory) {
+    function getRedemptionFees()
+        external
+        view
+        returns (uint64[] memory xRedemptionCurve, int64[] memory yRedemptionCurve)
+    {
         KheopsStorage storage ks = s.kheopsStorage();
         return (ks.xRedemptionCurve, ks.yRedemptionCurve);
     }
 
     /// @inheritdoc IGetters
-    function getCollateralRatio() external view returns (uint64 collatRatio, uint256 reservesValue) {
-        (collatRatio, reservesValue, , , ) = LibRedeemer.getCollateralRatio();
+    function getCollateralRatio() external view returns (uint64 collatRatio, uint256 stablecoinsIssued) {
+        (collatRatio, stablecoinsIssued, , , ) = LibRedeemer.getCollateralRatio();
     }
 
     /// @inheritdoc IGetters
-    function getIssuedByCollateral(address collateral) external view returns (uint256, uint256) {
+    function getIssuedByCollateral(
+        address collateral
+    ) external view returns (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 _normalizer = ks.normalizer;
         return (
@@ -82,16 +81,18 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
-    function getOracleValues(address collateral) external view returns (uint256, uint256, uint256, uint256) {
+    function getOracleValues(
+        address collateral
+    ) external view returns (uint256 mint, uint256 burn, uint256 deviation, uint256 redemption) {
         bytes memory oracleConfig = s.kheopsStorage().collaterals[collateral].oracleConfig;
-        (uint256 burn, uint256 deviation) = LibOracle.readBurn(oracleConfig);
+        (burn, deviation) = LibOracle.readBurn(oracleConfig);
         return (LibOracle.readMint(oracleConfig), burn, deviation, LibOracle.readRedemption(oracleConfig));
     }
 
     /// @inheritdoc IGetters
     function getOracle(
         address collateral
-    ) external view returns (OracleReadType, OracleQuoteType, OracleTargetType, bytes memory) {
+    ) external view returns (OracleReadType readType, OracleTargetType targetType, bytes memory data) {
         return LibOracle.getOracle(collateral);
     }
 }

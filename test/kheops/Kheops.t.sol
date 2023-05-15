@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.12;
+pragma solidity ^0.8.17;
 
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
@@ -21,7 +21,7 @@ import { console } from "forge-std/console.sol";
 
 contract TestKheops is Fixture {
     function testFacetsHaveCorrectSelectors() public {
-        for (uint i = 0; i < facetAddressList.length; i++) {
+        for (uint i = 0; i < facetAddressList.length; ++i) {
             bytes4[] memory fromLoupeFacet = kheops.facetFunctionSelectors(facetAddressList[i]);
             bytes4[] memory fromGenSelectors = generateSelectors(facetNames[i]);
             assertTrue(sameMembers(fromLoupeFacet, fromGenSelectors));
@@ -29,7 +29,7 @@ contract TestKheops is Fixture {
     }
 
     function testSelectorsAssociatedWithCorrectFacet() public {
-        for (uint i = 0; i < facetAddressList.length; i++) {
+        for (uint i = 0; i < facetAddressList.length; ++i) {
             bytes4[] memory fromGenSelectors = generateSelectors(facetNames[i]);
             for (uint j = 0; j < fromGenSelectors.length; j++) {
                 assertEq(facetAddressList[i], kheops.facetAddress(fromGenSelectors[j]));
@@ -39,7 +39,7 @@ contract TestKheops is Fixture {
 
     function testInterfaceCorrectlyImplemented() public {
         bytes4[] memory selectors = generateSelectors("IKheops");
-        for (uint i = 0; i < selectors.length; i++) {
+        for (uint i = 0; i < selectors.length; ++i) {
             assertEq(kheops.isValidSelector(selectors[i]), true);
         }
     }

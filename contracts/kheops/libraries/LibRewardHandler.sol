@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.12;
+pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { Diamond } from "./Diamond.sol";
+import { LibDiamond } from "./LibDiamond.sol";
 import { LibStorage as s } from "./LibStorage.sol";
 
 import "../../utils/Constants.sol";
@@ -17,13 +17,16 @@ library LibRewardHandler {
 
     event RewardsSoldFor(address indexed tokenObtained, uint256 balanceUpdate);
 
+    /// @notice Internal version of the `sellRewards` function
     function sellRewards(uint256 minAmountOut, bytes memory payload) internal returns (uint256 amountOut) {
         KheopsStorage storage ks = s.kheopsStorage();
-        if (!Diamond.isGovernor(msg.sender) && ks.isSellerTrusted[msg.sender] == 0) revert NotTrusted();
+        if (!LibDiamond.isGovernor(msg.sender) && ks.isSellerTrusted[msg.sender] == 0) revert NotTrusted();
 
         address[] memory list = ks.collateralList;
         uint256 listLength = list.length;
         uint256[] memory balances = new uint256[](listLength);
+        // Getting the balances of all collateral assets of the protocol to see if those do not decrease during
+        // the swap: this is the only way to check that collateral assets have not been sold
         for (uint256 i; i < listLength; ++i) {
             balances[i] = IERC20(list[i]).balanceOf(address(this));
         }

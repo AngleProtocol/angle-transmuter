@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: CC0-1.0
 pragma solidity ^0.8.0;
 
-/******************************************************************************\
-* Author: Nick Mudge <nick@perfectabstractions.com>, Twitter/Github: @mudgen
-* EIP-2535 Diamonds
-/******************************************************************************/
-
 import "../interfaces/IDiamondCut.sol";
 
 import { LibStorage as s } from "./LibStorage.sol";
@@ -13,9 +8,11 @@ import { LibStorage as s } from "./LibStorage.sol";
 import "../Storage.sol";
 import "../../utils/Errors.sol";
 
-// Remember to add the loupe functions from DiamondLoupe to the diamond.
-// The loupe functions are required by the EIP2535 Diamonds standard
-library Diamond {
+/// @title LibDiamond
+/// @author Nick Mudge <nick@perfectabstractions.com>, Twitter/Github: @mudgen
+/// @notice Helper library to deal with diamond proxies.
+/// @dev Reference: EIP-2535 Diamonds
+library LibDiamond {
     event DiamondCut(FacetCut[] _diamondCut, address _init, bytes _calldata);
 
     /// @notice Checks whether `admin` has the governor role
@@ -28,7 +25,7 @@ library Diamond {
         return s.diamondStorage().accessControlManager.isGovernorOrGuardian(admin);
     }
 
-    // Internal function version of diamondCut
+    /// @notice Internal function version of `diamondCut`
     function diamondCut(FacetCut[] memory _diamondCut, address _init, bytes memory _calldata) internal {
         for (uint256 facetIndex; facetIndex < _diamondCut.length; facetIndex++) {
             bytes4[] memory functionSelectors = _diamondCut[facetIndex].functionSelectors;

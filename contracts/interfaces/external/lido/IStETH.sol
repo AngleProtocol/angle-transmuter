@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity ^0.8.12;
+pragma solidity >=0.5.0;
 
 /// @title IStETH
-/// @author Angle Labs, Inc.
 /// @notice Interface for the `StETH` contract
 interface IStETH {
     function getPooledEthByShares(uint256 _sharesAmount) external view returns (uint256);
-
-    event Submitted(address sender, uint256 amount, address referral);
 
     function submit(address) external payable returns (uint256);
 

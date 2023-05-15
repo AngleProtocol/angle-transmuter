@@ -1,22 +1,19 @@
 // SPDX-License-Identifier: CC0-1.0
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.17;
 
-/******************************************************************************\
-* Author: Nick Mudge <nick@perfectabstractions.com>, Twitter/Github: @mudgen
-* EIP-2535 Diamonds
-*
-* Implementation of a diamond.
-/******************************************************************************/
-
-import { Diamond } from "./libraries/Diamond.sol";
+import { LibDiamond } from "./libraries/LibDiamond.sol";
 import { LibStorage as s } from "./libraries/LibStorage.sol";
 
 import "../utils/Errors.sol";
 import "./Storage.sol";
 
+/// @title DiamondProxy
+/// @author Nick Mudge <nick@perfectabstractions.com>, Twitter/Github: @mudgen
+/// @notice Implementation of a Diamond Proxy
+/// @dev Reference: EIP-2535 Diamonds
 contract DiamondProxy {
     constructor(FacetCut[] memory _diamondCut, address _init, bytes memory _calldata) payable {
-        Diamond.diamondCut(_diamondCut, _init, _calldata);
+        LibDiamond.diamondCut(_diamondCut, _init, _calldata);
     }
 
     /// @dev 1. Find the facet for the function that is called.

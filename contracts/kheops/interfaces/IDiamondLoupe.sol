@@ -1,19 +1,13 @@
 // SPDX-License-Identifier: CC0-1.0
-pragma solidity ^0.8.0;
-
-/******************************************************************************\
-* Author: Nick Mudge <nick@perfectabstractions.com>, Twitter/Github: @mudgen
-* EIP-2535 Diamonds
-/******************************************************************************/
+pragma solidity >=0.5.0;
 
 import "../Storage.sol";
 
-// A loupe is a small magnifying glass used to look at diamonds.
-// These functions look at diamonds
+/// @notice IDiamondLoupe
+/// @author Nick Mudge <nick@perfectabstractions.com>, Twitter/Github: @mudgen
+/// @dev Reference: EIP-2535 Diamonds
+/// @dev A loupe is a small magnifying glass used to look at diamonds. The functions here look at diamonds
 interface IDiamondLoupe {
-    /// These functions are expected to be called frequently
-    /// by tools.
-
     /// @notice Gets all facet addresses and their four byte function selectors.
     /// @return facets_ Facet
     function facets() external view returns (Facet[] memory facets_);

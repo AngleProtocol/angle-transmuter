@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity ^0.8.12;
+pragma solidity ^0.8.17;
 
 import { IKheops } from "contracts/kheops/interfaces/IKheops.sol";
 import { DiamondProxy } from "contracts/kheops/DiamondProxy.sol";
@@ -47,7 +47,7 @@ abstract contract Kheops is Helper {
         // Build appropriate payload
         uint256 n = facetNames.length;
         FacetCut[] memory cut = new FacetCut[](n);
-        for (uint256 i = 0; i < n; i++) {
+        for (uint256 i = 0; i < n; ++i) {
             cut[i] = FacetCut({
                 facetAddress: facetAddressList[i],
                 action: FacetCutAction.Add,

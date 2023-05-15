@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity ^0.8.12;
+pragma solidity ^0.8.17;
 
 import { StdUtils } from "forge-std/Test.sol";
 import "contracts/utils/Constants.sol";
@@ -24,7 +24,7 @@ contract FunctionUtils is StdUtils {
         thresholds[0] = increasing ? 0 : uint64(BASE_9);
         intercepts[0] = int64(bound(int256(intercepts[0]), 0, int256(BASE_9)));
         uint256 nbrInflexion = 1;
-        for (uint256 i = 1; i < thresholds.length; i++) {
+        for (uint256 i = 1; i < thresholds.length; ++i) {
             thresholds[i] = increasing
                 ? uint64(bound(thresholds[i], thresholds[i - 1] + 1, BASE_9 - 1))
                 : uint64(bound(thresholds[i], 0, thresholds[i - 1] - 1));
@@ -40,7 +40,7 @@ contract FunctionUtils is StdUtils {
         }
         postThres = new uint64[](nbrInflexion);
         postIntercep = new int64[](nbrInflexion);
-        for (uint256 i; i < nbrInflexion; i++) {
+        for (uint256 i; i < nbrInflexion; ++i) {
             postThres[i] = thresholds[i];
             postIntercep[i] = intercepts[i];
         }

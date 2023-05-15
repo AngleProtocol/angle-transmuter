@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.12;
+pragma solidity ^0.8.17;
 
-import { IKheopsOracle } from "../../interfaces/IKheopsOracle.sol";
 import { AggregatorV3Interface } from "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
+import { IKheopsOracle } from "../../interfaces/IKheopsOracle.sol";
 import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
 
 import { LibStorage as s } from "./LibStorage.sol";
@@ -15,98 +15,102 @@ import "../Storage.sol";
 /// @title LibOracle
 /// @author Angle Labs, Inc.
 library LibOracle {
+    /// @notice Parses an `oracleConfig` into several sub fields
     function parseOracle(
         bytes memory oracleConfig
-    ) internal pure returns (OracleReadType, OracleQuoteType, OracleTargetType, bytes memory) {
-        return abi.decode(oracleConfig, (OracleReadType, OracleQuoteType, OracleTargetType, bytes));
+    ) internal pure returns (OracleReadType, OracleTargetType, bytes memory) {
+        return abi.decode(oracleConfig, (OracleReadType, OracleTargetType, bytes));
     }
 
-    function getOracle(
-        address collateral
-    ) internal view returns (OracleReadType, OracleQuoteType, OracleTargetType, bytes memory) {
+    /// @notice Internal version of the `getOracle` function
+    function getOracle(address collateral) internal view returns (OracleReadType, OracleTargetType, bytes memory) {
         return parseOracle(s.kheopsStorage().collaterals[collateral].oracleConfig);
     }
 
+    /// @notice Gets a targetPrice depending on a `targetType`
     function targetPrice(OracleTargetType targetType) internal view returns (uint256) {
         if (targetType == OracleTargetType.STABLE) return BASE_18;
         else if (targetType == OracleTargetType.WSTETH) return STETH.getPooledEthByShares(1 ether);
+        else if (targetType == OracleTargetType.CBETH) return CBETH.exchangeRate();
+        else if (targetType == OracleTargetType.RETH) return RETH.getExchangeRate();
+        else if (targetType == OracleTargetType.SFRXETH) return SFRXETH.pricePerShare();
         revert InvalidOracleType();
     }
 
-    function quoteAmount(OracleQuoteType quoteType) internal view returns (uint256) {
+    /// @notice Computes the `quoteAmount` (for Chainlink oracles) depending on a `quoteType` encoded in the `oracleConfig` and
+    /// the target price of the asset
+    /// @dev For some assets for which the Chainlink feed directly looks into the value of the asset, the `quoteAmount` is `BASE_18`.
+    /// For others, like wstETH for which Chainlink only has an oracle for stETH, the `quoteAmount` needs to be the target price
+    function quoteAmount(OracleQuoteType quoteType, uint256 _targetPrice) internal pure returns (uint256) {
         if (quoteType == OracleQuoteType.UNIT) return BASE_18;
-        else if (quoteType == OracleQuoteType.WSTETH) return STETH.getPooledEthByShares(1 ether);
+        else if (quoteType == OracleQuoteType.TARGET) return _targetPrice;
         revert InvalidOracleType();
     }
 
-    function read(
-        OracleReadType readType,
-        OracleQuoteType quoteType,
-        bytes memory data
-    ) internal view returns (uint256) {
+    /// @notice Reads an oracle value for an asset based on its parsed `oracleConfig`
+    function read(OracleReadType readType, uint256 _targetPrice, bytes memory data) internal view returns (uint256) {
         if (readType == OracleReadType.CHAINLINK_FEEDS) {
             (
                 AggregatorV3Interface[] memory circuitChainlink,
                 uint32[] memory stalePeriods,
                 uint8[] memory circuitChainIsMultiplied,
-                uint8[] memory chainlinkDecimals
-            ) = abi.decode(data, (AggregatorV3Interface[], uint32[], uint8[], uint8[]));
-
+                uint8[] memory chainlinkDecimals,
+                OracleQuoteType quoteType
+            ) = abi.decode(data, (AggregatorV3Interface[], uint32[], uint8[], uint8[], OracleQuoteType));
+            uint256 quotePrice = quoteAmount(quoteType, _targetPrice);
             uint256 listLength = circuitChainlink.length;
-            uint256 _quoteAmount = quoteAmount(quoteType);
             for (uint256 i; i < listLength; ++i) {
-                _quoteAmount = readChainlinkFeed(
-                    _quoteAmount,
+                quotePrice = readChainlinkFeed(
+                    quotePrice,
                     circuitChainlink[i],
                     circuitChainIsMultiplied[i],
                     chainlinkDecimals[i],
                     stalePeriods[i]
                 );
             }
-            return _quoteAmount;
+            return quotePrice;
         } else if (readType == OracleReadType.NO_ORACLE) {
-            return quoteAmount(quoteType);
+            return _targetPrice;
         }
         revert InvalidOracleType();
     }
 
+    /// @notice Reads the oracle value used during a redemption to compute collateral ratio for `oracleConfig`
+    /// @dev This value is only sensitive to compute the collateral ratio and deduce a penalty factor
     function readRedemption(bytes memory oracleConfig) internal view returns (uint256) {
-        (OracleReadType readType, OracleQuoteType quoteType, , bytes memory data) = parseOracle(oracleConfig);
+        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = parseOracle(oracleConfig);
         if (readType == OracleReadType.EXTERNAL) {
             IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             return externalOracle.readRedemption();
-        } else return read(readType, quoteType, data);
+        } else return read(readType, targetPrice(targetType), data);
     }
 
+    /// @notice Reads the oracle value used during mint operations for an asset with `oracleConfig`
+    /// @dev For assets which do not rely on external oracles, this value is the minimum between the oracle
+    /// value through the `read` function and the target price.
     function readMint(bytes memory oracleConfig) internal view returns (uint256 oracleValue) {
-        (
-            OracleReadType readType,
-            OracleQuoteType quoteType,
-            OracleTargetType targetType,
-            bytes memory data
-        ) = parseOracle(oracleConfig);
+        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = parseOracle(oracleConfig);
         if (readType == OracleReadType.EXTERNAL) {
             IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             return externalOracle.readMint();
         }
-        oracleValue = read(readType, quoteType, data);
         uint256 _targetPrice = targetPrice(targetType);
+        oracleValue = read(readType, _targetPrice, data);
         if (_targetPrice < oracleValue) oracleValue = _targetPrice;
     }
 
+    /// @notice Reads the oracle value that will be used for a burn operation for an asset with `oracleConfig`
+    /// @return oracleValue The actual oracle value obtained
+    /// @return deviation If the oracle is inferior to the target price, the ratio between the oracle value and the target
+    /// price, otherwise `BASE_18`
     function readBurn(bytes memory oracleConfig) internal view returns (uint256 oracleValue, uint256 deviation) {
-        (
-            OracleReadType readType,
-            OracleQuoteType quoteType,
-            OracleTargetType targetType,
-            bytes memory data
-        ) = parseOracle(oracleConfig);
+        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = parseOracle(oracleConfig);
         if (readType == OracleReadType.EXTERNAL) {
             IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             return externalOracle.readBurn();
         }
-        oracleValue = read(readType, quoteType, data);
         uint256 _targetPrice = targetPrice(targetType);
+        oracleValue = read(readType, _targetPrice, data);
         deviation = BASE_18;
         if (oracleValue < _targetPrice) deviation = (oracleValue * BASE_18) / _targetPrice;
     }
@@ -115,7 +119,7 @@ library LibOracle {
 
     /// @notice Reads a Chainlink feed using a quote amount and converts the quote amount to
     /// the out-currency
-    /// @param _quoteAmount The amount for which to compute the price expressed with base decimal
+    /// @param _quoteAmount The amount for which to compute the price expressed in `BASE_18`
     /// @param feed Chainlink feed to query
     /// @param multiplied Whether the ratio outputted by Chainlink should be multiplied or divided
     /// to the `quoteAmount`

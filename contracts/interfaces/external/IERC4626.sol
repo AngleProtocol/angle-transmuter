@@ -2,7 +2,7 @@
 
 // OpenZeppelin Contracts (last updated v4.7.0) (interfaces/IERC4626.sol)
 
-pragma solidity ^0.8.17;
+pragma solidity >=0.5.0;
 
 /// @notice ERC4626 interface
 /// @author OpenZeppelin
