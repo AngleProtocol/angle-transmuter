@@ -66,6 +66,8 @@ This repository is built on [Foundry](https://github.com/foundry-rs/foundry). It
 
 #### Install Foundry
 
+If you don't have Foundry:
+
 ```bash
 curl -L https://foundry.paradigm.xyz | bash
 
@@ -95,8 +97,6 @@ You can install all dependencies by running
 yarn
 forge i
 ```
-
-If you don't have Foundr
 
 #### Create `.env` file
 
