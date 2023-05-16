@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.12;
+pragma solidity ^0.8.17;
 
 import "oz/token/ERC20/utils/SafeERC20.sol";
 import "oz/utils/math/Math.sol";
@@ -102,4 +102,3 @@ library LibHelpers {
         }
     }
 }
-
