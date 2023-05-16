@@ -47,8 +47,8 @@ contract Redeemer is IRedeemer {
 
     /// @inheritdoc IRedeemer
     function quoteRedemptionCurve(
-        uint256 amountBurnt
+        uint256 amount
     ) external view returns (address[] memory tokens, uint256[] memory amounts) {
-        (tokens, amounts, ) = LibRedeemer.quoteRedemptionCurve(amountBurnt);
+        (tokens, amounts, ) = LibRedeemer.quoteRedemptionCurve(amount);
     }
 }
