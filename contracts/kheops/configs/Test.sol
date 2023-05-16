@@ -63,10 +63,10 @@ contract Test {
 
         // Linear at 1%, 3% at 45%, then steep to 100%
         int64[] memory yMintFee = new int64[](4);
-        yMintFee[0] = int64(uint64(BASE_9 / 100));
-        yMintFee[1] = int64(uint64(BASE_9 / 100));
-        yMintFee[2] = int64(uint64((3 * BASE_9) / 100));
-        yMintFee[3] = int64(uint64(BASE_9));
+        yMintFee[0] = int64(uint64(BASE_9 / 99));
+        yMintFee[1] = int64(uint64(BASE_9 / 99));
+        yMintFee[2] = int64(uint64((3 * BASE_9) / 97));
+        yMintFee[3] = int64(uint64(BASE_12));
 
         Setters.setFees(eurA.collateral, xMintFee, yMintFee, true);
         Setters.togglePause(eurA.collateral, PauseType.Mint);
@@ -79,10 +79,10 @@ contract Test {
 
         // Linear at 1%, 3% at 35%, then steep to 100%
         int64[] memory yBurnFee = new int64[](4);
-        yBurnFee[0] = int64(uint64(BASE_9 / 100));
-        yBurnFee[1] = int64(uint64(BASE_9 / 100));
-        yBurnFee[2] = int64(uint64((3 * BASE_9) / 100));
-        yBurnFee[3] = int64(uint64(BASE_9));
+        yBurnFee[0] = int64(uint64(BASE_9 / 99));
+        yBurnFee[1] = int64(uint64(BASE_9 / 99));
+        yBurnFee[2] = int64(uint64((3 * BASE_9) / 97));
+        yBurnFee[3] = int64(uint64(BASE_12));
 
         Setters.setFees(eurA.collateral, xBurnFee, yBurnFee, false);
         Setters.togglePause(eurA.collateral, PauseType.Burn);

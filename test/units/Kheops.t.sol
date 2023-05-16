@@ -48,7 +48,7 @@ contract TestKheops is Fixture {
 
     function testQuoteInScenario() public {
         uint256 quote = (kheops.quoteIn(BASE_6, address(eurA), address(agToken)));
-        assertEq(quote, (99 * BASE_18) / 100);
+        assertEq(quote, BASE_27 / (BASE_9 + BASE_9 / 99));
     }
 
     function testSimpleSwapInScenario() public {
@@ -58,7 +58,7 @@ contract TestKheops is Fixture {
         eurA.approve(address(kheops), BASE_6);
         kheops.swapExactInput(BASE_6, 0, address(eurA), address(agToken), alice, block.timestamp + 1 hours);
 
-        assertEq(agToken.balanceOf(alice), (99 * BASE_18) / 100);
+        assertEq(agToken.balanceOf(alice), BASE_27 / (BASE_9 + BASE_9 / 99));
     }
 
     function testQuoteCollateralRatio() public {
