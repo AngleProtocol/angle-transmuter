@@ -5,8 +5,8 @@ pragma solidity ^0.8.17;
 import { IDiamondCut } from "interfaces/IDiamondCut.sol";
 
 import { LibDiamond } from "../libraries/LibDiamond.sol";
-
 import { AccessControlModifiers } from "./AccessControlModifiers.sol";
+
 import "../Storage.sol";
 
 // Remember to add the loupe functions from DiamondLoupe to the diamond.

@@ -5,13 +5,13 @@ pragma solidity ^0.8.17;
 import "oz/token/ERC20/IERC20.sol";
 import "oz/token/ERC20/utils/SafeERC20.sol";
 
+import { LibHelpers } from "./LibHelpers.sol";
 import { LibOracle, AggregatorV3Interface } from "./LibOracle.sol";
 import { LibStorage as s } from "./LibStorage.sol";
-import { LibHelpers } from "./LibHelpers.sol";
 
-import "../Storage.sol";
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
+import "../Storage.sol";
 
 /// @title LibManager
 /// @author Angle Labs, Inc.
@@ -82,3 +82,4 @@ library LibManager {
         return IERC20(collateral).balanceOf(address(this));
     }
 }
+

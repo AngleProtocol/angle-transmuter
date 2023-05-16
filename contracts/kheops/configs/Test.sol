@@ -2,12 +2,13 @@
 
 pragma solidity ^0.8.17;
 
-import { LibStorage as s } from "../libraries/LibStorage.sol";
-import { LibSetters as Setters } from "../libraries/LibSetters.sol";
-import "../libraries/LibOracle.sol";
-import "../../utils/Constants.sol";
 import "interfaces/external/chainlink/AggregatorV3Interface.sol";
 
+import "../libraries/LibOracle.sol";
+import { LibSetters as Setters } from "../libraries/LibSetters.sol";
+import { LibStorage as s } from "../libraries/LibStorage.sol";
+
+import "../../utils/Constants.sol";
 import "../Storage.sol";
 
 struct CollateralSetup {

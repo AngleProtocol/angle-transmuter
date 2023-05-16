@@ -2,14 +2,14 @@
 
 pragma solidity ^0.8.17;
 
-import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
-import { IKheopsOracle } from "interfaces/IKheopsOracle.sol";
 import { IDiamondCut } from "interfaces/IDiamondCut.sol";
+import { IKheopsOracle } from "interfaces/IKheopsOracle.sol";
+import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
 
 import { LibStorage as s } from "./LibStorage.sol";
 
-import "../../utils/Errors.sol";
 import "../../utils/Constants.sol";
+import "../../utils/Errors.sol";
 import "../Storage.sol";
 
 /// @title LibOracle
@@ -141,3 +141,4 @@ library LibOracle {
         else return (_quoteAmount * (10 ** decimals)) / castedRatio;
     }
 }
+

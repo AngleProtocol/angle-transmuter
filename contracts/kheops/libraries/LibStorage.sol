@@ -2,9 +2,8 @@
 
 pragma solidity ^0.8.17;
 
-import { DiamondStorage, KheopsStorage } from "../Storage.sol";
-
 import "../../utils/Constants.sol";
+import { DiamondStorage, KheopsStorage } from "../Storage.sol";
 
 /// @title LibStorage
 /// @author Angle Labs, Inc.
@@ -23,3 +22,4 @@ library LibStorage {
         }
     }
 }
+

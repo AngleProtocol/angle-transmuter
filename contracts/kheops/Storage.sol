@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
+
 import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
 
@@ -119,3 +120,4 @@ struct ManagerStorage {
     IERC20[] subCollaterals;
     bytes managerConfig;
 }
+

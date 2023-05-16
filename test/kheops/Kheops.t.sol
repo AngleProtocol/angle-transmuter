@@ -4,23 +4,21 @@ pragma solidity ^0.8.17;
 
 import { IERC20 } from "oz/interfaces/IERC20.sol";
 
-import { MockAccessControlManager } from "mock/MockAccessControlManager.sol";
-import { MockTokenPermit } from "mock/MockTokenPermit.sol";
-import { MockChainlinkOracle } from "mock/MockChainlinkOracle.sol";
-
-import { LibCollat } from "contracts/kheops/libraries/LibCollat.sol";
-
-import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
 import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
+import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
 
-import { Test } from "contracts/kheops/configs/Test.sol";
-import "contracts/utils/Errors.sol";
-import "contracts/utils/Constants.sol";
+import { MockAccessControlManager } from "mock/MockAccessControlManager.sol";
+import { MockChainlinkOracle } from "mock/MockChainlinkOracle.sol";
+import { MockTokenPermit } from "mock/MockTokenPermit.sol";
 
 import { Fixture } from "../Fixture.sol";
-
+import { Test } from "contracts/kheops/configs/Test.sol";
+import { LibCollat } from "contracts/kheops/libraries/LibCollat.sol";
 import { console } from "forge-std/console.sol";
+
+import "contracts/utils/Constants.sol";
+import "contracts/utils/Errors.sol";
 
 contract TestKheops is Fixture {
     function testFacetsHaveCorrectSelectors() public {
@@ -72,3 +70,4 @@ contract TestKheops is Fixture {
         assertEq(uint256(0), uint256(0));
     }
 }
+

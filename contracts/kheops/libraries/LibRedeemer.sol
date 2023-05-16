@@ -8,10 +8,10 @@ import "oz/utils/math/Math.sol";
 
 import { IAgToken } from "interfaces/IAgToken.sol";
 
-import { LibStorage as s } from "./LibStorage.sol";
-import { LibOracle } from "./LibOracle.sol";
 import { LibHelpers } from "./LibHelpers.sol";
 import { LibManager } from "./LibManager.sol";
+import { LibOracle } from "./LibOracle.sol";
+import { LibStorage as s } from "./LibStorage.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -214,3 +214,4 @@ library LibRedeemer {
         emit NormalizerUpdated(newNormalizerValue);
     }
 }
+

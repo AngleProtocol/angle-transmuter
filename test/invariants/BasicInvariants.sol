@@ -2,11 +2,10 @@
 
 pragma solidity ^0.8.17;
 
-import { IERC20Metadata } from "oz/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "oz/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { Calls } from "./Calls.sol";
-
 import { console } from "forge-std/console.sol";
 
 contract BasicInvariants is Calls {
@@ -51,3 +50,4 @@ contract BasicInvariants is Calls {
     //     assertLe(calls["swap"], 15);
     // }
 }
+

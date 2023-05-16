@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { stdError } from "forge-std/Test.sol";
-
 import "oz/token/ERC20/utils/SafeERC20.sol";
 import "oz/utils/Strings.sol";
+
 import { IERC20Metadata } from "mock/MockTokenPermit.sol";
-import "../Fixture.sol";
-import { ManagerStorage } from "contracts/kheops/Storage.sol";
-import "../utils/FunctionUtils.sol";
+
 import "../../contracts/kheops/libraries/LibHelpers.sol";
+import "../Fixture.sol";
+import "../utils/FunctionUtils.sol";
+import { stdError } from "forge-std/Test.sol";
+
+import { ManagerStorage } from "contracts/kheops/Storage.sol";
 
 struct SubCollateralStorage {
     // The collateral corresponding to the manager must also be in the list
