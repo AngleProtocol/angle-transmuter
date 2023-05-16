@@ -175,7 +175,8 @@ library LibRedeemer {
                 }
             }
         }
-        // TODO: how are roundings decided here?
+        // The `stablecoinsIssued` value need to be rounded up because it is then use to as a divizer when computing
+        // the amount of stablecoins issued
         stablecoinsIssued = uint256(ks.normalizedStables).mulDiv(ks.normalizer, BASE_27, Math.Rounding.Up);
         if (stablecoinsIssued > 0)
             collatRatio = uint64(totalCollateralization.mulDiv(BASE_9, stablecoinsIssued, Math.Rounding.Up));
@@ -183,8 +184,7 @@ library LibRedeemer {
     }
 
     /// @notice Updates the `normalizer` variable used to track stablecoins issued from each asset and globally
-    // TODO: did we fully test updateNormalizer in settings where it gets too big or too small and stablecoins have been issued
-    // TODO: did we also check the roundings going on with this function
+
     function updateNormalizer(uint256 amount, bool increase) internal returns (uint256 newNormalizerValue) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 _normalizer = ks.normalizer;
@@ -199,6 +199,7 @@ library LibRedeemer {
         // rounding errors, as well as overflows. In this rare case, the function has to iterate through all the
         // supported collateral assets
         if (newNormalizerValue <= BASE_18 || newNormalizerValue >= BASE_36) {
+            /// TODO: add invariant check to make sure that our tests are really entering in this branch
             address[] memory collateralListMem = ks.collateralList;
             uint256 collateralListLength = collateralListMem.length;
             // For each asset, we store the actual amount of stablecoins issued based on the newNormalizerValue
