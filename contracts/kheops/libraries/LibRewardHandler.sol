@@ -32,7 +32,7 @@ library LibRewardHandler {
         }
         //solhint-disable-next-line
         (bool success, bytes memory result) = ONE_INCH_ROUTER.call(payload);
-        if (!success) revertBytes(result);
+        if (!success) _revertBytes(result);
         amountOut = abi.decode(result, (uint256));
         if (amountOut < minAmountOut) revert TooSmallAmountOut();
         bool hasIncreased;
@@ -48,7 +48,7 @@ library LibRewardHandler {
     }
 
     /// @notice Processes 1Inch revert messages
-    function revertBytes(bytes memory errMsg) internal pure {
+    function _revertBytes(bytes memory errMsg) private pure {
         if (errMsg.length > 0) {
             //solhint-disable-next-line
             assembly {
@@ -58,5 +58,3 @@ library LibRewardHandler {
         revert OneInchSwapFailed();
     }
 }
-
-

@@ -15,16 +15,9 @@ import "../Storage.sol";
 /// @title LibOracle
 /// @author Angle Labs, Inc.
 library LibOracle {
-    /// @notice Parses an `oracleConfig` into several sub fields
-    function parseOracle(
-        bytes memory oracleConfig
-    ) internal pure returns (OracleReadType, OracleTargetType, bytes memory) {
-        return abi.decode(oracleConfig, (OracleReadType, OracleTargetType, bytes));
-    }
-
     /// @notice Internal version of the `getOracle` function
     function getOracle(address collateral) internal view returns (OracleReadType, OracleTargetType, bytes memory) {
-        return parseOracle(s.kheopsStorage().collaterals[collateral].oracleConfig);
+        return _parseOracle(s.kheopsStorage().collaterals[collateral].oracleConfig);
     }
 
     /// @notice Gets a targetPrice depending on a `targetType`
@@ -78,7 +71,7 @@ library LibOracle {
     /// @notice Reads the oracle value used during a redemption to compute collateral ratio for `oracleConfig`
     /// @dev This value is only sensitive to compute the collateral ratio and deduce a penalty factor
     function readRedemption(bytes memory oracleConfig) internal view returns (uint256) {
-        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = parseOracle(oracleConfig);
+        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = _parseOracle(oracleConfig);
         if (readType == OracleReadType.EXTERNAL) {
             IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             return externalOracle.readRedemption();
@@ -89,7 +82,7 @@ library LibOracle {
     /// @dev For assets which do not rely on external oracles, this value is the minimum between the oracle
     /// value through the `read` function and the target price.
     function readMint(bytes memory oracleConfig) internal view returns (uint256 oracleValue) {
-        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = parseOracle(oracleConfig);
+        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = _parseOracle(oracleConfig);
         if (readType == OracleReadType.EXTERNAL) {
             IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             return externalOracle.readMint();
@@ -104,7 +97,7 @@ library LibOracle {
     /// @return deviation If the oracle is inferior to the target price, the ratio between the oracle value and the target
     /// price, otherwise `BASE_18`
     function readBurn(bytes memory oracleConfig) internal view returns (uint256 oracleValue, uint256 deviation) {
-        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = parseOracle(oracleConfig);
+        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = _parseOracle(oracleConfig);
         if (readType == OracleReadType.EXTERNAL) {
             IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
             return externalOracle.readBurn();
@@ -140,5 +133,11 @@ library LibOracle {
         if (multiplied == 1) return (_quoteAmount * castedRatio) / (10 ** decimals);
         else return (_quoteAmount * (10 ** decimals)) / castedRatio;
     }
-}
 
+    /// @notice Parses an `oracleConfig` into several sub fields
+    function _parseOracle(
+        bytes memory oracleConfig
+    ) private pure returns (OracleReadType, OracleTargetType, bytes memory) {
+        return abi.decode(oracleConfig, (OracleReadType, OracleTargetType, bytes));
+    }
+}

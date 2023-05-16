@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: CC0-1.0
+
 pragma solidity ^0.8.0;
 
 import "interfaces/IDiamondCut.sol";
@@ -45,10 +46,10 @@ library LibDiamond {
             }
         }
         emit DiamondCut(_diamondCut, _init, _calldata);
-        initializeDiamondCut(_init, _calldata);
+        _initializeDiamondCut(_init, _calldata);
     }
 
-    function initializeDiamondCut(address _init, bytes memory _calldata) internal {
+    function _initializeDiamondCut(address _init, bytes memory _calldata) private {
         if (_init == address(0)) {
             return;
         }
@@ -156,4 +157,3 @@ library LibDiamond {
         }
     }
 }
-

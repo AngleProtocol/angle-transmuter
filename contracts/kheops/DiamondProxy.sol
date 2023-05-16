@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: CC0-1.0
+
 pragma solidity ^0.8.17;
 
 import { LibDiamond } from "./libraries/LibDiamond.sol";
@@ -50,4 +51,3 @@ contract DiamondProxy {
         }
     }
 }
-

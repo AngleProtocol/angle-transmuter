@@ -108,7 +108,7 @@ library LibSwapper {
         Collateral memory collatInfo,
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
-        uint256 oracleValue = getBurnOracle(collateral, collatInfo.oracleConfig);
+        uint256 oracleValue = _getBurnOracle(collateral, collatInfo.oracleConfig);
         amountOut = quoteFees(collatInfo, QuoteType.BurnExactOutput, amountIn);
         amountOut = (LibHelpers.convertDecimalTo(amountOut, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
@@ -119,7 +119,7 @@ library LibSwapper {
         Collateral memory collatInfo,
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
-        uint256 oracleValue = getBurnOracle(collateral, collatInfo.oracleConfig);
+        uint256 oracleValue = _getBurnOracle(collateral, collatInfo.oracleConfig);
         amountIn = (oracleValue * LibHelpers.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / BASE_18;
         amountIn = quoteFees(collatInfo, QuoteType.BurnExactInput, amountIn);
     }
@@ -144,8 +144,8 @@ library LibSwapper {
             // In case the operation is a burn it will revert later on
             return
                 v.isInput
-                    ? applyFee(amountStable, collatInfo.yFeeMint[0])
-                    : invertFee(amountStable, collatInfo.yFeeMint[0]);
+                    ? _applyFee(amountStable, collatInfo.yFeeMint[0])
+                    : _invertFee(amountStable, collatInfo.yFeeMint[0]);
         }
 
         uint256 currentExposure = uint64((collatInfo.normalizedStables * BASE_9) / normalizedStablesMem);
@@ -156,13 +156,13 @@ library LibSwapper {
             if (v.isMint) {
                 return
                     v.isInput
-                        ? applyFee(amountStable, collatInfo.yFeeMint[0])
-                        : invertFee(amountStable, collatInfo.yFeeMint[0]);
+                        ? _applyFee(amountStable, collatInfo.yFeeMint[0])
+                        : _invertFee(amountStable, collatInfo.yFeeMint[0]);
             } else {
                 return
                     v.isInput
-                        ? applyFee(amountStable, collatInfo.yFeeBurn[0])
-                        : invertFee(amountStable, collatInfo.yFeeBurn[0]);
+                        ? _applyFee(amountStable, collatInfo.yFeeBurn[0])
+                        : _invertFee(amountStable, collatInfo.yFeeBurn[0]);
             }
         } else {
             uint256 amount;
@@ -212,8 +212,8 @@ library LibSwapper {
 
                 {
                     uint256 amountToNextBreakPointWithFees = !v.isMint && v.isInput
-                        ? applyFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
-                        : invertFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
+                        ? _applyFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
+                        : _invertFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
 
                     uint256 amountToNextBreakPointNormalizer = (v.isMint && v.isInput) || (!v.isMint && !v.isInput)
                         ? amountToNextBreakPointWithFees
@@ -227,7 +227,8 @@ library LibSwapper {
                                 int256(2 * amountToNextBreakPointNormalizer)
                         );
                         return
-                            amount + ((!v.isInput) ? invertFee(amountStable, midFee) : applyFee(amountStable, midFee));
+                            amount +
+                            ((!v.isInput) ? _invertFee(amountStable, midFee) : _applyFee(amountStable, midFee));
                     } else {
                         amountStable -= amountToNextBreakPointNormalizer;
                         amount += (v.isInput ? v.amountToNextBreakPoint : amountToNextBreakPointWithFees);
@@ -241,40 +242,10 @@ library LibSwapper {
                 amount +
                 (
                     (quoteType == QuoteType.MintExactOutput || quoteType == QuoteType.BurnExactOutput)
-                        ? invertFee(amountStable, collatInfo.yFeeMint[n - 1])
-                        : applyFee(amountStable, collatInfo.yFeeMint[n - 1])
+                        ? _invertFee(amountStable, collatInfo.yFeeMint[n - 1])
+                        : _applyFee(amountStable, collatInfo.yFeeMint[n - 1])
                 );
         }
-    }
-
-    function applyFee(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
-        if (fees >= 0) amountOut = ((BASE_9 - uint256(int256(fees))) * amountIn) / BASE_9;
-        else amountOut = ((BASE_9 + uint256(int256(-fees))) * amountIn) / BASE_9;
-    }
-
-    function invertFee(uint256 amountOut, int64 fees) internal pure returns (uint256 amountIn) {
-        // The function must (and will) revert anyway if `uint256(int256(fees))==BASE_9`
-        if (fees >= 0) amountIn = (BASE_9 * amountOut) / (BASE_9 - uint256(int256(fees)));
-        else amountIn = (BASE_9 * amountOut) / (BASE_9 + uint256(int256(-fees)));
-    }
-
-    /// @notice Reads the oracle value for burning stablecoins for `collateral` that has an oracle defined by an `oracleConfig`
-    /// @dev This value depends on the oracle values for all collateral assets of the system
-    function getBurnOracle(address collateral, bytes memory oracleConfig) internal view returns (uint256) {
-        KheopsStorage storage ks = s.kheopsStorage();
-        uint256 oracleValue;
-        uint256 deviation = BASE_18;
-        address[] memory collateralList = ks.collateralList;
-        uint256 length = collateralList.length;
-        for (uint256 i; i < length; ++i) {
-            uint256 deviationObserved = BASE_18;
-            if (collateralList[i] != collateral) {
-                (, deviationObserved) = LibOracle.readBurn(ks.collaterals[collateralList[i]].oracleConfig);
-            } else (oracleValue, deviationObserved) = LibOracle.readBurn(oracleConfig);
-            if (deviationObserved < deviation) deviation = deviationObserved;
-        }
-        // This reverts if `oracleValue == 0`
-        return (deviation * BASE_18) / oracleValue;
     }
 
     /// @notice Checks for managed collateral assets if enough funds can be pulled from their strategies
@@ -303,5 +274,34 @@ library LibSwapper {
             if (collatInfo.unpausedBurn == 0) revert Paused();
         } else revert InvalidTokens();
     }
-}
 
+    function _applyFee(uint256 amountIn, int64 fees) private pure returns (uint256 amountOut) {
+        if (fees >= 0) amountOut = ((BASE_9 - uint256(int256(fees))) * amountIn) / BASE_9;
+        else amountOut = ((BASE_9 + uint256(int256(-fees))) * amountIn) / BASE_9;
+    }
+
+    function _invertFee(uint256 amountOut, int64 fees) private pure returns (uint256 amountIn) {
+        // The function must (and will) revert anyway if `uint256(int256(fees))==BASE_9`
+        if (fees >= 0) amountIn = (BASE_9 * amountOut) / (BASE_9 - uint256(int256(fees)));
+        else amountIn = (BASE_9 * amountOut) / (BASE_9 + uint256(int256(-fees)));
+    }
+
+    /// @notice Reads the oracle value for burning stablecoins for `collateral` that has an oracle defined by an `oracleConfig`
+    /// @dev This value depends on the oracle values for all collateral assets of the system
+    function _getBurnOracle(address collateral, bytes memory oracleConfig) internal view returns (uint256) {
+        KheopsStorage storage ks = s.kheopsStorage();
+        uint256 oracleValue;
+        uint256 deviation = BASE_18;
+        address[] memory collateralList = ks.collateralList;
+        uint256 length = collateralList.length;
+        for (uint256 i; i < length; ++i) {
+            uint256 deviationObserved = BASE_18;
+            if (collateralList[i] != collateral) {
+                (, deviationObserved) = LibOracle.readBurn(ks.collaterals[collateralList[i]].oracleConfig);
+            } else (oracleValue, deviationObserved) = LibOracle.readBurn(oracleConfig);
+            if (deviationObserved < deviation) deviation = deviationObserved;
+        }
+        // This reverts if `oracleValue == 0`
+        return (deviation * BASE_18) / oracleValue;
+    }
+}
