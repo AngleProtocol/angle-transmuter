@@ -8,16 +8,17 @@ import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
 import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
 
+import { console } from "forge-std/console.sol";
+
 import { MockAccessControlManager } from "mock/MockAccessControlManager.sol";
 import { MockChainlinkOracle } from "mock/MockChainlinkOracle.sol";
 import { MockTokenPermit } from "mock/MockTokenPermit.sol";
 
-import { Kheops } from "./utils/Kheops.sol";
 import { CollateralSetup, Test } from "contracts/kheops/configs/Test.sol";
-import { console } from "forge-std/console.sol";
-
 import "contracts/utils/Constants.sol";
 import "contracts/utils/Errors.sol";
+
+import { Kheops } from "./utils/Kheops.sol";
 
 contract Fixture is Kheops {
     IAccessControlManager public accessControlManager;

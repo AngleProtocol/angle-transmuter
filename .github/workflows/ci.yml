@@ -67,7 +67,7 @@ jobs:
         with:
           version: nightly
       - name: Run Foundry tests
-        run: FOUNDRY_PROFILE=dev forge test -vvv
+        run: FOUNDRY_PROFILE=ci forge test -vvv
         env:
           ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
           ETH_NODE_URI_POLYGON: ${{ secrets.ETH_NODE_URI_POLYGON }}

@@ -8,17 +8,18 @@ import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
 import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
 
+import { console } from "forge-std/console.sol";
+
 import { MockAccessControlManager } from "mock/MockAccessControlManager.sol";
 import { MockChainlinkOracle } from "mock/MockChainlinkOracle.sol";
 import { MockTokenPermit } from "mock/MockTokenPermit.sol";
 
-import { Fixture } from "../Fixture.sol";
 import { Test } from "contracts/kheops/configs/Test.sol";
-import { LibCollat } from "contracts/kheops/libraries/LibCollat.sol";
-import { console } from "forge-std/console.sol";
-
+import { LibRedeemer } from "contracts/kheops/libraries/LibRedeemer.sol";
 import "contracts/utils/Constants.sol";
 import "contracts/utils/Errors.sol";
+
+import { Fixture } from "../Fixture.sol";
 
 contract TestKheops is Fixture {
     function testFacetsHaveCorrectSelectors() public {
@@ -66,8 +67,7 @@ contract TestKheops is Fixture {
     }
 
     function testQuoteCollateralRatioDirectCall() public {
-        LibCollat.libgetCollateralRatio();
+        LibRedeemer.getCollateralRatio();
         assertEq(uint256(0), uint256(0));
     }
 }
-

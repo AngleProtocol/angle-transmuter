@@ -4,17 +4,17 @@ pragma solidity ^0.8.17;
 
 import { IKheops } from "interfaces/IKheops.sol";
 
-import "./Helper.sol";
 import { DiamondProxy } from "contracts/kheops/DiamondProxy.sol";
+import "contracts/kheops/Storage.sol";
 import { DiamondCut } from "contracts/kheops/facets/DiamondCut.sol";
 import { DiamondLoupe } from "contracts/kheops/facets/DiamondLoupe.sol";
 import { Getters } from "contracts/kheops/facets/Getters.sol";
 import { Redeemer } from "contracts/kheops/facets/Redeemer.sol";
 import { Setters } from "contracts/kheops/facets/Setters.sol";
 import { Swapper } from "contracts/kheops/facets/Swapper.sol";
-
 import "contracts/utils/Errors.sol";
-import "contracts/kheops/Storage.sol";
+
+import "./Helper.sol";
 
 abstract contract Kheops is Helper {
     // Diamond

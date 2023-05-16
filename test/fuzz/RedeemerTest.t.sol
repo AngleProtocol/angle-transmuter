@@ -4,14 +4,15 @@ pragma solidity ^0.8.17;
 import "oz/token/ERC20/utils/SafeERC20.sol";
 import "oz/utils/Strings.sol";
 
-import { IERC20Metadata } from "mock/MockTokenPermit.sol";
-
-import "../../contracts/kheops/libraries/LibHelpers.sol";
-import "../Fixture.sol";
-import "../utils/FunctionUtils.sol";
 import { stdError } from "forge-std/Test.sol";
 
+import { IERC20Metadata } from "mock/MockTokenPermit.sol";
+
 import { ManagerStorage } from "contracts/kheops/Storage.sol";
+import "contracts/kheops/libraries/LibHelpers.sol";
+
+import "../Fixture.sol";
+import "../utils/FunctionUtils.sol";
 
 struct SubCollateralStorage {
     // The collateral corresponding to the manager must also be in the list
