@@ -21,7 +21,7 @@ interface ISetters {
     /// @notice Changes the pause status for mint or burn transactions for `collateral`
     function togglePause(address collateral, PauseType pausedType) external;
 
-    /// @notice Changes the trusted status for `sender` when it comes to selling rewards or updating the normalizer
+    /// @notice Changes the trusted status for `sender` when for selling rewards or updating the normalizer
     function toggleTrusted(address sender, uint8 trustedType) external;
 
     /// @notice Add `collateral` as a supported collateral in the system
@@ -39,7 +39,8 @@ interface ISetters {
     /// @notice Sets the parameters for the redemption curve
     function setRedemptionCurveParams(uint64[] memory xFee, int64[] memory yFee) external;
 
-    /// @notice Sets the `oracleConfig` used to read the value of `collateral` for the mint, burn and redemption operations
+    /// @notice Sets the `oracleConfig` used to read the value of `collateral` for the mint, burn and redemption
+    /// operations
     function setOracle(address collateral, bytes memory oracleConfig) external;
 
     /// @notice Updates the normalizer variable by `amount`

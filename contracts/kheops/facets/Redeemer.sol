@@ -18,9 +18,10 @@ contract Redeemer is IRedeemer {
     /// of collateral assets supported by the system, following their order in the `collateralList`.
     /// @dev If one collateral has its liquidity managed through strategies, then it's possible that this asset
     /// has sub-collaterals with it. In this situation, these sub-collaterals may be sent during the redemption
-    /// process and the `minAmountOuts` will be bigger than the `collateralList` length. If there are 3 collateral assets
-    /// and the 2nd collateral asset in the list (at index 1) consists of 3 sub-collaterals, then the ordering of the token list
-    /// will be as follows: `[collat 1, sub-collat 1 of collat 2, sub-collat 2 of collat 2, sub-collat 3 of collat 2, collat 3]`
+    /// process and the `minAmountOuts` will be bigger than the `collateralList` length. If there are 3 collateral
+    /// assets and the 2nd collateral asset in the list (at index 1) consists of 3 sub-collaterals, then the ordering
+    /// of the token list will be as follows:
+    /// `[collat 1, sub-collat 1 of collat 2, sub-collat 2 of collat 2, sub-collat 3 of collat 2, collat 3]`
     /// @dev The list of tokens outputted (and hence the minimum length of the `minAmountOuts` list) can be obtained
     /// by calling the `quoteRedemptionCurve` function
     function redeem(

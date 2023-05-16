@@ -173,8 +173,8 @@ library LibSwapper {
             );
 
             while (i <= n - 2) {
-                // From the fee parameters which give sets of (exposure, fee at this exposure), we derive a linear function
-                // depending on the amount swapped
+                // From the fee parameters which give sets of (exposure, fee at this exposure), we derive a linear
+                // function depending on the amount swapped
                 if (v.isMint) {
                     v.lowerExposure = collatInfo.xFeeMint[i];
                     v.upperExposure = collatInfo.xFeeMint[i + 1];
@@ -286,7 +286,7 @@ library LibSwapper {
         else amountIn = (BASE_9 * amountOut) / (BASE_9 + uint256(int256(-fees)));
     }
 
-    /// @notice Reads the oracle value for burning stablecoins for `collateral` that has an oracle defined by an `oracleConfig`
+    /// @notice Reads the oracle value for burning stablecoins for `collateral`
     /// @dev This value depends on the oracle values for all collateral assets of the system
     function _getBurnOracle(address collateral, bytes memory oracleConfig) private view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();

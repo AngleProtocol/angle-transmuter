@@ -69,7 +69,9 @@ contract RedeemerTest is Fixture, FunctionUtils {
         _maxTokenAmount.push(_maxAmountWithoutDecimals * 10 ** IERC20Metadata(_collaterals[2]).decimals());
     }
 
-    // ================================ QUOTEREDEEM ================================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                      QUOTEREDEEM                                                   
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testQuoteRedemptionCurveAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         initialAmounts[0] = 0;
@@ -236,7 +238,9 @@ contract RedeemerTest is Fixture, FunctionUtils {
         _assertsQuoteAmounts(collatRatio, mintedStables, amountBurnt, fee, amounts);
     }
 
-    // =================================== REDEEM ==================================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                        REDEEM                                                      
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testRedemptionCurveAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         // let's first load the reserves of the protocol
@@ -432,7 +436,9 @@ contract RedeemerTest is Fixture, FunctionUtils {
         );
     }
 
-    // ============================ REDEEM WITH MANAGER ============================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                  REDEEM WITH MANAGER                                               
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testQuoteRedemptionCurveWithManagerRandomRedemptionFees(
         uint256[3] memory initialAmounts,
@@ -624,7 +630,9 @@ contract RedeemerTest is Fixture, FunctionUtils {
         );
     }
 
-    // ============================ REDEEM WITH FORFEIT ============================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                  REDEEM WITH FORFEIT                                               
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testMultiForfeitRedemptionCurveWithManagerRandomRedemptionFees(
         uint256[3] memory initialAmounts,
@@ -757,7 +765,9 @@ contract RedeemerTest is Fixture, FunctionUtils {
         );
     }
 
-    // ================================== ASSERTS ==================================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                        ASSERTS                                                     
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function _assertsSizes(address[] memory tokens, uint256[] memory amounts) internal {
         assertEq(tokens.length, 3);
@@ -958,7 +968,9 @@ contract RedeemerTest is Fixture, FunctionUtils {
         }
     }
 
-    // =================================== UTILS ===================================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                         UTILS                                                      
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function _loadReserves(
         uint256[3] memory initialAmounts,

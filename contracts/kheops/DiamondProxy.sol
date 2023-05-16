@@ -9,13 +9,18 @@ import "../utils/Errors.sol";
 import "./Storage.sol";
 
 /// @title DiamondProxy
-/// @author Nick Mudge <nick@perfectabstractions.com>, Twitter/Github: @mudgen
+/// @author Angle Labs, Inc.
 /// @notice Implementation of a Diamond Proxy
 /// @dev Reference: EIP-2535 Diamonds
+/// @dev Forked from https://github.com/mudgen/diamond-3/blob/master/contracts/Diamond.sol by mudgen
 contract DiamondProxy {
     constructor(FacetCut[] memory _diamondCut, address _init, bytes memory _calldata) payable {
         LibDiamond.diamondCut(_diamondCut, _init, _calldata);
     }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                   FALLBACK                                 
+    //////////////////////////////////////////////////////////////////////////*/
 
     /// @dev 1. Find the facet for the function that is called.
     /// @dev 2. Delegate the execution to the found facet via `delegatecall`.

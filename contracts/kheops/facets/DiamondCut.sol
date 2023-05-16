@@ -13,7 +13,6 @@ import "../Storage.sol";
 /// @author Angle Labs, Inc.
 /// @dev Reference: EIP-2535 Diamonds
 /// @dev Forked from https://github.com/mudgen/diamond-3/blob/master/contracts/facets/DiamondCutFacet.sol by mudgen
-
 contract DiamondCut is IDiamondCut, AccessControlModifiers {
     /// @inheritdoc IDiamondCut
     function diamondCut(

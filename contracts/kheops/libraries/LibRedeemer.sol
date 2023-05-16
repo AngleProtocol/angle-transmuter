@@ -109,14 +109,14 @@ library LibRedeemer {
         }
     }
 
-    /// @notice Internal version of the `getCollateralRatio` function with additional return values like `tokens` that is
-    /// the list of tokens supported by the system, or `balances` which is the amount of each token in `tokens` controlled
-    /// by the protocol
+    /// @notice Internal version of the `getCollateralRatio` function with additional return values like `tokens` that
+    /// is the list of tokens supported by the system, or `balances` which is the amount of each token in `tokens`
+    /// controlled by the protocol
     /// @dev In case some collaterals support external strategies (`isManaged>0`), this list may be bigger
     /// than the `collateralList`
-    /// @dev `subCollateralsTracker` is an array which gives for each collateral asset in the collateral list an accumulator
-    /// helping to recompute the amount of sub-collateral for each collateral. If the array is such that it is:
-    /// [1,4,5], this means that the collateral with index 1 in the `collateralsList` is made up of 3 sub-collaterals.
+    /// @dev `subCollateralsTracker` is an array which gives for each collateral asset in the collateral list an
+    /// accumulator helping to recompute the amount of sub-collateral for each collateral. If the array is:
+    /// [1,4,5], this means that the collateral with index 1 in the `collateralsList` has 4-1=3 sub-collaterals.
     function getCollateralRatio()
         internal
         view
@@ -148,8 +148,8 @@ library LibRedeemer {
             uint256 countCollat;
             for (uint256 i; i < collateralListLength; ++i) {
                 if (ks.collaterals[collateralList[i]].isManaged > 0) {
-                    // If a collateral is managed, the balances of the sub-collaterals cannot be directly obtained by calling
-                    // `balanceOf` of the sub-collaterals.
+                    // If a collateral is managed, the balances of the sub-collaterals cannot be directly obtained by
+                    // calling `balanceOf` of the sub-collaterals.
                     // Managed assets must support ways to value their sub-collaterals in a non manipulable way
                     (uint256[] memory subCollateralsBalances, uint256 totalValue) = LibManager.getUnderlyingBalances(
                         ks.collaterals[collateralList[i]].managerData
@@ -195,13 +195,14 @@ library LibRedeemer {
             // _normalizer*(BASE_27+BASE_27*amount/stablecoinsIssued)/BASE_27 = _normalizer+(_normalizer*BASE_27*amount*(BASE_27/(_normalizedStables*normalizer)))/BASE_27
         else if (increase) newNormalizerValue = _normalizer + (amount * BASE_27) / _normalizedStables;
         else newNormalizerValue = _normalizer - (amount * BASE_27) / _normalizedStables;
-        // If the `normalizer` gets too small or too big, it must be renormalized to later avoid the propagation of rounding
-        // errors, as well as overflows. In this rare case, the function has to iterate through all the supported collateral
-        // assets
+        // If the `normalizer` gets too small or too big, it must be renormalized to later avoid the propagation of
+        // rounding errors, as well as overflows. In this rare case, the function has to iterate through all the
+        // supported collateral assets
         if (newNormalizerValue <= BASE_18 || newNormalizerValue >= BASE_36) {
             address[] memory collateralListMem = ks.collateralList;
             uint256 collateralListLength = collateralListMem.length;
-            // For each asset, we store the actual amount of stablecoins issued based on the newNormalizerValue (and not a normalized value)
+            // For each asset, we store the actual amount of stablecoins issued based on the newNormalizerValue
+            // (and not a normalized value)
             for (uint256 i; i < collateralListLength; ++i) {
                 ks.collaterals[collateralListMem[i]].normalizedStables = uint224(
                     (ks.collaterals[collateralListMem[i]].normalizedStables * newNormalizerValue) / BASE_27
@@ -214,4 +215,3 @@ library LibRedeemer {
         emit NormalizerUpdated(newNormalizerValue);
     }
 }
-
