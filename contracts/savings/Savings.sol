@@ -35,10 +35,10 @@
 
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
+import "oz/token/ERC20/utils/SafeERC20.sol";
+import "oz/interfaces/IERC20.sol";
 
-import { IAgToken } from "../interfaces/IAgToken.sol";
+import { IAgToken } from "interfaces/IAgToken.sol";
 
 import "../external/openZeppelinExtensions/ERC4626Upgradeable.sol";
 

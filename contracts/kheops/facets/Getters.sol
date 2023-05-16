@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.17;
 
-import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
-import { IGetters } from "../interfaces/IGetters.sol";
+import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
+import { IGetters } from "interfaces/IGetters.sol";
 
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibRedeemer } from "../libraries/LibRedeemer.sol";

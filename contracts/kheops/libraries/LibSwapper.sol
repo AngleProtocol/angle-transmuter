@@ -2,19 +2,18 @@
 
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "oz/token/ERC20/IERC20.sol";
+import "oz/token/ERC20/utils/SafeERC20.sol";
 
-import { IAgToken } from "../../interfaces/IAgToken.sol";
+import { IAgToken } from "interfaces/IAgToken.sol";
 
 import { LibManager } from "./LibManager.sol";
 import { LibStorage as s } from "./LibStorage.sol";
-import { LibHelper } from "./LibHelper.sol";
+import { LibHelpers } from "./LibHelpers.sol";
 import { LibOracle } from "./LibOracle.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
-import "../utils/Utils.sol";
 import "../Storage.sol";
 
 // Struct to help storing local variables to avoid stack too deep issues
@@ -72,7 +71,7 @@ library LibSwapper {
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
             {
                 ManagerStorage memory emptyManagerData;
-                LibHelper.transferCollateral(
+                LibHelpers.transferCollateral(
                     tokenOut,
                     to,
                     amountOut,
@@ -89,7 +88,7 @@ library LibSwapper {
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
         uint256 oracleValue = LibOracle.readMint(collatInfo.oracleConfig);
-        amountOut = (oracleValue * Utils.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
+        amountOut = (oracleValue * LibHelpers.convertDecimalTo(amountIn, collatInfo.decimals, 18)) / BASE_18;
         amountOut = quoteFees(collatInfo, QuoteType.MintExactInput, amountOut);
     }
 
@@ -100,7 +99,7 @@ library LibSwapper {
     ) internal view returns (uint256 amountIn) {
         uint256 oracleValue = LibOracle.readMint(collatInfo.oracleConfig);
         amountIn = quoteFees(collatInfo, QuoteType.MintExactOutput, amountOut);
-        amountIn = (Utils.convertDecimalTo(amountIn, 18, collatInfo.decimals) * BASE_18) / oracleValue;
+        amountIn = (LibHelpers.convertDecimalTo(amountIn, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
 
     /// @notice Computes the `amountOut` of `collateral` to give during a burn operation of `amountIn` of stablecoins
@@ -111,7 +110,7 @@ library LibSwapper {
     ) internal view returns (uint256 amountOut) {
         uint256 oracleValue = getBurnOracle(collateral, collatInfo.oracleConfig);
         amountOut = quoteFees(collatInfo, QuoteType.BurnExactOutput, amountIn);
-        amountOut = (Utils.convertDecimalTo(amountOut, 18, collatInfo.decimals) * BASE_18) / oracleValue;
+        amountOut = (LibHelpers.convertDecimalTo(amountOut, 18, collatInfo.decimals) * BASE_18) / oracleValue;
     }
 
     /// @notice Computes the `amountIn` of stablecoins to burn to release `amountOut` of `collateral`
@@ -121,7 +120,7 @@ library LibSwapper {
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
         uint256 oracleValue = getBurnOracle(collateral, collatInfo.oracleConfig);
-        amountIn = (oracleValue * Utils.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / BASE_18;
+        amountIn = (oracleValue * LibHelpers.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / BASE_18;
         amountIn = quoteFees(collatInfo, QuoteType.BurnExactInput, amountIn);
     }
 
@@ -167,7 +166,7 @@ library LibSwapper {
             }
         } else {
             uint256 amount;
-            uint256 i = Utils.findLowerBound(
+            uint256 i = LibHelpers.findLowerBound(
                 v.isMint,
                 v.isMint ? collatInfo.xFeeMint : collatInfo.xFeeBurn,
                 uint64(currentExposure)

@@ -2,16 +2,16 @@
 
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "oz/token/ERC20/IERC20.sol";
+import "oz/token/ERC20/utils/SafeERC20.sol";
 
 import { LibOracle, AggregatorV3Interface } from "./LibOracle.sol";
 import { LibStorage as s } from "./LibStorage.sol";
+import { LibHelpers } from "./LibHelpers.sol";
 
 import "../Storage.sol";
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
-import "../utils/Utils.sol";
 
 /// @title LibManager
 /// @author Angle Labs, Inc.
@@ -63,9 +63,9 @@ library LibManager {
             balances[i] = subCollaterals[i].balanceOf(address(this));
             totalValue += i == 0
                 ? (LibOracle.readRedemption(ks.collaterals[address(subCollaterals[i])].oracleConfig) *
-                    Utils.convertDecimalTo(balances[i], tokenDecimals[i], 18)) / BASE_18
+                    LibHelpers.convertDecimalTo(balances[i], tokenDecimals[i], 18)) / BASE_18
                 : LibOracle.readChainlinkFeed(
-                    Utils.convertDecimalTo(balances[i], tokenDecimals[i], 18),
+                    LibHelpers.convertDecimalTo(balances[i], tokenDecimals[i], 18),
                     oracles[i - 1],
                     oracleIsMultiplied[i - 1],
                     chainlinkDecimals[i - 1],

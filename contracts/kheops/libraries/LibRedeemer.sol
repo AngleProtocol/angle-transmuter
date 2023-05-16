@@ -2,20 +2,19 @@
 
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import "oz/token/ERC20/IERC20.sol";
+import "oz/token/ERC20/utils/SafeERC20.sol";
+import "oz/utils/math/Math.sol";
 
-import { IAgToken } from "../../interfaces/IAgToken.sol";
+import { IAgToken } from "interfaces/IAgToken.sol";
 
 import { LibStorage as s } from "./LibStorage.sol";
 import { LibOracle } from "./LibOracle.sol";
-import { LibHelper } from "./LibHelper.sol";
+import { LibHelpers } from "./LibHelpers.sol";
 import { LibManager } from "./LibManager.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
-import "../utils/Utils.sol";
 import "../Storage.sol";
 
 /// @title LibRedeemer
@@ -57,9 +56,9 @@ library LibRedeemer {
         for (uint256 i; i < amounts.length; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             // If a token is in the `forfeitTokens` list, then it is not sent as part of the redemption process
-            if (Utils.checkForfeit(tokens[i], forfeitTokens) < 0) {
+            if (LibHelpers.checkForfeit(tokens[i], forfeitTokens) < 0) {
                 ManagerStorage memory emptyManagerData;
-                LibHelper.transferCollateral(
+                LibHelpers.transferCollateral(
                     tokens[i],
                     to,
                     amounts[i],
@@ -91,7 +90,9 @@ library LibRedeemer {
         // If the protocol is under-collateralized, a penalty factor is applied to the returned amount of each asset
         if (collatRatio < BASE_9) {
             uint64[] memory xRedemptionCurveMem = ks.xRedemptionCurve;
-            penaltyFactor = uint64(Utils.piecewiseLinear(collatRatio, true, xRedemptionCurveMem, yRedemptionCurveMem));
+            penaltyFactor = uint64(
+                LibHelpers.piecewiseLinear(collatRatio, true, xRedemptionCurveMem, yRedemptionCurveMem)
+            );
         }
 
         uint256 balancesLength = balances.length;
@@ -169,7 +170,7 @@ library LibRedeemer {
                     uint256 oracleValue = LibOracle.readRedemption(ks.collaterals[collateralList[i]].oracleConfig);
                     totalCollateralization +=
                         (oracleValue *
-                            Utils.convertDecimalTo(balance, ks.collaterals[collateralList[i]].decimals, 18)) /
+                            LibHelpers.convertDecimalTo(balance, ks.collaterals[collateralList[i]].decimals, 18)) /
                         BASE_18;
                 }
             }

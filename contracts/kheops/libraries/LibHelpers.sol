@@ -1,10 +1,26 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.12;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import "oz/token/ERC20/utils/SafeERC20.sol";
+import "oz/utils/math/Math.sol";
 
-library Utils {
+import { LibManager } from "../libraries/LibManager.sol";
+
+import "../Storage.sol";
+
+/// @title LibHelpers
+/// @author Angle Labs, Inc.
+library LibHelpers {
+    using SafeERC20 for IERC20;
+
+    function transferCollateral(address token, address to, uint256 amount, ManagerStorage memory managerData) internal {
+        if (amount > 0) {
+            if (managerData.managerConfig.length != 0) LibManager.transfer(token, to, amount, managerData);
+            else IERC20(token).safeTransfer(to, amount);
+        }
+    }
+
     function convertDecimalTo(uint256 amount, uint8 fromDecimals, uint8 toDecimals) internal pure returns (uint256) {
         if (fromDecimals > toDecimals) return amount / 10 ** (fromDecimals - toDecimals);
         else if (fromDecimals < toDecimals) return amount * 10 ** (toDecimals - fromDecimals);

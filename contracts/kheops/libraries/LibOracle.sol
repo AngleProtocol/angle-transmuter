@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.17;
 
-import { AggregatorV3Interface } from "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
-import { IKheopsOracle } from "../../interfaces/IKheopsOracle.sol";
-import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
+import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
+import { IKheopsOracle } from "interfaces/IKheopsOracle.sol";
+import { IDiamondCut } from "interfaces/IDiamondCut.sol";
 
 import { LibStorage as s } from "./LibStorage.sol";
 

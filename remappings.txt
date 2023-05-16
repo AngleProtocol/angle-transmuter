@@ -2,3 +2,6 @@ ds-test/=lib/forge-std/lib/ds-test/src/
 forge-std/=lib/forge-std/src/
 stringutils/=lib/solidity-stringutils
 contracts/=contracts/
+interfaces/=contracts/interfaces/
+oz/=node_modules/@openzeppelin/contracts/
+mock/=test/mock/

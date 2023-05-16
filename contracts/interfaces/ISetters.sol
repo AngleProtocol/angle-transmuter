@@ -2,9 +2,9 @@
 
 pragma solidity >=0.5.0;
 
-import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import { IERC20 } from "oz/interfaces/IERC20.sol";
 
-import "../Storage.sol";
+import "../kheops/Storage.sol";
 
 /// @title ISetters
 /// @author Angle Labs, Inc.

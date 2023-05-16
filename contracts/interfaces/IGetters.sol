@@ -2,10 +2,10 @@
 
 pragma solidity >=0.5.0;
 
-import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
-import { IAgToken } from "../../interfaces/IAgToken.sol";
+import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
+import { IAgToken } from "interfaces/IAgToken.sol";
 
-import "../Storage.sol";
+import "../kheops/Storage.sol";
 
 /// @title IGetters
 /// @author Angle Labs, Inc.

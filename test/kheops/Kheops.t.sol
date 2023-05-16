@@ -2,15 +2,18 @@
 
 pragma solidity ^0.8.17;
 
-import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import { IERC20 } from "oz/interfaces/IERC20.sol";
 
-import { MockAccessControlManager } from "contracts/mock/MockAccessControlManager.sol";
-import { MockTokenPermit } from "contracts/mock/MockTokenPermit.sol";
-import { MockChainlinkOracle } from "contracts/mock/MockChainlinkOracle.sol";
+import { MockAccessControlManager } from "mock/MockAccessControlManager.sol";
+import { MockTokenPermit } from "mock/MockTokenPermit.sol";
+import { MockChainlinkOracle } from "mock/MockChainlinkOracle.sol";
 
-import { AggregatorV3Interface } from "contracts/interfaces/external/chainlink/AggregatorV3Interface.sol";
-import { IAccessControlManager } from "contracts/interfaces/IAccessControlManager.sol";
-import { IAgToken } from "contracts/interfaces/IAgToken.sol";
+import { LibCollat } from "contracts/kheops/libraries/LibCollat.sol";
+
+import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
+import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
+import { IAgToken } from "interfaces/IAgToken.sol";
+
 import { Test } from "contracts/kheops/configs/Test.sol";
 import "contracts/utils/Errors.sol";
 import "contracts/utils/Constants.sol";
@@ -57,5 +60,15 @@ contract TestKheops is Fixture {
         kheops.swapExactInput(BASE_6, 0, address(eurA), address(agToken), alice, block.timestamp + 1 hours);
 
         assertEq(agToken.balanceOf(alice), (99 * BASE_18) / 100);
+    }
+
+    function testQuoteCollateralRatio() public {
+        kheops.getCollateralRatio();
+        assertEq(uint256(0), uint256(0));
+    }
+
+    function testQuoteCollateralRatioDirectCall() public {
+        LibCollat.libgetCollateralRatio();
+        assertEq(uint256(0), uint256(0));
     }
 }

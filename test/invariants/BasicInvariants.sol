@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.17;
 
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "oz/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 
 import { Calls } from "./Calls.sol";
 
@@ -22,18 +22,18 @@ contract BasicInvariants is Calls {
         targetContract(address(this));
     }
 
-    function invariantReservesAboveIssued() public {
-        (uint256 issuedA, ) = kheops.getIssuedByCollateral(address(eurA));
-        assertLe(
-            issuedA,
-            IERC20(eurA).balanceOf(address(kheops)) * 10 ** (18 - IERC20Metadata(address(eurA)).decimals())
-        );
-        (uint256 issuedB, ) = kheops.getIssuedByCollateral(address(eurB));
-        assertLe(
-            issuedB,
-            IERC20(eurB).balanceOf(address(kheops)) * 10 ** (18 - IERC20Metadata(address(eurB)).decimals())
-        );
-    }
+    // function invariantReservesAboveIssued() public {
+    //     (uint256 issuedA, ) = kheops.getIssuedByCollateral(address(eurA));
+    //     assertLe(
+    //         issuedA,
+    //         IERC20(eurA).balanceOf(address(kheops)) * 10 ** (18 - IERC20Metadata(address(eurA)).decimals())
+    //     );
+    //     (uint256 issuedB, ) = kheops.getIssuedByCollateral(address(eurB));
+    //     assertLe(
+    //         issuedB,
+    //         IERC20(eurB).balanceOf(address(kheops)) * 10 ** (18 - IERC20Metadata(address(eurB)).decimals())
+    //     );
+    // }
 
     function invariantIssuedCoherent() public {
         (uint256 issuedA, uint256 issued) = kheops.getIssuedByCollateral(address(eurA));

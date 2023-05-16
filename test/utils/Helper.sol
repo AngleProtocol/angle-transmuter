@@ -10,7 +10,7 @@ pragma solidity ^0.8.17;
 /******************************************************************************/
 
 import "stringutils/strings.sol";
-import "contracts/kheops/interfaces/IDiamondLoupe.sol";
+import "interfaces/IDiamondLoupe.sol";
 
 import { Test, stdError } from "forge-std/Test.sol";
 

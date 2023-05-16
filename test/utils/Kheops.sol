@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import { IKheops } from "contracts/kheops/interfaces/IKheops.sol";
+import { IKheops } from "interfaces/IKheops.sol";
 import { DiamondProxy } from "contracts/kheops/DiamondProxy.sol";
 
 import { DiamondCut } from "contracts/kheops/facets/DiamondCut.sol";
