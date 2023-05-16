@@ -288,7 +288,7 @@ library LibSwapper {
 
     /// @notice Reads the oracle value for burning stablecoins for `collateral` that has an oracle defined by an `oracleConfig`
     /// @dev This value depends on the oracle values for all collateral assets of the system
-    function _getBurnOracle(address collateral, bytes memory oracleConfig) internal view returns (uint256) {
+    function _getBurnOracle(address collateral, bytes memory oracleConfig) private view returns (uint256) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 oracleValue;
         uint256 deviation = BASE_18;

@@ -15,6 +15,7 @@ error CannotReplaceFunctionWithTheSameFunctionFromTheSameFacet(bytes4 _selector)
 error CannotReplaceImmutableFunction(bytes4 _selector);
 error DecreasedAllowanceBelowZero();
 error DepositMoreThanMax();
+error ContractHasNoCode();
 error FunctionNotFound(bytes4 _functionSelector);
 error IncompatibleLengths();
 error IncorrectFacetCutAction(uint8 _action);

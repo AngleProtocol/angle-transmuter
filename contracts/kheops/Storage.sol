@@ -7,35 +7,14 @@ import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
 
+/*////////////////////////////////////////////////////////////////////////////////
+                                     ENUMS                                  
+////////////////////////////////////////////////////////////////////////////////*/
+
 enum FacetCutAction {
     Add,
     Replace,
     Remove
-}
-
-struct FacetCut {
-    address facetAddress;
-    FacetCutAction action;
-    bytes4[] functionSelectors;
-}
-
-struct Facet {
-    address facetAddress;
-    bytes4[] functionSelectors;
-}
-
-struct FacetAddressAndSelectorPosition {
-    address facetAddress;
-    uint16 selectorPosition;
-}
-
-struct DiamondStorage {
-    // function selector => facet address and selector position in selectors array
-    mapping(bytes4 => FacetAddressAndSelectorPosition) facetAddressAndSelectorPosition;
-    bytes4[] selectors;
-    mapping(bytes4 => bool) supportedInterfaces;
-    // `accessControlManager` used to check roles
-    IAccessControlManager accessControlManager;
 }
 
 enum PauseType {
@@ -70,54 +49,60 @@ enum OracleTargetType {
     SFRXETH
 }
 
-struct Collateral {
-    // Whether the collateral supports strategies
-    uint8 isManaged;
-    // Whether minting from this asset is unpaused
-    uint8 unpausedMint;
-    // Whether burning for this asset is unpaused
-    uint8 unpausedBurn;
-    // Amount of decimals of the collateral
-    uint8 decimals;
-    // Normalized amount of stablecoins issued from this collateral
-    uint224 normalizedStables;
-    uint64[] xFeeMint;
-    // Mint fees at the exposures specified in `xFeeMint`
-    int64[] yFeeMint;
-    uint64[] xFeeBurn;
-    // Burn fees at the exposures specified in `xFeeBurn`. Contrary to `xFeeMint`, the values
-    // in `xFeeBurn` are decreasing exposure values.
-    int64[] yFeeBurn;
-    // Data about the oracle used for the collateral
-    bytes oracleConfig;
-    // Storage params if this collateral is invested in other strategies
-    ManagerStorage managerData;
+/*////////////////////////////////////////////////////////////////////////////////
+                                     STRUCTS                                  
+////////////////////////////////////////////////////////////////////////////////*/
+
+struct FacetCut {
+    address facetAddress;                        // Facet contract address
+    FacetCutAction action;                       // Can be add, remove or replace
+    bytes4[] functionSelectors;                  // Ex. bytes4(keccak256("transfer(address,uint256)")) 
 }
 
-struct KheopsStorage {
-    // AgToken handled by the system
-    IAgToken agToken;
-    // Whether redemption is paused
-    uint8 pausedRedemption;
-    // Normalized amount of stablecoins issued by the system
-    uint128 normalizedStables;
-    // Value used to reconcile `normalizedStables` values with the actual amount that have been issued
-    uint128 normalizer;
-    // List of collateral assets supported by the system
-    address[] collateralList;
-    uint64[] xRedemptionCurve;
-    // Value of the redemption fees at the collateral ratios specified in `xRedemptionCurve`
-    int64[] yRedemptionCurve;
-    // Maps a collateral asset to its parameters
-    mapping(address => Collateral) collaterals;
-    // Whether an address is trusted to update the normalizer value
-    mapping(address => uint256) isTrusted;
-    // Whether an address is trusted to sell external reward tokens accruing to Kheops
-    mapping(address => uint256) isSellerTrusted;
+struct Facet {
+    address facetAddress;                        // Facet contract address
+    bytes4[] functionSelectors;                  // Ex. bytes4(keccak256("transfer(address,uint256)")) 
+}
+
+struct FacetInfo {
+    address facetAddress;                        // Facet contract address
+    uint16 selectorPosition;                     // Position in the list of all selectors
+}
+
+struct DiamondStorage {
+    bytes4[] selectors;                          // List of all available selectors
+    mapping(bytes4 => FacetInfo) selectorInfo;   // Selector to (address, position in list)
+    IAccessControlManager accessControlManager;  // Contract handling access control
 }
 
 struct ManagerStorage {
-    // The collateral corresponding to the manager must also be in the list
-    IERC20[] subCollaterals;
-    bytes managerConfig;
+    IERC20[] subCollaterals;                     // Subtokens handled by the external manager
+    bytes managerConfig;                         // Additional configuration data
+}
+
+struct Collateral {
+    uint8 isManaged;                             // If the collateral is managed by an external contract
+    uint8 unpausedMint;                          // If minting from this asset is unpaused
+    uint8 unpausedBurn;                          // If minting from this asset is unpaused
+    uint8 decimals;                              // IERC20Metadata(collateral).decimals()
+    uint224 normalizedStables;                   // Normalized amount of stablecoins issued from this collateral
+    uint64[] xFeeMint;                           // Increasing exposures in [0,BASE_9[
+    int64[] yFeeMint;                            // Mint fees at the exposures specified in `xFeeMint`
+    uint64[] xFeeBurn;                           // Decreasing exposures in ]0,BASE_9]
+    int64[] yFeeBurn;                            // Burn fees at the exposures specified in `xFeeBurn`
+    bytes oracleConfig;                          // Data about the oracle used for the collateral
+    ManagerStorage managerData;                  // TODO change and check if useful
+}
+
+struct KheopsStorage {
+    IAgToken agToken;                            // AgToken handled by the system
+    uint8 pausedRedemption;                      // If redemption is paused
+    uint128 normalizedStables;                   // Normalized amount of stablecoins issued by the system
+    uint128 normalizer;                          // To reconcile `normalizedStables` values with the actual amount
+    address[] collateralList;                    // List of collateral assets supported by the system
+    uint64[] xRedemptionCurve;                   // Increasing collateral ratios > 0
+    int64[] yRedemptionCurve;                    // Value of the redemption fees at `xRedemptionCurve`
+    mapping(address => Collateral) collaterals;  // Maps a collateral asset to its parameters
+    mapping(address => uint256) isTrusted;       // If an address is trusted to update the normalizer value
+    mapping(address => uint256) isSellerTrusted; // If an address is trusted to sell reward tokens accruing to Kheops
 }

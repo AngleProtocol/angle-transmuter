@@ -18,7 +18,7 @@ import "../Storage.sol";
 contract Getters is IGetters {
     /// @inheritdoc IGetters
     function isValidSelector(bytes4 selector) external view returns (bool) {
-        return s.diamondStorage().facetAddressAndSelectorPosition[selector].facetAddress != address(0);
+        return s.diamondStorage().selectorInfo[selector].facetAddress != address(0);
     }
 
     /// @inheritdoc IGetters

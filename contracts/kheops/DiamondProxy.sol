@@ -22,7 +22,7 @@ contract DiamondProxy {
     fallback() external payable {
         DiamondStorage storage ds = s.diamondStorage();
         // Get facet from function selector
-        address facetAddress = ds.facetAddressAndSelectorPosition[msg.sig].facetAddress;
+        address facetAddress = ds.selectorInfo[msg.sig].facetAddress;
         if (facetAddress == address(0)) {
             revert FunctionNotFound(msg.sig);
         }
