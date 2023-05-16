@@ -2,12 +2,13 @@
 
 pragma solidity ^0.8.17;
 
-import { LibStorage as s } from "../libraries/LibStorage.sol";
-import { LibSetters as Setters } from "../libraries/LibSetters.sol";
-import "../libraries/LibOracle.sol";
-import "../../utils/Constants.sol";
-import "../../interfaces/external/chainlink/AggregatorV3Interface.sol";
+import "interfaces/external/chainlink/AggregatorV3Interface.sol";
 
+import "../libraries/LibOracle.sol";
+import { LibSetters as Setters } from "../libraries/LibSetters.sol";
+import { LibStorage as s } from "../libraries/LibStorage.sol";
+
+import "../../utils/Constants.sol";
 import "../Storage.sol";
 
 struct CollateralSetup {
@@ -74,7 +75,7 @@ contract Test {
         xBurnFee[0] = uint64(BASE_9);
         xBurnFee[1] = uint64((40 * BASE_9) / 100);
         xBurnFee[2] = uint64((35 * BASE_9) / 100);
-        xBurnFee[3] = uint64(0);
+        xBurnFee[3] = uint64(BASE_9 / 100);
 
         // Linear at 1%, 3% at 35%, then steep to 100%
         int64[] memory yBurnFee = new int64[](4);
@@ -124,7 +125,7 @@ contract Test {
         xBurnFee[0] = uint64(BASE_9);
         xBurnFee[1] = uint64((40 * BASE_9) / 100);
         xBurnFee[2] = uint64((37 * BASE_9) / 100);
-        xBurnFee[3] = uint64(0);
+        xBurnFee[3] = uint64(BASE_9 / 100);
 
         // Linear at 1%, 5% at 37%, then steep to 100%
         yBurnFee = new int64[](4);
@@ -174,7 +175,7 @@ contract Test {
         xBurnFee[0] = uint64(BASE_9);
         xBurnFee[1] = uint64((40 * BASE_9) / 100);
         xBurnFee[2] = uint64((37 * BASE_9) / 100);
-        xBurnFee[3] = uint64(0);
+        xBurnFee[3] = uint64(BASE_9 / 100);
 
         // Linear at 1%, 5% at 37%, then steep to 100%
         yBurnFee = new int64[](4);

@@ -2,16 +2,13 @@
 
 pragma solidity >=0.5.0;
 
-import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import { IERC20 } from "oz/interfaces/IERC20.sol";
 
-import "../Storage.sol";
+import "../kheops/Storage.sol";
 
 /// @title ISetters
 /// @author Angle Labs, Inc.
 interface ISetters {
-    /// @notice Adjusts the normalized amount of stablecoins issued from `collateral` by `amount`
-    function adjustNormalizedStablecoins(address collateral, uint128 amount, bool addOrRemove) external;
-
     /// @notice Recovers `amount` of `token` from the Kheops contract
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external;
 
@@ -29,6 +26,9 @@ interface ISetters {
 
     /// @notice Add `collateral` as a supported collateral in the system
     function addCollateral(address collateral) external;
+
+    /// @notice Adjusts the normalized amount of stablecoins issued from `collateral` by `amount`
+    function adjustNormalizedStablecoins(address collateral, uint128 amount, bool addOrRemove) external;
 
     /// @notice Revokes `collateral` from the system
     function revokeCollateral(address collateral) external;

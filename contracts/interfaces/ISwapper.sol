@@ -48,3 +48,4 @@ interface ISwapper {
     /// and at the same block, the `amountIn` outputted by this function is exactly the amount that will be obtained with `swapExactOutput`
     function quoteOut(uint256 amountOut, address tokenIn, address tokenOut) external view returns (uint256 amountIn);
 }
+

@@ -2,21 +2,23 @@
 
 pragma solidity ^0.8.17;
 
-import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import { IERC20 } from "oz/interfaces/IERC20.sol";
 
-import { MockAccessControlManager } from "contracts/mock/MockAccessControlManager.sol";
-import { MockTokenPermit } from "contracts/mock/MockTokenPermit.sol";
-import { MockChainlinkOracle } from "contracts/mock/MockChainlinkOracle.sol";
-import { Kheops } from "./utils/Kheops.sol";
-
-import { AggregatorV3Interface } from "contracts/interfaces/external/chainlink/AggregatorV3Interface.sol";
-import { IAccessControlManager } from "contracts/interfaces/IAccessControlManager.sol";
-import { IAgToken } from "contracts/interfaces/IAgToken.sol";
-import { CollateralSetup, Test } from "contracts/kheops/configs/Test.sol";
-import "contracts/utils/Errors.sol";
-import "contracts/utils/Constants.sol";
+import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
+import { IAgToken } from "interfaces/IAgToken.sol";
+import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
 
 import { console } from "forge-std/console.sol";
+
+import { MockAccessControlManager } from "mock/MockAccessControlManager.sol";
+import { MockChainlinkOracle } from "mock/MockChainlinkOracle.sol";
+import { MockTokenPermit } from "mock/MockTokenPermit.sol";
+
+import { CollateralSetup, Test } from "contracts/kheops/configs/Test.sol";
+import "contracts/utils/Constants.sol";
+import "contracts/utils/Errors.sol";
+
+import { Kheops } from "./utils/Kheops.sol";
 
 contract Fixture is Kheops {
     IAccessControlManager public accessControlManager;

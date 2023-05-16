@@ -35,16 +35,17 @@
 
 pragma solidity ^0.8.17;
 
-import "../external/openZeppelinExtensions/ERC4626Upgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
+import "oz-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
+import "oz/interfaces/IERC20.sol";
+import "oz/token/ERC20/utils/SafeERC20.sol";
 
-import { IAgToken } from "../interfaces/IAgToken.sol";
-import { IKheops } from "../kheops/interfaces/IKheops.sol";
+import { IAgToken } from "interfaces/IAgToken.sol";
+import { IKheops } from "interfaces/IKheops.sol";
 
-import "../utils/Errors.sol";
-import "../utils/Constants.sol";
 import { AccessControl, IAccessControlManager } from "../utils/AccessControl.sol";
+
+import "../utils/Constants.sol";
+import "../utils/Errors.sol";
 
 /// @title SavingsVest
 /// @author Angle Labs, Inc.

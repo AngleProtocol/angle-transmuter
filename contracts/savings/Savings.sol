@@ -35,16 +35,16 @@
 
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
+import "oz-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
+import "oz/interfaces/IERC20.sol";
+import "oz/token/ERC20/utils/SafeERC20.sol";
 
-import { IAgToken } from "../interfaces/IAgToken.sol";
+import { IAgToken } from "interfaces/IAgToken.sol";
 
-import "../external/openZeppelinExtensions/ERC4626Upgradeable.sol";
-
-import "../utils/Errors.sol";
-import "../utils/Constants.sol";
 import { AccessControl, IAccessControlManager } from "../utils/AccessControl.sol";
+
+import "../utils/Constants.sol";
+import "../utils/Errors.sol";
 
 /// @title Savings
 /// @author Angle Labs, Inc.

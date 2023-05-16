@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import { IDiamondLoupe } from "../interfaces/IDiamondLoupe.sol";
+import { IDiamondLoupe } from "interfaces/IDiamondLoupe.sol";
 
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 
@@ -135,3 +135,4 @@ contract DiamondLoupe is IDiamondLoupe {
         facetAddress_ = ds.facetAddressAndSelectorPosition[_functionSelector].facetAddress;
     }
 }
+

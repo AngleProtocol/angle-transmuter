@@ -2,12 +2,12 @@
 
 pragma solidity >=0.5.0;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "oz/token/ERC20/IERC20.sol";
 
 /// @title IAgToken
 /// @author Angle Labs, Inc.
 /// @notice Interface for the stablecoins `AgToken` contracts
-interface IAgToken is IERC20Upgradeable {
+interface IAgToken is IERC20 {
     // ========================= MINTER ROLE ONLY FUNCTIONS ========================
 
     /// @notice Lets a whitelisted contract mint agTokens

@@ -2,24 +2,23 @@
 
 pragma solidity ^0.8.17;
 
-import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20 } from "oz/interfaces/IERC20.sol";
+import { IERC20Metadata } from "oz/token/ERC20/extensions/IERC20Metadata.sol";
+import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 
-import { IAccessControlManager } from "../../interfaces/IAccessControlManager.sol";
-import { ISetters } from "../interfaces/ISetters.sol";
+import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
+import { ISetters } from "interfaces/ISetters.sol";
 
 import { LibDiamond } from "../libraries/LibDiamond.sol";
-import { LibStorage as s } from "../libraries/LibStorage.sol";
+import { LibHelpers } from "../libraries/LibHelpers.sol";
 import { LibManager } from "../libraries/LibManager.sol";
-import { LibSetters } from "../libraries/LibSetters.sol";
-import { LibHelper } from "../libraries/LibHelper.sol";
 import { LibRedeemer } from "../libraries/LibRedeemer.sol";
+import { LibSetters } from "../libraries/LibSetters.sol";
+import { LibStorage as s } from "../libraries/LibStorage.sol";
+import { AccessControlModifiers } from "./AccessControlModifiers.sol";
 
-import { AccessControlModifiers } from "../utils/AccessControlModifiers.sol";
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
-
 import "../Storage.sol";
 
 /// @title Setters
@@ -42,7 +41,7 @@ contract Setters is AccessControlModifiers, ISetters {
         Collateral storage collatInfo = ks.collaterals[collateral];
         bool isManaged = collatInfo.isManaged > 0;
         ManagerStorage memory emptyManagerData;
-        LibHelper.transferCollateral(
+        LibHelpers.transferCollateral(
             isManaged ? address(token) : collateral,
             to,
             amount,
@@ -163,3 +162,4 @@ contract Setters is AccessControlModifiers, ISetters {
         return LibRedeemer.updateNormalizer(amount, increase);
     }
 }
+

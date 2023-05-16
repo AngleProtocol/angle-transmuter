@@ -13,15 +13,11 @@ solc_version = '0.8.17'
 
 ffi = true
 
-[profile.dev]
-src = 'test'
-via_ir = false
-
 [fuzz]
-runs = 500
+runs = 300
 
 [invariant]
-runs = 100
+runs = 10
 depth = 30
 
 [rpc_endpoints]
@@ -33,3 +29,18 @@ goerli = "${ETH_NODE_URI_GOERLI}"
 mainnet = { key = "${MAINNET_ETHERSCAN_API_KEY}" }
 polygon = { key = "${POLYGON_ETHERSCAN_API_KEY}" }
 goerli = { key = "${GOERLI_ETHERSCAN_API_KEY}" }
+
+[profile.dev]
+src = 'test'
+via_ir = false
+
+[profile.ci]
+src = 'test'
+via_ir = false
+
+[profile.ci.fuzz]
+runs = 10000
+
+[profile.ci.invariant]
+runs = 100
+depth = 300

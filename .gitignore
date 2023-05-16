@@ -23,6 +23,7 @@ slither.db.json
 coverage
 coverage.json
 lcov.info
+reports/
 
 # Running output
 gas-report.txt
@@ -38,7 +39,6 @@ deployments/mainnetForkRemote
 
 # bin
 bin
-
 
 # foundry
 /out

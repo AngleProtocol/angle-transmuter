@@ -2,12 +2,11 @@
 
 pragma solidity ^0.8.17;
 
-import { IRedeemer } from "../interfaces/IRedeemer.sol";
-
-import { LibRedeemer as Lib } from "../libraries/LibRedeemer.sol";
-import { LibStorage as s } from "../libraries/LibStorage.sol";
+import { IRedeemer } from "interfaces/IRedeemer.sol";
 
 import "../Storage.sol";
+import { LibRedeemer } from "../libraries/LibRedeemer.sol";
+import { LibStorage as s } from "../libraries/LibStorage.sol";
 
 /// @title Redeemer
 /// @author Angle Labs, Inc.
@@ -30,7 +29,7 @@ contract Redeemer is IRedeemer {
         uint256[] memory minAmountOuts
     ) external returns (address[] memory tokens, uint256[] memory amounts) {
         address[] memory forfeitTokens;
-        return Lib.redeem(amount, receiver, deadline, minAmountOuts, forfeitTokens);
+        return LibRedeemer.redeem(amount, receiver, deadline, minAmountOuts, forfeitTokens);
     }
 
     /// @inheritdoc IRedeemer
@@ -43,13 +42,13 @@ contract Redeemer is IRedeemer {
         uint256[] memory minAmountOuts,
         address[] memory forfeitTokens
     ) external returns (address[] memory tokens, uint256[] memory amounts) {
-        return Lib.redeem(amount, receiver, deadline, minAmountOuts, forfeitTokens);
+        return LibRedeemer.redeem(amount, receiver, deadline, minAmountOuts, forfeitTokens);
     }
 
     /// @inheritdoc IRedeemer
     function quoteRedemptionCurve(
-        uint256 amountBurnt
+        uint256 amount
     ) external view returns (address[] memory tokens, uint256[] memory amounts) {
-        (tokens, amounts, ) = Lib.quoteRedemptionCurve(amountBurnt);
+        (tokens, amounts, ) = LibRedeemer.quoteRedemptionCurve(amount);
     }
 }

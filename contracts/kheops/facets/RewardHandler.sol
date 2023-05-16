@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import { IRewardHandler } from "../interfaces/IRewardHandler.sol";
+import { IRewardHandler } from "interfaces/IRewardHandler.sol";
 
 import { LibRewardHandler } from "../libraries/LibRewardHandler.sol";
 
@@ -16,3 +16,6 @@ contract RewardHandler is IRewardHandler {
         return LibRewardHandler.sellRewards(minAmountOut, payload);
     }
 }
+
+
+

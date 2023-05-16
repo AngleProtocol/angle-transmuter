@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { ICbETH } from "../interfaces/external/coinbase/ICbETH.sol";
-import { IRETH } from "../interfaces/external/rocketPool/IRETH.sol";
-import { IStETH } from "../interfaces/external/lido/IStETH.sol";
-import { ISfrxETH } from "../interfaces/external/frax/ISfrxETH.sol";
-
 pragma solidity >=0.5.0;
 
+import { ICbETH } from "interfaces/external/coinbase/ICbETH.sol";
+import { ISfrxETH } from "interfaces/external/frax/ISfrxETH.sol";
+import { IStETH } from "interfaces/external/lido/IStETH.sol";
+import { IRETH } from "interfaces/external/rocketPool/IRETH.sol";
 /// @dev Storage position of `DiamondStorage` structure.
 bytes32 constant DIAMOND_STORAGE_POSITION = 0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131b; // keccak256("diamond.standard.diamond.storage") - 1;
 

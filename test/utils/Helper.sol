@@ -2,17 +2,18 @@
 
 pragma solidity ^0.8.17;
 
+import "interfaces/IDiamondLoupe.sol";
+
+import { Test, stdError } from "forge-std/Test.sol";
+
+import "stringutils/strings.sol";
+
 /******************************************************************************\
 * Authors: Timo Neumann <timo@fyde.fi>
 * EIP-2535 Diamonds: https://eips.ethereum.org/EIPS/eip-2535
 * Helper functions for the translation from the jest tests in the original repo
 * to solidity tests.
 /******************************************************************************/
-
-import "stringutils/strings.sol";
-import "contracts/kheops/interfaces/IDiamondLoupe.sol";
-
-import { Test, stdError } from "forge-std/Test.sol";
 
 abstract contract Helper is Test {
     using strings for *;

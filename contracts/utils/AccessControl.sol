@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { IAccessControlManager } from "../interfaces/IAccessControlManager.sol";
+pragma solidity ^0.8.17;
+
+import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 
 import "../utils/Errors.sol";
-
-pragma solidity ^0.8.17;
 
 contract AccessControl {
     /// @notice `accessControlManager` used to check roles
