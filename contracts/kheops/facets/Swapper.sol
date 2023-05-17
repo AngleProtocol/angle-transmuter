@@ -86,7 +86,7 @@ contract Swapper is ISwapper {
         if (mint) return LibSwapper.quoteMintExactInput(collatInfo, amountIn);
         else {
             amountOut = LibSwapper.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
-            LibSwapper.checkAmounts(tokenOut, collatInfo, amountOut);
+            LibSwapper.checkAmounts(collatInfo, amountOut);
         }
     }
 
@@ -95,7 +95,7 @@ contract Swapper is ISwapper {
         (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut);
         if (mint) return LibSwapper.quoteMintExactOutput(collatInfo, amountOut);
         else {
-            LibSwapper.checkAmounts(tokenOut, collatInfo, amountOut);
+            LibSwapper.checkAmounts(collatInfo, amountOut);
             return LibSwapper.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         }
     }

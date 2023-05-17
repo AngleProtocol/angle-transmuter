@@ -110,9 +110,9 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
     /// @param _accessControlManager Reference to the `AccessControlManager` contract
     /// @param _name Name of the savings contract
     /// @param _symbol Symbol of the savings contract
-    /// @param divizer Quantifies the first minimal initial deposit (should be typically 1 for tokens like agEUR)
-    /// @dev A first deposit is done at initialization to protect for the classical issue of ERC4626 contracts where the
-    /// the first user of the contract tries to steal everyone else's tokens
+    /// @param divizer Quantifies the first initial deposit (should be typically 1 for tokens like agEUR)
+    /// @dev A first deposit is done at initialization to protect for the classical issue of ERC4626 contracts
+    /// where the the first user of the contract tries to steal everyone else's tokens
     function initialize(
         IAccessControlManager _accessControlManager,
         IERC20MetadataUpgradeable asset_,
@@ -196,8 +196,8 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
             // Get the maximum amount we could return.
             uint256 currentlyVestingProfit = vestingProfit;
 
-            // Compute how much profit remains locked based on the last time a profit was acknowledged and the vesting period
-            // It's impossible for an update to be in the future, so this will never underflow.
+            // Compute how much profit remains locked based on the last time a profit was acknowledged
+            // and the vesting period. It's impossible for an update to be in the future, so this will never underflow.
             return currentlyVestingProfit - (currentlyVestingProfit * (block.timestamp - _lastUpdate)) / _vestingPeriod;
         }
     }

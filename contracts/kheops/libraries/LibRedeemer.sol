@@ -62,6 +62,7 @@ library LibRedeemer {
                     tokens[i],
                     to,
                     amounts[i],
+                    true,
                     ks.collaterals[collateralListMem[indexCollateral]].isManaged > 0
                         ? ks.collaterals[collateralListMem[indexCollateral]].managerData
                         : emptyManagerData
@@ -192,7 +193,10 @@ library LibRedeemer {
         if (_normalizedStables == 0)
             newNormalizerValue = BASE_27;
             // The update formula is actually:
-            // _normalizer*(BASE_27+BASE_27*amount/stablecoinsIssued)/BASE_27 = _normalizer+(_normalizer*BASE_27*amount*(BASE_27/(_normalizedStables*normalizer)))/BASE_27
+            /*
+             _normalizer * (BASE_27 + BASE_27 * amount / stablecoinsIssued) / BASE_27 = 
+                _normalizer + (_normalizer * BASE_27 * amount * (BASE_27 / (_normalizedStables * normalizer))) / BASE_27
+            */
         else if (increase) newNormalizerValue = _normalizer + (amount * BASE_27) / _normalizedStables;
         else newNormalizerValue = _normalizer - (amount * BASE_27) / _normalizedStables;
         // If the `normalizer` gets too small or too big, it must be renormalized to later avoid the propagation of

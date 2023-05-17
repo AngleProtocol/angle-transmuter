@@ -45,6 +45,7 @@ contract Setters is AccessControlModifiers, ISetters {
             isManaged ? address(token) : collateral,
             to,
             amount,
+            false,
             isManaged ? collatInfo.managerData : emptyManagerData
         );
     }
@@ -59,7 +60,7 @@ contract Setters is AccessControlModifiers, ISetters {
         Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         uint8 isManaged = collatInfo.isManaged;
-        if (isManaged > 0) LibManager.pullAll(collateral, collatInfo.managerData);
+        if (isManaged > 0) LibManager.pullAll(collatInfo.managerData);
         if (managerData.managerConfig.length != 0) {
             // The first subCollateral given should be the actual collateral asset
             if (address(managerData.subCollaterals[0]) != collateral) revert InvalidParam();
@@ -121,7 +122,7 @@ contract Setters is AccessControlModifiers, ISetters {
         if (collatInfo.decimals == 0 || collatInfo.normalizedStables > 0) revert NotCollateral();
         uint8 isManaged = collatInfo.isManaged;
         // If the collateral is managed through strategies, pulling all available funds from there
-        if (isManaged > 0) LibManager.pullAll(collateral, collatInfo.managerData);
+        if (isManaged > 0) LibManager.pullAll(collatInfo.managerData);
         delete ks.collaterals[collateral];
         address[] memory collateralListMem = ks.collateralList;
         uint256 length = collateralListMem.length;
@@ -162,4 +163,3 @@ contract Setters is AccessControlModifiers, ISetters {
         return LibRedeemer.updateNormalizer(amount, increase);
     }
 }
-

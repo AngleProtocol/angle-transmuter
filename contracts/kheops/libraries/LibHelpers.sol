@@ -15,9 +15,15 @@ library LibHelpers {
     using SafeERC20 for IERC20;
 
     /// @notice Performs a collateral transfer from the contract or its underlying managers
-    function transferCollateral(address token, address to, uint256 amount, ManagerStorage memory managerData) internal {
+    function transferCollateral(
+        address token,
+        address to,
+        uint256 amount,
+        bool redeem,
+        ManagerStorage memory managerData
+    ) internal {
         if (amount > 0) {
-            if (managerData.managerConfig.length != 0) LibManager.transfer(token, to, amount, managerData);
+            if (managerData.managerConfig.length != 0) LibManager.transfer(token, to, amount, redeem, managerData);
             else IERC20(token).safeTransfer(to, amount);
         }
     }
@@ -44,7 +50,8 @@ library LibHelpers {
     /// @dev If no such index exists (i.e. all values in the array are strictly less/greater than `element`),
     /// the array length is returned
     /// @dev The time complexity of the search is O(log n).
-    /// @dev Inspired from OpenZeppelin Contracts v4.4.1: (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Arrays.sol)
+    /// @dev Inspired from OpenZeppelin Contracts v4.4.1:
+    /// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Arrays.sol
     /// @dev Modified by Angle Labs to support `uint64`, monotonous arrays and exclusive upper bounds
     function findLowerBound(
         bool increasingArray,

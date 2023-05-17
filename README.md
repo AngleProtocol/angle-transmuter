@@ -60,7 +60,7 @@ For contracts deployed for the Angle Protocol, a bug bounty is open on [Immunefi
 
 ## Development 🛠️
 
-This repository is built on [Foundry](https://github.com/foundry-rs/foundry). It also supports the [Hardhat](https://hardhat.org) development environment.
+This repository is built on [Foundry](https://github.com/foundry-rs/foundry).
 
 ### Getting started
 

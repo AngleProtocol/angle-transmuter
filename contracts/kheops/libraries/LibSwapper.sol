@@ -63,11 +63,13 @@ library LibSwapper {
             IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
             IAgToken(tokenOut).mint(to, amountOut);
         } else {
-            uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
-            // This will underflow: the system is trying to burn more stablecoins than what has been issued
-            // from this collateral
-            ks.collaterals[tokenOut].normalizedStables -= uint224(changeAmount);
-            ks.normalizedStables -= changeAmount;
+            {
+                uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
+                // This will underflow when the system is trying to burn more stablecoins than what has been issued
+                // from this collateral
+                ks.collaterals[tokenOut].normalizedStables -= uint224(changeAmount);
+                ks.normalizedStables -= changeAmount;
+            }
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
             {
                 ManagerStorage memory emptyManagerData;
@@ -75,6 +77,7 @@ library LibSwapper {
                     tokenOut,
                     to,
                     amountOut,
+                    false,
                     collatInfo.isManaged > 0 ? collatInfo.managerData : emptyManagerData
                 );
             }
@@ -249,9 +252,9 @@ library LibSwapper {
     }
 
     /// @notice Checks for managed collateral assets if enough funds can be pulled from their strategies
-    function checkAmounts(address collateral, Collateral memory collatInfo, uint256 amountOut) internal view {
+    function checkAmounts(Collateral memory collatInfo, uint256 amountOut) internal view {
         // Checking if enough is available for collateral assets that involve manager addresses
-        if (collatInfo.isManaged > 0 && LibManager.maxAvailable(collateral, collatInfo.managerData) < amountOut)
+        if (collatInfo.isManaged > 0 && LibManager.maxAvailable(collatInfo.managerData) < amountOut)
             revert InvalidSwap();
     }
 
