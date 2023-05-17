@@ -68,7 +68,6 @@ library LibSwapper {
                     collatInfo.isManaged > 0 ? collatInfo.managerData : emptyManagerData
                 );
             }
-            IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
             IAgToken(tokenOut).mint(to, amountOut);
         } else {
             {

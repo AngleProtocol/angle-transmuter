@@ -6,12 +6,14 @@ import { IERC20 } from "oz/interfaces/IERC20.sol";
 
 import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
+import { IManager } from "interfaces/IManager.sol";
 import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
 
 import { console } from "forge-std/console.sol";
 
 import { MockAccessControlManager } from "mock/MockAccessControlManager.sol";
 import { MockChainlinkOracle } from "mock/MockChainlinkOracle.sol";
+import { MockManager } from "mock/MockManager.sol";
 import { MockTokenPermit } from "mock/MockTokenPermit.sol";
 
 import { CollateralSetup, Test } from "contracts/kheops/configs/Test.sol";

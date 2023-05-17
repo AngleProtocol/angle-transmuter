@@ -46,9 +46,10 @@ library LibManager {
     }
 
     /// @notice Gets the balances of all the tokens controlled through `managerData`
-    /// @return balances An array of size `subCollaterals` with current balances
-    /// @return totalValue The sum of the balances corrected by an oracle
-    /// @dev 'subCollaterals' must always have as first token the collateral itself
+    /// @return balances An array of size `subCollaterals` with current balances of all subCollaterals
+    /// including the one corresponding to the `managerData` given
+    /// @return totalValue The value of the `subCollaterals` (excluding the collateral used within Kheops)
+    /// @dev `subCollaterals` must always have as first token (index 0) the collateral itself
     function getUnderlyingBalances(
         ManagerStorage memory managerData
     ) internal view returns (uint256[] memory balances, uint256 totalValue) {

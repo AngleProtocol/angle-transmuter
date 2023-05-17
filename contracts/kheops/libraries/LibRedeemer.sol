@@ -148,32 +148,31 @@ library LibRedeemer {
         {
             uint256 countCollat;
             for (uint256 i; i < collateralListLength; ++i) {
-                if (ks.collaterals[collateralList[i]].isManaged > 0) {
+                Collateral memory collateral = ks.collaterals[collateralList[i]];
+                uint256 collateralBalance;
+                if (collateral.isManaged > 0) {
                     // If a collateral is managed, the balances of the sub-collaterals cannot be directly obtained by
                     // calling `balanceOf` of the sub-collaterals.
                     // Managed assets must support ways to value their sub-collaterals in a non manipulable way
-                    (uint256[] memory subCollateralsBalances, uint256 totalValue) = LibManager.getUnderlyingBalances(
-                        ks.collaterals[collateralList[i]].managerData
-                    );
-                    uint256 curNbrSubCollat = subCollateralsBalances.length;
-                    for (uint256 k; k < curNbrSubCollat; ++k) {
-                        tokens[countCollat + k] = address(
-                            ks.collaterals[collateralList[i]].managerData.subCollaterals[k]
-                        );
+                    (uint256[] memory subCollateralsBalances, uint256 subCollateralsValue) = LibManager
+                        .getUnderlyingBalances(collateral.managerData);
+                    // `subCollateralsBalances` length is not cached here to avoid stack too deep
+                    for (uint256 k; k < subCollateralsBalances.length; ++k) {
+                        tokens[countCollat + k] = address(collateral.managerData.subCollaterals[k]);
                         balances[countCollat + k] = subCollateralsBalances[k];
                     }
-                    countCollat += curNbrSubCollat;
-                    totalCollateralization += totalValue;
+                    collateralBalance = subCollateralsBalances[0];
+                    countCollat += subCollateralsBalances.length;
+                    totalCollateralization += subCollateralsValue;
                 } else {
-                    uint256 balance = IERC20(collateralList[i]).balanceOf(address(this));
+                    collateralBalance = IERC20(collateralList[i]).balanceOf(address(this));
                     tokens[countCollat] = collateralList[i];
-                    balances[countCollat++] = balance;
-                    uint256 oracleValue = LibOracle.readRedemption(ks.collaterals[collateralList[i]].oracleConfig);
-                    totalCollateralization +=
-                        (oracleValue *
-                            LibHelpers.convertDecimalTo(balance, ks.collaterals[collateralList[i]].decimals, 18)) /
-                        BASE_18;
+                    balances[countCollat++] = collateralBalance;
                 }
+                uint256 oracleValue = LibOracle.readRedemption(collateral.oracleConfig);
+                totalCollateralization +=
+                    (oracleValue * LibHelpers.convertDecimalTo(collateralBalance, collateral.decimals, 18)) /
+                    BASE_18;
             }
         }
         // The `stablecoinsIssued` value need to be rounded up because it is then use to as a divizer when computing

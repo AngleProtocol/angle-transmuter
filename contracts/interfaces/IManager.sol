@@ -15,8 +15,9 @@ interface IManager {
     function pullAll() external;
 
     /// @notice Gets the balances of all the tokens controlled be the manager contract
-    /// @return balances An array of size `subCollaterals` with current balances
-    /// @return totalValue The sum of the balances corrected by an oracle
+    /// @return balances An array of size `subCollaterals` with current balances for all subCollaterals
+    /// @return totalValue Cumulated value of all the subCollaterals excluding the one that is actually
+    /// used within the Kheops system
     function getUnderlyingBalances() external view returns (uint256[] memory balances, uint256 totalValue);
 
     /// @notice Gives the maximum amount of collateral immediately available for a transfer

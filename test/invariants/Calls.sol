@@ -42,7 +42,7 @@ contract Calls is Fixture {
         console.log("Issued Total: ", issued);
     }
 
-    function swap(uint256 quoteTypeUint, uint256 collatNumber, uint256 amount) public countCall("swap") {
+    function swap(uint256, uint256 collatNumber, uint256 amount) public countCall("swap") {
         QuoteType quoteType = QuoteType(bound(collatNumber, 0, 3));
         collatNumber = bound(collatNumber, 0, 2);
         amount = bound(amount, 1, 10 ** 18);

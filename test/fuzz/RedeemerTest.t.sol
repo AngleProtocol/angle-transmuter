@@ -34,6 +34,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
     mapping(address => SubCollateralStorage) internal _subCollaterals;
     AggregatorV3Interface[] internal _oracles;
     uint256[] internal _maxTokenAmount;
+    MockManager internal _manager;
 
     function setUp() public override {
         super.setUp();
@@ -123,8 +124,8 @@ contract RedeemerTest is Fixture, FunctionUtils {
         }
 
         // compensate as much as possible last oracle value to make collateralRatio == 1
-        // it can be impossible if one of the other oracle value is already high enough to make the system over collateralise by itself
-        // or if there wasn't any minted via the last collateral
+        // it can be impossible if one of the other oracle value is already high enough to
+        // make the system over collateralised by itself or if there wasn't any minted via the last collateral
         if (mintedStables > collateralisation && collateralMintedStables[2] > 0) {
             MockChainlinkOracle(address(_oracles[2])).setLatestAnswer(
                 int256(((mintedStables - collateralisation) * BASE_8) / collateralMintedStables[2])
@@ -257,7 +258,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
         (, uint256[] memory quoteAmounts) = kheops.quoteRedemptionCurve(amountBurnt);
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-        uint256[] memory forfeitTokens = new uint256[](0);
+        // uint256[] memory forfeitTokens = new uint256[](0);
         uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
         (address[] memory tokens, uint256[] memory amounts) = kheops.redeem(
             amountBurnt,
@@ -297,11 +298,16 @@ contract RedeemerTest is Fixture, FunctionUtils {
             initialAmounts,
             transferProportion
         );
+
         uint64 collatRatio = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
         (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) = _randomRedeemptionFees(
             xFeeRedeemUnbounded,
             yFeeRedeemUnbounded
         );
+        // Mute warnings
+        collatRatio;
+        xFeeRedeem;
+        yFeeRedeem;
 
         _sweepBalances(alice, _collaterals);
 
@@ -313,7 +319,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
         address[] memory tokens;
         uint256[] memory amounts;
         {
-            uint256[] memory forfeitTokens = new uint256[](0);
+            // uint256[] memory forfeitTokens = new uint256[](0);
             uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
             (tokens, amounts) = kheops.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
         }
@@ -413,10 +419,10 @@ contract RedeemerTest is Fixture, FunctionUtils {
         }
 
         // Testing implicitly the ks.normalizer and ks.normalizedStables
-        uint256 totalStable;
+        uint256 totalStable2;
         for (uint256 i; i < _collaterals.length; i++) {
             uint256 stableIssuedByCollateral;
-            (stableIssuedByCollateral, totalStable) = kheops.getIssuedByCollateral(_collaterals[i]);
+            (stableIssuedByCollateral, totalStable2) = kheops.getIssuedByCollateral(_collaterals[i]);
             uint256 realStableIssueByCollateralLeft = (collateralMintedStables[i] * (mintedStables - amountBurntBob)) /
                 (mintedStables + amountBurnt);
             _assertApproxEqRelDecimalWithTolerance(
@@ -429,7 +435,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
         }
         _assertApproxEqRelDecimalWithTolerance(
             mintedStables - amountBurntBob,
-            totalStable,
+            totalStable2,
             mintedStables - amountBurntBob,
             _MAX_PERCENTAGE_DEVIATION,
             18
@@ -607,10 +613,10 @@ contract RedeemerTest is Fixture, FunctionUtils {
         }
 
         // Testing implicitly the ks.normalizer and ks.normalizedStables
-        uint256 totalStable;
+        uint256 totalStable2;
         for (uint256 i; i < _collaterals.length; i++) {
             uint256 stableIssuedByCollateral;
-            (stableIssuedByCollateral, totalStable) = kheops.getIssuedByCollateral(_collaterals[i]);
+            (stableIssuedByCollateral, totalStable2) = kheops.getIssuedByCollateral(_collaterals[i]);
             uint256 realStableIssueByCollateralLeft = (collateralMintedStables[i] * (mintedStables - amountBurntBob)) /
                 (mintedStables + amountBurnt);
             _assertApproxEqRelDecimalWithTolerance(
@@ -623,7 +629,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
         }
         _assertApproxEqRelDecimalWithTolerance(
             mintedStables - amountBurntBob,
-            totalStable,
+            totalStable2,
             mintedStables - amountBurntBob,
             _MAX_PERCENTAGE_DEVIATION,
             18
@@ -736,16 +742,16 @@ contract RedeemerTest is Fixture, FunctionUtils {
             assertEq(amounts, quoteAmounts);
             _assertsSizesWithManager(tokens, amounts);
             {
-                address[] memory forfeitTokens;
-                _assertsTransfersWithManager(bob, _collaterals, forfeitTokens, amounts);
+                address[] memory forfeitTokens2;
+                _assertsTransfersWithManager(bob, _collaterals, forfeitTokens2, amounts);
             }
         }
 
         // Testing implicitly the ks.normalizer and ks.normalizedStables
-        uint256 totalStable;
+        uint256 totalStable2;
         for (uint256 i; i < _collaterals.length; i++) {
             uint256 stableIssuedByCollateral;
-            (stableIssuedByCollateral, totalStable) = kheops.getIssuedByCollateral(_collaterals[i]);
+            (stableIssuedByCollateral, totalStable2) = kheops.getIssuedByCollateral(_collaterals[i]);
             uint256 realStableIssueByCollateralLeft = (collateralMintedStables[i] * (mintedStables - amountBurntBob)) /
                 (mintedStables + amountBurnt);
             _assertApproxEqRelDecimalWithTolerance(
@@ -758,7 +764,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
         }
         _assertApproxEqRelDecimalWithTolerance(
             mintedStables - amountBurntBob,
-            totalStable,
+            totalStable2,
             mintedStables - amountBurntBob,
             _MAX_PERCENTAGE_DEVIATION,
             18
@@ -1014,7 +1020,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
                 0,
                 _maxAmountWithoutDecimals * 10 ** IERC20Metadata(address(listSubCollaterals[i])).decimals()
             );
-            deal(address(listSubCollaterals[i]), address(kheops), airdropAmounts[startIndex + i - 1]);
+            deal(address(listSubCollaterals[i]), address(_manager), airdropAmounts[startIndex + i - 1]);
         }
     }
 
@@ -1063,7 +1069,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
         for (uint256 i; i < latestOracleValue.length; i++) {
             IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
             AggregatorV3Interface[] memory listOracles = _subCollaterals[_collaterals[i]].oracles;
-            // we don't double count the real collateralxz
+            // we don't double count the real collaterals
             for (uint256 k = 1; k < listSubCollaterals.length; k++) {
                 (, int256 oracleValue, , , ) = MockChainlinkOracle(address(listOracles[k - 1])).latestRoundData();
                 uint8 decimals = IERC20Metadata(address(listSubCollaterals[k])).decimals();
@@ -1107,7 +1113,6 @@ contract RedeemerTest is Fixture, FunctionUtils {
 
     function _sweepBalancesWithManager(address owner, address[] memory tokens) internal {
         vm.startPrank(owner);
-        uint256 count;
         for (uint256 i; i < tokens.length; i++) {
             IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
             IERC20(tokens[i]).transfer(sweeper, IERC20(tokens[i]).balanceOf(owner));
@@ -1121,7 +1126,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
 
     function _getForfeitTokens(
         bool[3 * (_MAX_SUB_COLLATERALS + 1)] memory areForfeited
-    ) internal returns (address[] memory forfeitTokens) {
+    ) internal view returns (address[] memory forfeitTokens) {
         uint256 nbrForfeit;
         for (uint256 i; i < areForfeited.length; ++i) {
             if (areForfeited[i]) nbrForfeit++;
@@ -1137,7 +1142,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
         }
     }
 
-    function _inList(address[] memory list, address element) internal returns (bool) {
+    function _inList(address[] memory list, address element) internal pure returns (bool) {
         for (uint256 i; i < list.length; i++) {
             if (list[i] == element) return true;
         }
@@ -1185,9 +1190,14 @@ contract RedeemerTest is Fixture, FunctionUtils {
             oracleIsMultiplied[i - 1] = 1;
             chainlinkDecimals[i - 1] = 8;
         }
-        ManagerStorage memory managerData = ManagerStorage(
+        _manager = new MockManager(address(token));
+        _manager.setSubCollaterals(
             subCollaterals,
             abi.encode(decimals, oracles, stalePeriods, oracleIsMultiplied, chainlinkDecimals)
+        );
+        ManagerStorage memory managerData = ManagerStorage(
+            subCollaterals,
+            abi.encode(ManagerType.EXTERNAL, abi.encode(IManager(address(_manager))))
         );
         vm.prank(governor);
         kheops.setCollateralManager(address(token), managerData);
