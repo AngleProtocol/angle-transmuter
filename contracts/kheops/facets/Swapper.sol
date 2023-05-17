@@ -78,7 +78,7 @@ contract Swapper is ISwapper {
     /// of `tokenOut` and `tokenIn` are an accepted collateral.
     /// In case of a burn, they will also revert if the system does not have enough of `amountOut` for `tokenOut`.
     /// This balance must be available either directly on the contract or through the underlying strategies that manage
-    /// the collateral
+    /// the collateral.
 
     /// @inheritdoc ISwapper
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256 amountOut) {

@@ -18,6 +18,9 @@ interface ISetters {
     /// @notice Sets (or unsets) a collateral manager  `collateral`
     function setCollateralManager(address collateral, ManagerStorage memory managerData) external;
 
+    /// @notice Sets the allowance of the contract on `token` for `spender` to `amount`
+    function changeAllowance(IERC20 token, address spender, uint256 amount) external;
+
     /// @notice Changes the pause status for mint or burn transactions for `collateral`
     function togglePause(address collateral, PauseType pausedType) external;
 

@@ -7,9 +7,11 @@ import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
 
-/*////////////////////////////////////////////////////////////////////////////////
-                                     ENUMS                                  
-////////////////////////////////////////////////////////////////////////////////*/
+    
+    
+/*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                        ENUMS                                                      
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/  
 
 enum FacetCutAction {
     Add,
@@ -53,9 +55,10 @@ enum OracleTargetType {
     SFRXETH
 }
 
-/*////////////////////////////////////////////////////////////////////////////////
-                                     STRUCTS                                  
-////////////////////////////////////////////////////////////////////////////////*/
+    
+/*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                    STRUCTS                                                     
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
 struct FacetCut {
     address facetAddress;                        // Facet contract address
@@ -85,9 +88,9 @@ struct ManagerStorage {
 }
 
 struct Collateral {
-    uint8 isManaged;                             // If the collateral is managed by an external contract
+    uint8 isManaged;                             // If the collateral is managed through an external contract or strategies
     uint8 unpausedMint;                          // If minting from this asset is unpaused
-    uint8 unpausedBurn;                          // If minting from this asset is unpaused
+    uint8 unpausedBurn;                          // If burning to this asset is unpaused
     uint8 decimals;                              // IERC20Metadata(collateral).decimals()
     uint224 normalizedStables;                   // Normalized amount of stablecoins issued from this collateral
     uint64[] xFeeMint;                           // Increasing exposures in [0,BASE_9[
@@ -95,7 +98,7 @@ struct Collateral {
     uint64[] xFeeBurn;                           // Decreasing exposures in ]0,BASE_9]
     int64[] yFeeBurn;                            // Burn fees at the exposures specified in `xFeeBurn`
     bytes oracleConfig;                          // Data about the oracle used for the collateral
-    ManagerStorage managerData;                  // TODO change and check if useful
+    ManagerStorage managerData;                  // For when the collateral is managed, data used to handle the collateral strategies
 }
 
 struct KheopsStorage {

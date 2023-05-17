@@ -12,11 +12,11 @@ import { IRETH } from "interfaces/external/rocketPool/IRETH.sol";
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
 /// @dev Storage position of `DiamondStorage` structure.
-/// @dev Equals keccak256("diamond.standard.diamond.storage") - 1;
+/// @dev Equals `keccak256("diamond.standard.diamond.storage") - 1`
 bytes32 constant DIAMOND_STORAGE_POSITION = 0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131b;
 
 /// @dev Storage position of `KheopsStorage` structure.
-/// @dev Equals keccak256("diamond.standard.kheops.storage") - 1
+/// @dev Equals `keccak256("diamond.standard.kheops.storage") - 1`
 bytes32 constant KHEOPS_STORAGE_POSITION = 0x9dc799b68788bb295959b2174a00628b60e2ba03cc4ba2c8c0786bdf437af1b6;
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

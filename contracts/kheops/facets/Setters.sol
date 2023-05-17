@@ -35,7 +35,7 @@ contract Setters is AccessControlModifiers, ISetters {
 
     /// @inheritdoc ISetters
     /// @dev No check is made on the collateral that is redeemed: this function could typically be used by a governance
-    /// during a manual rebalance the reserves of the system
+    /// during a manual rebalance of the reserves of the system
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
@@ -63,7 +63,7 @@ contract Setters is AccessControlModifiers, ISetters {
         if (isManaged > 0) LibManager.pullAll(collatInfo.managerData);
         if (managerData.managerConfig.length != 0) {
             // The first subCollateral given should be the actual collateral asset
-            if (address(managerData.subCollaterals[0]) != collateral) revert InvalidParam();
+            if (address(managerData.subCollaterals[0]) != collateral) revert InvalidParams();
             // Sanity check on the manager data that is passed
             LibManager.parseManagerData(managerData);
             collatInfo.isManaged = 1;
@@ -73,6 +73,18 @@ contract Setters is AccessControlModifiers, ISetters {
         }
         collatInfo.managerData = managerData;
         emit CollateralManagerSet(collateral, managerData);
+    }
+
+    /// @inheritdoc ISetters
+    /// @dev This function can typically be used to grant allowance to a newly added manager for it to pull the
+    /// funds associated to the collateral it corresponds to
+    function changeAllowance(IERC20 token, address spender, uint256 amount) external onlyGovernor {
+        uint256 currentAllowance = token.allowance(address(this), spender);
+        if (currentAllowance < amount) {
+            token.safeIncreaseAllowance(spender, amount - currentAllowance);
+        } else if (currentAllowance > amount) {
+            token.safeDecreaseAllowance(spender, currentAllowance - amount);
+        }
     }
 
     /// @inheritdoc ISetters

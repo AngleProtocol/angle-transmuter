@@ -912,15 +912,12 @@ contract RedeemerTest is Fixture, FunctionUtils {
         uint256 count2;
         for (uint256 i; i < _oracles.length; ++i) {
             IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
-            console.log(_oracles.length, listSubCollaterals.length, amounts.length);
-            console.log(_collaterals[i], address(listSubCollaterals[0]));
             for (uint256 k = 0; k < listSubCollaterals.length; ++k) {
                 uint256 expect;
                 uint256 subCollateralBalance = listSubCollaterals[k].balanceOf(address(_managers[_collaterals[i]]));
                 if (collatRatio < BASE_9)
                     expect = (subCollateralBalance * amountBurnt * fee) / (mintedStables * BASE_9);
                 else expect = (subCollateralBalance * amountBurnt * fee) / (mintedStables * collatRatio);
-                console.log(amounts[count2], expect);
                 assertEq(amounts[count2++], expect);
             }
         }
@@ -1108,9 +1105,9 @@ contract RedeemerTest is Fixture, FunctionUtils {
         uint256 index;
         for (uint256 i; i < _collaterals.length; ++i) {
             IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
-            if (areForfeited[i * _MAX_SUB_COLLATERALS]) forfeitTokens[index++] = address(_collaterals[i]);
-            for (uint256 k = 1; k < listSubCollaterals.length; k++) {
-                if (areForfeited[i * _MAX_SUB_COLLATERALS + k]) forfeitTokens[index++] = address(listSubCollaterals[k]);
+            for (uint256 k = 0; k < listSubCollaterals.length; k++) {
+                if (areForfeited[i * (_MAX_SUB_COLLATERALS + 1) + k])
+                    forfeitTokens[index++] = address(listSubCollaterals[k]);
             }
         }
     }
@@ -1135,7 +1132,6 @@ contract RedeemerTest is Fixture, FunctionUtils {
         oracles = new AggregatorV3Interface[](nbrSubCollaterals);
         subCollaterals[0] = token;
         decimals[0] = IERC20Metadata(address(token)).decimals();
-        if (nbrSubCollaterals == 0) return (subCollaterals, oracles);
 
         uint32[] memory stalePeriods = new uint32[](nbrSubCollaterals);
         uint8[] memory oracleIsMultiplied = new uint8[](nbrSubCollaterals);

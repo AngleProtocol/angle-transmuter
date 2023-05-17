@@ -266,7 +266,7 @@ library LibSwapper {
     }
 
     /// @notice Checks whether a swap from `tokenIn` to `tokenOut` is a mint or a burn
-    /// @dev The function reverts if the `tokenIn` and `tokenOut` given to not correspond to the stablecoin
+    /// @dev The function reverts if the `tokenIn` and `tokenOut` given do not correspond to the stablecoin
     /// and to an accepted collateral asset of the system
     function getMintBurn(
         address tokenIn,

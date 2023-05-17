@@ -17,9 +17,9 @@ import "../Storage.sol";
 library LibDiamond {
     event DiamondCut(FacetCut[] _diamondCut, address _init, bytes _calldata);
 
-    /*//////////////////////////////////////////////////////////////////////////
-                              INTERNAL FUNCTIONS                            
-    //////////////////////////////////////////////////////////////////////////*/
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                  INTERNAL FUNCTIONS                                                
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Checks whether `admin` has the governor role
     function isGovernor(address admin) internal view returns (bool) {
@@ -57,9 +57,9 @@ library LibDiamond {
         _initializeDiamondCut(_init, _calldata);
     }
 
-    /*//////////////////////////////////////////////////////////////////////////
-                               PRIVATE FUNCTIONS                            
-    //////////////////////////////////////////////////////////////////////////*/
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                   PRIVATE FUNCTIONS                                                
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Does a delegate call on `_init` with `_calldata`
     function _initializeDiamondCut(address _init, bytes memory _calldata) private {
@@ -159,7 +159,7 @@ library LibDiamond {
         }
     }
 
-    // @notice Checks that an address has non void bytecode
+    /// @notice Checks that an address has a non void bytecode
     function _enforceHasContractCode(address _contract) private view {
         uint256 contractSize;
         assembly {

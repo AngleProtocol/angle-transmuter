@@ -93,8 +93,8 @@ library LibHelpers {
         return low - 1;
     }
 
-    /// @notice Computes the value of a piecewise linear function defined with the breaking points in the arrays
-    /// `xArray` and `yArray` for `x``
+    /// @notice Evaluates for `x` a piecewise linear function defined with the breaking points in the arrays
+    /// `xArray` and `yArray`
     /// @dev The values in the `xArray` may be increasing or decreasing based on the value of `increasingArray`
     function piecewiseLinear(
         uint64 x,

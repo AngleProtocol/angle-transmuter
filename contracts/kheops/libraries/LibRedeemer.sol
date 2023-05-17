@@ -184,14 +184,13 @@ library LibRedeemer {
     }
 
     /// @notice Updates the `normalizer` variable used to track stablecoins issued from each asset and globally
-
     function updateNormalizer(uint256 amount, bool increase) internal returns (uint256 newNormalizerValue) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 _normalizer = ks.normalizer;
         uint256 _normalizedStables = ks.normalizedStables;
         if (_normalizedStables == 0)
             newNormalizerValue = BASE_27;
-            // The update formula is actually:
+            // In case of an increase, the update formula used is the simplified version of the formula below:
             /*
              _normalizer * (BASE_27 + BASE_27 * amount / stablecoinsIssued) / BASE_27 = 
                 _normalizer + (_normalizer * BASE_27 * amount * (BASE_27 / (_normalizedStables * normalizer))) / BASE_27
