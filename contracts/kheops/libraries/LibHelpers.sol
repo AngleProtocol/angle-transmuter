@@ -14,8 +14,8 @@ import "../Storage.sol";
 library LibHelpers {
     using SafeERC20 for IERC20;
 
-    /// @notice Performs a collateral transfer from the contract or its underlying managers
-    function transferCollateral(
+    /// @notice Performs a collateral transfer from the contract or its underlying managers to another address
+    function transferCollateralTo(
         address token,
         address to,
         uint256 amount,
@@ -23,8 +23,17 @@ library LibHelpers {
         ManagerStorage memory managerData
     ) internal {
         if (amount > 0) {
-            if (managerData.managerConfig.length != 0) LibManager.transfer(token, to, amount, redeem, managerData);
+            if (managerData.managerConfig.length != 0) LibManager.transferTo(token, to, amount, redeem, managerData);
             else IERC20(token).safeTransfer(to, amount);
+        }
+    }
+
+    /// @notice Performs a collateral transfer to one of the contract of the Kheops system depending on the
+    /// `managerData` associated to `token`
+    function transferCollateralFrom(address token, uint256 amount, ManagerStorage memory managerData) internal {
+        if (amount > 0) {
+            if (managerData.managerConfig.length != 0) LibManager.transferFrom(token, amount, managerData);
+            else IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         }
     }
 

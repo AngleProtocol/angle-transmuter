@@ -41,7 +41,7 @@ contract Setters is AccessControlModifiers, ISetters {
         Collateral storage collatInfo = ks.collaterals[collateral];
         bool isManaged = collatInfo.isManaged > 0;
         ManagerStorage memory emptyManagerData;
-        LibHelpers.transferCollateral(
+        LibHelpers.transferCollateralTo(
             isManaged ? address(token) : collateral,
             to,
             amount,
@@ -64,6 +64,8 @@ contract Setters is AccessControlModifiers, ISetters {
         if (managerData.managerConfig.length != 0) {
             // The first subCollateral given should be the actual collateral asset
             if (address(managerData.subCollaterals[0]) != collateral) revert InvalidParam();
+            // Sanity check on the manager data that is passed
+            LibManager.parseManagerData(managerData);
             collatInfo.isManaged = 1;
         } else {
             ManagerStorage memory emptyManagerData;

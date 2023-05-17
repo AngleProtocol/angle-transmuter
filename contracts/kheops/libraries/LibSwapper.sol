@@ -60,6 +60,14 @@ library LibSwapper {
             // as variables normalized by a `normalizer`
             ks.collaterals[tokenIn].normalizedStables += uint224(changeAmount);
             ks.normalizedStables += changeAmount;
+            {
+                ManagerStorage memory emptyManagerData;
+                LibHelpers.transferCollateralFrom(
+                    tokenIn,
+                    amountIn,
+                    collatInfo.isManaged > 0 ? collatInfo.managerData : emptyManagerData
+                );
+            }
             IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
             IAgToken(tokenOut).mint(to, amountOut);
         } else {
@@ -73,7 +81,7 @@ library LibSwapper {
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
             {
                 ManagerStorage memory emptyManagerData;
-                LibHelpers.transferCollateral(
+                LibHelpers.transferCollateralTo(
                     tokenOut,
                     to,
                     amountOut,

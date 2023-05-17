@@ -58,7 +58,7 @@ library LibRedeemer {
             // If a token is in the `forfeitTokens` list, then it is not sent as part of the redemption process
             if (LibHelpers.checkList(tokens[i], forfeitTokens) < 0) {
                 ManagerStorage memory emptyManagerData;
-                LibHelpers.transferCollateral(
+                LibHelpers.transferCollateralTo(
                     tokens[i],
                     to,
                     amounts[i],
