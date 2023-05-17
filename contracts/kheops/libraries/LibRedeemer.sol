@@ -56,7 +56,7 @@ library LibRedeemer {
         for (uint256 i; i < amounts.length; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             // If a token is in the `forfeitTokens` list, then it is not sent as part of the redemption process
-            if (LibHelpers.checkForfeit(tokens[i], forfeitTokens) < 0) {
+            if (LibHelpers.checkList(tokens[i], forfeitTokens) < 0) {
                 ManagerStorage memory emptyManagerData;
                 LibHelpers.transferCollateral(
                     tokens[i],

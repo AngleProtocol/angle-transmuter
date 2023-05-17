@@ -19,11 +19,18 @@ import "../Storage.sol";
 library LibManager {
     using SafeERC20 for IERC20;
 
+    function parseManagerData(ManagerStorage memory managerData) internal {}
+
     // Should implement this function to transfer underlying tokens to the right address
     // The facet itself will handle itself how to free the funds necessary
     /// @param token Is the actual token we want to send
     // TODO add element potentially for a refund or not
     function transfer(address token, address to, uint256 amount, ManagerStorage memory managerData) internal {
+        (ManagerType managerType, bytes memory data) = abi.decode(managerData.managerConfig, (ManagerType, bytes));
+        if (managerType == ManagerType.EXTERNAL) {
+            address managerAddress = abi.decode(data, (address));
+        }
+
         IERC20[] memory subCollaterals = managerData.subCollaterals;
         bool found;
         for (uint256 i; i < subCollaterals.length; ++i) {
@@ -82,4 +89,3 @@ library LibManager {
         return IERC20(collateral).balanceOf(address(this));
     }
 }
-
