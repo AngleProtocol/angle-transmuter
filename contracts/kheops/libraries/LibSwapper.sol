@@ -207,39 +207,41 @@ library LibSwapper {
             }
 
             {
-                uint256 amountToNextBreakPointWithFees = !v.isMint && v.isInput
-                    ? applyFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
+                uint256 amountToNextBreakPointNormalizer = _isExact(quoteType)
+                    ? v.amountToNextBreakPoint
                     : invertFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
 
-                uint256 amountToNextBreakPointNormalizer = (v.isMint && v.isInput) || (!v.isMint && !v.isInput)
-                    ? amountToNextBreakPointWithFees
-                    : v.amountToNextBreakPoint;
-
                 if (amountToNextBreakPointNormalizer >= amountStable) {
-                    int64 midFee = _isExact(quoteType)
-                        ? int64(
+                    int64 midFee;
+                    if (_isExact(quoteType)) {
+                        midFee = int64(
                             (v.upperFees *
                                 int256(amountStable) +
                                 currentFees *
-                                int256(2 * amountToNextBreakPointNormalizer - amountStable)) /
-                                int256(2 * amountToNextBreakPointNormalizer)
-                        )
-                        : int64(
+                                int256(2 * v.amountToNextBreakPoint - amountStable)) /
+                                int256(2 * v.amountToNextBreakPoint)
+                        );
+                    } else {
+                        uint256 ac4 = (2 * amountStable * uint256(v.upperFees - currentFees) * BASE_9);
+                        midFee = int64(
                             (int256(
                                 Math.sqrt(
                                     // BASE_9 + currentFees >= 0
-                                    (uint256(int256(BASE_9) + currentFees)) ** 2 +
-                                        (2 * amountStable * uint256(v.upperFees - currentFees) * BASE_9) /
-                                        v.amountToNextBreakPoint
+                                    (uint256(int256(BASE_9) + currentFees)) ** 2 + ac4 / v.amountToNextBreakPoint
                                 )
-                            ) - int256(BASE_9)) / 2
+                            ) +
+                                currentFees -
+                                int256(BASE_9)) / 2
                         );
+                    }
                     return amount + (v.isInput ? applyFee(amountStable, midFee) : invertFee(amountStable, midFee));
                 } else {
                     amountStable -= amountToNextBreakPointNormalizer;
                     // TODO we underestimate the amount when we mintOutput and burnOutput
-                    // amountToNextBreakPointWithFees is a truncated value --> we ask for less collateral than needed.
-                    amount += (v.isInput ? v.amountToNextBreakPoint : amountToNextBreakPointWithFees);
+                    // amountToNextBreakPointWithFees is a truncated value --> we ask for less collateral than needed
+                    amount += !_isExact(quoteType) ? v.amountToNextBreakPoint : v.isMint
+                        ? invertFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
+                        : applyFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
                     currentExposure = v.upperExposure;
                     ++i;
                 }

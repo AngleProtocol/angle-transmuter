@@ -249,10 +249,10 @@ contract MintTest is Fixture, FunctionUtils {
 
     // =========================== PIECEWISE LINEAR FEES ===========================
 
-    function testQuoteMintExactInputReflexivityPiecewiseFees(
+    function testQuoteMintExactInputReflexivityFixPiecewiseFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
-        // uint256[3] memory latestOracleValue,
+        uint256[3] memory latestOracleValue,
         // uint64[10] memory xFeeMintUnbounded,
         // int64[10] memory yFeeMintUnbounded,
         uint256 stableAmount,
@@ -266,7 +266,7 @@ contract MintTest is Fixture, FunctionUtils {
             transferProportion
         );
         if (mintedStables == 0) return;
-        // _updateOracles(latestOracleValue);
+        _updateOracles(latestOracleValue);
 
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         stableAmount = bound(stableAmount, 1, _maxAmountWithoutDecimals * BASE_18);
@@ -294,66 +294,66 @@ contract MintTest is Fixture, FunctionUtils {
         // this is to handle in easy tests
         if (lowerIndex == type(uint256).max) return;
 
-        // uint256 supposedAmountIn;
-        // if (stableAmount <= amountToNextBreakpoint) {
-        //     collateralMintedStables[fromToken] += stableAmount;
+        uint256 supposedAmountIn;
+        if (stableAmount <= amountToNextBreakpoint) {
+            collateralMintedStables[fromToken] += stableAmount;
 
-        //     int256 midFees;
-        //     {
-        //         int256 currentFees;
-        //         uint256 slope = (uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_27) /
-        //             (amountToNextBreakpoint + amountFromPrevBreakpoint);
-        //         currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_27);
-        //         int256 endFees = yFeeMint[lowerIndex] +
-        //             int256((slope * (amountFromPrevBreakpoint + stableAmount)) / BASE_27);
-        //         midFees = (currentFees + endFees) / 2;
-        //     }
-        //     supposedAmountIn = _convertDecimalTo(
-        //         (stableAmount * (BASE_9 + uint256(midFees))) / BASE_9,
-        //         18,
-        //         IERC20Metadata(_collaterals[fromToken]).decimals()
-        //     );
-        // } else {
-        //     collateralMintedStables[fromToken] += amountToNextBreakpoint;
-        //     int256 midFees;
-        //     {
-        //         uint256 slope = ((uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_27) /
-        //             (amountToNextBreakpoint + amountFromPrevBreakpoint));
-        //         int256 currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_27);
-        //         int256 endFees = yFeeMint[lowerIndex + 1];
-        //         midFees = (currentFees + endFees) / 2;
-        //     }
-        //     supposedAmountIn = (amountToNextBreakpoint * (BASE_9 + uint256(midFees))) / BASE_9;
+            int256 midFees;
+            {
+                int256 currentFees;
+                uint256 slope = (uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_27) /
+                    (amountToNextBreakpoint + amountFromPrevBreakpoint);
+                currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_27);
+                int256 endFees = yFeeMint[lowerIndex] +
+                    int256((slope * (amountFromPrevBreakpoint + stableAmount)) / BASE_27);
+                midFees = (currentFees + endFees) / 2;
+            }
+            supposedAmountIn = (stableAmount * (BASE_9 + uint256(midFees)));
+            (, int256 oracleValue, , , ) = _oracles[fromToken].latestRoundData();
+            supposedAmountIn = _convertDecimalTo(
+                supposedAmountIn / (10 * uint256(oracleValue)),
+                18,
+                IERC20Metadata(_collaterals[fromToken]).decimals()
+            );
+        } else {
+            collateralMintedStables[fromToken] += amountToNextBreakpoint;
+            int256 midFees;
+            {
+                uint256 slope = ((uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_27) /
+                    (amountToNextBreakpoint + amountFromPrevBreakpoint));
+                int256 currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_27);
+                int256 endFees = yFeeMint[lowerIndex + 1];
+                midFees = (currentFees + endFees) / 2;
+            }
+            supposedAmountIn = (amountToNextBreakpoint * (BASE_9 + uint256(midFees)));
 
-        //     // next part is just with end fees
-        //     supposedAmountIn +=
-        //         ((stableAmount - amountToNextBreakpoint) * (BASE_9 + uint64(yFeeMint[lowerIndex + 1]))) /
-        //         BASE_9;
-        //     supposedAmountIn = _convertDecimalTo(
-        //         supposedAmountIn,
-        //         18,
-        //         IERC20Metadata(_collaterals[fromToken]).decimals()
-        //     );
-        // }
+            // next part is just with end fees
+            supposedAmountIn += (stableAmount - amountToNextBreakpoint) * (BASE_9 + uint64(yFeeMint[lowerIndex + 1]));
+            (, int256 oracleValue, , , ) = _oracles[fromToken].latestRoundData();
+            supposedAmountIn = _convertDecimalTo(
+                supposedAmountIn / (10 * uint256(oracleValue)),
+                18,
+                IERC20Metadata(_collaterals[fromToken]).decimals()
+            );
+        }
 
         uint256 amountIn = kheops.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
         uint256 reflexiveAmountStable = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
 
         if (stableAmount > _minWallet && stableAmount < _maxWallet) {
-            // _assertApproxEqRelDecimalWithTolerance(
-            //     supposedAmountIn,
-            //     amountIn,
-            //     amountIn,
-            //     // precision of 0.05%
-            //     _MAX_PERCENTAGE_DEVIATION * 500,
-            //     18
-            // );
+            _assertApproxEqRelDecimalWithTolerance(
+                supposedAmountIn,
+                amountIn,
+                amountIn,
+                // precision of 0.1%
+                _MAX_PERCENTAGE_DEVIATION * 100000,
+                18
+            );
             _assertApproxEqRelDecimalWithTolerance(
                 reflexiveAmountStable,
                 stableAmount,
                 reflexiveAmountStable,
-                // precision of 0.01%
-                _MAX_PERCENTAGE_DEVIATION * 5000,
+                _MAX_PERCENTAGE_DEVIATION,
                 18
             );
         }
