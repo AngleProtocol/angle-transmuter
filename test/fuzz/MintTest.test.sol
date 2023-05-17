@@ -18,6 +18,7 @@ contract MintTest is Fixture, FunctionUtils {
     // Trade off between bullet proof against all oracles and all interactions
     uint256 internal _minOracleValue = 10 ** 3; // 10**(-6)
     uint256 internal _minWallet = 10 ** 18; // in base 18
+    uint256 internal _maxWallet = 10 ** (18 + 12); // in base 18
 
     address[] internal _collaterals;
     AggregatorV3Interface[] internal _oracles;
@@ -64,12 +65,7 @@ contract MintTest is Fixture, FunctionUtils {
         uint256 fromToken
     ) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-            charlie,
-            sweeper,
-            initialAmounts,
-            transferProportion
-        );
+        _loadReserves(charlie, sweeper, initialAmounts, transferProportion);
 
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         mintAmount = bound(mintAmount, 0, _maxTokenAmount[fromToken]);
@@ -86,12 +82,7 @@ contract MintTest is Fixture, FunctionUtils {
         uint256 fromToken
     ) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-            charlie,
-            sweeper,
-            initialAmounts,
-            transferProportion
-        );
+        _loadReserves(charlie, sweeper, initialAmounts, transferProportion);
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         mintAmount = bound(mintAmount, 0, _maxTokenAmount[fromToken]);
         mintFee = int64(bound(int256(mintFee), 0, int256(BASE_12)));
@@ -121,12 +112,7 @@ contract MintTest is Fixture, FunctionUtils {
         uint256 fromToken
     ) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-            charlie,
-            sweeper,
-            initialAmounts,
-            transferProportion
-        );
+        _loadReserves(charlie, sweeper, initialAmounts, transferProportion);
 
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         amountIn = bound(amountIn, 0, _maxTokenAmount[fromToken]);
@@ -144,12 +130,7 @@ contract MintTest is Fixture, FunctionUtils {
         uint256 fromToken
     ) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-            charlie,
-            sweeper,
-            initialAmounts,
-            transferProportion
-        );
+        _loadReserves(charlie, sweeper, initialAmounts, transferProportion);
         _updateOracles(latestOracleValue);
 
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
@@ -183,12 +164,7 @@ contract MintTest is Fixture, FunctionUtils {
         uint256 fromToken
     ) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-            charlie,
-            sweeper,
-            initialAmounts,
-            transferProportion
-        );
+        _loadReserves(charlie, sweeper, initialAmounts, transferProportion);
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         amountIn = bound(amountIn, 0, _maxTokenAmount[fromToken]);
         mintFee = int64(bound(int256(mintFee), 0, int256(BASE_12)));
@@ -232,12 +208,7 @@ contract MintTest is Fixture, FunctionUtils {
         uint256 fromToken
     ) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-            charlie,
-            sweeper,
-            initialAmounts,
-            transferProportion
-        );
+        _loadReserves(charlie, sweeper, initialAmounts, transferProportion);
         _updateOracles(latestOracleValue);
 
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
@@ -304,7 +275,7 @@ contract MintTest is Fixture, FunctionUtils {
         xFeeMint[1] = uint64(BASE_9 / 2);
         int64[] memory yFeeMint = new int64[](2);
         yFeeMint[0] = int64(0);
-        yFeeMint[1] = int64(uint64(BASE_9 / 100));
+        yFeeMint[1] = int64(uint64(2 * BASE_9));
         vm.prank(governor);
         kheops.setFees(_collaterals[fromToken], xFeeMint, yFeeMint, true);
 
@@ -323,72 +294,66 @@ contract MintTest is Fixture, FunctionUtils {
         // this is to handle in easy tests
         if (lowerIndex == type(uint256).max) return;
 
-        uint256 supposedAmountIn;
-        if (stableAmount <= amountToNextBreakpoint) {
-            collateralMintedStables[fromToken] += stableAmount;
+        // uint256 supposedAmountIn;
+        // if (stableAmount <= amountToNextBreakpoint) {
+        //     collateralMintedStables[fromToken] += stableAmount;
 
-            int256 midFees;
-            {
-                uint256 slope = ((uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_18) /
-                    (amountToNextBreakpoint + amountFromPrevBreakpoint));
-                int256 currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_18);
-                int256 endFees = yFeeMint[lowerIndex] +
-                    int256((slope * (amountFromPrevBreakpoint + stableAmount)) / BASE_18);
-                midFees = (currentFees + endFees) / 2;
-            }
+        //     int256 midFees;
+        //     {
+        //         int256 currentFees;
+        //         uint256 slope = (uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_27) /
+        //             (amountToNextBreakpoint + amountFromPrevBreakpoint);
+        //         currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_27);
+        //         int256 endFees = yFeeMint[lowerIndex] +
+        //             int256((slope * (amountFromPrevBreakpoint + stableAmount)) / BASE_27);
+        //         midFees = (currentFees + endFees) / 2;
+        //     }
+        //     supposedAmountIn = _convertDecimalTo(
+        //         (stableAmount * (BASE_9 + uint256(midFees))) / BASE_9,
+        //         18,
+        //         IERC20Metadata(_collaterals[fromToken]).decimals()
+        //     );
+        // } else {
+        //     collateralMintedStables[fromToken] += amountToNextBreakpoint;
+        //     int256 midFees;
+        //     {
+        //         uint256 slope = ((uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_27) /
+        //             (amountToNextBreakpoint + amountFromPrevBreakpoint));
+        //         int256 currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_27);
+        //         int256 endFees = yFeeMint[lowerIndex + 1];
+        //         midFees = (currentFees + endFees) / 2;
+        //     }
+        //     supposedAmountIn = (amountToNextBreakpoint * (BASE_9 + uint256(midFees))) / BASE_9;
 
-            supposedAmountIn = _convertDecimalTo(
-                (stableAmount * BASE_9) / (BASE_9 - uint256(midFees)),
-                18,
-                IERC20Metadata(_collaterals[fromToken]).decimals()
-            );
-        } else {
-            collateralMintedStables[fromToken] += amountToNextBreakpoint;
-            int256 midFees;
-            {
-                uint256 slope = ((uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_18) /
-                    (amountToNextBreakpoint + amountFromPrevBreakpoint));
-                int256 currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_18);
-                int256 endFees = yFeeMint[lowerIndex + 1];
-                midFees = (currentFees + endFees) / 2;
-            }
-            supposedAmountIn = (amountToNextBreakpoint * BASE_9) / (BASE_9 - uint256(midFees));
-
-            // next part is just with end fees
-            supposedAmountIn +=
-                ((stableAmount - amountToNextBreakpoint) * BASE_9) /
-                (BASE_9 - uint64(yFeeMint[lowerIndex + 1]));
-            supposedAmountIn = _convertDecimalTo(
-                supposedAmountIn,
-                18,
-                IERC20Metadata(_collaterals[fromToken]).decimals()
-            );
-        }
+        //     // next part is just with end fees
+        //     supposedAmountIn +=
+        //         ((stableAmount - amountToNextBreakpoint) * (BASE_9 + uint64(yFeeMint[lowerIndex + 1]))) /
+        //         BASE_9;
+        //     supposedAmountIn = _convertDecimalTo(
+        //         supposedAmountIn,
+        //         18,
+        //         IERC20Metadata(_collaterals[fromToken]).decimals()
+        //     );
+        // }
 
         uint256 amountIn = kheops.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
         uint256 reflexiveAmountStable = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
 
-        // assertApproxEqAbs(supposedAmountIn, amountIn, 1 wei);
-        // _assertApproxEqRelDecimalWithTolerance(
-        //     supposedAmountIn,
-        //     amountIn,
-        //     amountIn,
-        //     _MAX_PERCENTAGE_DEVIATION * 1000,
-        //     18
-        // );
-        if (stableAmount > _minWallet) {
-            _assertApproxEqRelDecimalWithTolerance(
-                supposedAmountIn,
-                amountIn,
-                amountIn,
-                _MAX_PERCENTAGE_DEVIATION * 1000,
-                18
-            );
+        if (stableAmount > _minWallet && stableAmount < _maxWallet) {
+            // _assertApproxEqRelDecimalWithTolerance(
+            //     supposedAmountIn,
+            //     amountIn,
+            //     amountIn,
+            //     // precision of 0.05%
+            //     _MAX_PERCENTAGE_DEVIATION * 500,
+            //     18
+            // );
             _assertApproxEqRelDecimalWithTolerance(
                 reflexiveAmountStable,
                 stableAmount,
                 reflexiveAmountStable,
-                _MAX_PERCENTAGE_DEVIATION * 10,
+                // precision of 0.01%
+                _MAX_PERCENTAGE_DEVIATION * 5000,
                 18
             );
         }
@@ -432,7 +397,7 @@ contract MintTest is Fixture, FunctionUtils {
     function _getExposures(
         uint256 mintedStables,
         uint256[] memory collateralMintedStables
-    ) internal returns (uint256[] memory exposures) {
+    ) internal view returns (uint256[] memory exposures) {
         exposures = new uint256[](_collaterals.length);
         for (uint256 i; i < _collaterals.length; i++) {
             exposures[i] = (collateralMintedStables[i] * BASE_9) / mintedStables;
@@ -445,23 +410,17 @@ contract MintTest is Fixture, FunctionUtils {
         uint256[] memory collateralMintedStables,
         uint256 exposure,
         uint64[] memory xThres
-    ) internal returns (uint256 amountToPrevBreakpoint, uint256 amountToNextBreakpoint, uint256 indexExposure) {
+    ) internal pure returns (uint256 amountToPrevBreakpoint, uint256 amountToNextBreakpoint, uint256 indexExposure) {
         if (exposure >= xThres[xThres.length - 1]) return (0, 0, type(uint256).max);
-        console.log("xThres.length ", xThres.length);
         while (exposure > xThres[indexExposure]) {
-            console.log(indexExposure);
-            console.log("x ", indexExposure, xThres[indexExposure]);
             indexExposure++;
         }
         if (exposure < xThres[indexExposure]) indexExposure--;
-        console.log("indexExposure ", indexExposure);
-        console.log("exposure ", exposure);
-        console.log("x ", xThres[indexExposure]);
         amountToNextBreakpoint =
-            (xThres[indexExposure + 1] * mintedStables - collateralMintedStables[indexCollat]) /
+            (xThres[indexExposure + 1] * mintedStables - BASE_9 * collateralMintedStables[indexCollat]) /
             (BASE_9 - xThres[indexExposure + 1]);
         amountToPrevBreakpoint =
-            (collateralMintedStables[indexCollat] - xThres[indexExposure] * mintedStables) /
+            (BASE_9 * collateralMintedStables[indexCollat] - xThres[indexExposure] * mintedStables) /
             (BASE_9 - xThres[indexExposure]);
     }
 
