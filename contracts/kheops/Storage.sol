@@ -17,6 +17,10 @@ enum FacetCutAction {
     Remove
 }
 
+enum ManagerType {
+    EXTERNAL
+}
+
 enum PauseType {
     Mint,
     Burn,
