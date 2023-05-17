@@ -1,12 +1,14 @@
-// SPDX-License-Identifier: CC0-1.0
+// SPDX-License-Identifier: MIT
+
 pragma solidity >=0.5.0;
 
 import "../kheops/Storage.sol";
 
 /// @notice IDiamondLoupe
-/// @author Nick Mudge <nick@perfectabstractions.com>, Twitter/Github: @mudgen
+/// @author Angle Labs, Inc.
 /// @dev Reference: EIP-2535 Diamonds
-/// @dev A loupe is a small magnifying glass used to look at diamonds. The functions here look at diamonds
+/// @dev Forked from https://github.com/mudgen/diamond-3/blob/master/contracts/interfaces/IDiamondLoupe.sol by mudgen
+
 interface IDiamondLoupe {
     /// @notice Gets all facet addresses and their four byte function selectors.
     /// @return facets_ Facet

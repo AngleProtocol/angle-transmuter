@@ -1,36 +1,36 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /*
-                  *                                                  █                              
-                *****                                               ▓▓▓                             
-                  *                                               ▓▓▓▓▓▓▓                         
-                                   *            ///.           ▓▓▓▓▓▓▓▓▓▓▓▓▓                       
-                                 *****        ////////            ▓▓▓▓▓▓▓                          
-                                   *       /////////////            ▓▓▓                             
-                     ▓▓                  //////////////////          █         ▓▓                   
-                   ▓▓  ▓▓             ///////////////////////                ▓▓   ▓▓                
-                ▓▓       ▓▓        ////////////////////////////           ▓▓        ▓▓              
-              ▓▓            ▓▓    /////////▓▓▓///////▓▓▓/////////       ▓▓             ▓▓            
-           ▓▓                 ,////////////////////////////////////// ▓▓                 ▓▓         
-        ▓▓                  //////////////////////////////////////////                     ▓▓      
-      ▓▓                  //////////////////////▓▓▓▓/////////////////////                          
-                       ,////////////////////////////////////////////////////                        
-                    .//////////////////////////////////////////////////////////                     
-                     .//////////////////////////██.,//////////////////////////█                     
-                       .//////////////////////████..,./////////////////////██                       
-                        ...////////////////███████.....,.////////////////███                        
-                          ,.,////////////████████ ........,///////////████                          
-                            .,.,//////█████████      ,.......///////████                            
-                               ,..//████████           ........./████                               
-                                 ..,██████                .....,███                                 
-                                    .██                     ,.,█                                    
+                      *                                                  █                              
+                    *****                                               ▓▓▓                             
+                      *                                               ▓▓▓▓▓▓▓                         
+                                       *            ///.           ▓▓▓▓▓▓▓▓▓▓▓▓▓                       
+                                     *****        ////////            ▓▓▓▓▓▓▓                          
+                                       *       /////////////            ▓▓▓                             
+                         ▓▓                  //////////////////          █         ▓▓                   
+                       ▓▓  ▓▓             ///////////////////////                ▓▓   ▓▓                
+                     ▓▓       ▓▓        ////////////////////////////           ▓▓        ▓▓              
+                  ▓▓            ▓▓    /////////▓▓▓///////▓▓▓/////////       ▓▓             ▓▓            
+                ▓▓                ,////////////////////////////////////// ▓▓                 ▓▓         
+              ▓▓                 //////////////////////////////////////////                     ▓▓      
+            ▓▓                //////////////////////▓▓▓▓/////////////////////                          
+                           ,////////////////////////////////////////////////////                        
+                        .//////////////////////////////////////////////////////////                     
+                         .//////////////////////////██.,//////////////////////////█                     
+                           .//////////////////////████..,./////////////////////██                       
+                            ...////////////////███████.....,.////////////////███                        
+                              ,.,////////////████████ ........,///////////████                          
+                                .,.,//////█████████      ,.......///////████                            
+                                   ,..//████████           ........./████                               
+                                     ..,██████                .....,███                                 
+                                        .██                     ,.,█                                    
                                                                                                     
                                                                                                     
                                                                                                     
-               ▓▓            ▓▓▓▓▓▓▓▓▓▓       ▓▓▓▓▓▓▓▓▓▓        ▓▓               ▓▓▓▓▓▓▓▓▓▓          
-             ▓▓▓▓▓▓          ▓▓▓    ▓▓▓       ▓▓▓               ▓▓               ▓▓   ▓▓▓▓         
-           ▓▓▓    ▓▓▓        ▓▓▓    ▓▓▓       ▓▓▓    ▓▓▓        ▓▓               ▓▓▓▓▓             
-          ▓▓▓        ▓▓      ▓▓▓    ▓▓▓       ▓▓▓▓▓▓▓▓▓▓        ▓▓▓▓▓▓▓▓▓▓       ▓▓▓▓▓▓▓▓▓▓          
+                   ▓▓            ▓▓▓▓▓▓▓▓▓▓       ▓▓▓▓▓▓▓▓▓▓        ▓▓               ▓▓▓▓▓▓▓▓▓▓          
+                 ▓▓▓▓▓▓          ▓▓▓    ▓▓▓       ▓▓▓               ▓▓               ▓▓   ▓▓▓▓         
+               ▓▓▓    ▓▓▓        ▓▓▓    ▓▓▓       ▓▓▓    ▓▓▓        ▓▓               ▓▓▓▓▓             
+              ▓▓▓        ▓▓      ▓▓▓    ▓▓▓       ▓▓▓▓▓▓▓▓▓▓        ▓▓▓▓▓▓▓▓▓▓       ▓▓▓▓▓▓▓▓▓▓          
 */
 
 pragma solidity ^0.8.17;
@@ -50,16 +50,18 @@ import "../utils/Errors.sol";
 /// @title SavingsVest
 /// @author Angle Labs, Inc.
 /// @notice Savings contract where users can deposit an `asset` and earn a yield on this asset when it is distributed
-/// @dev This contract is functional if it has a mint right on the underlying `asset` and if it a trusted address for the kheops contract
-/// @dev The implementation assumes that `asset` is a safe contract to interact with, on which there cannot be reentrancy attacks
-/// @dev The ERC4626 interface does not allow users to specify a slippage protection parameter for the main user entry points
+/// @dev This contract is functional if it has a mint right on `asset` and if it is trusted by the kheops contract
+/// @dev The implementation assumes that `asset` is safe to interact with, on which there cannot be reentrancy attacks
+/// @dev The ERC4626 interface does not allow users to specify a slippage protection parameter for the main entry points
 /// (like `deposit`, `mint`, `redeem` or `withdraw`). Even though there should be no specific sandwiching issue here,
-/// it is still recommended to interact with this contract through a router that can implement such a protection in case of.
+/// it is still recommended to interact with this contract through a router that can implement such a protection.
 contract SavingsVest is ERC4626Upgradeable, AccessControl {
     using SafeERC20 for IERC20;
     using MathUpgradeable for uint256;
 
-    // ========================== PARAMETERS / REFERENCES ==========================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                PARAMETERS / REFERENCES                                             
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Address handling protocol surplus
     address public surplusManager;
@@ -91,11 +93,15 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
 
     uint256[46] private __gap;
 
-    // ============================== EVENTS / ERRORS ==============================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                    EVENTS / ERRORS                                                 
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     event FiledUint64(uint64 param, bytes32 what);
 
-    // =============================== INITIALIZATION ==============================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                    INITIALIZATION                                                  
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -104,7 +110,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
     /// @param _accessControlManager Reference to the `AccessControlManager` contract
     /// @param _name Name of the savings contract
     /// @param _symbol Symbol of the savings contract
-    /// @param divizer Quantifies how much the first initial deposit should (should be typically 1 for tokens like agEUR)
+    /// @param divizer Quantifies the first minimal initial deposit (should be typically 1 for tokens like agEUR)
     /// @dev A first deposit is done at initialization to protect for the classical issue of ERC4626 contracts where the
     /// the first user of the contract tries to steal everyone else's tokens
     function initialize(
@@ -125,7 +131,9 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
         _deposit(msg.sender, address(this), 10 ** numDecimals / divizer, BASE_18 / divizer);
     }
 
-    // ================================= MODIFIERS =================================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                       MODIFIERS                                                    
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Checks whether the whole contract is paused or not
     modifier whenNotPaused() {
@@ -133,7 +141,9 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
         _;
     }
 
-    // =============================== CONTRACT LOGIC ==============================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                    CONTRACT LOGIC                                                  
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Accrues interest to this contract by minting agTokens if the protocol is over-collateralized
     /// or burning some if it is not collateralized
@@ -192,14 +202,18 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
         }
     }
 
-    // =========================== ERC4626 VIEW FUNCTIONS ==========================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                ERC4626 VIEW FUNCTIONS                                              
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc ERC4626Upgradeable
     function totalAssets() public view override returns (uint256) {
         return super.totalAssets() - lockedProfit();
     }
 
-    // ======================= ERC4626 INTERACTION FUNCTIONS =======================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                             ERC4626 INTERACTION FUNCTIONS                                          
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc ERC4626Upgradeable
     function deposit(uint256 assets, address receiver) public override whenNotPaused returns (uint256 shares) {
@@ -233,7 +247,9 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
         _withdraw(_msgSender(), receiver, owner, assets, shares);
     }
 
-    // ============================== INTERNAL HELPERS =============================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                   INTERNAL HELPERS                                                 
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Same as the function above except that the `totalAssets` value does not have to be recomputed here
     function _convertToShares(
@@ -259,7 +275,9 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
                 : shares.mulDiv(totalAssets(), supply, rounding);
     }
 
-    // =================================== HELPER ==================================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                        HELPER                                                      
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Provides an estimated Annual Percentage Rate for base depositors on this contract
     function estimatedAPR() external view returns (uint256 apr) {
@@ -269,7 +287,9 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
             apr = (currentlyVestingProfit * 3600 * 24 * 365 * BASE_9) / weightedAssets;
     }
 
-    // ================================= GOVERNANCE ================================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                      GOVERNANCE                                                    
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function setSurplusManager(address _surplusManager) external onlyGuardian {
         surplusManager = _surplusManager;

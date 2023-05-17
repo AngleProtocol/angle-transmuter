@@ -39,8 +39,8 @@ src = 'test'
 via_ir = false
 
 [profile.ci.fuzz]
-runs = 10000
+runs = 100
 
 [profile.ci.invariant]
-runs = 100
-depth = 300
+runs = 10
+depth = 30

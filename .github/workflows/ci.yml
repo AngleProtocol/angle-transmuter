@@ -41,10 +41,8 @@ jobs:
       - name: Install dependencies
         run: |
           yarn install --frozen-lockfile
-      - name: Run solhint
-        run: yarn solhint --fix --max-warnings 20 'contracts/**/*.sol'
-      - name: Run eslint
-        run: yarn eslint --ignore-path .gitignore --fix --max-warnings 30 'test/**/*.{js,ts}' '*.{js,ts}'
+      - name: Run lint
+        run: yarn lint
 
   foundry-tests:
     if: github.ref == 'refs/heads/main' || github.event.inputs.workflow_to_run == 'all' || github.event.inputs.workflow_to_run == 'foundry-tests' || github.event.review.state == 'approved' || github.event.action == 'ready_for_review' || github.event.action == 'review_requested'

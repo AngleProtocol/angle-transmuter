@@ -15,16 +15,57 @@ import "../Storage.sol";
 /// @title LibOracle
 /// @author Angle Labs, Inc.
 library LibOracle {
-    /// @notice Parses an `oracleConfig` into several sub fields
-    function parseOracle(
-        bytes memory oracleConfig
-    ) internal pure returns (OracleReadType, OracleTargetType, bytes memory) {
-        return abi.decode(oracleConfig, (OracleReadType, OracleTargetType, bytes));
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                               ACTIONS SPECIFIC ORACLES                                             
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    /// @notice Reads the oracle value used during a redemption to compute collateral ratio for `oracleConfig`
+    /// @dev This value is only sensitive to compute the collateral ratio and deduce a penalty factor
+    function readRedemption(bytes memory oracleConfig) internal view returns (uint256) {
+        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = _parseOracle(oracleConfig);
+        if (readType == OracleReadType.EXTERNAL) {
+            IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
+            return externalOracle.readRedemption();
+        } else return read(readType, targetPrice(targetType), data);
     }
+
+    /// @notice Reads the oracle value used during mint operations for an asset with `oracleConfig`
+    /// @dev For assets which do not rely on external oracles, this value is the minimum between the oracle
+    /// value through the `read` function and the target price.
+    function readMint(bytes memory oracleConfig) internal view returns (uint256 oracleValue) {
+        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = _parseOracle(oracleConfig);
+        if (readType == OracleReadType.EXTERNAL) {
+            IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
+            return externalOracle.readMint();
+        }
+        uint256 _targetPrice = targetPrice(targetType);
+        oracleValue = read(readType, _targetPrice, data);
+        if (_targetPrice < oracleValue) oracleValue = _targetPrice;
+    }
+
+    /// @notice Reads the oracle value that will be used for a burn operation for an asset with `oracleConfig`
+    /// @return oracleValue The actual oracle value obtained
+    /// @return deviation If `oracle value < target price`, the ratio between the oracle value and the target
+    /// price, otherwise `BASE_18`
+    function readBurn(bytes memory oracleConfig) internal view returns (uint256 oracleValue, uint256 deviation) {
+        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = _parseOracle(oracleConfig);
+        if (readType == OracleReadType.EXTERNAL) {
+            IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
+            return externalOracle.readBurn();
+        }
+        uint256 _targetPrice = targetPrice(targetType);
+        oracleValue = read(readType, _targetPrice, data);
+        deviation = BASE_18;
+        if (oracleValue < _targetPrice) deviation = (oracleValue * BASE_18) / _targetPrice;
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                    VIEW FUNCTIONS                                                  
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Internal version of the `getOracle` function
     function getOracle(address collateral) internal view returns (OracleReadType, OracleTargetType, bytes memory) {
-        return parseOracle(s.kheopsStorage().collaterals[collateral].oracleConfig);
+        return _parseOracle(s.kheopsStorage().collaterals[collateral].oracleConfig);
     }
 
     /// @notice Gets a targetPrice depending on a `targetType`
@@ -37,10 +78,10 @@ library LibOracle {
         revert InvalidOracleType();
     }
 
-    /// @notice Computes the `quoteAmount` (for Chainlink oracles) depending on a `quoteType` encoded in the `oracleConfig` and
-    /// the target price of the asset
-    /// @dev For some assets for which the Chainlink feed directly looks into the value of the asset, the `quoteAmount` is `BASE_18`.
-    /// For others, like wstETH for which Chainlink only has an oracle for stETH, the `quoteAmount` needs to be the target price
+    /// @notice Computes the `quoteAmount` (for Chainlink oracles) depending on a `quoteType` encoded in the
+    /// `oracleConfig` and the target price of the asset
+    /// @dev For cases where the Chainlink feed directly looks into the value of the asset, `quoteAmount` is `BASE_18`.
+    /// For others, like wstETH for which Chainlink only has an oracle for stETH, `quoteAmount` is the target price
     function quoteAmount(OracleQuoteType quoteType, uint256 _targetPrice) internal pure returns (uint256) {
         if (quoteType == OracleQuoteType.UNIT) return BASE_18;
         else if (quoteType == OracleQuoteType.TARGET) return _targetPrice;
@@ -75,47 +116,9 @@ library LibOracle {
         revert InvalidOracleType();
     }
 
-    /// @notice Reads the oracle value used during a redemption to compute collateral ratio for `oracleConfig`
-    /// @dev This value is only sensitive to compute the collateral ratio and deduce a penalty factor
-    function readRedemption(bytes memory oracleConfig) internal view returns (uint256) {
-        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = parseOracle(oracleConfig);
-        if (readType == OracleReadType.EXTERNAL) {
-            IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
-            return externalOracle.readRedemption();
-        } else return read(readType, targetPrice(targetType), data);
-    }
-
-    /// @notice Reads the oracle value used during mint operations for an asset with `oracleConfig`
-    /// @dev For assets which do not rely on external oracles, this value is the minimum between the oracle
-    /// value through the `read` function and the target price.
-    function readMint(bytes memory oracleConfig) internal view returns (uint256 oracleValue) {
-        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = parseOracle(oracleConfig);
-        if (readType == OracleReadType.EXTERNAL) {
-            IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
-            return externalOracle.readMint();
-        }
-        uint256 _targetPrice = targetPrice(targetType);
-        oracleValue = read(readType, _targetPrice, data);
-        if (_targetPrice < oracleValue) oracleValue = _targetPrice;
-    }
-
-    /// @notice Reads the oracle value that will be used for a burn operation for an asset with `oracleConfig`
-    /// @return oracleValue The actual oracle value obtained
-    /// @return deviation If the oracle is inferior to the target price, the ratio between the oracle value and the target
-    /// price, otherwise `BASE_18`
-    function readBurn(bytes memory oracleConfig) internal view returns (uint256 oracleValue, uint256 deviation) {
-        (OracleReadType readType, OracleTargetType targetType, bytes memory data) = parseOracle(oracleConfig);
-        if (readType == OracleReadType.EXTERNAL) {
-            IKheopsOracle externalOracle = abi.decode(data, (IKheopsOracle));
-            return externalOracle.readBurn();
-        }
-        uint256 _targetPrice = targetPrice(targetType);
-        oracleValue = read(readType, _targetPrice, data);
-        deviation = BASE_18;
-        if (oracleValue < _targetPrice) deviation = (oracleValue * BASE_18) / _targetPrice;
-    }
-
-    // ============================== SPECIFIC HELPERS =============================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                   SPECIFIC HELPERS                                                 
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Reads a Chainlink feed using a quote amount and converts the quote amount to
     /// the out-currency
@@ -140,5 +143,11 @@ library LibOracle {
         if (multiplied == 1) return (_quoteAmount * castedRatio) / (10 ** decimals);
         else return (_quoteAmount * (10 ** decimals)) / castedRatio;
     }
-}
 
+    /// @notice Parses an `oracleConfig` into several sub fields
+    function _parseOracle(
+        bytes memory oracleConfig
+    ) private pure returns (OracleReadType, OracleTargetType, bytes memory) {
+        return abi.decode(oracleConfig, (OracleReadType, OracleTargetType, bytes));
+    }
+}

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: CC0-1.0
+
 pragma solidity ^0.8.17;
 
 import { LibDiamond } from "./libraries/LibDiamond.sol";
@@ -8,20 +9,25 @@ import "../utils/Errors.sol";
 import "./Storage.sol";
 
 /// @title DiamondProxy
-/// @author Nick Mudge <nick@perfectabstractions.com>, Twitter/Github: @mudgen
+/// @author Angle Labs, Inc.
 /// @notice Implementation of a Diamond Proxy
 /// @dev Reference: EIP-2535 Diamonds
+/// @dev Forked from https://github.com/mudgen/diamond-3/blob/master/contracts/Diamond.sol by mudgen
 contract DiamondProxy {
     constructor(FacetCut[] memory _diamondCut, address _init, bytes memory _calldata) payable {
         LibDiamond.diamondCut(_diamondCut, _init, _calldata);
     }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                   FALLBACK                                 
+    //////////////////////////////////////////////////////////////////////////*/
 
     /// @dev 1. Find the facet for the function that is called.
     /// @dev 2. Delegate the execution to the found facet via `delegatecall`.
     fallback() external payable {
         DiamondStorage storage ds = s.diamondStorage();
         // Get facet from function selector
-        address facetAddress = ds.facetAddressAndSelectorPosition[msg.sig].facetAddress;
+        address facetAddress = ds.selectorInfo[msg.sig].facetAddress;
         if (facetAddress == address(0)) {
             revert FunctionNotFound(msg.sig);
         }
@@ -50,4 +56,3 @@ contract DiamondProxy {
         }
     }
 }
-

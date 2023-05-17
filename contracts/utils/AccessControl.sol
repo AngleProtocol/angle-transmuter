@@ -12,7 +12,9 @@ contract AccessControl {
 
     uint256[49] private __gapAccessControl;
 
-    // ================================= MODIFIERS =================================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                       MODIFIERS                                                    
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Checks whether the `msg.sender` has the governor role
     modifier onlyGovernor() {
@@ -25,6 +27,10 @@ contract AccessControl {
         if (!accessControlManager.isGovernorOrGuardian(msg.sender)) revert NotGovernorOrGuardian();
         _;
     }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                       FUNCTIONS                                                    
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Checks whether `admin` has the governor role
     function isGovernor(address admin) external view returns (bool) {

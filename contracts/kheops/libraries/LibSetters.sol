@@ -116,8 +116,8 @@ library LibSetters {
         KheopsStorage storage ks = s.kheopsStorage();
         address[] memory collateralListMem = ks.collateralList;
         uint256 length = collateralListMem.length;
-        // If a fee is negative, we need to check that accounts atomically minting and then burning (from any collateral)
-        // cannot get more than their initial value
+        // If a fee is negative, we need to check that accounts atomically minting (from any collateral) and
+        // then burning cannot get more than their initial value
         if (setter == 0 && yFee[0] < 0) {
             // If `setter = 0`, this can be mathematically expressed by `(1-min_c(burnFee_c))(1-mintFee[0])<=1`
             for (uint256 i; i < length; ++i) {
@@ -137,5 +137,3 @@ library LibSetters {
         }
     }
 }
-
-

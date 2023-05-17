@@ -2,6 +2,7 @@
   "extends": "solhint:recommended",
   "plugins": ["prettier"],
   "rules": {
+    "max-line-length": ["error", 120],
     "avoid-call-value": "warn",
     "avoid-low-level-calls": "off",
     "avoid-tx-origin": "warn",

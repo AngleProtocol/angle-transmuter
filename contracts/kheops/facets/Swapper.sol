@@ -20,14 +20,17 @@ import "../Storage.sol";
 contract Swapper is ISwapper {
     using SafeERC20 for IERC20;
 
-    // ========================= EXTERNAL ACTION FUNCTIONS =========================
-    /// The two functions below can be used for both mint and burn operations. In both cases, one of `tokenIn` or `tokenOut`
-    /// must be the stablecoin, and the other must be an accepted collateral: the functions revert otherwise.
-    /// They may be paused for some collateral assets (in the mint or in the burn sense), in which case they will revert.
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                               EXTERNAL ACTION FUNCTIONS                                            
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    /// The two functions below can be used for both mint and burn operations. In both cases, one of `tokenIn` or
+    /// `tokenOut` must be the stablecoin, and the other must be an accepted collateral: the functions revert otherwise.
+    /// They may be paused for some collateral assets (for either mint or burn), in which case they will revert.
     /// An approval of `tokenIn` for this contract is also needed before interacting with it.
 
     /// @inheritdoc ISwapper
-    /// @dev `msg.sender` must have approved this contract for at least `amountIn` for `tokenIn` before calling this function
+    /// @dev `msg.sender` must have approved this contract for at least `amountIn` for `tokenIn`
     function swapExactInput(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -36,10 +39,10 @@ contract Swapper is ISwapper {
         address to,
         uint256 deadline
     ) external returns (uint256 amountOut) {
-        // Checking whether this is a mint or a burn operation, and whether the collateral provided
+        // Check whether this is a mint or a burn operation, and whether the collateral provided
         // is paused or not
         (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut);
-        // Getting the `amountOut`
+        // Get the `amountOut`
         amountOut = mint
             ? LibSwapper.quoteMintExactInput(collatInfo, amountIn)
             : LibSwapper.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
@@ -67,12 +70,15 @@ contract Swapper is ISwapper {
         LibSwapper.swap(collatInfo, amountIn, amountOut, tokenIn, tokenOut, to, deadline, mint);
     }
 
-    // ================================ VIEW HELPERS ===============================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                     VIEW HELPERS                                                   
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
     /// The functions below revert if neither of `tokenIn` and `tokenOut` are the stablecoin, and if neither
     /// of `tokenOut` and `tokenIn` are an accepted collateral.
-    /// In case of a burn, they will also revert if the system does not have an available balance of `amountOut` for `tokenOut`.
-    /// This balance must be available either directly on the contract or through the underlying strategies that manage the
-    /// collateral
+    /// In case of a burn, they will also revert if the system does not have enough of `amountOut` for `tokenOut`.
+    /// This balance must be available either directly on the contract or through the underlying strategies that manage
+    /// the collateral
 
     /// @inheritdoc ISwapper
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256 amountOut) {

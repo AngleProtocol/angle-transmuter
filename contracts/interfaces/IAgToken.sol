@@ -8,7 +8,9 @@ import "oz/token/ERC20/IERC20.sol";
 /// @author Angle Labs, Inc.
 /// @notice Interface for the stablecoins `AgToken` contracts
 interface IAgToken is IERC20 {
-    // ========================= MINTER ROLE ONLY FUNCTIONS ========================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                              MINTER ROLE ONLY FUNCTIONS                                            
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Lets a whitelisted contract mint agTokens
     /// @param account Address to mint to
@@ -31,7 +33,9 @@ interface IAgToken is IERC20 {
     /// requested to do so by an address willing to burn tokens from its address
     function burnSelf(uint256 amount, address burner) external;
 
-    // ========================== TREASURY ONLY FUNCTIONS ==========================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                TREASURY ONLY FUNCTIONS                                             
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Adds a minter in the contract
     /// @param minter Minter address to add
@@ -47,7 +51,9 @@ interface IAgToken is IERC20 {
     /// @param _treasury New treasury address
     function setTreasury(address _treasury) external;
 
-    // ============================= EXTERNAL FUNCTIONS ============================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                  EXTERNAL FUNCTIONS                                                
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Checks whether an address has the right to mint agTokens
     /// @param minter Address for which the minting right should be checked

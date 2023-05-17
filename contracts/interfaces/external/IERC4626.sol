@@ -6,8 +6,8 @@ pragma solidity >=0.5.0;
 
 /// @notice ERC4626 interface
 /// @author OpenZeppelin
-/// @dev In this implementation, the interface only contains the functions that the IERC4626 interface adds on top of the
-/// IERC20 interface
+/// @dev In this implementation, the interface only contains the functions that the IERC4626 interface adds on top of
+/// the IERC20 interface
 interface IERC4626 {
     /**
      * @dev Returns the address of the underlying token used for the Vault for accounting, depositing, and withdrawing.

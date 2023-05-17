@@ -23,7 +23,7 @@
     "size": "forge build --sizes",
     "lint": "yarn lint:sol",
     "lint:js:fix": "eslint --ignore-path .gitignore --fix --max-warnings 30 'test/**/*.{js,ts}' '*.{js,ts}'",
-    "lint:sol": "solhint --fix --max-warnings 20 \"contracts/**/*.sol\" \"contracts/**/**/*.sol\""
+    "lint:sol": "solhint --fix --max-warnings 20 \"contracts/**/*.sol\""
   },
   "keywords": [],
   "author": "Angle Core Team",
