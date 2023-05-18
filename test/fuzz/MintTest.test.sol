@@ -309,9 +309,13 @@ contract MintTest is Fixture, FunctionUtils {
                 midFees = (currentFees + endFees) / 2;
             }
             supposedAmountIn = (stableAmount * (BASE_9 + uint256(midFees)));
-            (, int256 oracleValue, , , ) = _oracles[fromToken].latestRoundData();
+            uint256 mintOracleValue;
+            {
+                (, int256 oracleValue, , , ) = _oracles[fromToken].latestRoundData();
+                mintOracleValue = uint256(oracleValue) > BASE_8 ? BASE_8 : uint256(oracleValue);
+            }
             supposedAmountIn = _convertDecimalTo(
-                supposedAmountIn / (10 * uint256(oracleValue)),
+                supposedAmountIn / (10 * mintOracleValue),
                 18,
                 IERC20Metadata(_collaterals[fromToken]).decimals()
             );
@@ -329,9 +333,13 @@ contract MintTest is Fixture, FunctionUtils {
 
             // next part is just with end fees
             supposedAmountIn += (stableAmount - amountToNextBreakpoint) * (BASE_9 + uint64(yFeeMint[lowerIndex + 1]));
-            (, int256 oracleValue, , , ) = _oracles[fromToken].latestRoundData();
+            uint256 mintOracleValue;
+            {
+                (, int256 oracleValue, , , ) = _oracles[fromToken].latestRoundData();
+                mintOracleValue = uint256(oracleValue) > BASE_8 ? BASE_8 : uint256(oracleValue);
+            }
             supposedAmountIn = _convertDecimalTo(
-                supposedAmountIn / (10 * uint256(oracleValue)),
+                supposedAmountIn / (10 * mintOracleValue),
                 18,
                 IERC20Metadata(_collaterals[fromToken]).decimals()
             );
