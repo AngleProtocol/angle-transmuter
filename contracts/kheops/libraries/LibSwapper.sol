@@ -176,18 +176,17 @@ library LibSwapper {
                 v.upperExposure = collatInfo.xFeeMint[i + 1];
                 v.lowerFees = collatInfo.yFeeMint[i];
                 v.upperFees = collatInfo.yFeeMint[i + 1];
-
-                v.amountToNextBreakPoint = ((normalizerMem *
-                    (normalizedStablesMem * v.upperExposure - collatInfo.normalizedStables * BASE_9)) /
-                    ((BASE_9 - v.upperExposure) * BASE_27));
+                v.amountToNextBreakPoint =
+                    (normalizerMem * (normalizedStablesMem * v.upperExposure - collatInfo.normalizedStables * BASE_9)) /
+                    ((BASE_9 - v.upperExposure) * BASE_27);
             } else {
                 v.lowerExposure = collatInfo.xFeeBurn[i];
                 v.upperExposure = collatInfo.xFeeBurn[i + 1];
                 v.lowerFees = collatInfo.yFeeBurn[i];
                 v.upperFees = collatInfo.yFeeBurn[i + 1];
-                v.amountToNextBreakPoint = ((normalizerMem *
-                    (collatInfo.normalizedStables * BASE_9 - normalizedStablesMem * v.upperExposure)) /
-                    ((BASE_9 - v.upperExposure) * BASE_27));
+                v.amountToNextBreakPoint =
+                    (normalizerMem * (collatInfo.normalizedStables * BASE_9 - normalizedStablesMem * v.upperExposure)) /
+                    ((BASE_9 - v.upperExposure) * BASE_27);
             }
 
             // TODO Safe casts
@@ -244,6 +243,14 @@ library LibSwapper {
                         : applyFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
                     currentExposure = v.upperExposure;
                     ++i;
+                    // update for the rest of the swaps the normalized stables
+                    uint256 changeAmount = (amountToNextBreakPointNormalizer * BASE_27) / normalizerMem;
+                    normalizedStablesMem = v.isMint
+                        ? normalizedStablesMem + changeAmount
+                        : normalizedStablesMem - changeAmount;
+                    collatInfo.normalizedStables = v.isMint
+                        ? collatInfo.normalizedStables + changeAmount
+                        : collatInfo.normalizedStables - changeAmount;
                 }
             }
         }

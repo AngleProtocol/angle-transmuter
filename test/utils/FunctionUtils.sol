@@ -31,11 +31,14 @@ contract FunctionUtils is StdUtils {
                 : uint64(bound(thresholds[i], 0, thresholds[i - 1] - 1));
             intercepts[i] = int64(bound(int256(intercepts[i]), intercepts[i - 1], int256(BASE_9)));
             if (
-                swap // For the swap functions we hardcoded BASE_12 as the maximum fees, after that it is considered as 100% fees
-                    ? int256(BASE_18) / (int256(BASE_9) - int256(intercepts[i])) - int256(BASE_9) >= int256(BASE_12)
-                    : intercepts[i] == int256(BASE_9) ||
-                        (increasing && thresholds[i] == BASE_9 - 1) ||
-                        (!increasing && thresholds[i] == 0)
+                // For the swap functions we hardcoded BASE_12 as the maximum fees, after that it is considered as 100% fees
+                (swap &&
+                    (int256(BASE_9) <= int256(intercepts[i]) ||
+                        int256(BASE_18) / (int256(BASE_9) - int256(intercepts[i])) - int256(BASE_9) >=
+                        int256(BASE_12) - 1)) ||
+                intercepts[i] == int256(BASE_9) ||
+                (increasing && thresholds[i] == BASE_9 - 1) ||
+                (!increasing && thresholds[i] == 0)
             ) {
                 nbrInflexion = i + 1;
                 break;
@@ -43,10 +46,10 @@ contract FunctionUtils is StdUtils {
         }
         if (swap) {
             for (uint256 i = 0; i < thresholds.length; ++i) {
-                intercepts[i] = (int256(BASE_18) / (int256(BASE_9) - int256(intercepts[i])) - int256(BASE_9) <
-                    int256(BASE_12))
+                intercepts[i] = (int256(BASE_9) > int256(intercepts[i])) &&
+                    (int256(BASE_18) / (int256(BASE_9) - int256(intercepts[i])) - int256(BASE_9) < int256(BASE_12))
                     ? int64(int256(BASE_18) / (int256(BASE_9) - int256(intercepts[i])) - int256(BASE_9))
-                    : int64(int256(BASE_12));
+                    : int64(int256(BASE_12)) - 1;
             }
         }
         postThres = new uint64[](nbrInflexion);
@@ -54,6 +57,8 @@ contract FunctionUtils is StdUtils {
         for (uint256 i; i < nbrInflexion; ++i) {
             postThres[i] = thresholds[i];
             postIntercep[i] = intercepts[i];
+            console.log("thres ", i, uint256(postThres[i]));
+            console.log("fee ", i, uint256(uint64(postIntercep[i])));
         }
     }
 }
