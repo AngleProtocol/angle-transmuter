@@ -94,7 +94,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
     uint256[46] private __gap;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                    EVENTS / ERRORS                                                 
+                                                        EVENTS                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     event FiledUint64(uint64 param, bytes32 what);
@@ -154,7 +154,9 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
         IAgToken _agToken = IAgToken(asset());
         (uint64 collatRatio, uint256 reserves) = _kheops.getCollateralRatio();
         if (collatRatio > BASE_9) {
+            // The surplus of profit minus a fee is distributed through this contract
             minted = (collatRatio * reserves) / BASE_9 - reserves;
+            // Updating normalizer in order not to double count profits
             _kheops.updateNormalizer(minted, true);
             uint256 surplusForProtocol = (minted * protocolSafetyFee) / BASE_9;
             address _surplusManager = surplusManager;
@@ -162,11 +164,14 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
             _agToken.mint(_surplusManager, surplusForProtocol);
             uint256 surplus = minted - surplusForProtocol;
             if (surplus != 0) {
+                // Adding new profits relaunches to zero the vesting period for the profits that were
+                // previously being vested
                 vestingProfit = (lockedProfit() + surplus);
                 lastUpdate = uint64(block.timestamp);
                 _agToken.mint(address(this), surplus);
             }
         } else {
+            // If the protocol is under-collateralized, slashing the profits that are still being vested
             uint256 missing = reserves - (collatRatio * reserves) / BASE_9;
             uint256 currentLockedProfit = lockedProfit();
             if (missing > currentLockedProfit) {
@@ -183,6 +188,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
         }
     }
 
+    /// @notice Amount of profit that are still vesting
     function lockedProfit() public view virtual returns (uint256) {
         // Get the last update and vesting delay.
         uint256 _lastUpdate = lastUpdate;
@@ -291,11 +297,13 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
                                                       GOVERNANCE                                                    
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
+    /// @notice Sets the `surplusManager` address which handles protocol fees
     function setSurplusManager(address _surplusManager) external onlyGuardian {
         surplusManager = _surplusManager;
     }
 
-    function setUint64(bytes32 what, uint64 param) external onlyGuardian {
+    /// @notice Changes the contract parameters
+    function setParams(bytes32 what, uint64 param) external onlyGuardian {
         if (param > BASE_9) revert InvalidParam();
         else if (what == "PF") protocolSafetyFee = param;
         else if (what == "VP") vestingPeriod = uint32(param);

@@ -34,8 +34,8 @@ contract Setters is AccessControlModifiers, ISetters {
     event TrustedToggled(address indexed sender, uint256 trustedStatus, uint8 trustedType);
 
     /// @inheritdoc ISetters
-    /// @dev No check is made on the collateral that is redeemed: this function could typically be used by a governance
-    /// during a manual rebalance of the reserves of the system
+    /// @dev No check is made on the collateral that is redeemed: this function could typically be used by a
+    /// governance during a manual rebalance of the reserves of the system
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];

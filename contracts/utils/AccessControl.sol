@@ -6,6 +6,8 @@ import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 
 import "../utils/Errors.sol";
 
+/// @title AccessControl
+/// @author Angle Labs, Inc.
 contract AccessControl {
     /// @notice `accessControlManager` used to check roles
     IAccessControlManager public accessControlManager;
