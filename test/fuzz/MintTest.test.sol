@@ -249,7 +249,7 @@ contract MintTest is Fixture, FunctionUtils {
 
     // =========================== PIECEWISE LINEAR FEES ===========================
 
-    function testQuoteMintExactInputReflexivityFixPiecewiseFees(
+    function testQuoteMintExactOutputReflexivityFixPiecewiseFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -367,6 +367,40 @@ contract MintTest is Fixture, FunctionUtils {
         }
     }
 
+    function testQuoteMintReflexivityRandPiecewiseFees(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint256[3] memory latestOracleValue,
+        uint64[10] memory xFeeMintUnbounded,
+        int64[10] memory yFeeMintUnbounded,
+        uint256 stableAmount,
+        uint256 fromToken
+    ) public {
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        stableAmount = bound(stableAmount, 2, _maxAmountWithoutDecimals * BASE_18);
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, ) = _loadReserves(charlie, sweeper, initialAmounts, transferProportion);
+        if (mintedStables == 0) return;
+        _updateOracles(latestOracleValue);
+        _randomMintFees(_collaterals[fromToken], xFeeMintUnbounded, yFeeMintUnbounded);
+
+        uint256 amountIn = kheops.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
+        uint256 reflexiveAmountStable;
+        // Sometimes this can crash by a division by 0
+        if (amountIn == 0) reflexiveAmountStable = 0;
+        else reflexiveAmountStable = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
+
+        if (stableAmount > _minWallet) {
+            _assertApproxEqRelDecimalWithTolerance(
+                reflexiveAmountStable,
+                stableAmount,
+                reflexiveAmountStable,
+                _MAX_PERCENTAGE_DEVIATION,
+                18
+            );
+        }
+    }
+
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                    INDEPENDANT PATH                                                 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
@@ -466,8 +500,6 @@ contract MintTest is Fixture, FunctionUtils {
             );
         }
     }
-
-    // ================================== ASSERTS ==================================
 
     // =================================== UTILS ===================================
 
