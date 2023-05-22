@@ -93,7 +93,9 @@ contract MintTest is Fixture, FunctionUtils {
         vm.prank(governor);
         kheops.setFees(_collaterals[fromToken], xFeeMint, yFeeMint, true);
 
+        if (mintFee == int256(BASE_12)) vm.expectRevert();
         uint256 amountOut = kheops.quoteIn(mintAmount, _collaterals[fromToken], address(agToken));
+        if (mintFee == int256(BASE_12)) return;
 
         uint256 supposedAmountOut = ((_convertDecimalTo(
             mintAmount,
@@ -181,21 +183,21 @@ contract MintTest is Fixture, FunctionUtils {
             18
         ) * BASE_9) / (BASE_9 + uint64(mintFee));
 
+        if (uint64(mintFee) == BASE_12) vm.expectRevert();
         uint256 amountOut = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
         if (uint64(mintFee) == BASE_12) vm.expectRevert();
         uint256 reflexiveAmountIn = kheops.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
+        if (uint64(mintFee) == BASE_12) return;
 
         assertEq(supposedAmountOut, amountOut);
-        if (uint64(mintFee) != BASE_12) {
-            if (amountOut > _minWallet) {
-                _assertApproxEqRelDecimalWithTolerance(
-                    amountIn,
-                    reflexiveAmountIn,
-                    amountIn,
-                    _MAX_PERCENTAGE_DEVIATION,
-                    IERC20Metadata(_collaterals[fromToken]).decimals()
-                );
-            }
+        if (amountOut > _minWallet) {
+            _assertApproxEqRelDecimalWithTolerance(
+                amountIn,
+                reflexiveAmountIn,
+                amountIn,
+                _MAX_PERCENTAGE_DEVIATION,
+                IERC20Metadata(_collaterals[fromToken]).decimals()
+            );
         }
     }
 
@@ -229,21 +231,21 @@ contract MintTest is Fixture, FunctionUtils {
         ) * BASE_9) / (BASE_9 + uint64(mintFee))) * (uint256(oracleValue) > BASE_8 ? BASE_8 : uint256(oracleValue))) /
             BASE_8;
 
+        if (uint64(mintFee) == BASE_12) vm.expectRevert();
         uint256 amountOut = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
         if (uint64(mintFee) == BASE_12) vm.expectRevert();
         uint256 reflexiveAmountIn = kheops.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
+        if (uint64(mintFee) == BASE_12) return;
 
         assertApproxEqAbs(supposedAmountOut, amountOut, 1 wei);
-        if (uint64(mintFee) != BASE_12) {
-            if (amountOut > _minWallet) {
-                _assertApproxEqRelDecimalWithTolerance(
-                    amountIn,
-                    reflexiveAmountIn,
-                    amountIn,
-                    _MAX_PERCENTAGE_DEVIATION,
-                    IERC20Metadata(_collaterals[fromToken]).decimals()
-                );
-            }
+        if (amountOut > _minWallet) {
+            _assertApproxEqRelDecimalWithTolerance(
+                amountIn,
+                reflexiveAmountIn,
+                amountIn,
+                _MAX_PERCENTAGE_DEVIATION,
+                IERC20Metadata(_collaterals[fromToken]).decimals()
+            );
         }
     }
 

@@ -121,9 +121,9 @@ library LibSwapper {
         Collateral memory collatInfo,
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
-        uint256 oracleValue = _getBurnOracle(collateral, collatInfo.oracleConfig);
-        amountOut = quoteFees(collatInfo, QuoteType.BurnExactOutput, amountIn);
-        amountOut = LibHelpers.convertDecimalTo((amountOut * BASE_18) / oracleValue, 18, collatInfo.decimals);
+        uint256 oracleValue = getBurnOracle(collateral, collatInfo.oracleConfig);
+        amountOut = quoteFees(collatInfo, QuoteType.BurnExactInput, amountIn);
+        amountOut = LibHelpers.convertDecimalTo((amountOut * oracleValue) / BASE_18, 18, collatInfo.decimals);
     }
 
     /// @notice Computes the `amountIn` of stablecoins to burn to release `amountOut` of `collateral`
@@ -134,7 +134,7 @@ library LibSwapper {
     ) internal view returns (uint256 amountIn) {
         uint256 oracleValue = _getBurnOracle(collateral, collatInfo.oracleConfig);
         amountIn = (oracleValue * LibHelpers.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / BASE_18;
-        amountIn = quoteFees(collatInfo, QuoteType.BurnExactInput, amountIn);
+        amountIn = quoteFees(collatInfo, QuoteType.BurnExactOutput, amountIn);
     }
 
     /// @notice Computes the fees to apply during a mint or burn operation
@@ -153,18 +153,11 @@ library LibSwapper {
         v.isInput = _isInput(quoteType);
         uint256 n = v.isMint ? collatInfo.xFeeMint.length : collatInfo.xFeeBurn.length;
 
-        // Handling the initialisation
-        if (normalizedStablesMem == 0 || n == 1) {
-            // In case the operation is a burn it will revert later on TODO Confirm with a test
-            return
-                v.isInput
-                    ? applyFee(amountStable, collatInfo.yFeeMint[0])
-                    : invertFee(amountStable, collatInfo.yFeeMint[0]);
-        }
+        // Handling the initialisation and constant fees
+        if (normalizedStablesMem == 0 || n == 1)
+            return _computeFee(quoteType, amountStable, v.isMint ? collatInfo.yFeeMint[0] : collatInfo.yFeeBurn[0]);
 
         v.otherStablecoinSupplyNorm = normalizedStablesMem - collatInfo.normalizedStables;
-        console.log("normalizedStablesMem ", normalizedStablesMem);
-        console.log("collat normalizedStables ", collatInfo.normalizedStables);
         // Increase precision because if there is a factor 1e9 betwen total stablecoin supply and
         // one specific collateral it will return a null current exposure
         uint256 currentExposure = uint64((collatInfo.normalizedStables * BASE_18) / normalizedStablesMem);
@@ -199,16 +192,11 @@ library LibSwapper {
                         ((BASE_9 - v.upperExposure) * BASE_27));
             }
 
-            // TODO Safe casts
             int256 currentFees;
             // We can only enter the else in the first iteration of the loop as otherwise we will
             // always be at the beginning of the new segment
             if (v.lowerExposure * BASE_9 == currentExposure) currentFees = v.lowerFees;
             else {
-                console.log(BASE_9 - v.lowerExposure);
-                console.log(collatInfo.normalizedStables * BASE_9);
-                console.log(normalizedStablesMem * v.lowerExposure);
-                console.log("normalizerMem ", normalizerMem);
                 v.amountFromPrevBreakPoint = v.isMint
                     ? collatInfo.normalizedStables -
                         ((normalizerMem * v.otherStablecoinSupplyNorm * v.lowerExposure) /
@@ -216,8 +204,6 @@ library LibSwapper {
                     : ((normalizerMem * v.otherStablecoinSupplyNorm * v.lowerExposure) /
                         ((BASE_9 - v.lowerExposure) * BASE_27) -
                         collatInfo.normalizedStables);
-                console.log("v.amountFromPrevBreakPoint ", v.amountFromPrevBreakPoint);
-                console.log("v.amountToNextBreakPoint ", v.amountToNextBreakPoint);
                 // precision breaks, the protocol takes less risks and charge the highest fee
                 if (v.amountToNextBreakPoint + v.amountFromPrevBreakPoint == 0) {
                     currentFees = v.upperFees;
@@ -225,26 +211,15 @@ library LibSwapper {
                     // slope is in base 18
                     uint256 slope = ((uint256(v.upperFees - v.lowerFees) * BASE_36) /
                         (v.amountToNextBreakPoint + v.amountFromPrevBreakPoint));
-                    console.log("slope ", slope);
                     currentFees = v.lowerFees + int256((slope * v.amountFromPrevBreakPoint) / BASE_36);
                 }
             }
 
-            console.log("v values ");
-            console.log("currt exposure ", currentExposure);
-            console.log("lower exposure ", v.lowerExposure);
-            console.log("upper exposure ", v.upperExposure);
-            console.logInt(currentFees);
-            console.logInt(v.lowerFees);
-            console.logInt(v.upperFees);
-            console.log("amount next breakpoint ", v.amountToNextBreakPoint);
-
             {
-                uint256 amountToNextBreakPointNormalizer = _isExact(quoteType)
-                    ? v.amountToNextBreakPoint
-                    : invertFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
+                uint256 amountToNextBreakPointNormalizer = _isExact(quoteType) ? v.amountToNextBreakPoint : v.isMint
+                    ? invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
+                    : invertFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
 
-                console.log("amount next breakpoint norm", amountToNextBreakPointNormalizer);
                 if (amountToNextBreakPointNormalizer >= amountStable) {
                     int64 midFee;
                     if (_isExact(quoteType)) {
@@ -255,13 +230,8 @@ library LibSwapper {
                                 int256(2 * v.amountToNextBreakPoint - amountStable)) /
                                 int256(2 * v.amountToNextBreakPoint)
                         );
-                        console.log("end Fee");
-                        console.logInt(
-                            currentFees +
-                                ((v.upperFees - currentFees) * int256(amountStable)) /
-                                int256(v.amountToNextBreakPoint)
-                        );
-                    } else {
+                    } else if (v.isMint) {
+                        // v.upperFees - currentFees >=0 because mint fee are increasing
                         uint256 ac4 = (2 * amountStable * uint256(v.upperFees - currentFees) * BASE_9);
                         midFee = int64(
                             (int256(
@@ -273,16 +243,31 @@ library LibSwapper {
                                 currentFees -
                                 int256(BASE_9)) / 2
                         );
+                    } else {
+                        // v.upperFees - currentFees >=0 and v.upperFees - v.lowerFees >=0
+                        // because burn fee are deceasing, but increasingin the inverse referential of xBurnFee
+                        midFee = int64(
+                            currentFees -
+                                int256(
+                                    (amountStable *
+                                        uint256(int256(BASE_9) - currentFees) *
+                                        uint256(v.upperFees - v.lowerFees)) /
+                                        (2 *
+                                            (v.amountFromPrevBreakPoint + v.amountToNextBreakPoint) *
+                                            BASE_9 -
+                                            amountStable *
+                                            uint256(v.upperFees - v.lowerFees))
+                                )
+                        );
                     }
-                    console.log("midFee ", uint64(midFee));
-                    return amount + (v.isInput ? applyFee(amountStable, midFee) : invertFee(amountStable, midFee));
+                    return amount + _computeFee(quoteType, amountStable, midFee);
                 } else {
                     amountStable -= amountToNextBreakPointNormalizer;
                     // TODO we underestimate the amount when we mintOutput and burnOutput
                     // amountToNextBreakPointWithFees is a truncated value --> we ask for less collateral than needed
                     amount += !_isExact(quoteType) ? v.amountToNextBreakPoint : v.isMint
-                        ? invertFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
-                        : applyFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
+                        ? invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
+                        : applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
                     currentExposure = v.upperExposure * BASE_9;
                     ++i;
                     // update for the rest of the swaps the normalized stables
@@ -297,11 +282,18 @@ library LibSwapper {
         // Now i == n-1 so we are in an area where fees are constant
         return
             amount +
-            (
-                v.isInput
-                    ? applyFee(amountStable, collatInfo.yFeeMint[n - 1])
-                    : invertFee(amountStable, collatInfo.yFeeMint[n - 1])
-            );
+            _computeFee(quoteType, amountStable, v.isMint ? collatInfo.yFeeMint[n - 1] : collatInfo.yFeeBurn[n - 1]);
+    }
+
+    function _computeFee(QuoteType quoteType, uint256 amountIn, int64 fees) private pure returns (uint256) {
+        return
+            quoteType == QuoteType.MintExactInput
+                ? applyFeeMint(amountIn, fees)
+                : quoteType == QuoteType.MintExactOutput
+                ? invertFeeMint(amountIn, fees)
+                : quoteType == QuoteType.BurnExactInput
+                ? applyFeeBurn(amountIn, fees)
+                : invertFeeBurn(amountIn, fees);
     }
 
     function _isMint(QuoteType quoteType) private pure returns (bool) {
@@ -316,12 +308,17 @@ library LibSwapper {
         return quoteType == QuoteType.MintExactOutput || quoteType == QuoteType.BurnExactInput;
     }
 
-    function applyFee(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
-        if (fees >= 0) amountOut = (amountIn * BASE_9) / ((BASE_9 + uint256(int256(fees))));
-        else amountOut = (amountIn * BASE_9) / (BASE_9 - uint256(int256(-fees)));
+    function applyFeeMint(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
+        if (fees >= 0) {
+            // Consider that if fees are above `BASE_12` this is equivalent to infinite fees
+            if (uint256(int256(fees)) >= BASE_12) {
+                revert InvalidSwap();
+            }
+            amountOut = (amountIn * BASE_9) / ((BASE_9 + uint256(int256(fees))));
+        } else amountOut = (amountIn * BASE_9) / (BASE_9 - uint256(int256(-fees)));
     }
 
-    function invertFee(uint256 amountOut, int64 fees) internal pure returns (uint256 amountIn) {
+    function invertFeeMint(uint256 amountOut, int64 fees) internal pure returns (uint256 amountIn) {
         if (fees >= 0) {
             // Consider that if fees are above `BASE_12` this is equivalent to infinite fees
             if (uint256(int256(fees)) >= BASE_12) {
@@ -329,6 +326,16 @@ library LibSwapper {
             }
             amountIn = Math.mulDiv(amountOut, BASE_9 + uint256(int256(fees)), BASE_9, Math.Rounding.Up);
         } else amountIn = Math.mulDiv(amountOut, BASE_9 - uint256(int256(-fees)), BASE_9, Math.Rounding.Up);
+    }
+
+    function applyFeeBurn(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
+        if (fees >= 0) amountOut = ((BASE_9 - uint256(int256(fees))) * amountIn) / BASE_9;
+        else amountOut = ((BASE_9 + uint256(int256(-fees))) * amountIn) / BASE_9;
+    }
+
+    function invertFeeBurn(uint256 amountOut, int64 fees) internal pure returns (uint256 amountIn) {
+        if (fees >= 0) amountIn = Math.mulDiv(amountOut, BASE_9, BASE_9 - uint256(int256(fees)), Math.Rounding.Up);
+        else amountIn = Math.mulDiv(amountOut, BASE_9, BASE_9 + uint256(int256(-fees)), Math.Rounding.Up);
     }
 
     function getBurnOracle(address collateral, bytes memory oracleConfig) internal view returns (uint256) {

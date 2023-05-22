@@ -82,7 +82,7 @@ contract Test {
         yBurnFee[0] = int64(uint64(BASE_9 / 99));
         yBurnFee[1] = int64(uint64(BASE_9 / 99));
         yBurnFee[2] = int64(uint64((3 * BASE_9) / 97));
-        yBurnFee[3] = int64(uint64(BASE_12));
+        yBurnFee[3] = int64(uint64(BASE_9));
 
         Setters.setFees(eurA.collateral, xBurnFee, yBurnFee, false);
         Setters.togglePause(eurA.collateral, PauseType.Burn);

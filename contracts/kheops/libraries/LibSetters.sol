@@ -94,9 +94,9 @@ library LibSetters {
         if (n != yFee.length || n == 0) revert InvalidParams();
         if (
             // Mint inflexion points should be in [0,BASE_9[
-            (setter == 0 && (xFee[n - 1] >= BASE_9 || xFee[0] != 0)) ||
-            // Burn inflexion points should be in ]0,BASE_9]
-            (setter == 1 && (xFee[n - 1] <= 0 || xFee[0] != BASE_9)) ||
+            (setter == 0 && (xFee[n - 1] >= BASE_9 || xFee[0] != 0 || yFee[n - 1] > int256(BASE_12))) ||
+            // Burn inflexion points should be in [0,BASE_9]
+            (setter == 1 && (xFee[n - 1] < 0 || xFee[0] != BASE_9 || yFee[n - 1] > int256(BASE_9))) ||
             // Redemption inflexion points should be in [0,BASE_9]
             (setter == 2 && (xFee[n - 1] > BASE_9 || yFee[n - 1] > int256(BASE_9)))
         ) revert InvalidParams();
@@ -117,20 +117,18 @@ library LibSetters {
         // If a fee is negative, we need to check that accounts atomically minting (from any collateral) and
         // then burning cannot get more than their initial value
         if (setter == 0 && yFee[0] < 0) {
-            // If `setter = 0`, this can be mathematically expressed by `(1-min_c(burnFee_c))(1-mintFee[0])<=1`
+            // If `setter = 0`, this can be mathematically expressed by `(1-min_c(burnFee_c))<=(1+mintFee[0])`
             for (uint256 i; i < length; ++i) {
                 int64[] memory burnFees = ks.collaterals[collateralListMem[i]].yFeeBurn;
-                if ((int256(BASE_9) - burnFees[0]) * (int256(BASE_9) - yFee[0]) > int256(BASE_18))
-                    revert InvalidParams();
+                if ((int256(BASE_9) - burnFees[0]) > (int256(BASE_9) + yFee[0])) revert InvalidParams();
             }
         }
 
         if (setter == 1 && yFee[0] < 0) {
-            // If `setter = 1`, this can be mathematically expressed by `(1-min_c(mintFee_c))(1-burnFee[0])<=1`
+            // If `setter = 1`, this can be mathematically expressed by `(1-burnFee[0])<=(1+min_c(mintFee_c))`
             for (uint256 i; i < length; ++i) {
                 int64[] memory mintFees = ks.collaterals[collateralListMem[i]].yFeeMint;
-                if ((int256(BASE_9) - mintFees[0]) * (int256(BASE_9) - yFee[0]) > int256(BASE_18))
-                    revert InvalidParams();
+                if ((int256(BASE_9) - yFee[0]) > (int256(BASE_9) + mintFees[0])) revert InvalidParams();
             }
         }
     }
