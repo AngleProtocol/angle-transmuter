@@ -354,7 +354,7 @@ contract MintTest is Fixture, FunctionUtils {
                 amountIn,
                 amountIn,
                 // precision of 0.1%
-                _MAX_PERCENTAGE_DEVIATION * 100000,
+                _MAX_PERCENTAGE_DEVIATION * 100,
                 18
             );
             _assertApproxEqRelDecimalWithTolerance(
@@ -371,7 +371,7 @@ contract MintTest is Fixture, FunctionUtils {
                                                    INDEPENDANT PATH                                                 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteMintExactInputIndependant(
+    function testQuoteMintExactOutputIndependant(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256 splitProportion,
@@ -381,16 +381,6 @@ contract MintTest is Fixture, FunctionUtils {
         uint256 stableAmount,
         uint256 fromToken
     ) public {
-        // TODO remove when testing is done
-        initialAmounts[0] = 0;
-        initialAmounts[1] = 121237283098396720982294090;
-        initialAmounts[2] = 0;
-
-        transferProportion = 0;
-        splitProportion = 35092971908670875981667949548059534583639132;
-        stableAmount = 3338539213596103054753909800454295203086149371845247842768523686879011271;
-        fromToken = 72335850877906199575760482753199600;
-
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         stableAmount = bound(stableAmount, 2, _maxAmountWithoutDecimals * BASE_18);
         // let's first load the reserves of the protocol
@@ -404,28 +394,72 @@ contract MintTest is Fixture, FunctionUtils {
         _updateOracles(latestOracleValue);
         _randomMintFees(_collaterals[fromToken], xFeeMintUnbounded, yFeeMintUnbounded);
 
-        // _logIssuedCollateral();
         uint256 amountIn = kheops.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
         // uint256 reflexiveAmountStable = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
-
         splitProportion = bound(splitProportion, 0, BASE_9);
         uint256 amountStableSplit1 = (stableAmount * splitProportion) / BASE_9;
         amountStableSplit1 = amountStableSplit1 == 0 ? 1 : amountStableSplit1;
         uint256 amountInSplit1 = kheops.quoteOut(amountStableSplit1, _collaterals[fromToken], address(agToken));
         // do the swap to update the system
         _mintExactOutput(alice, _collaterals[fromToken], amountStableSplit1, amountInSplit1);
-        // _logIssuedCollateral();
         uint256 amountInSplit2 = kheops.quoteOut(
             stableAmount - amountStableSplit1,
             _collaterals[fromToken],
             address(agToken)
         );
-
         if (stableAmount > _minWallet) {
             _assertApproxEqRelDecimalWithTolerance(
                 amountInSplit1 + amountInSplit2,
                 amountIn,
                 amountIn,
+                // 0.01%
+                _MAX_PERCENTAGE_DEVIATION * 100,
+                18
+            );
+        }
+    }
+
+    function testQuoteMintExactInputIndependant(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint256 splitProportion,
+        uint256[3] memory latestOracleValue,
+        uint64[10] memory xFeeMintUnbounded,
+        int64[10] memory yFeeMintUnbounded,
+        uint256 amountIn,
+        uint256 fromToken
+    ) public {
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        amountIn = bound(amountIn, 2, _maxTokenAmount[fromToken]);
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            charlie,
+            sweeper,
+            initialAmounts,
+            transferProportion
+        );
+        if (mintedStables == 0) return;
+        _updateOracles(latestOracleValue);
+        _randomMintFees(_collaterals[fromToken], xFeeMintUnbounded, yFeeMintUnbounded);
+
+        uint256 amountStable = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
+        // uint256 reflexiveAmountStable = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
+        splitProportion = bound(splitProportion, 0, BASE_9);
+        uint256 amountInSplit1 = (amountIn * splitProportion) / BASE_9;
+        amountInSplit1 = amountInSplit1 == 0 ? 1 : amountInSplit1;
+        uint256 amountStableSplit1 = kheops.quoteIn(amountInSplit1, _collaterals[fromToken], address(agToken));
+        // do the swap to update the system
+        _mintExactInput(alice, _collaterals[fromToken], amountInSplit1, amountStableSplit1);
+        uint256 amountStableSplit2 = kheops.quoteIn(
+            amountIn - amountInSplit1,
+            _collaterals[fromToken],
+            address(agToken)
+        );
+        if (amountStable > _minWallet) {
+            _assertApproxEqRelDecimalWithTolerance(
+                amountStableSplit1 + amountStableSplit2,
+                amountStable,
+                amountStable,
                 // 0.01%
                 _MAX_PERCENTAGE_DEVIATION * 100,
                 18
@@ -523,6 +557,18 @@ contract MintTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
+    function _logIssuedCollateral() internal view {
+        for (uint256 i; i < _collaterals.length; i++) {
+            (uint256 collateralIssued, uint256 total) = kheops.getIssuedByCollateral(_collaterals[i]);
+            if (i == 0) console.log("Total stablecoins issued ", total);
+            console.log("Stablecoins issued by ", i, collateralIssued);
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                        ACTIONS                                                     
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
     function _mintExactOutput(
         address owner,
         address tokenIn,
@@ -536,11 +582,11 @@ contract MintTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function _logIssuedCollateral() internal view {
-        for (uint256 i; i < _collaterals.length; i++) {
-            (uint256 collateralIssued, uint256 total) = kheops.getIssuedByCollateral(_collaterals[i]);
-            if (i == 0) console.log("Total stablecoins issued ", total);
-            console.log("Stablecoins issued by ", i, collateralIssued);
-        }
+    function _mintExactInput(address owner, address tokenIn, uint256 amountIn, uint256 estimatedStable) internal {
+        vm.startPrank(owner);
+        deal(tokenIn, owner, amountIn);
+        IERC20(tokenIn).approve(address(kheops), type(uint256).max);
+        kheops.swapExactInput(amountIn, estimatedStable, tokenIn, address(agToken), owner, block.timestamp * 2);
+        vm.stopPrank();
     }
 }

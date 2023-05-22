@@ -161,11 +161,16 @@ library LibSwapper {
                     : invertFee(amountStable, collatInfo.yFeeMint[0]);
         }
 
-        uint256 currentExposure = uint64((collatInfo.normalizedStables * BASE_9) / normalizedStablesMem);
+        console.log("normalizedStablesMem ", normalizedStablesMem);
+        console.log("collat normalizedStables ", collatInfo.normalizedStables);
+        // Increase precision because if there is a factor 1e9 betwen total stablecoin supply and
+        // one specific collateral it will return a null current exposure
+        uint256 currentExposure = uint64((collatInfo.normalizedStables * BASE_18) / normalizedStablesMem);
         uint256 amount;
         uint256 i = Utils.findLowerBound(
             v.isMint,
             v.isMint ? collatInfo.xFeeMint : collatInfo.xFeeBurn,
+            uint64(BASE_9),
             uint64(currentExposure)
         );
 
@@ -191,25 +196,51 @@ library LibSwapper {
 
             // TODO Safe casts
             int256 currentFees;
-            if (v.lowerExposure == currentExposure) currentFees = v.lowerFees;
+            // We can only enter the else in the first iteration of the loop as otherwise we will
+            // always be at the beginning of the new segment
+            if (v.lowerExposure * BASE_9 == currentExposure) currentFees = v.lowerFees;
             else {
-                v.amountFromPrevBreakPoint = ((normalizerMem *
-                    (
-                        v.isMint
-                            ? (collatInfo.normalizedStables * BASE_9 - normalizedStablesMem * v.lowerExposure)
-                            : (normalizedStablesMem * v.lowerExposure - collatInfo.normalizedStables * BASE_9)
-                    )) / ((BASE_9 - v.lowerExposure) * BASE_27));
-                // slope is in base 18
-                uint256 slope = ((uint256(v.upperFees - v.lowerFees) * BASE_27) /
-                    (v.amountToNextBreakPoint + v.amountFromPrevBreakPoint));
-                currentFees = v.lowerFees + int256((slope * v.amountFromPrevBreakPoint) / BASE_27);
+                console.log(BASE_9 - v.lowerExposure);
+                console.log(collatInfo.normalizedStables * BASE_9);
+                console.log(normalizedStablesMem * v.lowerExposure);
+                console.log("normalizerMem ", normalizerMem);
+                v.amountFromPrevBreakPoint =
+                    (normalizerMem *
+                        (
+                            v.isMint
+                                ? (collatInfo.normalizedStables * BASE_9 - normalizedStablesMem * v.lowerExposure)
+                                : (normalizedStablesMem * v.lowerExposure - collatInfo.normalizedStables * BASE_9)
+                        )) /
+                    ((BASE_9 - v.lowerExposure) * BASE_27);
+                console.log("v.amountFromPrevBreakPoint ", v.amountFromPrevBreakPoint);
+                console.log("v.amountToNextBreakPoint ", v.amountToNextBreakPoint);
+                // precision breaks, the protocol should take less risks and charge the highest fee
+                if (v.amountToNextBreakPoint + v.amountFromPrevBreakPoint == 0) {
+                    currentFees = v.upperFees;
+                } else {
+                    // slope is in base 18
+                    uint256 slope = ((uint256(v.upperFees - v.lowerFees) * BASE_36) /
+                        (v.amountToNextBreakPoint + v.amountFromPrevBreakPoint));
+                    console.log("slope ", slope);
+                    currentFees = v.lowerFees + int256((slope * v.amountFromPrevBreakPoint) / BASE_36);
+                }
             }
+
+            console.log("v values ");
+            console.log("currt exposure ", currentExposure);
+            console.log("lower exposure ", v.lowerExposure);
+            console.log("upper exposure ", v.upperExposure);
+            console.logInt(currentFees);
+            console.logInt(v.lowerFees);
+            console.logInt(v.upperFees);
+            console.log("amount next breakpoint ", v.amountToNextBreakPoint);
 
             {
                 uint256 amountToNextBreakPointNormalizer = _isExact(quoteType)
                     ? v.amountToNextBreakPoint
                     : invertFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
 
+                console.log("amount next breakpoint norm", amountToNextBreakPointNormalizer);
                 if (amountToNextBreakPointNormalizer >= amountStable) {
                     int64 midFee;
                     if (_isExact(quoteType)) {
@@ -219,6 +250,12 @@ library LibSwapper {
                                 currentFees *
                                 int256(2 * v.amountToNextBreakPoint - amountStable)) /
                                 int256(2 * v.amountToNextBreakPoint)
+                        );
+                        console.log("end Fee");
+                        console.logInt(
+                            currentFees +
+                                ((v.upperFees - currentFees) * int256(amountStable)) /
+                                int256(v.amountToNextBreakPoint)
                         );
                     } else {
                         uint256 ac4 = (2 * amountStable * uint256(v.upperFees - currentFees) * BASE_9);
@@ -233,6 +270,7 @@ library LibSwapper {
                                 int256(BASE_9)) / 2
                         );
                     }
+                    console.log("midFee ", uint64(midFee));
                     return amount + (v.isInput ? applyFee(amountStable, midFee) : invertFee(amountStable, midFee));
                 } else {
                     amountStable -= amountToNextBreakPointNormalizer;
@@ -241,16 +279,18 @@ library LibSwapper {
                     amount += !_isExact(quoteType) ? v.amountToNextBreakPoint : v.isMint
                         ? invertFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
                         : applyFee(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
-                    currentExposure = v.upperExposure;
+                    currentExposure = v.upperExposure * BASE_9;
                     ++i;
                     // update for the rest of the swaps the normalized stables
-                    uint256 changeAmount = (amountToNextBreakPointNormalizer * BASE_27) / normalizerMem;
+                    uint256 changeAmount = (v.amountToNextBreakPoint * BASE_27) / normalizerMem;
                     normalizedStablesMem = v.isMint
                         ? normalizedStablesMem + changeAmount
                         : normalizedStablesMem - changeAmount;
                     collatInfo.normalizedStables = v.isMint
                         ? collatInfo.normalizedStables + changeAmount
                         : collatInfo.normalizedStables - changeAmount;
+                    // This update is not useful it is in case we change the code
+                    v.amountFromPrevBreakPoint = 0;
                 }
             }
         }
