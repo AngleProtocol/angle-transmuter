@@ -848,38 +848,29 @@ contract RedeemerTest is Fixture, FunctionUtils {
             amountInValueReceived += (uint256(value) * _convertDecimalTo(amounts[i], decimals, 18)) / BASE_8;
         }
 
-        if (collatRatio < BASE_9) {
-            assertEq(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt * fee) / (mintedStables * BASE_9));
-            assertEq(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt * fee) / (mintedStables * BASE_9));
-            assertEq(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt * fee) / (mintedStables * BASE_9));
-            assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
-            // // TODO make the one below pass
-            // // it is not bulletproof yet (work in many cases but not all)
-            // // We accept that small amount tx get out with uncapped loss (compare to what they should get with
-            // // infinite precision), but larger one should have a loss smaller than 0.1%
-            // if (amountInValueReceived >= _minWallet)
-            //     assertApproxEqRelDecimal(
-            //         amountInValueReceived,
-            //         (collatRatio * amountBurnt * fee) / BASE_18,
-            //         _percentageLossAccepted,
-            //         18
-            //     );
-        } else {
-            assertEq(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt * fee) / (mintedStables * collatRatio));
-            assertEq(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt * fee) / (mintedStables * collatRatio));
-            assertEq(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt * fee) / (mintedStables * collatRatio));
+        uint256 denom = (mintedStables * BASE_9);
+        uint256 valueCheck = (collatRatio * amountBurnt * fee) / BASE_18;
+        if (collatRatio >= BASE_9) {
+            denom = (mintedStables * collatRatio);
             assertLe(amountInValueReceived, amountBurnt);
-            // // TODO make the one below pass
-            // // We accept that small amount tx get out with uncapped loss (compare to what they should get with
-            // // infinite precision), but larger one should have a loss smaller than 0.1%
-            // if (amountInValueReceived >= _minWallet)
-            //     assertApproxEqRelDecimal(
-            //         amountInValueReceived,
-            //         (amountBurnt * fee) / BASE_9,
-            //         _percentageLossAccepted,
-            //         18
-            //     );
+            valueCheck = (amountBurnt * fee) / BASE_9;
         }
+        assertEq(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt * fee) / denom);
+        assertEq(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt * fee) / denom);
+        assertEq(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt * fee) / denom);
+        if (collatRatio < BASE_9) {
+            assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
+        }
+        // TODO make the one below pass: it is not bulletproof yet (work in many cases but not all)
+        // We accept that small amount tx get out with uncapped loss (compare to what they should get with
+        // infinite precision), but larger one should have a loss smaller than 0.1%
+        // if (amountInValueReceived >= _minWallet)
+        //     assertApproxEqRelDecimal(
+        //         amountInValueReceived,
+        //         valueCheck,
+        //         _percentageLossAccepted,
+        //         18
+        //     );
     }
 
     function _assertQuoteAmountsWithManager(
