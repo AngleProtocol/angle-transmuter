@@ -34,17 +34,18 @@ contract Setters is AccessControlModifiers, ISetters {
     event TrustedToggled(address indexed sender, uint256 trustedStatus, uint8 trustedType);
 
     /// @inheritdoc ISetters
-    /// @dev No check is made on the collateral that is redeemed: this function could typically be used by a governance
-    /// during a manual rebalance the reserves of the system
+    /// @dev No check is made on the collateral that is redeemed: this function could typically be used by a
+    /// governance during a manual rebalance of the reserves of the system
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external onlyGovernor {
         KheopsStorage storage ks = s.kheopsStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
         bool isManaged = collatInfo.isManaged > 0;
         ManagerStorage memory emptyManagerData;
-        LibHelpers.transferCollateral(
+        LibHelpers.transferCollateralTo(
             isManaged ? address(token) : collateral,
             to,
             amount,
+            false,
             isManaged ? collatInfo.managerData : emptyManagerData
         );
     }
@@ -59,10 +60,12 @@ contract Setters is AccessControlModifiers, ISetters {
         Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         uint8 isManaged = collatInfo.isManaged;
-        if (isManaged > 0) LibManager.pullAll(collateral, collatInfo.managerData);
+        if (isManaged > 0) LibManager.pullAll(collatInfo.managerData);
         if (managerData.managerConfig.length != 0) {
             // The first subCollateral given should be the actual collateral asset
-            if (address(managerData.subCollaterals[0]) != collateral) revert InvalidParam();
+            if (address(managerData.subCollaterals[0]) != collateral) revert InvalidParams();
+            // Sanity check on the manager data that is passed
+            LibManager.parseManagerData(managerData);
             collatInfo.isManaged = 1;
         } else {
             ManagerStorage memory emptyManagerData;
@@ -70,6 +73,18 @@ contract Setters is AccessControlModifiers, ISetters {
         }
         collatInfo.managerData = managerData;
         emit CollateralManagerSet(collateral, managerData);
+    }
+
+    /// @inheritdoc ISetters
+    /// @dev This function can typically be used to grant allowance to a newly added manager for it to pull the
+    /// funds associated to the collateral it corresponds to
+    function changeAllowance(IERC20 token, address spender, uint256 amount) external onlyGovernor {
+        uint256 currentAllowance = token.allowance(address(this), spender);
+        if (currentAllowance < amount) {
+            token.safeIncreaseAllowance(spender, amount - currentAllowance);
+        } else if (currentAllowance > amount) {
+            token.safeDecreaseAllowance(spender, currentAllowance - amount);
+        }
     }
 
     /// @inheritdoc ISetters
@@ -121,7 +136,7 @@ contract Setters is AccessControlModifiers, ISetters {
         if (collatInfo.decimals == 0 || collatInfo.normalizedStables > 0) revert NotCollateral();
         uint8 isManaged = collatInfo.isManaged;
         // If the collateral is managed through strategies, pulling all available funds from there
-        if (isManaged > 0) LibManager.pullAll(collateral, collatInfo.managerData);
+        if (isManaged > 0) LibManager.pullAll(collatInfo.managerData);
         delete ks.collaterals[collateral];
         address[] memory collateralListMem = ks.collateralList;
         uint256 length = collateralListMem.length;
@@ -162,4 +177,3 @@ contract Setters is AccessControlModifiers, ISetters {
         return LibRedeemer.updateNormalizer(amount, increase);
     }
 }
-

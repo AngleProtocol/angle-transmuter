@@ -96,9 +96,9 @@ contract Savings is ERC4626Upgradeable, AccessControl {
     /// @param _accessControlManager Reference to the `AccessControlManager` contract
     /// @param _name Name of the savings contract
     /// @param _symbol Symbol of the savings contract
-    /// @param divizer Quantifies how much the first initial deposit should (should be typically 1 for tokens like agEUR)
-    /// @dev A first deposit is done at initialization to protect for the classical issue of ERC4626 contracts where the
-    /// the first user of the contract tries to steal everyone else's tokens
+    /// @param divizer Quantifies the first initial deposit (should be typically 1 for tokens like agEUR)
+    /// @dev A first deposit is done at initialization to protect for the classical issue of ERC4626 contracts
+    /// where the the first user of the contract tries to steal everyone else's tokens
     function initialize(
         IAccessControlManager _accessControlManager,
         IERC20MetadataUpgradeable asset_,

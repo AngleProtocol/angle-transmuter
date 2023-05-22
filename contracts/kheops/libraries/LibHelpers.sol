@@ -14,41 +14,54 @@ import "../Storage.sol";
 library LibHelpers {
     using SafeERC20 for IERC20;
 
-    function transferCollateral(address token, address to, uint256 amount, ManagerStorage memory managerData) internal {
+    /// @notice Performs a collateral transfer from the contract or its underlying managers to another address
+    function transferCollateralTo(
+        address token,
+        address to,
+        uint256 amount,
+        bool redeem,
+        ManagerStorage memory managerData
+    ) internal {
         if (amount > 0) {
-            if (managerData.managerConfig.length != 0) LibManager.transfer(token, to, amount, managerData);
+            if (managerData.managerConfig.length != 0) LibManager.transferTo(token, to, amount, redeem, managerData);
             else IERC20(token).safeTransfer(to, amount);
         }
     }
 
+    /// @notice Performs a collateral transfer to one of the contract of the Kheops system depending on the
+    /// `managerData` associated to `token`
+    function transferCollateralFrom(address token, uint256 amount, ManagerStorage memory managerData) internal {
+        if (amount > 0) {
+            if (managerData.managerConfig.length != 0) LibManager.transferFrom(token, amount, managerData);
+            else IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        }
+    }
+
+    /// @notice Rebases the units of `amount` from `fromDecimals` to `toDecimals`
     function convertDecimalTo(uint256 amount, uint8 fromDecimals, uint8 toDecimals) internal pure returns (uint256) {
         if (fromDecimals > toDecimals) return amount / 10 ** (fromDecimals - toDecimals);
         else if (fromDecimals < toDecimals) return amount * 10 ** (toDecimals - fromDecimals);
         else return amount;
     }
 
-    function checkForfeit(address token, address[] memory tokens) internal pure returns (int256) {
+    /// @notice Checks whether a `token` is in a list `tokens` and returns the index of the token in the list
+    /// or -1 in the other case
+    function checkList(address token, address[] memory tokens) internal pure returns (int256) {
         for (uint256 i = 0; i < tokens.length; ++i) {
-            // if tokens.length>type(uint256).max, then it will return a negative value if found
-            // for no attack surface any negative value should be considered as not found
             if (token == tokens[i]) return int256(i);
         }
 
         return -1;
     }
 
-    // Inspired from OpenZeppelin
-    // OpenZeppelin Contracts v4.4.1 (utils/Arrays.sol)
-    // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Arrays.sol
-    // Modified Angle Labs to support uint64, monotonous arrays and exclusive upper bounds
-    /**
-     * @dev Searches a sorted `array` and returns the first index that contains
-     * a value strictly greater (or lower if increasingArray is false)  to `element`.
-     * If no such index exists (i.e. all values in the array are strictly less/greater than `element`),
-     * the array length is returned. Time complexity O(log n).
-     *
-     * `array` is expected to be sorted, and to contain no repeated elements.
-     */
+    /// @notice Searches a sorted `array` and returns the first index that contains a value strictly greater
+    /// (or lower if increasingArray is false)  to `element`
+    /// @dev If no such index exists (i.e. all values in the array are strictly less/greater than `element`),
+    /// the array length is returned
+    /// @dev The time complexity of the search is O(log n).
+    /// @dev Inspired from OpenZeppelin Contracts v4.4.1:
+    /// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Arrays.sol
+    /// @dev Modified by Angle Labs to support `uint64`, monotonous arrays and exclusive upper bounds
     function findLowerBound(
         bool increasingArray,
         uint64[] memory array,
@@ -80,6 +93,9 @@ library LibHelpers {
         return low - 1;
     }
 
+    /// @notice Evaluates for `x` a piecewise linear function defined with the breaking points in the arrays
+    /// `xArray` and `yArray`
+    /// @dev The values in the `xArray` may be increasing or decreasing based on the value of `increasingArray`
     function piecewiseLinear(
         uint64 x,
         bool increasingArray,

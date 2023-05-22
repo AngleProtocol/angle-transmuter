@@ -56,12 +56,13 @@ library LibRedeemer {
         for (uint256 i; i < amounts.length; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             // If a token is in the `forfeitTokens` list, then it is not sent as part of the redemption process
-            if (LibHelpers.checkForfeit(tokens[i], forfeitTokens) < 0) {
+            if (LibHelpers.checkList(tokens[i], forfeitTokens) < 0) {
                 ManagerStorage memory emptyManagerData;
-                LibHelpers.transferCollateral(
+                LibHelpers.transferCollateralTo(
                     tokens[i],
                     to,
                     amounts[i],
+                    true,
                     ks.collaterals[collateralListMem[indexCollateral]].isManaged > 0
                         ? ks.collaterals[collateralListMem[indexCollateral]].managerData
                         : emptyManagerData
@@ -147,35 +148,35 @@ library LibRedeemer {
         {
             uint256 countCollat;
             for (uint256 i; i < collateralListLength; ++i) {
-                if (ks.collaterals[collateralList[i]].isManaged > 0) {
+                Collateral memory collateral = ks.collaterals[collateralList[i]];
+                uint256 collateralBalance;
+                if (collateral.isManaged > 0) {
                     // If a collateral is managed, the balances of the sub-collaterals cannot be directly obtained by
                     // calling `balanceOf` of the sub-collaterals.
                     // Managed assets must support ways to value their sub-collaterals in a non manipulable way
-                    (uint256[] memory subCollateralsBalances, uint256 totalValue) = LibManager.getUnderlyingBalances(
-                        ks.collaterals[collateralList[i]].managerData
-                    );
-                    uint256 curNbrSubCollat = subCollateralsBalances.length;
-                    for (uint256 k; k < curNbrSubCollat; ++k) {
-                        tokens[countCollat + k] = address(
-                            ks.collaterals[collateralList[i]].managerData.subCollaterals[k]
-                        );
+                    (uint256[] memory subCollateralsBalances, uint256 subCollateralsValue) = LibManager
+                        .getUnderlyingBalances(collateral.managerData);
+                    // `subCollateralsBalances` length is not cached here to avoid stack too deep
+                    for (uint256 k; k < subCollateralsBalances.length; ++k) {
+                        tokens[countCollat + k] = address(collateral.managerData.subCollaterals[k]);
                         balances[countCollat + k] = subCollateralsBalances[k];
                     }
-                    countCollat += curNbrSubCollat;
-                    totalCollateralization += totalValue;
+                    collateralBalance = subCollateralsBalances[0];
+                    countCollat += subCollateralsBalances.length;
+                    totalCollateralization += subCollateralsValue;
                 } else {
-                    uint256 balance = IERC20(collateralList[i]).balanceOf(address(this));
+                    collateralBalance = IERC20(collateralList[i]).balanceOf(address(this));
                     tokens[countCollat] = collateralList[i];
-                    balances[countCollat++] = balance;
-                    uint256 oracleValue = LibOracle.readRedemption(ks.collaterals[collateralList[i]].oracleConfig);
-                    totalCollateralization +=
-                        (oracleValue *
-                            LibHelpers.convertDecimalTo(balance, ks.collaterals[collateralList[i]].decimals, 18)) /
-                        BASE_18;
+                    balances[countCollat++] = collateralBalance;
                 }
+                uint256 oracleValue = LibOracle.readRedemption(collateral.oracleConfig);
+                totalCollateralization +=
+                    (oracleValue * LibHelpers.convertDecimalTo(collateralBalance, collateral.decimals, 18)) /
+                    BASE_18;
             }
         }
-        // TODO: how are roundings decided here?
+        // The `stablecoinsIssued` value need to be rounded up because it is then use to as a divizer when computing
+        // the amount of stablecoins issued
         stablecoinsIssued = uint256(ks.normalizedStables).mulDiv(ks.normalizer, BASE_27, Math.Rounding.Up);
         if (stablecoinsIssued > 0)
             collatRatio = uint64(totalCollateralization.mulDiv(BASE_9, stablecoinsIssued, Math.Rounding.Up));
@@ -183,16 +184,17 @@ library LibRedeemer {
     }
 
     /// @notice Updates the `normalizer` variable used to track stablecoins issued from each asset and globally
-    // TODO: did we fully test updateNormalizer in settings where it gets too big or too small and stablecoins have been issued
-    // TODO: did we also check the roundings going on with this function
     function updateNormalizer(uint256 amount, bool increase) internal returns (uint256 newNormalizerValue) {
         KheopsStorage storage ks = s.kheopsStorage();
         uint256 _normalizer = ks.normalizer;
         uint256 _normalizedStables = ks.normalizedStables;
         if (_normalizedStables == 0)
             newNormalizerValue = BASE_27;
-            // The update formula is actually:
-            // _normalizer*(BASE_27+BASE_27*amount/stablecoinsIssued)/BASE_27 = _normalizer+(_normalizer*BASE_27*amount*(BASE_27/(_normalizedStables*normalizer)))/BASE_27
+            // In case of an increase, the update formula used is the simplified version of the formula below:
+            /*
+             _normalizer * (BASE_27 + BASE_27 * amount / stablecoinsIssued) / BASE_27 = 
+                _normalizer + (_normalizer * BASE_27 * amount * (BASE_27 / (_normalizedStables * normalizer))) / BASE_27
+            */
         else if (increase) newNormalizerValue = _normalizer + (amount * BASE_27) / _normalizedStables;
         else newNormalizerValue = _normalizer - (amount * BASE_27) / _normalizedStables;
         // If the `normalizer` gets too small or too big, it must be renormalized to later avoid the propagation of

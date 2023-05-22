@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "oz/token/ERC20/extensions/IERC20Metadata.sol";
-
+//solhint-disable
 import { console } from "forge-std/console.sol";
 
 import { MockChainlinkOracle } from "mock/MockChainlinkOracle.sol";
@@ -42,7 +42,7 @@ contract Calls is Fixture {
         console.log("Issued Total: ", issued);
     }
 
-    function swap(uint256 quoteTypeUint, uint256 collatNumber, uint256 amount) public countCall("swap") {
+    function swap(uint256, uint256 collatNumber, uint256 amount) public countCall("swap") {
         QuoteType quoteType = QuoteType(bound(collatNumber, 0, 3));
         collatNumber = bound(collatNumber, 0, 2);
         amount = bound(amount, 1, 10 ** 18);
