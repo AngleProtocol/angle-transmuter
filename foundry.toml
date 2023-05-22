@@ -14,7 +14,7 @@ solc_version = '0.8.17'
 ffi = true
 
 [fuzz]
-runs = 1000
+runs = 10000
 # seed = 0xA19737
 
 [invariant]

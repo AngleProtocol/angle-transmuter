@@ -301,11 +301,11 @@ contract MintTest is Fixture, FunctionUtils {
             int256 midFees;
             {
                 int256 currentFees;
-                uint256 slope = (uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_27) /
+                uint256 slope = (uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_36) /
                     (amountToNextBreakpoint + amountFromPrevBreakpoint);
-                currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_27);
+                currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_36);
                 int256 endFees = yFeeMint[lowerIndex] +
-                    int256((slope * (amountFromPrevBreakpoint + stableAmount)) / BASE_27);
+                    int256((slope * (amountFromPrevBreakpoint + stableAmount)) / BASE_36);
                 midFees = (currentFees + endFees) / 2;
             }
             supposedAmountIn = (stableAmount * (BASE_9 + uint256(midFees)));
@@ -323,9 +323,9 @@ contract MintTest is Fixture, FunctionUtils {
             collateralMintedStables[fromToken] += amountToNextBreakpoint;
             int256 midFees;
             {
-                uint256 slope = ((uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_27) /
+                uint256 slope = ((uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_36) /
                     (amountToNextBreakpoint + amountFromPrevBreakpoint));
-                int256 currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_27);
+                int256 currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_36);
                 int256 endFees = yFeeMint[lowerIndex + 1];
                 midFees = (currentFees + endFees) / 2;
             }
