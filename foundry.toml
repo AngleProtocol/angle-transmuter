@@ -15,6 +15,7 @@ ffi = true
 
 [fuzz]
 runs = 10000
+seed = 0xa7121
 
 [invariant]
 runs = 10

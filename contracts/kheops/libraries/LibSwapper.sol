@@ -17,6 +17,8 @@ import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 import "../Storage.sol";
 
+import { console } from "forge-std/console.sol";
+
 // Struct to help storing local variables to avoid stack too deep issues
 struct LocalVariables {
     bool isMint;
@@ -176,6 +178,9 @@ library LibSwapper {
             uint64(currentExposure)
         );
 
+        console.log("currentExposure ", currentExposure);
+        console.log("index ", i);
+
         while (i < n - 1) {
             // We transform the linear function on exposure to a linear function depending on the amount swapped
             if (v.isMint) {
@@ -227,11 +232,22 @@ library LibSwapper {
                 if (!v.isMint && currentFees == int256(BASE_9)) revert InvalidSwap();
             }
 
+            console.log("v values ");
+            console.log("currt exposure ", currentExposure);
+            console.log("lower exposure ", v.lowerExposure);
+            console.log("upper exposure ", v.upperExposure);
+            console.logInt(currentFees);
+            console.logInt(v.lowerFees);
+            console.logInt(v.upperFees);
+            console.log("amount next breakpoint ", v.amountToNextBreakPoint);
+            console.log("amountStable ", amountStable);
+
             {
                 uint256 amountToNextBreakPointNormalizer = v.isExact ? v.amountToNextBreakPoint : v.isMint
                     ? invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
                     : applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
 
+                console.log("amount next breakpoint norm", amountToNextBreakPointNormalizer);
                 if (amountToNextBreakPointNormalizer >= amountStable) {
                     int64 midFee;
                     if (v.isExact) {
@@ -300,6 +316,8 @@ library LibSwapper {
                             );
                         }
                     }
+                    console.log("segment: midFee ", uint64(midFee));
+                    console.log("segment: amountOut ", _computeFee(quoteType, amountStable, midFee));
                     return amount + _computeFee(quoteType, amountStable, midFee);
                 } else {
                     amountStable -= amountToNextBreakPointNormalizer;
@@ -315,6 +333,11 @@ library LibSwapper {
                 }
             }
         }
+        console.log("amountStable ", amountStable);
+        console.log(
+            "last index: amountOut",
+            _computeFee(quoteType, amountStable, v.isMint ? collatInfo.yFeeMint[n - 1] : collatInfo.yFeeBurn[n - 1])
+        );
         // Now i == n-1 so we are in an area where fees are constant
         return
             amount +
