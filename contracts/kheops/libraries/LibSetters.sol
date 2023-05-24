@@ -124,7 +124,7 @@ library LibSetters {
             // If `setter = 0`, this can be mathematically expressed by `(1-min_c(burnFee_c))<=(1+mintFee[0])`
             for (uint256 i; i < length; ++i) {
                 int64[] memory burnFees = ks.collaterals[collateralListMem[i]].yFeeBurn;
-                if ((int256(BASE_9) - burnFees[0]) > (int256(BASE_9) + yFee[0])) revert InvalidParams();
+                if (burnFees[0] + yFee[0] < 0) revert InvalidParams();
             }
         }
 
@@ -132,7 +132,7 @@ library LibSetters {
             // If `setter = 1`, this can be mathematically expressed by `(1-burnFee[0])<=(1+min_c(mintFee_c))`
             for (uint256 i; i < length; ++i) {
                 int64[] memory mintFees = ks.collaterals[collateralListMem[i]].yFeeMint;
-                if ((int256(BASE_9) - yFee[0]) > (int256(BASE_9) + mintFees[0])) revert InvalidParams();
+                if (yFee[0] + mintFees[0] < 0) revert InvalidParams();
             }
         }
     }
