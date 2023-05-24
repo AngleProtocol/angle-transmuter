@@ -226,11 +226,11 @@ library LibSwapper {
             {
                 uint256 amountToNextBreakPointNormalizer = _isExact(quoteType) ? v.amountToNextBreakPoint : v.isMint
                     ? invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
-                    : invertFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
+                    : applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
 
                 if (amountToNextBreakPointNormalizer >= amountStable) {
                     int64 midFee;
-                    if (quoteType != QuoteType.MintExactInput) {
+                    if (_isExact(quoteType)) {
                         midFee = int64(
                             (v.upperFees *
                                 int256(amountStable) +
@@ -252,42 +252,18 @@ library LibSwapper {
                                 int256(BASE_9)) / 2
                         );
                     } else {
-                        // v.upperFees - currentFees >=0 and v.upperFees - v.lowerFees >=0
-                        // because burn fee are deceasing, but increasingin the inverse referential of xBurnFee
-                        // midFee = int64(
-                        //     currentFees -
-                        //         int256(
-                        //             (amountStable *
-                        //                 uint256(int256(BASE_9) - currentFees) *
-                        //                 uint256(v.upperFees - v.lowerFees)) /
-                        //                 (2 *
-                        //                     (v.amountFromPrevBreakPoint + v.amountToNextBreakPoint) *
-                        //                     BASE_9 -
-                        //                     amountStable *
-                        //                     uint256(v.upperFees - v.lowerFees))
-                        //         )
-                        // );
-
+                        // v.upperFees - currentFees >=0 because burn fee are increasing
+                        uint256 ac4 = (2 * amountStable * uint256(v.upperFees - currentFees) * BASE_9);
                         midFee = int64(
-                            currentFees +
-                                ((int256(BASE_9) - currentFees) * int256(amountStable) * (v.upperFees - v.lowerFees)) /
-                                (int256(amountStable) *
-                                    (v.upperFees - v.lowerFees) +
-                                    (2 *
-                                        int256(BASE_9) *
-                                        int256(v.amountFromPrevBreakPoint + v.amountToNextBreakPoint)))
+                            (currentFees +
+                                int256(BASE_9) -
+                                int256(
+                                    Math.sqrt(
+                                        // BASE_9 - currentFees >= 0
+                                        (uint256(int256(BASE_9) - currentFees)) ** 2 - ac4 / v.amountToNextBreakPoint
+                                    )
+                                )) / 2
                         );
-
-                        uint256 amountOut = (2 *
-                            (v.amountFromPrevBreakPoint + v.amountToNextBreakPoint) *
-                            amountStable *
-                            uint256(int256(BASE_9) - currentFees)) /
-                            (2 *
-                                (v.amountFromPrevBreakPoint + v.amountToNextBreakPoint) *
-                                BASE_9 +
-                                amountStable *
-                                uint256(v.upperFees - v.lowerFees));
-                        return amount + amountOut;
                     }
                     return amount + _computeFee(quoteType, amountStable, midFee);
                 } else {
@@ -303,7 +279,6 @@ library LibSwapper {
                     collatInfo.normalizedStables = v.isMint
                         ? collatInfo.normalizedStables + v.amountToNextBreakPoint
                         : collatInfo.normalizedStables - v.amountToNextBreakPoint;
-                    // This update is not useful it is in case we change the code
                     v.amountFromPrevBreakPoint = 0;
                 }
             }
@@ -385,8 +360,6 @@ library LibSwapper {
             } else (oracleValue, deviationObserved) = LibOracle.readBurn(oracleConfig);
             if (deviationObserved < deviation) deviation = deviationObserved;
         }
-        // // Reverting if `oracleValue == 0`
-        // return (deviation * BASE_18) / oracleValue;
     }
 
     function checkAmounts(address collateral, Collateral memory collatInfo, uint256 amountOut) internal view {

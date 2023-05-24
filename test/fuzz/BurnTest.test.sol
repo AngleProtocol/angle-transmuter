@@ -308,10 +308,11 @@ contract BurnTest is Fixture, FunctionUtils {
             transferProportion
         );
         if (mintedStables == 0) return;
-        // _updateOracles(latestOracleValue);
+        _updateOracles(latestOracleValue);
 
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
+        if (stableAmount == 0) return;
         upperFees = int64(bound(int256(upperFees), 0, int256(BASE_9) - 1));
         uint64[] memory xFeeBurn = new uint64[](3);
         xFeeBurn[0] = uint64(BASE_9);
@@ -326,6 +327,7 @@ contract BurnTest is Fixture, FunctionUtils {
 
         uint256 supposedAmountOut;
         {
+            uint256 copyStableAmount = stableAmount;
             uint256[] memory exposures = _getExposures(mintedStables, collateralMintedStables);
             (
                 uint256 amountFromPrevBreakpoint,
@@ -342,15 +344,15 @@ contract BurnTest is Fixture, FunctionUtils {
             if (lowerIndex == type(uint256).max) return;
 
             if (lowerIndex == 0) {
-                if (stableAmount <= amountToNextBreakpoint) {
-                    collateralMintedStables[fromToken] -= stableAmount;
+                if (copyStableAmount <= amountToNextBreakpoint) {
+                    collateralMintedStables[fromToken] -= copyStableAmount;
                     // first burn segment are always constant fees
                     supposedAmountOut += _convertDecimalTo(
-                        _getBurnOracle(stableAmount, uint64(yFeeBurn[lowerIndex + 1]), fromToken),
+                        _getBurnOracle(copyStableAmount, uint64(yFeeBurn[lowerIndex + 1]), fromToken),
                         18,
                         IERC20Metadata(_collaterals[fromToken]).decimals()
                     );
-                    stableAmount = 0;
+                    copyStableAmount = 0;
                 } else {
                     collateralMintedStables[fromToken] -= amountToNextBreakpoint;
                     mintedStables -= amountToNextBreakpoint;
@@ -360,7 +362,7 @@ contract BurnTest is Fixture, FunctionUtils {
                         18,
                         IERC20Metadata(_collaterals[fromToken]).decimals()
                     );
-                    stableAmount -= amountToNextBreakpoint;
+                    copyStableAmount -= amountToNextBreakpoint;
 
                     exposures = _getExposures(mintedStables, collateralMintedStables);
                     (amountFromPrevBreakpoint, amountToNextBreakpoint, lowerIndex) = _amountToPrevAndNextExposure(
@@ -372,9 +374,9 @@ contract BurnTest is Fixture, FunctionUtils {
                     );
                 }
             }
-            if (stableAmount > 0) {
-                if (stableAmount <= amountToNextBreakpoint) {
-                    collateralMintedStables[fromToken] += stableAmount;
+            if (copyStableAmount > 0) {
+                if (copyStableAmount <= amountToNextBreakpoint) {
+                    collateralMintedStables[fromToken] += copyStableAmount;
 
                     int256 midFees;
                     {
@@ -383,11 +385,11 @@ contract BurnTest is Fixture, FunctionUtils {
                             (amountToNextBreakpoint + amountFromPrevBreakpoint);
                         currentFees = yFeeBurn[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_36);
                         int256 endFees = yFeeBurn[lowerIndex] +
-                            int256((slope * (amountFromPrevBreakpoint + stableAmount)) / BASE_36);
+                            int256((slope * (amountFromPrevBreakpoint + copyStableAmount)) / BASE_36);
                         midFees = (currentFees + endFees) / 2;
                     }
                     supposedAmountOut += _convertDecimalTo(
-                        _getBurnOracle(stableAmount, uint64(uint256(midFees)), fromToken),
+                        _getBurnOracle(copyStableAmount, uint64(uint256(midFees)), fromToken),
                         18,
                         IERC20Metadata(_collaterals[fromToken]).decimals()
                     );
@@ -406,7 +408,7 @@ contract BurnTest is Fixture, FunctionUtils {
 
                     // next part is just with end fees
                     supposedAmountOut +=
-                        (stableAmount - amountToNextBreakpoint) *
+                        (copyStableAmount - amountToNextBreakpoint) *
                         (BASE_9 - uint64(yFeeBurn[lowerIndex + 1]));
                     supposedAmountOut += _convertDecimalTo(
                         _getBurnOracle(supposedAmountOut, uint64(BASE_9), fromToken),
@@ -419,7 +421,7 @@ contract BurnTest is Fixture, FunctionUtils {
 
         console.log("from token ", fromToken);
         uint256 amountOut = kheops.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
-        console.log("reflexiveAMount");
+        if (amountOut == 0) return;
         uint256 reflexiveAmountStable = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
 
         if (stableAmount > _minWallet) {
