@@ -20,7 +20,7 @@ struct SubCollateralStorage {
     AggregatorV3Interface[] oracles;
 }
 
-contract RedeemerTest is Fixture, FunctionUtils {
+contract RedeemTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
 
     uint256 internal _maxAmountWithoutDecimals = 10 ** 15;
@@ -1069,7 +1069,7 @@ contract RedeemerTest is Fixture, FunctionUtils {
         uint64[10] memory xFeeRedeemUnbounded,
         int64[10] memory yFeeRedeemUnbounded
     ) internal returns (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) {
-        (xFeeRedeem, yFeeRedeem) = _generateCurves(xFeeRedeemUnbounded, yFeeRedeemUnbounded, true);
+        (xFeeRedeem, yFeeRedeem) = _generateCurves(xFeeRedeemUnbounded, yFeeRedeemUnbounded, true, false);
         vm.prank(governor);
         kheops.setRedemptionCurveParams(xFeeRedeem, yFeeRedeem);
     }

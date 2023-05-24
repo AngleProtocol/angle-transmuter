@@ -65,6 +65,7 @@ library LibHelpers {
     function findLowerBound(
         bool increasingArray,
         uint64[] memory array,
+        uint64 normalizerArray,
         uint64 element
     ) internal pure returns (uint256) {
         if (array.length == 0) {
@@ -73,15 +74,17 @@ library LibHelpers {
         uint256 low = 1;
         uint256 high = array.length;
 
-        if ((increasingArray && array[high - 1] <= element) || (!increasingArray && array[high - 1] >= element))
-            return high - 1;
+        if (
+            (increasingArray && array[high - 1] * normalizerArray <= element) ||
+            (!increasingArray && array[high - 1] * normalizerArray >= element)
+        ) return high - 1;
 
         while (low < high) {
             uint256 mid = Math.average(low, high);
 
             // Note that mid will always be strictly less than high (i.e. it will be a valid array index)
             // because Math.average rounds down (it does integer division with truncation).
-            if (increasingArray ? array[mid] > element : array[mid] < element) {
+            if (increasingArray ? array[mid] * normalizerArray > element : array[mid] * normalizerArray < element) {
                 high = mid;
             } else {
                 low = mid + 1;
@@ -102,7 +105,7 @@ library LibHelpers {
         uint64[] memory xArray,
         int64[] memory yArray
     ) internal pure returns (int64) {
-        uint256 indexLowerBound = findLowerBound(increasingArray, xArray, x);
+        uint256 indexLowerBound = findLowerBound(increasingArray, xArray, 1, x);
 
         if (indexLowerBound == xArray.length - 1) return yArray[xArray.length - 1];
         if (increasingArray) {
