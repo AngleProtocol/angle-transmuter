@@ -17,6 +17,8 @@ import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 import "../Storage.sol";
 
+import { console } from "forge-std/console.sol";
+
 // Struct to help storing local variables to avoid stack too deep issues
 struct LocalVariables {
     bool isMint;
@@ -177,6 +179,9 @@ library LibSwapper {
             uint64(currentExposure)
         );
 
+        console.log("currentExposure ", currentExposure);
+        console.log("index ", i);
+
         while (i < n - 1) {
             // We transform the linear function on exposure to a linear function depending on the amount swapped
             if (v.isMint) {
@@ -212,6 +217,9 @@ library LibSwapper {
                     : (v.otherStablecoinSupply * v.lowerExposure) /
                         (BASE_9 - v.lowerExposure) -
                         collatInfo.normalizedStables;
+
+                console.log("v.amountFromPrevBreakPoint ", v.amountFromPrevBreakPoint);
+                console.log("v.amountToNextBreakPoint ", v.amountToNextBreakPoint);
                 // precision breaks, the protocol takes less risks and charge the highest fee
                 if (v.amountToNextBreakPoint + v.amountFromPrevBreakPoint == 0) {
                     currentFees = v.upperFees;
@@ -219,33 +227,56 @@ library LibSwapper {
                     // slope is in base 18
                     uint256 slope = ((uint256(v.upperFees - v.lowerFees) * BASE_36) /
                         (v.amountToNextBreakPoint + v.amountFromPrevBreakPoint));
+                    console.log("slope ", slope);
                     currentFees = v.lowerFees + int256((slope * v.amountFromPrevBreakPoint) / BASE_36);
                 }
+                // Safeguard for the protocol to not issue free money if quoteType == BurnExactOutput
+                // --> amountToNextBreakPointNormalizer = 0 --> amountToNextBreakPointNormalizer < amountStable
+                // Then amountStable is never decrease while amount increase
+                if (!v.isMint && currentFees == int256(BASE_9)) revert InvalidSwap();
             }
+
+            console.log("v values ");
+            console.log("currt exposure ", currentExposure);
+            console.log("lower exposure ", v.lowerExposure);
+            console.log("upper exposure ", v.upperExposure);
+            console.logInt(currentFees);
+            console.logInt(v.lowerFees);
+            console.logInt(v.upperFees);
+            console.log("amount next breakpoint ", v.amountToNextBreakPoint);
+            console.log("amountStable ", amountStable);
 
             {
                 uint256 amountToNextBreakPointNormalizer = _isExact(quoteType) ? v.amountToNextBreakPoint : v.isMint
                     ? invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
                     : applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
 
+                console.log("amount next breakpoint norm", amountToNextBreakPointNormalizer);
                 if (amountToNextBreakPointNormalizer >= amountStable) {
                     int64 midFee;
                     if (_isExact(quoteType)) {
-                        midFee = int64(
+                        midFee = int64(Math.mulDiv(, y, denominator)x;
                             (v.upperFees *
                                 int256(amountStable) +
                                 currentFees *
-                                int256(2 * amountToNextBreakPointNormalizer - amountStable)) /
-                                int256(2 * amountToNextBreakPointNormalizer)
+                                int256(2 * v.amountToNextBreakPoint - amountStable)) /
+                                int256(2 * v.amountToNextBreakPoint)
+                        );
+                        console.log("exact: end Fee");
+                        console.logInt(
+                            currentFees +
+                                ((v.upperFees - currentFees) * int256(amountStable)) /
+                                int256(amountToNextBreakPointNormalizer)
                         );
                     } else if (v.isMint) {
                         // v.upperFees - currentFees >=0 because mint fee are increasing
-                        uint256 ac4 = (2 * amountStable * uint256(v.upperFees - currentFees) * BASE_9);
+                        uint256 ac4 = (2 * amountStable * uint256(v.upperFees - currentFees) * BASE_9) /
+                            v.amountToNextBreakPoint;
                         midFee = int64(
                             (int256(
                                 Math.sqrt(
                                     // BASE_9 + currentFees >= 0
-                                    (uint256(int256(BASE_9) + currentFees)) ** 2 + ac4 / v.amountToNextBreakPoint
+                                    (uint256(int256(BASE_9) + currentFees)) ** 2 + ac4
                                 )
                             ) +
                                 currentFees -
@@ -253,18 +284,40 @@ library LibSwapper {
                         );
                     } else {
                         // v.upperFees - currentFees >=0 because burn fee are increasing
-                        uint256 ac4 = (2 * amountStable * uint256(v.upperFees - currentFees) * BASE_9);
+                        uint256 ac4 = (2 * amountStable * uint256(v.upperFees - currentFees) * BASE_9) /
+                            v.amountToNextBreakPoint;
+                        console.log("ac4 ", ac4);
+                        console.log("frst", (uint256(int256(BASE_9) - currentFees)) ** 2);
+                        console.log(
+                            "sqrt",
+                            Math.sqrt(
+                                // BASE_9 - currentFees >= 0
+                                (uint256(int256(BASE_9) - currentFees)) ** 2 - ac4
+                            )
+                        );
                         midFee = int64(
                             (currentFees +
                                 int256(BASE_9) -
                                 int256(
                                     Math.sqrt(
                                         // BASE_9 - currentFees >= 0
-                                        (uint256(int256(BASE_9) - currentFees)) ** 2 - ac4 / v.amountToNextBreakPoint
+                                        (uint256(int256(BASE_9) - currentFees)) ** 2 - ac4
                                     )
                                 )) / 2
                         );
+                        console.log("reflexive: end Fee");
+                        console.logInt(
+                            int256(BASE_9) -
+                                int256(
+                                    Math.sqrt(
+                                        // BASE_9 - currentFees >= 0
+                                        (uint256(int256(BASE_9) - currentFees)) ** 2 - ac4
+                                    )
+                                )
+                        );
                     }
+                    console.log("segment: midFee ", uint64(midFee));
+                    console.log("segment: amountOut ", _computeFee(quoteType, amountStable, midFee));
                     return amount + _computeFee(quoteType, amountStable, midFee);
                 } else {
                     amountStable -= amountToNextBreakPointNormalizer;
@@ -280,9 +333,21 @@ library LibSwapper {
                         ? collatInfo.normalizedStables + uint224(v.amountToNextBreakPoint)
                         : collatInfo.normalizedStables - uint224(v.amountToNextBreakPoint);
                     v.amountFromPrevBreakPoint = 0;
+
+                    console.log(
+                        "amount out ",
+                        !_isExact(quoteType) ? v.amountToNextBreakPoint : v.isMint
+                            ? invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
+                            : applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
+                    );
                 }
             }
         }
+        console.log("amountStable ", amountStable);
+        console.log(
+            "last index: amountOut",
+            _computeFee(quoteType, amountStable, v.isMint ? collatInfo.yFeeMint[n - 1] : collatInfo.yFeeBurn[n - 1])
+        );
         // Now i == n-1 so we are in an area where fees are constant
         return
             amount +
