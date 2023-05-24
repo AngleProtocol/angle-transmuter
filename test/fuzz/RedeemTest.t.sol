@@ -258,10 +258,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
         (, uint256[] memory quoteAmounts) = kheops.quoteRedemptionCurve(amountBurnt);
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-<<<<<<<< HEAD:test/fuzz/RedeemerTest.t.sol
         // uint256[] memory forfeitTokens = new uint256[](0);
-========
->>>>>>>> 62ae479 (fix mid fee - WIP stack too deep):test/fuzz/RedeemTest.test.sol
         uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
         (address[] memory tokens, uint256[] memory amounts) = kheops.redeem(
             amountBurnt,
@@ -301,7 +298,6 @@ contract RedeemTest is Fixture, FunctionUtils {
             initialAmounts,
             transferProportion
         );
-<<<<<<<< HEAD:test/fuzz/RedeemerTest.t.sol
 
         uint64 collatRatio = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
         (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) = _randomRedeemptionFees(
@@ -312,10 +308,6 @@ contract RedeemTest is Fixture, FunctionUtils {
         collatRatio;
         xFeeRedeem;
         yFeeRedeem;
-========
-        _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
-        _randomRedeemptionFees(xFeeRedeemUnbounded, yFeeRedeemUnbounded);
->>>>>>>> 62ae479 (fix mid fee - WIP stack too deep):test/fuzz/RedeemTest.test.sol
 
         _sweepBalances(alice, _collaterals);
 
@@ -327,10 +319,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         address[] memory tokens;
         uint256[] memory amounts;
         {
-<<<<<<<< HEAD:test/fuzz/RedeemerTest.t.sol
             // uint256[] memory forfeitTokens = new uint256[](0);
-========
->>>>>>>> 62ae479 (fix mid fee - WIP stack too deep):test/fuzz/RedeemTest.test.sol
             uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
             (tokens, amounts) = kheops.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
         }
@@ -1095,11 +1084,7 @@ contract RedeemTest is Fixture, FunctionUtils {
 
     function _sweepBalancesWithManager(address owner, address[] memory tokens) internal {
         vm.startPrank(owner);
-<<<<<<<< HEAD:test/fuzz/RedeemerTest.t.sol
         for (uint256 i; i < tokens.length; ++i) {
-========
-        for (uint256 i; i < tokens.length; i++) {
->>>>>>>> 62ae479 (fix mid fee - WIP stack too deep):test/fuzz/RedeemTest.test.sol
             IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
             IERC20(tokens[i]).transfer(sweeper, IERC20(tokens[i]).balanceOf(owner));
             // we don't double count the real collateral
@@ -1129,11 +1114,7 @@ contract RedeemTest is Fixture, FunctionUtils {
     }
 
     function _inList(address[] memory list, address element) internal pure returns (bool) {
-<<<<<<<< HEAD:test/fuzz/RedeemerTest.t.sol
         for (uint256 i; i < list.length; ++i) {
-========
-        for (uint256 i; i < list.length; i++) {
->>>>>>>> 62ae479 (fix mid fee - WIP stack too deep):test/fuzz/RedeemTest.test.sol
             if (list[i] == element) return true;
         }
         return false;

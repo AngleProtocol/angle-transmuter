@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import "oz/contracts/utils/math/Math.sol";
+import "oz/utils/math/Math.sol";
 import "oz/token/ERC20/IERC20.sol";
 import "oz/token/ERC20/utils/SafeERC20.sol";
 
@@ -115,6 +115,17 @@ library LibSwapper {
         amountIn = LibHelpers.convertDecimalTo((amountIn * BASE_18) / oracleValue, 18, collatInfo.decimals);
     }
 
+    /// @notice Computes the `amountIn` of stablecoins to burn to release `amountOut` of `collateral`
+    function quoteBurnExactOutput(
+        address collateral,
+        Collateral memory collatInfo,
+        uint256 amountOut
+    ) internal view returns (uint256 amountIn) {
+        (uint256 deviation, uint256 oracleValue) = getBurnOracle(collateral, collatInfo.oracleConfig);
+        amountIn = (LibHelpers.convertDecimalTo(amountOut, collatInfo.decimals, 18) * oracleValue) / deviation;
+        amountIn = quoteFees(collatInfo, QuoteType.BurnExactOutput, amountIn);
+    }
+
     /// @notice Computes the `amountOut` of `collateral` to give during a burn operation of `amountIn` of stablecoins
     function quoteBurnExactInput(
         address collateral,
@@ -123,18 +134,7 @@ library LibSwapper {
     ) internal view returns (uint256 amountOut) {
         (uint256 deviation, uint256 oracleValue) = getBurnOracle(collateral, collatInfo.oracleConfig);
         amountOut = quoteFees(collatInfo, QuoteType.BurnExactInput, amountIn);
-        amountOut = LibHelpers.convertDecimalTo((amountOut * oracleValue) / BASE_18, 18, collatInfo.decimals);
-    }
-
-    /// @notice Computes the `amountIn` of stablecoins to burn to release `amountOut` of `collateral`
-    function quoteBurnExactOutput(
-        address collateral,
-        Collateral memory collatInfo,
-        uint256 amountOut
-    ) internal view returns (uint256 amountIn) {
-        uint256 oracleValue = _getBurnOracle(collateral, collatInfo.oracleConfig);
-        amountIn = (oracleValue * LibHelpers.convertDecimalTo(amountOut, collatInfo.decimals, 18)) / BASE_18;
-        amountIn = quoteFees(collatInfo, QuoteType.BurnExactOutput, amountIn);
+        amountOut = LibHelpers.convertDecimalTo((amountOut * deviation) / oracleValue, 18, collatInfo.decimals);
     }
 
     /// @notice Computes the fees to apply during a mint or burn operation
@@ -165,12 +165,12 @@ library LibSwapper {
             currentExposure = uint64((collatInfo.normalizedStables * BASE_18) / normalizedStablesMem);
 
             // store the current stablecoin supply for this collateral
-            collatInfo.normalizedStables = (collatInfo.normalizedStables * normalizerMem) / BASE_27;
+            collatInfo.normalizedStables = uint224((uint256(collatInfo.normalizedStables) * normalizerMem) / BASE_27);
             v.otherStablecoinSupply = (normalizerMem * normalizedStablesMem) / BASE_27 - collatInfo.normalizedStables;
         }
 
         uint256 amount;
-        uint256 i = Utils.findLowerBound(
+        uint256 i = LibHelpers.findLowerBound(
             v.isMint,
             v.isMint ? collatInfo.xFeeMint : collatInfo.xFeeBurn,
             uint64(BASE_9),
@@ -277,8 +277,8 @@ library LibSwapper {
                     ++i;
                     // update for the rest of the swaps the normalized stables
                     collatInfo.normalizedStables = v.isMint
-                        ? collatInfo.normalizedStables + v.amountToNextBreakPoint
-                        : collatInfo.normalizedStables - v.amountToNextBreakPoint;
+                        ? collatInfo.normalizedStables + uint224(v.amountToNextBreakPoint)
+                        : collatInfo.normalizedStables - uint224(v.amountToNextBreakPoint);
                     v.amountFromPrevBreakPoint = 0;
                 }
             }
@@ -362,7 +362,7 @@ library LibSwapper {
         }
     }
 
-    function checkAmounts(address collateral, Collateral memory collatInfo, uint256 amountOut) internal view {
+    function checkAmounts(Collateral memory collatInfo, uint256 amountOut) internal view {
         // Checking if enough is available for collateral assets that involve manager addresses
         if (collatInfo.isManaged > 0 && LibManager.maxAvailable(collatInfo.managerData) < amountOut)
             revert InvalidSwap();
