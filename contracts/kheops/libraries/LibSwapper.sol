@@ -27,7 +27,7 @@ struct LocalVariables {
     int256 upperFees;
     uint256 amountToNextBreakPoint;
     uint256 amountFromPrevBreakPoint;
-    uint256 otherStablecoinSupplyNorm;
+    uint256 otherStablecoinSupply;
 }
 
 /// @title LibSwapper
@@ -121,7 +121,7 @@ library LibSwapper {
         Collateral memory collatInfo,
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
-        uint256 oracleValue = getBurnOracle(collateral, collatInfo.oracleConfig);
+        (uint256 deviation, uint256 oracleValue) = getBurnOracle(collateral, collatInfo.oracleConfig);
         amountOut = quoteFees(collatInfo, QuoteType.BurnExactInput, amountIn);
         amountOut = LibHelpers.convertDecimalTo((amountOut * oracleValue) / BASE_18, 18, collatInfo.decimals);
     }
@@ -147,20 +147,28 @@ library LibSwapper {
         LocalVariables memory v;
         KheopsStorage storage ks = s.kheopsStorage();
 
-        uint256 normalizedStablesMem = ks.normalizedStables;
-        uint256 normalizerMem = ks.normalizer;
         v.isMint = _isMint(quoteType);
         v.isInput = _isInput(quoteType);
         uint256 n = v.isMint ? collatInfo.xFeeMint.length : collatInfo.xFeeBurn.length;
 
-        // Handling the initialisation and constant fees
-        if (normalizedStablesMem == 0 || n == 1)
-            return _computeFee(quoteType, amountStable, v.isMint ? collatInfo.yFeeMint[0] : collatInfo.yFeeBurn[0]);
+        uint256 currentExposure;
+        {
+            uint256 normalizedStablesMem = ks.normalizedStables;
+            uint256 normalizerMem = ks.normalizer;
 
-        v.otherStablecoinSupplyNorm = normalizedStablesMem - collatInfo.normalizedStables;
-        // Increase precision because if there is a factor 1e9 betwen total stablecoin supply and
-        // one specific collateral it will return a null current exposure
-        uint256 currentExposure = uint64((collatInfo.normalizedStables * BASE_18) / normalizedStablesMem);
+            // Handling the initialisation and constant fees
+            if (normalizedStablesMem == 0 || n == 1)
+                return _computeFee(quoteType, amountStable, v.isMint ? collatInfo.yFeeMint[0] : collatInfo.yFeeBurn[0]);
+
+            // Increase precision because if there is a factor 1e9 betwen total stablecoin supply and
+            // one specific collateral it will return a null current exposure
+            currentExposure = uint64((collatInfo.normalizedStables * BASE_18) / normalizedStablesMem);
+
+            // store the current stablecoin supply for this collateral
+            collatInfo.normalizedStables = (collatInfo.normalizedStables * normalizerMem) / BASE_27;
+            v.otherStablecoinSupply = (normalizerMem * normalizedStablesMem) / BASE_27 - collatInfo.normalizedStables;
+        }
+
         uint256 amount;
         uint256 i = Utils.findLowerBound(
             v.isMint,
@@ -169,8 +177,6 @@ library LibSwapper {
             uint64(currentExposure)
         );
 
-        // store the current stablecoin supply for this collateral
-        collatInfo.normalizedStables = (collatInfo.normalizedStables * normalizerMem) / BASE_27;
         while (i < n - 1) {
             // We transform the linear function on exposure to a linear function depending on the amount swapped
             if (v.isMint) {
@@ -178,9 +184,10 @@ library LibSwapper {
                 v.upperExposure = collatInfo.xFeeMint[i + 1];
                 v.lowerFees = collatInfo.yFeeMint[i];
                 v.upperFees = collatInfo.yFeeMint[i + 1];
-                v.amountToNextBreakPoint = ((normalizerMem * v.otherStablecoinSupplyNorm * v.upperExposure) /
-                    ((BASE_9 - v.upperExposure) * BASE_27) -
-                    collatInfo.normalizedStables);
+                v.amountToNextBreakPoint =
+                    (v.otherStablecoinSupply * v.upperExposure) /
+                    (BASE_9 - v.upperExposure) -
+                    collatInfo.normalizedStables;
             } else {
                 v.lowerExposure = collatInfo.xFeeBurn[i];
                 v.upperExposure = collatInfo.xFeeBurn[i + 1];
@@ -188,22 +195,23 @@ library LibSwapper {
                 v.upperFees = collatInfo.yFeeBurn[i + 1];
                 v.amountToNextBreakPoint =
                     collatInfo.normalizedStables -
-                    ((normalizerMem * v.otherStablecoinSupplyNorm * v.upperExposure) /
-                        ((BASE_9 - v.upperExposure) * BASE_27));
+                    (v.otherStablecoinSupply * v.upperExposure) /
+                    (BASE_9 - v.upperExposure);
             }
 
             int256 currentFees;
             // We can only enter the else in the first iteration of the loop as otherwise we will
             // always be at the beginning of the new segment
             if (v.lowerExposure * BASE_9 == currentExposure) currentFees = v.lowerFees;
+            else if (v.lowerFees == v.upperFees) currentFees = v.lowerFees;
             else {
                 v.amountFromPrevBreakPoint = v.isMint
                     ? collatInfo.normalizedStables -
-                        ((normalizerMem * v.otherStablecoinSupplyNorm * v.lowerExposure) /
-                            ((BASE_9 - v.lowerExposure) * BASE_27))
-                    : ((normalizerMem * v.otherStablecoinSupplyNorm * v.lowerExposure) /
-                        ((BASE_9 - v.lowerExposure) * BASE_27) -
-                        collatInfo.normalizedStables);
+                        (v.otherStablecoinSupply * v.lowerExposure) /
+                        (BASE_9 - v.lowerExposure)
+                    : (v.otherStablecoinSupply * v.lowerExposure) /
+                        (BASE_9 - v.lowerExposure) -
+                        collatInfo.normalizedStables;
                 // precision breaks, the protocol takes less risks and charge the highest fee
                 if (v.amountToNextBreakPoint + v.amountFromPrevBreakPoint == 0) {
                     currentFees = v.upperFees;
@@ -222,13 +230,13 @@ library LibSwapper {
 
                 if (amountToNextBreakPointNormalizer >= amountStable) {
                     int64 midFee;
-                    if (_isExact(quoteType)) {
+                    if (quoteType != QuoteType.MintExactInput) {
                         midFee = int64(
                             (v.upperFees *
                                 int256(amountStable) +
                                 currentFees *
-                                int256(2 * v.amountToNextBreakPoint - amountStable)) /
-                                int256(2 * v.amountToNextBreakPoint)
+                                int256(2 * amountToNextBreakPointNormalizer - amountStable)) /
+                                int256(2 * amountToNextBreakPointNormalizer)
                         );
                     } else if (v.isMint) {
                         // v.upperFees - currentFees >=0 because mint fee are increasing
@@ -246,19 +254,40 @@ library LibSwapper {
                     } else {
                         // v.upperFees - currentFees >=0 and v.upperFees - v.lowerFees >=0
                         // because burn fee are deceasing, but increasingin the inverse referential of xBurnFee
+                        // midFee = int64(
+                        //     currentFees -
+                        //         int256(
+                        //             (amountStable *
+                        //                 uint256(int256(BASE_9) - currentFees) *
+                        //                 uint256(v.upperFees - v.lowerFees)) /
+                        //                 (2 *
+                        //                     (v.amountFromPrevBreakPoint + v.amountToNextBreakPoint) *
+                        //                     BASE_9 -
+                        //                     amountStable *
+                        //                     uint256(v.upperFees - v.lowerFees))
+                        //         )
+                        // );
+
                         midFee = int64(
-                            currentFees -
-                                int256(
-                                    (amountStable *
-                                        uint256(int256(BASE_9) - currentFees) *
-                                        uint256(v.upperFees - v.lowerFees)) /
-                                        (2 *
-                                            (v.amountFromPrevBreakPoint + v.amountToNextBreakPoint) *
-                                            BASE_9 -
-                                            amountStable *
-                                            uint256(v.upperFees - v.lowerFees))
-                                )
+                            currentFees +
+                                ((int256(BASE_9) - currentFees) * int256(amountStable) * (v.upperFees - v.lowerFees)) /
+                                (int256(amountStable) *
+                                    (v.upperFees - v.lowerFees) +
+                                    (2 *
+                                        int256(BASE_9) *
+                                        int256(v.amountFromPrevBreakPoint + v.amountToNextBreakPoint)))
                         );
+
+                        uint256 amountOut = (2 *
+                            (v.amountFromPrevBreakPoint + v.amountToNextBreakPoint) *
+                            amountStable *
+                            uint256(int256(BASE_9) - currentFees)) /
+                            (2 *
+                                (v.amountFromPrevBreakPoint + v.amountToNextBreakPoint) *
+                                BASE_9 +
+                                amountStable *
+                                uint256(v.upperFees - v.lowerFees));
+                        return amount + amountOut;
                     }
                     return amount + _computeFee(quoteType, amountStable, midFee);
                 } else {
@@ -338,21 +367,26 @@ library LibSwapper {
         else amountIn = Math.mulDiv(amountOut, BASE_9, BASE_9 + uint256(int256(-fees)), Math.Rounding.Up);
     }
 
-    function getBurnOracle(address collateral, bytes memory oracleConfig) internal view returns (uint256) {
+    function getBurnOracle(
+        address collateral,
+        bytes memory oracleConfig
+    ) internal view returns (uint256 deviation, uint256 oracleValue) {
         KheopsStorage storage ks = s.kheopsStorage();
-        uint256 oracleValue;
-        uint256 deviation = BASE_18;
+        deviation = BASE_18;
         address[] memory collateralList = ks.collateralList;
         uint256 length = collateralList.length;
         for (uint256 i; i < length; ++i) {
             uint256 deviationObserved = BASE_18;
             if (collateralList[i] != collateral) {
-                (, deviationObserved) = LibOracle.readBurn(ks.collaterals[collateralList[i]].oracleConfig);
+                uint256 oracleValueTmp;
+                (oracleValueTmp, deviationObserved) = LibOracle.readBurn(
+                    ks.collaterals[collateralList[i]].oracleConfig
+                );
             } else (oracleValue, deviationObserved) = LibOracle.readBurn(oracleConfig);
             if (deviationObserved < deviation) deviation = deviationObserved;
         }
-        // Reverting if `oracleValue == 0`
-        return (deviation * BASE_18) / oracleValue;
+        // // Reverting if `oracleValue == 0`
+        // return (deviation * BASE_18) / oracleValue;
     }
 
     function checkAmounts(address collateral, Collateral memory collatInfo, uint256 amountOut) internal view {

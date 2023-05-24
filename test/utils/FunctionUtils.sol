@@ -29,7 +29,9 @@ contract FunctionUtils is StdUtils {
             thresholds[i] = increasing
                 ? uint64(bound(thresholds[i], thresholds[i - 1] + 1, BASE_9 - 1))
                 : uint64(bound(thresholds[i], 0, thresholds[i - 1] - 1));
-            intercepts[i] = int64(bound(int256(intercepts[i]), intercepts[i - 1], int256(BASE_9)));
+            intercepts[i] = !(increasing && i == 1)
+                ? int64(bound(int256(intercepts[i]), intercepts[i - 1], int256(BASE_9)))
+                : intercepts[i - 1]; // Because the first degment of a burnFees should be constant
             if (
                 // For the swap functions we hardcoded BASE_12 as the maximum fees, after that it is considered as 100% fees
                 (swap &&

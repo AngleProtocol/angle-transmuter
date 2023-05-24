@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { stdError } from "forge-std/Test.sol";
-
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "contracts/mock/MockTokenPermit.sol";
 import "../Fixture.sol";
@@ -137,13 +135,21 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256 reflexiveBurnAmount = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
         if (amountOut == 0) return;
         _assertApproxEqRelDecimalWithTolerance(
-            _convertDecimalTo(amountOut, IERC20Metadata(_collaterals[fromToken]).decimals(), 18),
-            burnAmount,
-            0,
+            amountOut,
+            _convertDecimalTo(burnAmount, 18, IERC20Metadata(_collaterals[fromToken]).decimals()),
+            _convertDecimalTo(burnAmount, 18, IERC20Metadata(_collaterals[fromToken]).decimals()),
             _MAX_PERCENTAGE_DEVIATION,
             18
         );
-        _assertApproxEqRelDecimalWithTolerance(burnAmount, reflexiveBurnAmount, 0, _MAX_PERCENTAGE_DEVIATION, 18);
+        if (amountOut > _minWallet) {
+            _assertApproxEqRelDecimalWithTolerance(
+                burnAmount,
+                reflexiveBurnAmount,
+                burnAmount,
+                _MAX_PERCENTAGE_DEVIATION,
+                18
+            );
+        }
     }
 
     function testQuoteBurnReflexivityRandomOracle(
@@ -164,246 +170,276 @@ contract BurnTest is Fixture, FunctionUtils {
 
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         burnAmount = bound(burnAmount, 0, collateralMintedStables[fromToken]);
-        uint256 supposedAmountOut;
-        {
-            uint256 minDeviation = BASE_8;
-            uint256 oracleValue;
-            for (uint256 i; i < _oracles.length; i++) {
-                (, int256 oracleValueTmp, , , ) = _oracles[fromToken].latestRoundData();
-                if (minDeviation > uint256(oracleValueTmp)) minDeviation = uint256(oracleValueTmp);
-                if (i == fromToken) oracleValue = uint256(oracleValueTmp);
-            }
-            supposedAmountOut = _convertDecimalTo(
-                (burnAmount * oracleValue) / minDeviation,
-                18,
-                IERC20Metadata(_collaterals[fromToken]).decimals()
-            );
-        }
+        uint256 supposedAmountOut = _convertDecimalTo(
+            _getBurnOracle(burnAmount, 0, fromToken),
+            18,
+            IERC20Metadata(_collaterals[fromToken]).decimals()
+        );
         uint256 amountOut = kheops.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
         uint256 reflexiveBurnAmount = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
         uint256 reflexiveAmountOut = kheops.quoteIn(reflexiveBurnAmount, address(agToken), _collaterals[fromToken]);
-        _assertApproxEqRelDecimalWithTolerance(supposedAmountOut, amountOut, 0, _MAX_PERCENTAGE_DEVIATION, 18);
+        _assertApproxEqRelDecimalWithTolerance(supposedAmountOut, amountOut, amountOut, _MAX_PERCENTAGE_DEVIATION, 18);
         if (amountOut > _minWallet) {
             _assertApproxEqRelDecimalWithTolerance(
                 burnAmount,
                 reflexiveBurnAmount,
                 burnAmount,
                 _MAX_PERCENTAGE_DEVIATION,
-                IERC20Metadata(_collaterals[fromToken]).decimals()
+                18
             );
         }
     }
 
-    // function testQuoteBurnExactInputReflexivityFees(
-    //     uint256[3] memory initialAmounts,
-    //     uint256 transferProportion,
-    //     int64 mintFee,
-    //     uint256 amountIn,
-    //     uint256 fromToken
-    // ) public {
-    //     // let's first load the reserves of the protocol
-    //     _loadReserves(charlie, sweeper, initialAmounts, transferProportion);
-    //     fromToken = bound(fromToken, 0, _collaterals.length - 1);
-    //     amountIn = bound(amountIn, 0, _maxTokenAmount[fromToken]);
-    //     mintFee = int64(bound(int256(mintFee), 0, int256(BASE_12)));
-    //     uint64[] memory xFeeMint = new uint64[](1);
-    //     xFeeMint[0] = uint64(0);
-    //     int64[] memory yFeeMint = new int64[](1);
-    //     yFeeMint[0] = mintFee;
-    //     vm.prank(governor);
-    //     kheops.setFees(_collaterals[fromToken], xFeeMint, yFeeMint, true);
+    function testQuoteBurnExactInputReflexivityFees(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        int64 burnFee,
+        uint256 burnAmount,
+        uint256 fromToken
+    ) public {
+        // let's first load the reserves of the protocol
+        (, uint256[] memory collateralMintedStables) = _loadReserves(
+            charlie,
+            sweeper,
+            initialAmounts,
+            transferProportion
+        );
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        burnAmount = bound(burnAmount, 0, collateralMintedStables[fromToken]);
+        burnFee = int64(bound(int256(burnFee), 0, int256(BASE_9 - 1)));
+        uint64[] memory xFeeBurn = new uint64[](1);
+        xFeeBurn[0] = uint64(BASE_9);
+        int64[] memory yFeeBurn = new int64[](1);
+        yFeeBurn[0] = burnFee;
+        vm.prank(governor);
+        kheops.setFees(_collaterals[fromToken], xFeeBurn, yFeeBurn, false);
 
-    //     uint256 supposedAmountOut = (_convertDecimalTo(
-    //         amountIn,
-    //         IERC20Metadata(_collaterals[fromToken]).decimals(),
-    //         18
-    //     ) * BASE_9) / (BASE_9 + uint64(mintFee));
+        uint256 supposedAmountOut = _convertDecimalTo(
+            (burnAmount * (BASE_9 - uint64(burnFee))) / BASE_9,
+            18,
+            IERC20Metadata(_collaterals[fromToken]).decimals()
+        );
 
-    //     uint256 amountOut = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
-    //     if (uint64(mintFee) == BASE_12) vm.expectRevert();
-    //     uint256 reflexiveAmountIn = kheops.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
+        uint256 amountOut = kheops.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
+        uint256 reflexiveBurnAmount = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
+        assertEq(supposedAmountOut, amountOut);
+        if (amountOut > _minWallet) {
+            _assertApproxEqRelDecimalWithTolerance(
+                burnAmount,
+                reflexiveBurnAmount,
+                burnAmount,
+                _MAX_PERCENTAGE_DEVIATION,
+                18
+            );
+        }
+    }
 
-    //     assertEq(supposedAmountOut, amountOut);
-    //     if (uint64(mintFee) != BASE_12) {
-    //         if (amountOut > _minWallet) {
-    //             _assertApproxEqRelDecimalWithTolerance(
-    //                 amountIn,
-    //                 reflexiveAmountIn,
-    //                 amountIn,
-    //                 _MAX_PERCENTAGE_DEVIATION,
-    //                 IERC20Metadata(_collaterals[fromToken]).decimals()
-    //             );
-    //         }
-    //     }
-    // }
+    function testQuoteBurnExactInputReflexivityOracleFees(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint256[3] memory latestOracleValue,
+        int64 burnFee,
+        uint256 burnAmount,
+        uint256 fromToken
+    ) public {
+        // let's first load the reserves of the protocol
+        (, uint256[] memory collateralMintedStables) = _loadReserves(
+            charlie,
+            sweeper,
+            initialAmounts,
+            transferProportion
+        );
+        _updateOracles(latestOracleValue);
 
-    // function testQuoteMintExactInputReflexivityOracleFees(
-    //     uint256[3] memory initialAmounts,
-    //     uint256 transferProportion,
-    //     uint256[3] memory latestOracleValue,
-    //     int64 mintFee,
-    //     uint256 amountIn,
-    //     uint256 fromToken
-    // ) public {
-    //     // let's first load the reserves of the protocol
-    //     _loadReserves(charlie, sweeper, initialAmounts, transferProportion);
-    //     _updateOracles(latestOracleValue);
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        burnAmount = bound(burnAmount, 0, collateralMintedStables[fromToken]);
+        burnFee = int64(bound(int256(burnFee), 0, int256(BASE_9 - 1)));
+        uint64[] memory xFeeBurn = new uint64[](1);
+        xFeeBurn[0] = uint64(BASE_9);
+        int64[] memory yFeeBurn = new int64[](1);
+        yFeeBurn[0] = burnFee;
+        vm.prank(governor);
+        kheops.setFees(_collaterals[fromToken], xFeeBurn, yFeeBurn, false);
 
-    //     fromToken = bound(fromToken, 0, _collaterals.length - 1);
-    //     amountIn = bound(amountIn, 0, _maxTokenAmount[fromToken]);
-    //     mintFee = int64(bound(int256(mintFee), 0, int256(BASE_12)));
-    //     uint64[] memory xFeeMint = new uint64[](1);
-    //     xFeeMint[0] = uint64(0);
-    //     int64[] memory yFeeMint = new int64[](1);
-    //     yFeeMint[0] = mintFee;
-    //     vm.prank(governor);
-    //     kheops.setFees(_collaterals[fromToken], xFeeMint, yFeeMint, true);
+        uint256 supposedAmountOut = _convertDecimalTo(
+            _getBurnOracle(burnAmount, uint64(burnFee), fromToken),
+            18,
+            IERC20Metadata(_collaterals[fromToken]).decimals()
+        );
+        uint256 amountOut = kheops.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
+        uint256 reflexiveBurnAmount = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
+        if (amountOut == 0) return;
 
-    //     (, int256 oracleValue, , , ) = _oracles[fromToken].latestRoundData();
-    //     uint256 supposedAmountOut = (((_convertDecimalTo(
-    //         amountIn,
-    //         IERC20Metadata(_collaterals[fromToken]).decimals(),
-    //         18
-    //     ) * BASE_9) / (BASE_9 + uint64(mintFee))) * (uint256(oracleValue) > BASE_8 ? BASE_8 : uint256(oracleValue))) /
-    //         BASE_8;
+        _assertApproxEqRelDecimalWithTolerance(
+            supposedAmountOut,
+            amountOut,
+            amountOut,
+            _MAX_PERCENTAGE_DEVIATION,
+            IERC20Metadata(_collaterals[fromToken]).decimals()
+        );
+        if (amountOut > _minWallet) {
+            _assertApproxEqRelDecimalWithTolerance(
+                burnAmount,
+                reflexiveBurnAmount,
+                burnAmount,
+                _MAX_PERCENTAGE_DEVIATION,
+                18
+            );
+        }
+    }
 
-    //     uint256 amountOut = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
-    //     if (uint64(mintFee) == BASE_12) vm.expectRevert();
-    //     uint256 reflexiveAmountIn = kheops.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                 PIECEWISE LINEAR FEES                                              
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    //     assertApproxEqAbs(supposedAmountOut, amountOut, 1 wei);
-    //     if (uint64(mintFee) != BASE_12) {
-    //         if (amountOut > _minWallet) {
-    //             _assertApproxEqRelDecimalWithTolerance(
-    //                 amountIn,
-    //                 reflexiveAmountIn,
-    //                 amountIn,
-    //                 _MAX_PERCENTAGE_DEVIATION,
-    //                 IERC20Metadata(_collaterals[fromToken]).decimals()
-    //             );
-    //         }
-    //     }
-    // }
+    function testQuoteBurnExactInputReflexivityFixPiecewiseFees(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint256[3] memory latestOracleValue,
+        int64 upperFees,
+        uint256 stableAmount,
+        uint256 fromToken
+    ) public {
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            charlie,
+            sweeper,
+            initialAmounts,
+            transferProportion
+        );
+        if (mintedStables == 0) return;
+        // _updateOracles(latestOracleValue);
 
-    // // =========================== PIECEWISE LINEAR FEES ===========================
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
+        upperFees = int64(bound(int256(upperFees), 0, int256(BASE_9) - 1));
+        uint64[] memory xFeeBurn = new uint64[](3);
+        xFeeBurn[0] = uint64(BASE_9);
+        xFeeBurn[1] = uint64((BASE_9 * 99) / 100);
+        xFeeBurn[2] = uint64(BASE_9 / 2);
+        int64[] memory yFeeBurn = new int64[](3);
+        yFeeBurn[0] = int64(0);
+        yFeeBurn[1] = int64(0);
+        yFeeBurn[2] = upperFees;
+        vm.prank(governor);
+        kheops.setFees(_collaterals[fromToken], xFeeBurn, yFeeBurn, false);
 
-    // function testQuoteMintExactOutputReflexivityFixPiecewiseFees(
-    //     uint256[3] memory initialAmounts,
-    //     uint256 transferProportion,
-    //     uint256[3] memory latestOracleValue,
-    //     int64 upperFees,
-    //     uint256 stableAmount,
-    //     uint256 fromToken
-    // ) public {
-    //     // let's first load the reserves of the protocol
-    //     (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-    //         charlie,
-    //         sweeper,
-    //         initialAmounts,
-    //         transferProportion
-    //     );
-    //     if (mintedStables == 0) return;
-    //     _updateOracles(latestOracleValue);
+        uint256 supposedAmountOut;
+        {
+            uint256[] memory exposures = _getExposures(mintedStables, collateralMintedStables);
+            (
+                uint256 amountFromPrevBreakpoint,
+                uint256 amountToNextBreakpoint,
+                uint256 lowerIndex
+            ) = _amountToPrevAndNextExposure(
+                    mintedStables,
+                    fromToken,
+                    collateralMintedStables,
+                    exposures[fromToken],
+                    xFeeBurn
+                );
+            // this is to handle in easy tests
+            if (lowerIndex == type(uint256).max) return;
 
-    //     fromToken = bound(fromToken, 0, _collaterals.length - 1);
-    //     stableAmount = bound(stableAmount, 1, _maxAmountWithoutDecimals * BASE_18);
-    //     upperFees = int64(bound(int256(upperFees), 0, int256(BASE_12) - 1));
-    //     uint64[] memory xFeeMint = new uint64[](2);
-    //     xFeeMint[0] = uint64(0);
-    //     xFeeMint[1] = uint64(BASE_9 / 2);
-    //     int64[] memory yFeeMint = new int64[](2);
-    //     yFeeMint[0] = int64(0);
-    //     yFeeMint[1] = upperFees;
-    //     vm.prank(governor);
-    //     kheops.setFees(_collaterals[fromToken], xFeeMint, yFeeMint, true);
+            if (lowerIndex == 0) {
+                if (stableAmount <= amountToNextBreakpoint) {
+                    collateralMintedStables[fromToken] -= stableAmount;
+                    // first burn segment are always constant fees
+                    supposedAmountOut += _convertDecimalTo(
+                        _getBurnOracle(stableAmount, uint64(yFeeBurn[lowerIndex + 1]), fromToken),
+                        18,
+                        IERC20Metadata(_collaterals[fromToken]).decimals()
+                    );
+                    stableAmount = 0;
+                } else {
+                    collateralMintedStables[fromToken] -= amountToNextBreakpoint;
+                    mintedStables -= amountToNextBreakpoint;
+                    // first burn segment are always constant fees
+                    supposedAmountOut += _convertDecimalTo(
+                        _getBurnOracle(amountToNextBreakpoint, uint64(yFeeBurn[lowerIndex + 1]), fromToken),
+                        18,
+                        IERC20Metadata(_collaterals[fromToken]).decimals()
+                    );
+                    stableAmount -= amountToNextBreakpoint;
 
-    //     uint256[] memory exposures = _getExposures(mintedStables, collateralMintedStables);
-    //     (
-    //         uint256 amountFromPrevBreakpoint,
-    //         uint256 amountToNextBreakpoint,
-    //         uint256 lowerIndex
-    //     ) = _amountToPrevAndNextExposure(
-    //             mintedStables,
-    //             fromToken,
-    //             collateralMintedStables,
-    //             exposures[fromToken],
-    //             xFeeMint
-    //         );
-    //     // this is to handle in easy tests
-    //     if (lowerIndex == type(uint256).max) return;
+                    exposures = _getExposures(mintedStables, collateralMintedStables);
+                    (amountFromPrevBreakpoint, amountToNextBreakpoint, lowerIndex) = _amountToPrevAndNextExposure(
+                        mintedStables,
+                        fromToken,
+                        collateralMintedStables,
+                        exposures[fromToken],
+                        xFeeBurn
+                    );
+                }
+            }
+            if (stableAmount > 0) {
+                if (stableAmount <= amountToNextBreakpoint) {
+                    collateralMintedStables[fromToken] += stableAmount;
 
-    //     uint256 supposedAmountIn;
-    //     if (stableAmount <= amountToNextBreakpoint) {
-    //         collateralMintedStables[fromToken] += stableAmount;
+                    int256 midFees;
+                    {
+                        int256 currentFees;
+                        uint256 slope = (uint256(uint64(yFeeBurn[lowerIndex + 1] - yFeeBurn[lowerIndex])) * BASE_36) /
+                            (amountToNextBreakpoint + amountFromPrevBreakpoint);
+                        currentFees = yFeeBurn[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_36);
+                        int256 endFees = yFeeBurn[lowerIndex] +
+                            int256((slope * (amountFromPrevBreakpoint + stableAmount)) / BASE_36);
+                        midFees = (currentFees + endFees) / 2;
+                    }
+                    supposedAmountOut += _convertDecimalTo(
+                        _getBurnOracle(stableAmount, uint64(uint256(midFees)), fromToken),
+                        18,
+                        IERC20Metadata(_collaterals[fromToken]).decimals()
+                    );
+                } else {
+                    collateralMintedStables[fromToken] += amountToNextBreakpoint;
+                    int256 midFees;
+                    {
+                        uint256 slope = ((uint256(uint64(yFeeBurn[lowerIndex + 1] - yFeeBurn[lowerIndex])) * BASE_36) /
+                            (amountToNextBreakpoint + amountFromPrevBreakpoint));
+                        int256 currentFees = yFeeBurn[lowerIndex] +
+                            int256((slope * amountFromPrevBreakpoint) / BASE_36);
+                        int256 endFees = yFeeBurn[lowerIndex + 1];
+                        midFees = (currentFees + endFees) / 2;
+                    }
+                    supposedAmountOut += (amountToNextBreakpoint * (BASE_9 - uint256(midFees)));
 
-    //         int256 midFees;
-    //         {
-    //             int256 currentFees;
-    //             uint256 slope = (uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_36) /
-    //                 (amountToNextBreakpoint + amountFromPrevBreakpoint);
-    //             currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_36);
-    //             int256 endFees = yFeeMint[lowerIndex] +
-    //                 int256((slope * (amountFromPrevBreakpoint + stableAmount)) / BASE_36);
-    //             midFees = (currentFees + endFees) / 2;
-    //         }
-    //         supposedAmountIn = (stableAmount * (BASE_9 + uint256(midFees)));
-    //         uint256 mintOracleValue;
-    //         {
-    //             (, int256 oracleValue, , , ) = _oracles[fromToken].latestRoundData();
-    //             mintOracleValue = uint256(oracleValue) > BASE_8 ? BASE_8 : uint256(oracleValue);
-    //         }
-    //         supposedAmountIn = _convertDecimalTo(
-    //             supposedAmountIn / (10 * mintOracleValue),
-    //             18,
-    //             IERC20Metadata(_collaterals[fromToken]).decimals()
-    //         );
-    //     } else {
-    //         collateralMintedStables[fromToken] += amountToNextBreakpoint;
-    //         int256 midFees;
-    //         {
-    //             uint256 slope = ((uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_36) /
-    //                 (amountToNextBreakpoint + amountFromPrevBreakpoint));
-    //             int256 currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_36);
-    //             int256 endFees = yFeeMint[lowerIndex + 1];
-    //             midFees = (currentFees + endFees) / 2;
-    //         }
-    //         supposedAmountIn = (amountToNextBreakpoint * (BASE_9 + uint256(midFees)));
+                    // next part is just with end fees
+                    supposedAmountOut +=
+                        (stableAmount - amountToNextBreakpoint) *
+                        (BASE_9 - uint64(yFeeBurn[lowerIndex + 1]));
+                    supposedAmountOut += _convertDecimalTo(
+                        _getBurnOracle(supposedAmountOut, uint64(BASE_9), fromToken),
+                        18,
+                        IERC20Metadata(_collaterals[fromToken]).decimals()
+                    );
+                }
+            }
+        }
 
-    //         // next part is just with end fees
-    //         supposedAmountIn += (stableAmount - amountToNextBreakpoint) * (BASE_9 + uint64(yFeeMint[lowerIndex + 1]));
-    //         uint256 mintOracleValue;
-    //         {
-    //             (, int256 oracleValue, , , ) = _oracles[fromToken].latestRoundData();
-    //             mintOracleValue = uint256(oracleValue) > BASE_8 ? BASE_8 : uint256(oracleValue);
-    //         }
-    //         supposedAmountIn = _convertDecimalTo(
-    //             supposedAmountIn / (10 * mintOracleValue),
-    //             18,
-    //             IERC20Metadata(_collaterals[fromToken]).decimals()
-    //         );
-    //     }
+        console.log("from token ", fromToken);
+        uint256 amountOut = kheops.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
+        console.log("reflexiveAMount");
+        uint256 reflexiveAmountStable = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
 
-    //     uint256 amountIn = kheops.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
-    //     uint256 reflexiveAmountStable = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
-
-    //     if (stableAmount > _minWallet) {
-    //         _assertApproxEqRelDecimalWithTolerance(
-    //             supposedAmountIn,
-    //             amountIn,
-    //             amountIn,
-    //             // precision of 0.1%
-    //             _MAX_PERCENTAGE_DEVIATION * 100,
-    //             18
-    //         );
-    //         _assertApproxEqRelDecimalWithTolerance(
-    //             reflexiveAmountStable,
-    //             stableAmount,
-    //             reflexiveAmountStable,
-    //             _MAX_PERCENTAGE_DEVIATION,
-    //             18
-    //         );
-    //     }
-    // }
+        if (stableAmount > _minWallet) {
+            // _assertApproxEqRelDecimalWithTolerance(
+            //     supposedAmountOut,
+            //     amountOut,
+            //     amountOut,
+            //     // precision of 0.1%
+            //     _MAX_PERCENTAGE_DEVIATION * 100,
+            //     18
+            // );
+            _assertApproxEqRelDecimalWithTolerance(
+                reflexiveAmountStable,
+                stableAmount,
+                reflexiveAmountStable,
+                _MAX_PERCENTAGE_DEVIATION * 100000,
+                18
+            );
+        }
+    }
 
     // function testQuoteMintReflexivityRandPiecewiseFees(
     //     uint256[3] memory initialAmounts,
@@ -578,6 +614,7 @@ contract BurnTest is Fixture, FunctionUtils {
     ) internal view returns (uint256[] memory exposures) {
         exposures = new uint256[](_collaterals.length);
         for (uint256 i; i < _collaterals.length; i++) {
+            console.log(collateralMintedStables[i], mintedStables);
             exposures[i] = (collateralMintedStables[i] * BASE_9) / mintedStables;
         }
     }
@@ -588,18 +625,24 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256[] memory collateralMintedStables,
         uint256 exposure,
         uint64[] memory xThres
-    ) internal pure returns (uint256 amountToPrevBreakpoint, uint256 amountToNextBreakpoint, uint256 indexExposure) {
-        if (exposure >= xThres[xThres.length - 1]) return (0, 0, type(uint256).max);
-        while (exposure > xThres[indexExposure]) {
-            indexExposure++;
-        }
-        if (exposure < xThres[indexExposure]) indexExposure--;
+    ) internal view returns (uint256 amountToPrevBreakpoint, uint256 amountToNextBreakpoint, uint256 indexExposure) {
+        if (exposure <= xThres[xThres.length - 1]) return (0, 0, type(uint256).max);
+        while (exposure < xThres[indexExposure]) indexExposure++;
+        if (exposure > xThres[indexExposure]) indexExposure--;
+        console.log("exposure ", exposure);
+        console.log(indexExposure);
         amountToNextBreakpoint =
-            (xThres[indexExposure + 1] * mintedStables - BASE_9 * collateralMintedStables[indexCollat]) /
+            (BASE_9 * collateralMintedStables[indexCollat] - xThres[indexExposure + 1] * mintedStables) /
             (BASE_9 - xThres[indexExposure + 1]);
-        amountToPrevBreakpoint =
-            (BASE_9 * collateralMintedStables[indexCollat] - xThres[indexExposure] * mintedStables) /
-            (BASE_9 - xThres[indexExposure]);
+        // if we are on the first degment amountToPrevBreakpoint is infinite
+        // so we need to set constant fees for this segment
+        amountToPrevBreakpoint = indexExposure == 0
+            ? type(uint256).max
+            : (xThres[indexExposure] * mintedStables - BASE_9 * collateralMintedStables[indexCollat]) /
+                (BASE_9 - xThres[indexExposure]);
+
+        console.log("amount next breakPoint", amountToNextBreakpoint);
+        console.log("amount prev breakPoint", amountToPrevBreakpoint);
     }
 
     function _updateOracles(uint256[3] memory latestOracleValue) internal returns (uint64 collatRatio) {
@@ -609,14 +652,14 @@ contract BurnTest is Fixture, FunctionUtils {
         }
     }
 
-    function _randomMintFees(
+    function _randomBurnFees(
         address collateral,
-        uint64[10] memory xFeeMintUnbounded,
-        int64[10] memory yFeeMintUnbounded
-    ) internal returns (uint64[] memory xFeeMint, int64[] memory yFeeMint) {
-        (xFeeMint, yFeeMint) = _generateCurves(xFeeMintUnbounded, yFeeMintUnbounded, true, true);
+        uint64[10] memory xFeeBurnUnbounded,
+        int64[10] memory yFeeBurnUnbounded
+    ) internal returns (uint64[] memory xFeeBurn, int64[] memory yFeeBurn) {
+        (xFeeBurn, yFeeBurn) = _generateCurves(xFeeBurnUnbounded, yFeeBurnUnbounded, false, false);
         vm.prank(governor);
-        kheops.setFees(collateral, xFeeMint, yFeeMint, true);
+        kheops.setFees(collateral, xFeeBurn, yFeeBurn, false);
     }
 
     function _sweepBalances(address owner, address[] memory tokens) internal {
@@ -635,28 +678,37 @@ contract BurnTest is Fixture, FunctionUtils {
         }
     }
 
+    function _getBurnOracle(uint256 amount, uint64 fee, uint256 fromToken) internal view returns (uint256) {
+        uint256 minDeviation = BASE_8;
+        uint256 oracleValue;
+        for (uint256 i; i < _oracles.length; i++) {
+            (, int256 oracleValueTmp, , , ) = _oracles[i].latestRoundData();
+            if (minDeviation > uint256(oracleValueTmp)) minDeviation = uint256(oracleValueTmp);
+            if (i == fromToken) oracleValue = uint256(oracleValueTmp);
+        }
+        console.log("deviation ", minDeviation);
+        console.log("oracleValue ", oracleValue);
+        return (amount * (BASE_9 - fee) * minDeviation) / (oracleValue * BASE_9);
+    }
+
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         ACTIONS                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function _mintExactOutput(
+    function _burnExactInput(
         address owner,
         address tokenIn,
         uint256 amountStable,
-        uint256 estimatedAmountIn
+        uint256 estimatedAmountOut
     ) internal {
         vm.startPrank(owner);
-        deal(tokenIn, owner, estimatedAmountIn);
-        IERC20(tokenIn).approve(address(kheops), type(uint256).max);
-        kheops.swapExactOutput(amountStable, estimatedAmountIn, tokenIn, address(agToken), owner, block.timestamp * 2);
+        kheops.swapExactInput(amountStable, estimatedAmountOut, address(agToken), tokenIn, owner, block.timestamp * 2);
         vm.stopPrank();
     }
 
-    function _mintExactInput(address owner, address tokenIn, uint256 amountIn, uint256 estimatedStable) internal {
+    function _burnExactOutput(address owner, address tokenIn, uint256 amountOut, uint256 estimatedStable) internal {
         vm.startPrank(owner);
-        deal(tokenIn, owner, amountIn);
-        IERC20(tokenIn).approve(address(kheops), type(uint256).max);
-        kheops.swapExactInput(amountIn, estimatedStable, tokenIn, address(agToken), owner, block.timestamp * 2);
+        kheops.swapExactInput(amountOut, estimatedStable, address(agToken), tokenIn, owner, block.timestamp * 2);
         vm.stopPrank();
     }
 }

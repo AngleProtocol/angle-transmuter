@@ -15,7 +15,7 @@ ffi = true
 
 [fuzz]
 runs = 10000
-# seed = 0xA19737
+seed = 0xA19737
 
 [invariant]
 runs = 10
