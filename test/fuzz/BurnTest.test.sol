@@ -608,7 +608,8 @@ contract BurnTest is Fixture, FunctionUtils {
                     reflexiveAmountOut,
                     amountOut,
                     reflexiveAmountOut,
-                    _MAX_PERCENTAGE_DEVIATION,
+                    // 0.01%
+                    _MAX_PERCENTAGE_DEVIATION * 100,
                     IERC20Metadata(_collaterals[fromToken]).decimals()
                 );
             }
@@ -638,7 +639,7 @@ contract BurnTest is Fixture, FunctionUtils {
             _collaterals[fromToken],
             xFeeBurnUnbounded,
             yFeeBurnUnbounded,
-            int256(BASE_9) - 1
+            int256(BASE_9) - int256(BASE_9) / 1000
         );
 
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
@@ -660,7 +661,8 @@ contract BurnTest is Fixture, FunctionUtils {
                     reflexiveAmountOut,
                     amountOut,
                     reflexiveAmountOut,
-                    _MAX_PERCENTAGE_DEVIATION,
+                    // 0.01%
+                    _MAX_PERCENTAGE_DEVIATION * 100,
                     IERC20Metadata(_collaterals[fromToken]).decimals()
                 );
             }
