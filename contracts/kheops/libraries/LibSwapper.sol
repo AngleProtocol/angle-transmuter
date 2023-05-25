@@ -20,13 +20,12 @@ import "../Storage.sol";
 // Struct to help storing local variables to avoid stack too deep issues
 struct LocalVariables {
     bool isMint;
-    bool isInput;
+    bool isExact;
     uint256 lowerExposure;
     uint256 upperExposure;
     int256 lowerFees;
     int256 upperFees;
     uint256 amountToNextBreakPoint;
-    uint256 amountFromPrevBreakPoint;
     uint256 otherStablecoinSupply;
 }
 
@@ -148,7 +147,7 @@ library LibSwapper {
         KheopsStorage storage ks = s.kheopsStorage();
 
         v.isMint = _isMint(quoteType);
-        v.isInput = _isInput(quoteType);
+        v.isExact = _isExact(quoteType);
         uint256 n = v.isMint ? collatInfo.xFeeMint.length : collatInfo.xFeeBurn.length;
 
         uint256 currentExposure;
@@ -205,7 +204,7 @@ library LibSwapper {
             if (v.lowerExposure * BASE_9 == currentExposure) currentFees = v.lowerFees;
             else if (v.lowerFees == v.upperFees) currentFees = v.lowerFees;
             else {
-                v.amountFromPrevBreakPoint = v.isMint
+                uint256 amountFromPrevBreakPoint = v.isMint
                     ? collatInfo.normalizedStables -
                         (v.otherStablecoinSupply * v.lowerExposure) /
                         (BASE_9 - v.lowerExposure)
@@ -214,13 +213,13 @@ library LibSwapper {
                         collatInfo.normalizedStables;
 
                 // precision breaks, the protocol takes less risks and charge the highest fee
-                if (v.amountToNextBreakPoint + v.amountFromPrevBreakPoint == 0) {
+                if (v.amountToNextBreakPoint + amountFromPrevBreakPoint == 0) {
                     currentFees = v.upperFees;
                 } else {
                     // slope is in base 18
                     uint256 slope = ((uint256(v.upperFees - v.lowerFees) * BASE_36) /
-                        (v.amountToNextBreakPoint + v.amountFromPrevBreakPoint));
-                    currentFees = v.lowerFees + int256((slope * v.amountFromPrevBreakPoint) / BASE_36);
+                        (v.amountToNextBreakPoint + amountFromPrevBreakPoint));
+                    currentFees = v.lowerFees + int256((slope * amountFromPrevBreakPoint) / BASE_36);
                 }
                 // Safeguard for the protocol to not issue free money if quoteType == BurnExactOutput
                 // --> amountToNextBreakPointNormalizer = 0 --> amountToNextBreakPointNormalizer < amountStable
@@ -229,13 +228,13 @@ library LibSwapper {
             }
 
             {
-                uint256 amountToNextBreakPointNormalizer = _isExact(quoteType) ? v.amountToNextBreakPoint : v.isMint
+                uint256 amountToNextBreakPointNormalizer = v.isExact ? v.amountToNextBreakPoint : v.isMint
                     ? invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
                     : applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
 
                 if (amountToNextBreakPointNormalizer >= amountStable) {
                     int64 midFee;
-                    if (_isExact(quoteType)) {
+                    if (v.isExact) {
                         midFee = int64(
                             currentFees +
                                 int256(
@@ -304,7 +303,7 @@ library LibSwapper {
                     return amount + _computeFee(quoteType, amountStable, midFee);
                 } else {
                     amountStable -= amountToNextBreakPointNormalizer;
-                    amount += !_isExact(quoteType) ? v.amountToNextBreakPoint : v.isMint
+                    amount += !v.isExact ? v.amountToNextBreakPoint : v.isMint
                         ? invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
                         : applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
                     currentExposure = v.upperExposure * BASE_9;
@@ -313,9 +312,6 @@ library LibSwapper {
                     collatInfo.normalizedStables = v.isMint
                         ? collatInfo.normalizedStables + uint224(v.amountToNextBreakPoint)
                         : collatInfo.normalizedStables - uint224(v.amountToNextBreakPoint);
-                    // TODO remove
-                    // useless just in case we end up using it somewhere else
-                    v.amountFromPrevBreakPoint = 0;
                 }
             }
         }
@@ -338,10 +334,6 @@ library LibSwapper {
 
     function _isMint(QuoteType quoteType) private pure returns (bool) {
         return quoteType == QuoteType.MintExactInput || quoteType == QuoteType.MintExactOutput;
-    }
-
-    function _isInput(QuoteType quoteType) private pure returns (bool) {
-        return quoteType == QuoteType.MintExactInput || quoteType == QuoteType.BurnExactInput;
     }
 
     function _isExact(QuoteType quoteType) private pure returns (bool) {
@@ -422,16 +414,5 @@ library LibSwapper {
             mint = true;
             if (collatInfo.unpausedBurn == 0) revert Paused();
         } else revert InvalidTokens();
-    }
-
-    function _applyFee(uint256 amountIn, int64 fees) private pure returns (uint256 amountOut) {
-        if (fees >= 0) amountOut = ((BASE_9 - uint256(int256(fees))) * amountIn) / BASE_9;
-        else amountOut = ((BASE_9 + uint256(int256(-fees))) * amountIn) / BASE_9;
-    }
-
-    function _invertFee(uint256 amountOut, int64 fees) private pure returns (uint256 amountIn) {
-        // The function must (and will) revert anyway if `uint256(int256(fees))==BASE_9`
-        if (fees >= 0) amountIn = (BASE_9 * amountOut) / (BASE_9 - uint256(int256(fees)));
-        else amountIn = (BASE_9 * amountOut) / (BASE_9 + uint256(int256(-fees)));
     }
 }

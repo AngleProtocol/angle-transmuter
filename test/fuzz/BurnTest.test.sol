@@ -57,6 +57,10 @@ contract BurnTest is Fixture, FunctionUtils {
         _maxTokenAmount.push(_maxAmountWithoutDecimals * 10 ** IERC20Metadata(_collaterals[2]).decimals());
     }
 
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                         TESTS                                                      
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
     function testQuoteBurnExactInputSimple(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
@@ -118,7 +122,6 @@ contract BurnTest is Fixture, FunctionUtils {
     function testQuoteBurnReflexivitySimple(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
-        uint256[3] memory latestOracleValue,
         uint256 burnAmount,
         uint256 fromToken
     ) public {
@@ -178,7 +181,6 @@ contract BurnTest is Fixture, FunctionUtils {
         );
         uint256 amountOut = kheops.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
         uint256 reflexiveBurnAmount = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
-        uint256 reflexiveAmountOut = kheops.quoteIn(reflexiveBurnAmount, address(agToken), _collaterals[fromToken]);
         _assertApproxEqRelDecimalWithTolerance(supposedAmountOut, amountOut, amountOut, _MAX_PERCENTAGE_DEVIATION, 18);
         if (amountOut > _minWallet) {
             _assertApproxEqRelDecimalWithTolerance(
@@ -442,7 +444,6 @@ contract BurnTest is Fixture, FunctionUtils {
     function testQuoteBurnReflexivityRandPiecewiseFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
-        uint256[3] memory latestOracleValue,
         uint64[10] memory xFeeBurnUnbounded,
         int64[10] memory yFeeBurnUnbounded,
         uint256 stableAmount,
@@ -450,13 +451,13 @@ contract BurnTest is Fixture, FunctionUtils {
     ) public {
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+        (, uint256[] memory collateralMintedStables) = _loadReserves(
             charlie,
             sweeper,
             initialAmounts,
             transferProportion
         );
-        (uint64[] memory xFeeBurn, ) = _randomBurnFees(
+        _randomBurnFees(
             _collaterals[fromToken],
             xFeeBurnUnbounded,
             yFeeBurnUnbounded,
@@ -466,7 +467,7 @@ contract BurnTest is Fixture, FunctionUtils {
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
         if (stableAmount == 0) return;
 
-        _logIssuedCollateral();
+        // _logIssuedCollateral();
         uint256 amountOut = kheops.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
         // This will crash if the
         if (amountOut != 0) {
@@ -502,14 +503,14 @@ contract BurnTest is Fixture, FunctionUtils {
     ) public {
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+        (, uint256[] memory collateralMintedStables) = _loadReserves(
             charlie,
             sweeper,
             initialAmounts,
             transferProportion
         );
         _updateOracles(latestOracleValue);
-        (uint64[] memory xFeeBurn, ) = _randomBurnFees(
+        _randomBurnFees(
             _collaterals[fromToken],
             xFeeBurnUnbounded,
             yFeeBurnUnbounded,
@@ -519,7 +520,7 @@ contract BurnTest is Fixture, FunctionUtils {
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
         if (stableAmount == 0) return;
 
-        _logIssuedCollateral();
+        // _logIssuedCollateral();
         uint256 amountOut = kheops.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
         // This will crash if the
         if (amountOut != 0) {
@@ -567,7 +568,7 @@ contract BurnTest is Fixture, FunctionUtils {
         );
         if (mintedStables == 0) return;
         _updateOracles(latestOracleValue);
-        (uint64[] memory xFeeBurn, ) = _randomBurnFees(
+        _randomBurnFees(
             _collaterals[fromToken],
             xFeeBurnUnbounded,
             yFeeBurnUnbounded,
@@ -615,15 +616,10 @@ contract BurnTest is Fixture, FunctionUtils {
     ) public {
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-            alice,
-            address(0),
-            initialAmounts,
-            transferProportion
-        );
+        (uint256 mintedStables, ) = _loadReserves(alice, address(0), initialAmounts, transferProportion);
         if (mintedStables == 0) return;
-        // _updateOracles(latestOracleValue);
-        (uint64[] memory xFeeBurn, ) = _randomBurnFees(
+        _updateOracles(latestOracleValue);
+        _randomBurnFees(
             _collaterals[fromToken],
             xFeeBurnUnbounded,
             yFeeBurnUnbounded,
@@ -680,12 +676,7 @@ contract BurnTest is Fixture, FunctionUtils {
         );
         if (mintedStables == 0) return;
         _updateOracles(latestOracleValue);
-        (uint64[] memory xFeeBurn, ) = _randomBurnFees(
-            _collaterals[fromToken],
-            xFeeBurnUnbounded,
-            yFeeBurnUnbounded,
-            int256(BASE_9)
-        );
+        _randomBurnFees(_collaterals[fromToken], xFeeBurnUnbounded, yFeeBurnUnbounded, int256(BASE_9));
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
         if (stableAmount == 0) return;
 
@@ -712,7 +703,6 @@ contract BurnTest is Fixture, FunctionUtils {
     function testBurnExactOutput(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
-        uint256 splitProportion,
         uint256[3] memory latestOracleValue,
         uint64[10] memory xFeeBurnUnbounded,
         int64[10] memory yFeeBurnUnbounded,
@@ -728,13 +718,8 @@ contract BurnTest is Fixture, FunctionUtils {
             transferProportion
         );
         if (mintedStables == 0) return;
-        // _updateOracles(latestOracleValue);
-        (uint64[] memory xFeeBurn, ) = _randomBurnFees(
-            _collaterals[fromToken],
-            xFeeBurnUnbounded,
-            yFeeBurnUnbounded,
-            int256(BASE_9) - 1
-        );
+        _updateOracles(latestOracleValue);
+        _randomBurnFees(_collaterals[fromToken], xFeeBurnUnbounded, yFeeBurnUnbounded, int256(BASE_9) - 1);
         amountOut = bound(amountOut, 0, IERC20(_collaterals[fromToken]).balanceOf(address(kheops)));
         if (amountOut == 0) return;
 
@@ -810,7 +795,7 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256[] memory collateralMintedStables,
         uint256 exposure,
         uint64[] memory xThres
-    ) internal view returns (uint256 amountToPrevBreakpoint, uint256 amountToNextBreakpoint, uint256 indexExposure) {
+    ) internal pure returns (uint256 amountToPrevBreakpoint, uint256 amountToNextBreakpoint, uint256 indexExposure) {
         if (exposure <= xThres[xThres.length - 1]) return (0, 0, xThres.length - 1);
         while (exposure < xThres[indexExposure]) indexExposure++;
         if (exposure > xThres[indexExposure]) indexExposure--;
@@ -825,7 +810,7 @@ contract BurnTest is Fixture, FunctionUtils {
                 (BASE_9 - xThres[indexExposure]);
     }
 
-    function _updateOracles(uint256[3] memory latestOracleValue) internal returns (uint64 collatRatio) {
+    function _updateOracles(uint256[3] memory latestOracleValue) internal {
         for (uint256 i; i < _collaterals.length; i++) {
             latestOracleValue[i] = bound(latestOracleValue[i], _minOracleValue * 10, BASE_18 / 100);
             MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(int256(latestOracleValue[i]));
@@ -851,11 +836,11 @@ contract BurnTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function _logIssuedCollateral() internal view {
-        for (uint256 i; i < _collaterals.length; i++) {
-            (uint256 collateralIssued, uint256 total) = kheops.getIssuedByCollateral(_collaterals[i]);
-        }
-    }
+    // function _logIssuedCollateral() internal view {
+    //     for (uint256 i; i < _collaterals.length; i++) {
+    //         (uint256 collateralIssued, uint256 total) = kheops.getIssuedByCollateral(_collaterals[i]);
+    //     }
+    // }
 
     function _getBurnOracle(uint256 amount, uint256 fromToken) internal view returns (uint256) {
         uint256 minDeviation = BASE_8;
@@ -889,10 +874,12 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256 amountOut,
         uint256 estimatedStable
     ) internal returns (bool) {
-        _logIssuedCollateral();
+        // _logIssuedCollateral();
         vm.startPrank(owner);
         (uint256 maxAmount, ) = kheops.getIssuedByCollateral(tokenOut);
+        uint256 balanceStableOwner = agToken.balanceOf(owner);
         if (estimatedStable > maxAmount) vm.expectRevert(stdError.arithmeticError);
+        else if (estimatedStable > balanceStableOwner) vm.expectRevert("ERC20: burn amount exceeds balance");
         kheops.swapExactOutput(amountOut, estimatedStable, address(agToken), tokenOut, owner, block.timestamp * 2);
         if (amountOut > maxAmount) return false;
         vm.stopPrank();

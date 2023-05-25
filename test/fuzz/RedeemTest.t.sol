@@ -74,7 +74,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                                                       QUOTEREDEEM                                                   
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteRedemptionCurveAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
+    function testQuoteRedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         initialAmounts[0] = 0;
         initialAmounts[1] = 0;
         initialAmounts[2] = 0;
@@ -102,7 +102,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertQuoteAmounts(uint64(BASE_9), mintedStables, amountBurnt, uint64(BASE_9), amounts);
     }
 
-    function testQuoteRedemptionCurveGlobalAtPeg(
+    function testQuoteRedeemGlobalAtPeg(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[2] memory latestOracleValue
@@ -152,7 +152,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteRedemptionCurveRandomOracles(
+    function testQuoteRedeemRandomOracles(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue
@@ -177,7 +177,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertQuoteAmounts(collatRatio, mintedStables, amountBurnt, uint64(BASE_9), amounts);
     }
 
-    function testQuoteRedemptionCurveAtPegRandomRedemptionFees(
+    function testQuoteRedeemAtPegRandomFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint64[10] memory xFeeRedeemUnbounded,
@@ -205,7 +205,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         );
     }
 
-    function testQuoteRedemptionCurveRandomRedemptionFees(
+    function testQuoteRedeemRandomFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -243,7 +243,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                                                         REDEEM                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testRedemptionCurveAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
+    function testRedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         // let's first load the reserves of the protocol
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
             initialAmounts,
@@ -286,7 +286,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
     }
 
-    function testRedemptionCurveRandomRedemptionFees(
+    function testRedeemRandomFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,

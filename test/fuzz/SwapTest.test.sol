@@ -60,7 +60,7 @@ contract SwapTest is Fixture, FunctionUtils {
                                                         REVERTS                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testSwapInvalidTokens(
+    function testSwapRevertInvalidTokens(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -70,12 +70,7 @@ contract SwapTest is Fixture, FunctionUtils {
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         amount = bound(amount, 2, _maxAmountWithoutDecimals * 10 ** 18);
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-            charlie,
-            sweeper,
-            initialAmounts,
-            transferProportion
-        );
+        (uint256 mintedStables, ) = _loadReserves(charlie, sweeper, initialAmounts, transferProportion);
         if (mintedStables == 0) return;
         _updateOracles(latestOracleValue);
 
@@ -94,7 +89,7 @@ contract SwapTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function testSwapPaused(
+    function testSwapRevertPaused(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -104,12 +99,7 @@ contract SwapTest is Fixture, FunctionUtils {
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         amount = bound(amount, 2, _maxAmountWithoutDecimals * 10 ** 18);
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-            charlie,
-            sweeper,
-            initialAmounts,
-            transferProportion
-        );
+        (uint256 mintedStables, ) = _loadReserves(charlie, sweeper, initialAmounts, transferProportion);
         if (mintedStables == 0) return;
         _updateOracles(latestOracleValue);
 
@@ -130,7 +120,7 @@ contract SwapTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function testSwapSlippage(
+    function testSwapRevertSlippage(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -143,7 +133,7 @@ contract SwapTest is Fixture, FunctionUtils {
         fromTokenBurn = bound(fromTokenBurn, 0, _collaterals.length - 1);
         stableAmount = bound(stableAmount, 2, _maxAmountWithoutDecimals * BASE_18);
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+        (, uint256[] memory collateralMintedStables) = _loadReserves(
             charlie,
             sweeper,
             initialAmounts,
@@ -214,7 +204,7 @@ contract SwapTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function testSwapDeadline(
+    function testSwapRevertDeadline(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -230,7 +220,7 @@ contract SwapTest is Fixture, FunctionUtils {
         fromTokenBurn = bound(fromTokenBurn, 0, _collaterals.length - 1);
         stableAmount = bound(stableAmount, 2, _maxAmountWithoutDecimals * BASE_18);
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+        (, uint256[] memory collateralMintedStables) = _loadReserves(
             charlie,
             sweeper,
             initialAmounts,
@@ -326,53 +316,10 @@ contract SwapTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function _updateOracles(uint256[3] memory latestOracleValue) internal returns (uint64 collatRatio) {
+    function _updateOracles(uint256[3] memory latestOracleValue) internal {
         for (uint256 i; i < _collaterals.length; i++) {
             latestOracleValue[i] = bound(latestOracleValue[i], _minOracleValue, BASE_18);
             MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(int256(latestOracleValue[i]));
         }
-    }
-
-    function _randomMintFees(
-        address collateral,
-        uint64[10] memory xFeeMintUnbounded,
-        int64[10] memory yFeeMintUnbounded
-    ) internal returns (uint64[] memory xFeeMint, int64[] memory yFeeMint) {
-        (xFeeMint, yFeeMint) = _generateCurves(xFeeMintUnbounded, yFeeMintUnbounded, true, true, 0);
-        vm.prank(governor);
-        kheops.setFees(collateral, xFeeMint, yFeeMint, true);
-    }
-
-    function _sweepBalances(address owner, address[] memory tokens) internal {
-        vm.startPrank(owner);
-        for (uint256 i; i < tokens.length; ++i) {
-            IERC20(tokens[i]).transfer(sweeper, IERC20(tokens[i]).balanceOf(owner));
-        }
-        vm.stopPrank();
-    }
-
-    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        ACTIONS                                                     
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    function _mintExactOutput(
-        address owner,
-        address tokenIn,
-        uint256 amountStable,
-        uint256 estimatedAmountIn
-    ) internal {
-        vm.startPrank(owner);
-        deal(tokenIn, owner, estimatedAmountIn);
-        IERC20(tokenIn).approve(address(kheops), type(uint256).max);
-        kheops.swapExactOutput(amountStable, estimatedAmountIn, tokenIn, address(agToken), owner, block.timestamp * 2);
-        vm.stopPrank();
-    }
-
-    function _mintExactInput(address owner, address tokenIn, uint256 amountIn, uint256 estimatedStable) internal {
-        vm.startPrank(owner);
-        deal(tokenIn, owner, amountIn);
-        IERC20(tokenIn).approve(address(kheops), type(uint256).max);
-        kheops.swapExactInput(amountIn, estimatedStable, tokenIn, address(agToken), owner, block.timestamp * 2);
-        vm.stopPrank();
     }
 }
