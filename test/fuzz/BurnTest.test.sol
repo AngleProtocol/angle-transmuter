@@ -635,7 +635,7 @@ contract BurnTest is Fixture, FunctionUtils {
             transferProportion
         );
         _updateOracles(latestOracleValue);
-        (uint64[] memory xFeeBurn, ) = _randomBurnFees(
+        _randomBurnFees(
             _collaterals[fromToken],
             xFeeBurnUnbounded,
             yFeeBurnUnbounded,
@@ -645,7 +645,7 @@ contract BurnTest is Fixture, FunctionUtils {
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
         if (stableAmount == 0) return;
 
-        _logIssuedCollateral();
+        // _logIssuedCollateral();
         uint256 amountOut = kheops.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
         // This will crash if the
         if (amountOut != 0) {
