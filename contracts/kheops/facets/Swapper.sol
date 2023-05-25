@@ -14,6 +14,7 @@ import { LibSwapper } from "../libraries/LibSwapper.sol";
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 import "../Storage.sol";
+import { console } from "forge-std/console.sol";
 
 /// @title Swapper
 /// @author Angle Labs, Inc.
@@ -67,6 +68,7 @@ contract Swapper is ISwapper {
             ? LibSwapper.quoteMintExactOutput(collatInfo, amountOut)
             : LibSwapper.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         if (amountIn > amountInMax) revert TooBigAmountIn();
+        console.log("after slippage");
         LibSwapper.swap(collatInfo, amountIn, amountOut, tokenIn, tokenOut, to, deadline, mint);
     }
 

@@ -77,6 +77,9 @@ library LibSwapper {
         } else {
             {
                 uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
+                console.log("changeAmount ", changeAmount);
+                console.log("ks.collaterals[tokenOut].normalizedStables ", ks.collaterals[tokenOut].normalizedStables);
+                console.log("ks.normalizedStables ", ks.normalizedStables);
                 // This will underflow when the system is trying to burn more stablecoins than what has been issued
                 // from this collateral
                 ks.collaterals[tokenOut].normalizedStables -= uint224(changeAmount);
@@ -124,7 +127,7 @@ library LibSwapper {
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
         (uint256 deviation, uint256 oracleValue) = getBurnOracle(collateral, collatInfo.oracleConfig);
-        amountIn = (LibHelpers.convertDecimalTo(amountOut, collatInfo.decimals, 18) * oracleValue) / deviation;
+        amountIn = Math.mulDiv(LibHelpers.convertDecimalTo(amountOut, collatInfo.decimals, 18), oracleValue, deviation);
         amountIn = quoteFees(collatInfo, QuoteType.BurnExactOutput, amountIn);
     }
 
@@ -255,12 +258,23 @@ library LibSwapper {
                 if (amountToNextBreakPointNormalizer >= amountStable) {
                     int64 midFee;
                     if (_isExact(quoteType)) {
-                        midFee = int64(Math.mulDiv(, y, denominator)x;
-                            (v.upperFees *
-                                int256(amountStable) +
-                                currentFees *
-                                int256(2 * v.amountToNextBreakPoint - amountStable)) /
-                                int256(2 * v.amountToNextBreakPoint)
+                        // midFee = int64(
+                        //     (v.upperFees *
+                        //         int256(amountStable) +
+                        //         currentFees *
+                        //         int256(2 * v.amountToNextBreakPoint - amountStable)) /
+                        //         int256(2 * v.amountToNextBreakPoint)
+                        // );
+                        midFee = int64(
+                            currentFees +
+                                int256(
+                                    Math.mulDiv(
+                                        uint256(v.upperFees - currentFees),
+                                        amountStable,
+                                        2 * amountToNextBreakPointNormalizer,
+                                        Math.Rounding.Up
+                                    )
+                                )
                         );
                         console.log("exact: end Fee");
                         console.logInt(
@@ -270,13 +284,18 @@ library LibSwapper {
                         );
                     } else if (v.isMint) {
                         // v.upperFees - currentFees >=0 because mint fee are increasing
-                        uint256 ac4 = (2 * amountStable * uint256(v.upperFees - currentFees) * BASE_9) /
-                            v.amountToNextBreakPoint;
+                        uint256 ac4 = Math.mulDiv(
+                            2 * amountStable * uint256(v.upperFees - currentFees),
+                            BASE_9,
+                            v.amountToNextBreakPoint,
+                            Math.Rounding.Up
+                        );
                         midFee = int64(
                             (int256(
                                 Math.sqrt(
                                     // BASE_9 + currentFees >= 0
-                                    (uint256(int256(BASE_9) + currentFees)) ** 2 + ac4
+                                    (uint256(int256(BASE_9) + currentFees)) ** 2 + ac4,
+                                    Math.Rounding.Up
                                 )
                             ) +
                                 currentFees -
@@ -284,37 +303,72 @@ library LibSwapper {
                         );
                     } else {
                         // v.upperFees - currentFees >=0 because burn fee are increasing
-                        uint256 ac4 = (2 * amountStable * uint256(v.upperFees - currentFees) * BASE_9) /
-                            v.amountToNextBreakPoint;
-                        console.log("ac4 ", ac4);
-                        console.log("frst", (uint256(int256(BASE_9) - currentFees)) ** 2);
-                        console.log(
-                            "sqrt",
-                            Math.sqrt(
-                                // BASE_9 - currentFees >= 0
-                                (uint256(int256(BASE_9) - currentFees)) ** 2 - ac4
-                            )
+                        uint256 ac4 = Math.mulDiv(
+                            2 * amountStable * uint256(v.upperFees - currentFees),
+                            BASE_9,
+                            v.amountToNextBreakPoint,
+                            Math.Rounding.Up
                         );
-                        midFee = int64(
-                            (currentFees +
-                                int256(BASE_9) -
+                        // rounding error on ac4: it can be larger than expected and makes the
+                        // the mathematical invariant breaks
+                        if ((uint256(int256(BASE_9) - currentFees)) ** 2 < ac4)
+                            midFee = int64((currentFees + int256(BASE_9)) / 2);
+                        else {
+                            console.log("ac4 ", ac4);
+                            console.log("frst", (uint256(int256(BASE_9) - currentFees)) ** 2);
+                            console.log(
+                                "sqrt",
+                                Math.sqrt(
+                                    // BASE_9 - currentFees >= 0
+                                    (uint256(int256(BASE_9) - currentFees)) ** 2 - ac4
+                                )
+                            );
+                            midFee = int64(
                                 int256(
-                                    Math.sqrt(
-                                        // BASE_9 - currentFees >= 0
-                                        (uint256(int256(BASE_9) - currentFees)) ** 2 - ac4
-                                    )
-                                )) / 2
-                        );
-                        console.log("reflexive: end Fee");
-                        console.logInt(
-                            int256(BASE_9) -
-                                int256(
-                                    Math.sqrt(
-                                        // BASE_9 - currentFees >= 0
-                                        (uint256(int256(BASE_9) - currentFees)) ** 2 - ac4
+                                    Math.mulDiv(
+                                        uint256(
+                                            currentFees +
+                                                int256(BASE_9) -
+                                                int256(
+                                                    Math.sqrt(
+                                                        // BASE_9 - currentFees >= 0
+                                                        (uint256(int256(BASE_9) - currentFees)) ** 2 - ac4,
+                                                        Math.Rounding.Down
+                                                    )
+                                                )
+                                        ),
+                                        1,
+                                        2,
+                                        Math.Rounding.Up
                                     )
                                 )
-                        );
+                            );
+                            // midFee = int64(
+                            //     int256(
+                            //         uint256(
+                            //             currentFees +
+                            //                 int256(BASE_9) -
+                            //                 int256(
+                            //                     Math.sqrt(
+                            //                         // BASE_9 - currentFees >= 0
+                            //                         (uint256(int256(BASE_9) - currentFees)) ** 2 - ac4,
+                            //                         Math.Rounding.Down
+                            //                     )
+                            //                 )
+                            //         ) / 2
+                            //     )
+                            // );
+                            console.log("reflexive: end Fee");
+                            console.logInt(
+                                int256(BASE_9) -
+                                    int256(
+                                        Math.sqrt(
+                                            // BASE_9 - currentFees >= 0
+                                            (uint256(int256(BASE_9) - currentFees)) ** 2 - ac4
+                                        )
+                                    )
+                            );
+                        }
                     }
                     console.log("segment: midFee ", uint64(midFee));
                     console.log("segment: amountOut ", _computeFee(quoteType, amountStable, midFee));
@@ -340,6 +394,7 @@ library LibSwapper {
                             ? invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
                             : applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
                     );
+                    console.log("tot: amount", amount);
                 }
             }
         }
