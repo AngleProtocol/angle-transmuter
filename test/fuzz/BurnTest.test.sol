@@ -580,6 +580,7 @@ contract BurnTest is Fixture, FunctionUtils {
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
         if (stableAmount == 0) return;
 
+        _logIssuedCollateral();
         uint256 amountOut = kheops.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
         splitProportion = bound(splitProportion, 0, BASE_9);
         uint256 amountStableSplit1 = (stableAmount * splitProportion) / BASE_9;
@@ -601,6 +602,68 @@ contract BurnTest is Fixture, FunctionUtils {
                 _MAX_PERCENTAGE_DEVIATION * 100,
                 18
             );
+
+            if (amountOut > _minWallet / 10 ** (18 - IERC20Metadata(_collaterals[fromToken]).decimals())) {
+                _assertApproxEqRelDecimalWithTolerance(
+                    reflexiveAmountOut,
+                    amountOut,
+                    reflexiveAmountOut,
+                    _MAX_PERCENTAGE_DEVIATION,
+                    IERC20Metadata(_collaterals[fromToken]).decimals()
+                );
+            }
+        }
+    }
+
+    // Oracle precision worsen reflexivity
+    function testQuoteBurnReflexivityRandOracleAndPiecewiseFees(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint256[3] memory latestOracleValue,
+        uint64[10] memory xFeeBurnUnbounded,
+        int64[10] memory yFeeBurnUnbounded,
+        uint256 stableAmount,
+        uint256 fromToken
+    ) public {
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            charlie,
+            sweeper,
+            initialAmounts,
+            transferProportion
+        );
+        _updateOracles(latestOracleValue);
+        (uint64[] memory xFeeBurn, ) = _randomBurnFees(
+            _collaterals[fromToken],
+            xFeeBurnUnbounded,
+            yFeeBurnUnbounded,
+            int256(BASE_9) - 1
+        );
+
+        stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
+        if (stableAmount == 0) return;
+
+        _logIssuedCollateral();
+        uint256 amountOut = kheops.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
+        // This will crash if the
+        if (amountOut != 0) {
+            uint256 reflexiveAmountStable = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
+            uint256 reflexiveAmountOut = kheops.quoteIn(
+                reflexiveAmountStable,
+                address(agToken),
+                _collaterals[fromToken]
+            );
+
+            if (amountOut > (10 * _minWallet) / 10 ** (18 - IERC20Metadata(_collaterals[fromToken]).decimals())) {
+                _assertApproxEqRelDecimalWithTolerance(
+                    reflexiveAmountOut,
+                    amountOut,
+                    reflexiveAmountOut,
+                    _MAX_PERCENTAGE_DEVIATION,
+                    IERC20Metadata(_collaterals[fromToken]).decimals()
+                );
+            }
         }
     }
 

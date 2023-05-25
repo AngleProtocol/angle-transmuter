@@ -76,6 +76,9 @@ library LibSwapper {
         } else {
             {
                 uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
+                console.log("changeAmount ", changeAmount);
+                console.log("ks.collaterals[tokenOut].normalizedStables ", ks.collaterals[tokenOut].normalizedStables);
+                console.log("ks.normalizedStables ", ks.normalizedStables);
                 // This will underflow when the system is trying to burn more stablecoins than what has been issued
                 // from this collateral
                 ks.collaterals[tokenOut].normalizedStables -= uint224(changeAmount);
