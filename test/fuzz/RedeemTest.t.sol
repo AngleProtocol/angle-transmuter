@@ -852,12 +852,13 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256 valueCheck = (collatRatio * amountBurnt * fee) / BASE_18;
         if (collatRatio >= BASE_9) {
             denom = (mintedStables * collatRatio);
-            assertLe(amountInValueReceived, amountBurnt);
+            // for rounding errors
+            assertLe(amountInValueReceived, amountBurnt + 1);
             valueCheck = (amountBurnt * fee) / BASE_9;
         }
-        assertEq(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt * fee) / denom);
-        assertEq(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt * fee) / denom);
-        assertEq(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt * fee) / denom);
+        assertApproxEqAbs(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt * fee) / denom, 1 wei);
+        assertApproxEqAbs(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt * fee) / denom, 1 wei);
+        assertApproxEqAbs(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt * fee) / denom, 1 wei);
         if (collatRatio < BASE_9) {
             assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
         }
