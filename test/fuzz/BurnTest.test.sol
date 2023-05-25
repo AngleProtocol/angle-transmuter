@@ -823,7 +823,14 @@ contract BurnTest is Fixture, FunctionUtils {
         int64[10] memory yFeeBurnUnbounded,
         int256 maxFee
     ) internal returns (uint64[] memory xFeeBurn, int64[] memory yFeeBurn) {
-        (xFeeBurn, yFeeBurn) = _generateCurves(xFeeBurnUnbounded, yFeeBurnUnbounded, false, false, maxFee);
+        (xFeeBurn, yFeeBurn) = _generateCurves(
+            xFeeBurnUnbounded,
+            yFeeBurnUnbounded,
+            false,
+            false,
+            int256(BASE_9 / 2),
+            maxFee
+        );
         vm.prank(governor);
         kheops.setFees(collateral, xFeeBurn, yFeeBurn, false);
     }
