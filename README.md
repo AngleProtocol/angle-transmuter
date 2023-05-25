@@ -1,36 +1,36 @@
-# <img src="logo.svg" alt="Kheops" height="40px"> Angle - Kheops
+# <img src="logo.svg" alt="Transmuter" height="40px"> Angle - Transmuter
 
-[![CI](https://github.com/AngleProtocol/kheops/workflows/CI/badge.svg)](https://github.com/AngleProtocol/kheops/actions?query=workflow%3ACI)
+[![CI](https://github.com/AngleProtocol/transmuter/workflows/CI/badge.svg)](https://github.com/AngleProtocol/transmuter/actions?query=workflow%3ACI)
 
-## What is Kheops?
+## What is Transmuter?
 
-Kheops is an autonomous and modular price stability module for decentralized stablecoin protocols.
+Transmuter is an autonomous and modular price stability module for decentralized stablecoin protocols.
 
 - It is conceived as a basket of different assets (normally stablecoins) backing a stablecoin and comes with guarantees on the maximum exposure the stablecoin can have to each asset in the basket.
-- The stablecoin issued through Kheops can be minted at oracle value from any of the assets with adaptive fees, and it can be burnt for any of the assets in the backing with variable fees as well. It can also be redeemed at any time against a proportional amount of each asset in the backing.
+- A stablecoin issued through the Transmuter system can be minted at oracle value from any of the assets with adaptive fees, and it can be burnt for any of the assets in the backing with variable fees as well. It can also be redeemed at any time against a proportional amount of each asset in the backing.
 
-Kheops is compatible with other common mechanisms often used to issue stablecoins like collateralized-debt position models. It should notably be used as a standalone module within the Angle Protocol for agEUR in parallel with the Borrowing module.
+Transmuter is compatible with other common mechanisms often used to issue stablecoins like collateralized-debt position models. It should notably be used as a standalone module within the Angle Protocol for agEUR in parallel with the Borrowing module.
 
 ---
 
 ## Contracts Architecture 🏘️
 
-The Kheops system relies on a [diamond proxy pattern](https://eips.ethereum.org/EIPS/eip-2535). There is as such only one main contract (the `Kheops` contract) which delegates calls to different facets each with their own implementation. The main facets of the system are:
+The Transmuter system relies on a [diamond proxy pattern](https://eips.ethereum.org/EIPS/eip-2535). There is as such only one main contract (the `Transmuter` contract) which delegates calls to different facets each with their own implementation. The main facets of the system are:
 
-- the [`Swapper`](./contracts/kheops/facets/Swapper.sol) facet with the logic associated to the mint and burn functionalities of the system
-- the [`Redeemer`](./contracts/kheops/facets/Redeemer.sol) facet for redemptions
-- the [`Getters`](./contracts/kheops/facets/Swapper.sol) facet with external getters for UIs and contracts built on top of `Kheops`
-- the [`Setters`](./contracts/kheops/facets/Setters.sol) facet protocols' governance can use to update system parameters.
+- the [`Swapper`](./contracts/transmuter/facets/Swapper.sol) facet with the logic associated to the mint and burn functionalities of the system
+- the [`Redeemer`](./contracts/transmuter/facets/Redeemer.sol) facet for redemptions
+- the [`Getters`](./contracts/transmuter/facets/Swapper.sol) facet with external getters for UIs and contracts built on top of `Transmuter`
+- the [`Setters`](./contracts/transmuter/facets/Setters.sol) facet protocols' governance can use to update system parameters.
 
-The storage parameters of the system are defined in the [`Storage`](./contracts/kheops/Storage.sol).
+The storage parameters of the system are defined in the [`Storage`](./contracts/transmuter/Storage.sol).
 
-The Kheops system can come with optional [ERC4626](https://eips.ethereum.org/EIPS/eip-4626) [savings contracts](./contracts/savings/) which can be used to distribute a yield to the holders of the stablecoin issued through Kheops.
+The Transmuter system can come with optional [ERC4626](https://eips.ethereum.org/EIPS/eip-4626) [savings contracts](./contracts/savings/) which can be used to distribute a yield to the holders of the stablecoin issued through Transmuter.
 
 ---
 
 ## Documentation 📚
 
-- [Kheops Whitepaper](https://docs.angle.money/overview/whitepapers)
+- [Transmuter Whitepaper](https://docs.angle.money/overview/whitepapers)
 - [Angle Documentation](https://docs.angle.money)
 - [Angle Developers Documentation](https://developers.angle.money)
 
@@ -40,7 +40,7 @@ The Kheops system can come with optional [ERC4626](https://eips.ethereum.org/EIP
 
 ### Audits
 
-Audits for Kheops smart contracts can be found in the [audits](./audits/)' folder.
+Audits for Transmuter smart contracts can be found in the [audits](./audits/)' folder.
 
 ---
 
@@ -52,9 +52,9 @@ For contracts deployed for the Angle Protocol, a bug bounty is open on [Immunefi
 
 ## Deployment Addresses 🚦
 
-### agEUR - Kheops (Ethereum)
+### agEUR - Transmuter (Ethereum)
 
-- Kheops (agEUR):
+- Transmuter (agEUR):
 
 ---
 

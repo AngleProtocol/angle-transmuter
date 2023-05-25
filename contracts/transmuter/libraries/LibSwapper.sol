@@ -54,7 +54,7 @@ library LibSwapper {
         uint256 deadline,
         bool mint
     ) internal {
-        KheopsStorage storage ks = s.kheopsStorage();
+        TransmuterStorage storage ks = s.transmuterStorage();
         if (block.timestamp > deadline) revert TooLate();
         if (mint) {
             uint128 changeAmount = uint128((amountOut * BASE_27) / ks.normalizer);
@@ -144,7 +144,7 @@ library LibSwapper {
         uint256 amountStable
     ) internal view returns (uint256) {
         LocalVariables memory v;
-        KheopsStorage storage ks = s.kheopsStorage();
+        TransmuterStorage storage ks = s.transmuterStorage();
 
         v.isMint = _isMint(quoteType);
         v.isExact = _isExact(quoteType);
@@ -374,7 +374,7 @@ library LibSwapper {
         address collateral,
         bytes memory oracleConfig
     ) internal view returns (uint256 deviation, uint256 oracleValue) {
-        KheopsStorage storage ks = s.kheopsStorage();
+        TransmuterStorage storage ks = s.transmuterStorage();
         deviation = BASE_18;
         address[] memory collateralList = ks.collateralList;
         uint256 length = collateralList.length;
@@ -403,7 +403,7 @@ library LibSwapper {
         address tokenIn,
         address tokenOut
     ) internal view returns (bool mint, Collateral memory collatInfo) {
-        KheopsStorage storage ks = s.kheopsStorage();
+        TransmuterStorage storage ks = s.transmuterStorage();
         address _agToken = address(ks.agToken);
         if (tokenIn == _agToken) {
             collatInfo = ks.collaterals[tokenOut];
@@ -415,4 +415,37 @@ library LibSwapper {
             if (collatInfo.unpausedBurn == 0) revert Paused();
         } else revert InvalidTokens();
     }
+<<<<<<< HEAD:contracts/kheops/libraries/LibSwapper.sol
+=======
+
+    function _applyFee(uint256 amountIn, int64 fees) private pure returns (uint256 amountOut) {
+        if (fees >= 0) amountOut = ((BASE_9 - uint256(int256(fees))) * amountIn) / BASE_9;
+        else amountOut = ((BASE_9 + uint256(int256(-fees))) * amountIn) / BASE_9;
+    }
+
+    function _invertFee(uint256 amountOut, int64 fees) private pure returns (uint256 amountIn) {
+        // The function must (and will) revert anyway if `uint256(int256(fees))==BASE_9`
+        if (fees >= 0) amountIn = (BASE_9 * amountOut) / (BASE_9 - uint256(int256(fees)));
+        else amountIn = (BASE_9 * amountOut) / (BASE_9 + uint256(int256(-fees)));
+    }
+
+    /// @notice Reads the oracle value for burning stablecoins for `collateral`
+    /// @dev This value depends on the oracle values for all collateral assets of the system
+    function _getBurnOracle(address collateral, bytes memory oracleConfig) private view returns (uint256) {
+        TransmuterStorage storage ks = s.transmuterStorage();
+        uint256 oracleValue;
+        uint256 deviation = BASE_18;
+        address[] memory collateralList = ks.collateralList;
+        uint256 length = collateralList.length;
+        for (uint256 i; i < length; ++i) {
+            uint256 deviationObserved = BASE_18;
+            if (collateralList[i] != collateral) {
+                (, deviationObserved) = LibOracle.readBurn(ks.collaterals[collateralList[i]].oracleConfig);
+            } else (oracleValue, deviationObserved) = LibOracle.readBurn(oracleConfig);
+            if (deviationObserved < deviation) deviation = deviationObserved;
+        }
+        // This reverts if `oracleValue == 0`
+        return (deviation * BASE_18) / oracleValue;
+    }
+>>>>>>> b313c5d (feat: rename kheops into transmuter):contracts/transmuter/libraries/LibSwapper.sol
 }

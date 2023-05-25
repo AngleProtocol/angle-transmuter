@@ -3,7 +3,7 @@
 pragma solidity ^0.8.17;
 
 import "../../utils/Constants.sol";
-import { DiamondStorage, KheopsStorage } from "../Storage.sol";
+import { DiamondStorage, TransmuterStorage } from "../Storage.sol";
 
 /// @title LibStorage
 /// @author Angle Labs, Inc.
@@ -17,10 +17,10 @@ library LibStorage {
         }
     }
 
-    /// @notice Returns the storage struct stored at the `KHEOPS_STORAGE_POSITION` slot
-    /// @dev This struct handles the particular logic of the Kheops system
-    function kheopsStorage() internal pure returns (KheopsStorage storage ds) {
-        bytes32 position = KHEOPS_STORAGE_POSITION;
+    /// @notice Returns the storage struct stored at the `TRANSMUTER_STORAGE_POSITION` slot
+    /// @dev This struct handles the particular logic of the Transmuter system
+    function transmuterStorage() internal pure returns (TransmuterStorage storage ds) {
+        bytes32 position = TRANSMUTER_STORAGE_POSITION;
         assembly {
             ds.slot := position
         }

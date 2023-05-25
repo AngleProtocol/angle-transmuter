@@ -9,7 +9,7 @@ import { console } from "forge-std/console.sol";
 
 import { MockChainlinkOracle } from "mock/MockChainlinkOracle.sol";
 
-import { QuoteType } from "contracts/kheops/Storage.sol";
+import { QuoteType } from "contracts/transmuter/Storage.sol";
 import "contracts/utils/Constants.sol";
 
 import { Fixture } from "../Fixture.sol";
@@ -33,9 +33,9 @@ contract Calls is Fixture {
         console.log("-------------------");
         console.log("");
 
-        (uint256 issuedA, uint256 issued) = kheops.getIssuedByCollateral(address(eurA));
-        (uint256 issuedB, ) = kheops.getIssuedByCollateral(address(eurB));
-        (uint256 issuedY, ) = kheops.getIssuedByCollateral(address(eurY));
+        (uint256 issuedA, uint256 issued) = transmuter.getIssuedByCollateral(address(eurA));
+        (uint256 issuedB, ) = transmuter.getIssuedByCollateral(address(eurB));
+        (uint256 issuedY, ) = transmuter.getIssuedByCollateral(address(eurY));
         console.log("Issued A: ", issuedA);
         console.log("Issued B: ", issuedB);
         console.log("Issued Y: ", issuedY);
@@ -70,25 +70,25 @@ contract Calls is Fixture {
             tokenIn = collateral;
             tokenOut = address(agToken);
             amountIn = amount * 10 ** decimals;
-            amountOut = kheops.quoteIn(amountIn, tokenIn, tokenOut);
+            amountOut = transmuter.quoteIn(amountIn, tokenIn, tokenOut);
         } else if (quoteType == QuoteType.BurnExactInput) {
             console.log("Burn - Input");
             tokenIn = address(agToken);
             tokenOut = collateral;
             amountIn = amount * BASE_18;
-            amountOut = kheops.quoteIn(amountIn, tokenIn, tokenOut);
+            amountOut = transmuter.quoteIn(amountIn, tokenIn, tokenOut);
         } else if (quoteType == QuoteType.MintExactOutput) {
             console.log("Mint - Output");
             tokenIn = collateral;
             tokenOut = address(agToken);
             amountOut = amount * BASE_18;
-            amountIn = kheops.quoteOut(amountOut, tokenIn, tokenOut);
+            amountIn = transmuter.quoteOut(amountOut, tokenIn, tokenOut);
         } else if (quoteType == QuoteType.BurnExactOutput) {
             console.log("Burn - Output");
             tokenIn = address(agToken);
             tokenOut = collateral;
             amountOut = amount * 10 ** decimals;
-            amountIn = kheops.quoteOut(amountOut, tokenIn, tokenOut);
+            amountIn = transmuter.quoteOut(amountOut, tokenIn, tokenOut);
         }
 
         console.log("Amount In: ", amountIn);
@@ -98,7 +98,7 @@ contract Calls is Fixture {
 
         // If burning we can't burn more than the reserves
         if (quoteType == QuoteType.BurnExactInput || quoteType == QuoteType.BurnExactOutput) {
-            if (amountOut > IERC20(tokenOut).balanceOf(address(kheops))) {
+            if (amountOut > IERC20(tokenOut).balanceOf(address(transmuter))) {
                 return;
             }
         }
@@ -110,14 +110,14 @@ contract Calls is Fixture {
 
         // Approval
         hoax(msg.sender);
-        IERC20(tokenIn).approve(address(kheops), amountIn);
+        IERC20(tokenIn).approve(address(transmuter), amountIn);
 
         // Swap
         hoax(msg.sender);
         if (quoteType == QuoteType.MintExactInput || quoteType == QuoteType.BurnExactInput) {
-            kheops.swapExactInput(amountIn, amountOut, tokenIn, tokenOut, msg.sender, block.timestamp + 1 hours);
+            transmuter.swapExactInput(amountIn, amountOut, tokenIn, tokenOut, msg.sender, block.timestamp + 1 hours);
         } else {
-            kheops.swapExactOutput(amountOut, amountIn, tokenIn, tokenOut, msg.sender, block.timestamp + 1 hours);
+            transmuter.swapExactOutput(amountOut, amountIn, tokenIn, tokenOut, msg.sender, block.timestamp + 1 hours);
         }
     }
 

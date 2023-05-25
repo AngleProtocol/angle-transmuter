@@ -40,7 +40,7 @@ import "oz/interfaces/IERC20.sol";
 import "oz/token/ERC20/utils/SafeERC20.sol";
 
 import { IAgToken } from "interfaces/IAgToken.sol";
-import { IKheops } from "interfaces/IKheops.sol";
+import { ITransmuter } from "interfaces/ITransmuter.sol";
 
 import { AccessControl, IAccessControlManager } from "../utils/AccessControl.sol";
 
@@ -50,7 +50,7 @@ import "../utils/Errors.sol";
 /// @title SavingsVest
 /// @author Angle Labs, Inc.
 /// @notice Savings contract where users can deposit an `asset` and earn a yield on this asset when it is distributed
-/// @dev This contract is functional if it has a mint right on `asset` and if it is trusted by the kheops contract
+/// @dev This contract is functional if it has a mint right on `asset` and if it is trusted by the transmuter contract
 /// @dev The implementation assumes that `asset` is safe to interact with, on which there cannot be reentrancy attacks
 /// @dev The ERC4626 interface does not allow users to specify a slippage protection parameter for the main entry points
 /// (like `deposit`, `mint`, `redeem` or `withdraw`). Even though there should be no specific sandwiching issue here,
@@ -69,8 +69,8 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
     /// @notice Amount of profit that needs to be vested
     uint256 public vestingProfit;
 
-    /// @notice Reference to the Kheops contract
-    IKheops public kheops;
+    /// @notice Reference to the Transmuter contract
+    ITransmuter public transmuter;
 
     /// @notice Last time rewards were accrued
     uint64 public lastUpdate;
@@ -116,15 +116,15 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
     function initialize(
         IAccessControlManager _accessControlManager,
         IERC20MetadataUpgradeable asset_,
-        IKheops _kheops,
+        ITransmuter _transmuter,
         string memory _name,
         string memory _symbol,
         uint256 divizer
     ) public initializer {
-        if (address(_accessControlManager) == address(0) || address(_kheops) == address(0)) revert ZeroAddress();
+        if (address(_accessControlManager) == address(0) || address(_transmuter) == address(0)) revert ZeroAddress();
         __ERC4626_init(asset_);
         __ERC20_init(_name, _symbol);
-        kheops = _kheops;
+        transmuter = _transmuter;
         accessControlManager = _accessControlManager;
         uint8 numDecimals = asset_.decimals();
         _numDecimals = numDecimals;
@@ -150,17 +150,17 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
     function accrue() external returns (uint256 minted) {
         if (block.timestamp - lastUpdate < updateDelay && !accessControlManager.isGovernorOrGuardian(msg.sender))
             revert NotAllowed();
-        IKheops _kheops = kheops;
+        ITransmuter _transmuter = transmuter;
         IAgToken _agToken = IAgToken(asset());
-        (uint64 collatRatio, uint256 reserves) = _kheops.getCollateralRatio();
+        (uint64 collatRatio, uint256 reserves) = _transmuter.getCollateralRatio();
         if (collatRatio > BASE_9) {
             // The surplus of profit minus a fee is distributed through this contract
             minted = (collatRatio * reserves) / BASE_9 - reserves;
             // Updating normalizer in order not to double count profits
-            _kheops.updateNormalizer(minted, true);
+            _transmuter.updateNormalizer(minted, true);
             uint256 surplusForProtocol = (minted * protocolSafetyFee) / BASE_9;
             address _surplusManager = surplusManager;
-            _surplusManager = _surplusManager == address(0) ? address(_kheops) : _surplusManager;
+            _surplusManager = _surplusManager == address(0) ? address(_transmuter) : _surplusManager;
             _agToken.mint(_surplusManager, surplusForProtocol);
             uint256 surplus = minted - surplusForProtocol;
             if (surplus != 0) {
@@ -183,7 +183,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
             }
             if (missing > 0) {
                 _agToken.burnSelf(missing, address(this));
-                _kheops.updateNormalizer(missing, false);
+                _transmuter.updateNormalizer(missing, false);
             }
         }
     }

@@ -20,7 +20,7 @@ struct SubCollateralStorage {
     AggregatorV3Interface[] oracles;
 }
 
-contract RedeemTest is Fixture, FunctionUtils {
+contract RedeemerTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
 
     uint256 internal _maxAmountWithoutDecimals = 10 ** 15;
@@ -74,7 +74,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                                                       QUOTEREDEEM                                                   
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteRedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
+    function testQuoteRedemptionCurveAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         initialAmounts[0] = 0;
         initialAmounts[1] = 0;
         initialAmounts[2] = 0;
@@ -102,7 +102,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertQuoteAmounts(uint64(BASE_9), mintedStables, amountBurnt, uint64(BASE_9), amounts);
     }
 
-    function testQuoteRedeemGlobalAtPeg(
+    function testQuoteRedemptionCurveGlobalAtPeg(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[2] memory latestOracleValue
@@ -132,13 +132,8 @@ contract RedeemTest is Fixture, FunctionUtils {
             );
 
             // check collateral ratio first
-<<<<<<< HEAD
-            (uint64 collatRatio, uint256 reservesValue) = kheops.getCollateralRatio();
-            if (mintedStables > 0) assertApproxEqAbs(collatRatio, BASE_9, 1e5);
-=======
             (uint64 collatRatio, uint256 reservesValue) = transmuter.getCollateralRatio();
             if (mintedStables > 0) assertApproxEqAbs(collatRatio, BASE_9, 10 wei);
->>>>>>> b313c5d (feat: rename kheops into transmuter)
             else assertEq(collatRatio, type(uint64).max);
             assertEq(reservesValue, mintedStables);
 
@@ -157,7 +152,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteRedeemRandomOracles(
+    function testQuoteRedemptionCurveRandomOracles(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue
@@ -182,7 +177,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertQuoteAmounts(collatRatio, mintedStables, amountBurnt, uint64(BASE_9), amounts);
     }
 
-    function testQuoteRedeemAtPegRandomFees(
+    function testQuoteRedemptionCurveAtPegRandomRedemptionFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint64[10] memory xFeeRedeemUnbounded,
@@ -210,7 +205,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         );
     }
 
-    function testQuoteRedeemRandomFees(
+    function testQuoteRedemptionCurveRandomRedemptionFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -248,7 +243,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                                                         REDEEM                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testRedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
+    function testRedemptionCurveAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         // let's first load the reserves of the protocol
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
             initialAmounts,
@@ -291,7 +286,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
     }
 
-    function testRedeemRandomFees(
+    function testRedemptionCurveRandomRedemptionFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -863,19 +858,12 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256 valueCheck = (collatRatio * amountBurnt * fee) / BASE_18;
         if (collatRatio >= BASE_9) {
             denom = (mintedStables * collatRatio);
-            // for rounding errors
-            assertLe(amountInValueReceived, amountBurnt + 1);
+            assertLe(amountInValueReceived, amountBurnt);
             valueCheck = (amountBurnt * fee) / BASE_9;
         }
-<<<<<<< HEAD
-        assertApproxEqAbs(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt * fee) / denom, 1 wei);
-        assertApproxEqAbs(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt * fee) / denom, 1 wei);
-        assertApproxEqAbs(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt * fee) / denom, 1 wei);
-=======
         assertEq(amounts[0], (eurA.balanceOf(address(transmuter)) * amountBurnt * fee) / denom);
         assertEq(amounts[1], (eurB.balanceOf(address(transmuter)) * amountBurnt * fee) / denom);
         assertEq(amounts[2], (eurY.balanceOf(address(transmuter)) * amountBurnt * fee) / denom);
->>>>>>> b313c5d (feat: rename kheops into transmuter)
         if (collatRatio < BASE_9) {
             assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
         }
@@ -1087,7 +1075,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint64[10] memory xFeeRedeemUnbounded,
         int64[10] memory yFeeRedeemUnbounded
     ) internal returns (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) {
-        (xFeeRedeem, yFeeRedeem) = _generateCurves(xFeeRedeemUnbounded, yFeeRedeemUnbounded, true, false, 0, 0);
+        (xFeeRedeem, yFeeRedeem) = _generateCurves(xFeeRedeemUnbounded, yFeeRedeemUnbounded, true);
         vm.prank(governor);
         transmuter.setRedemptionCurveParams(xFeeRedeem, yFeeRedeem);
     }

@@ -31,7 +31,7 @@ library LibSetters {
 
     /// @notice Internal version of `addCollateral`
     function addCollateral(address collateral) internal {
-        KheopsStorage storage ks = s.kheopsStorage();
+        TransmuterStorage storage ks = s.transmuterStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals != 0) revert AlreadyAdded();
         collatInfo.decimals = uint8(IERC20Metadata(collateral).decimals());
@@ -41,7 +41,7 @@ library LibSetters {
 
     /// @notice Internal version of `setOracle`
     function setOracle(address collateral, bytes memory oracleConfig) internal {
-        Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
+        Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         // Checks oracle validity
         LibOracle.readMint(oracleConfig);
@@ -51,7 +51,7 @@ library LibSetters {
 
     /// @notice Internal version of `setFees`
     function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) internal {
-        KheopsStorage storage ks = s.kheopsStorage();
+        TransmuterStorage storage ks = s.transmuterStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         uint8 setter;
@@ -70,7 +70,7 @@ library LibSetters {
     /// @notice Internal version of `togglePause`
     function togglePause(address collateral, PauseType pausedType) internal {
         if (pausedType == PauseType.Mint || pausedType == PauseType.Burn) {
-            Collateral storage collatInfo = s.kheopsStorage().collaterals[collateral];
+            Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
             if (collatInfo.decimals == 0) revert NotCollateral();
             if (pausedType == PauseType.Mint) {
                 uint8 pausedStatus = collatInfo.unpausedMint;
@@ -80,7 +80,7 @@ library LibSetters {
                 collatInfo.unpausedBurn = 1 - pausedStatus;
             }
         } else {
-            KheopsStorage storage ks = s.kheopsStorage();
+            TransmuterStorage storage ks = s.transmuterStorage();
             uint8 pausedStatus = ks.pausedRedemption;
             ks.pausedRedemption = 1 - pausedStatus;
         }
@@ -115,7 +115,7 @@ library LibSetters {
                 (setter == 2 && (xFee[i] >= xFee[i + 1] || yFee[i] < 0 || yFee[i] > int256(BASE_9)))
             ) revert InvalidParams();
         }
-        KheopsStorage storage ks = s.kheopsStorage();
+        TransmuterStorage storage ks = s.transmuterStorage();
         address[] memory collateralListMem = ks.collateralList;
         uint256 length = collateralListMem.length;
         // If a fee is negative, we need to check that accounts atomically minting (from any collateral) and

@@ -16,13 +16,13 @@ import { MockChainlinkOracle } from "mock/MockChainlinkOracle.sol";
 import { MockManager } from "mock/MockManager.sol";
 import { MockTokenPermit } from "mock/MockTokenPermit.sol";
 
-import { CollateralSetup, Test } from "contracts/kheops/configs/Test.sol";
+import { CollateralSetup, Test } from "contracts/transmuter/configs/Test.sol";
 import "contracts/utils/Constants.sol";
 import "contracts/utils/Errors.sol";
 
-import { Kheops } from "./utils/Kheops.sol";
+import { Transmuter } from "./utils/Transmuter.sol";
 
-contract Fixture is Kheops {
+contract Fixture is Transmuter {
     IAccessControlManager public accessControlManager;
     IAgToken public agToken;
 
@@ -81,7 +81,7 @@ contract Fixture is Kheops {
 
         // Config
         config = address(new Test());
-        deployKheops(
+        deployTransmuter(
             config,
             abi.encodeWithSelector(
                 Test.initialize.selector,

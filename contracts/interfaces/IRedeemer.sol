@@ -19,7 +19,7 @@ interface IRedeemer {
     ) external returns (address[] memory tokens, uint256[] memory amounts);
 
     /// @notice Same as the redeem function above with the additional feature to specify a list of `forfeitTokens` for
-    /// which the Kheops system will not try to do a transfer to `receiver`.
+    /// which the Transmuter system will not try to do a transfer to `receiver`.
     function redeemWithForfeit(
         uint256 amount,
         address receiver,

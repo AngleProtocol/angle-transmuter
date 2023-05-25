@@ -41,7 +41,7 @@ library LibRedeemer {
         uint256[] memory minAmountOuts,
         address[] memory forfeitTokens
     ) internal returns (address[] memory tokens, uint256[] memory amounts) {
-        KheopsStorage storage ks = s.kheopsStorage();
+        TransmuterStorage storage ks = s.transmuterStorage();
         if (block.timestamp > deadline) revert TooLate();
         uint256[] memory subCollateralsTracker;
         (tokens, amounts, subCollateralsTracker) = quoteRedemptionCurve(amount);
@@ -82,7 +82,7 @@ library LibRedeemer {
         view
         returns (address[] memory tokens, uint256[] memory balances, uint256[] memory subCollateralsTracker)
     {
-        KheopsStorage storage ks = s.kheopsStorage();
+        TransmuterStorage storage ks = s.transmuterStorage();
         uint64 collatRatio;
         uint256 stablecoinsIssued;
         (collatRatio, stablecoinsIssued, tokens, balances, subCollateralsTracker) = getCollateralRatio();
@@ -129,7 +129,7 @@ library LibRedeemer {
             uint256[] memory subCollateralsTracker
         )
     {
-        KheopsStorage storage ks = s.kheopsStorage();
+        TransmuterStorage storage ks = s.transmuterStorage();
         uint256 totalCollateralization;
         address[] memory collateralList = ks.collateralList;
         uint256 collateralListLength = collateralList.length;
@@ -185,7 +185,7 @@ library LibRedeemer {
 
     /// @notice Updates the `normalizer` variable used to track stablecoins issued from each asset and globally
     function updateNormalizer(uint256 amount, bool increase) internal returns (uint256 newNormalizerValue) {
-        KheopsStorage storage ks = s.kheopsStorage();
+        TransmuterStorage storage ks = s.transmuterStorage();
         uint256 _normalizer = ks.normalizer;
         uint256 _normalizedStables = ks.normalizedStables;
         if (_normalizedStables == 0)

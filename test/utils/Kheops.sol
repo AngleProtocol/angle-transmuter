@@ -2,30 +2,30 @@
 
 pragma solidity ^0.8.17;
 
-import { IKheops } from "interfaces/IKheops.sol";
+import { ITransmuter } from "interfaces/ITransmuter.sol";
 
-import { DiamondProxy } from "contracts/kheops/DiamondProxy.sol";
-import "contracts/kheops/Storage.sol";
-import { DiamondCut } from "contracts/kheops/facets/DiamondCut.sol";
-import { DiamondLoupe } from "contracts/kheops/facets/DiamondLoupe.sol";
-import { Getters } from "contracts/kheops/facets/Getters.sol";
-import { Redeemer } from "contracts/kheops/facets/Redeemer.sol";
-import { RewardHandler } from "contracts/kheops/facets/RewardHandler.sol";
-import { Setters } from "contracts/kheops/facets/Setters.sol";
-import { Swapper } from "contracts/kheops/facets/Swapper.sol";
+import { DiamondProxy } from "contracts/transmuter/DiamondProxy.sol";
+import "contracts/transmuter/Storage.sol";
+import { DiamondCut } from "contracts/transmuter/facets/DiamondCut.sol";
+import { DiamondLoupe } from "contracts/transmuter/facets/DiamondLoupe.sol";
+import { Getters } from "contracts/transmuter/facets/Getters.sol";
+import { Redeemer } from "contracts/transmuter/facets/Redeemer.sol";
+import { RewardHandler } from "contracts/transmuter/facets/RewardHandler.sol";
+import { Setters } from "contracts/transmuter/facets/Setters.sol";
+import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import "contracts/utils/Errors.sol";
 
 import "./Helper.sol";
 
-abstract contract Kheops is Helper {
+abstract contract Transmuter is Helper {
     // Diamond
-    IKheops kheops;
+    ITransmuter transmuter;
 
     string[] facetNames;
     address[] facetAddressList;
 
     // @dev Deploys diamond and connects facets
-    function deployKheops(address _init, bytes memory _calldata) public virtual {
+    function deployTransmuter(address _init, bytes memory _calldata) public virtual {
         // Deploy every facet
         facetNames.push("DiamondCut");
         facetAddressList.push(address(new DiamondCut()));
@@ -60,7 +60,7 @@ abstract contract Kheops is Helper {
         }
 
         // Deploy diamond
-        kheops = IKheops(address(new DiamondProxy(cut, _init, _calldata)));
+        transmuter = ITransmuter(address(new DiamondProxy(cut, _init, _calldata)));
     }
 
     // @dev Helper to deploy a given Facet
@@ -76,6 +76,6 @@ abstract contract Kheops is Helper {
         });
 
         // Add functions to diamond
-        kheops.diamondCut(facetCut, address(0x0), "");
+        transmuter.diamondCut(facetCut, address(0x0), "");
     }
 }

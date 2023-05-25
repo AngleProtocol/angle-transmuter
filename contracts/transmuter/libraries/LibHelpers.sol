@@ -28,7 +28,7 @@ library LibHelpers {
         }
     }
 
-    /// @notice Performs a collateral transfer to one of the contract of the Kheops system depending on the
+    /// @notice Performs a collateral transfer to one of the contract of the Transmuter system depending on the
     /// `managerData` associated to `token`
     function transferCollateralFrom(address token, uint256 amount, ManagerStorage memory managerData) internal {
         if (amount > 0) {

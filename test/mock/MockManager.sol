@@ -5,8 +5,8 @@ pragma solidity ^0.8.17;
 import "oz/token/ERC20/IERC20.sol";
 import "oz/token/ERC20/utils/SafeERC20.sol";
 
-import { LibOracle, AggregatorV3Interface } from "../../contracts/kheops/libraries/LibOracle.sol";
-import { LibHelpers } from "../../contracts/kheops/libraries/LibHelpers.sol";
+import { LibOracle, AggregatorV3Interface } from "../../contracts/transmuter/libraries/LibOracle.sol";
+import { LibHelpers } from "../../contracts/transmuter/libraries/LibHelpers.sol";
 
 import "../../contracts/utils/Constants.sol";
 import "../../contracts/utils/Errors.sol";

@@ -2,9 +2,9 @@
 
 pragma solidity >=0.5.0;
 
-/// @title IKheopsOracle
+/// @title ITransmuterOracle
 /// @author Angle Labs, Inc.
-interface IKheopsOracle {
+interface ITransmuterOracle {
     function readRedemption() external view returns (uint256);
 
     function readMint() external view returns (uint256);
