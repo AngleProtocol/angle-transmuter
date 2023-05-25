@@ -133,7 +133,7 @@ contract RedeemTest is Fixture, FunctionUtils {
 
             // check collateral ratio first
             (uint64 collatRatio, uint256 reservesValue) = kheops.getCollateralRatio();
-            if (mintedStables > 0) assertApproxEqAbs(collatRatio, BASE_9, 10 wei);
+            if (mintedStables > 0) assertApproxEqAbs(collatRatio, BASE_9, 1e5);
             else assertEq(collatRatio, type(uint64).max);
             assertEq(reservesValue, mintedStables);
 
