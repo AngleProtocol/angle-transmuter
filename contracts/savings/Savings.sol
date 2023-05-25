@@ -50,7 +50,7 @@ import "../utils/Errors.sol";
 /// @author Angle Labs, Inc.
 /// @notice Savings contract where users can deposit an `asset` and earn a yield on this asset determined
 /// by `rate`
-/// @dev This contract is functional if it has a mint right on `asset` and if it is trusted by the transmuter contract
+/// @dev This contract is functional if it has a mint right on `asset` and if it is trusted by the Transmuter contract
 /// @dev The implementation assumes that `asset` is safe to interact with, on which there cannot be reentrancy attacks
 /// @dev The ERC4626 interface does not allow users to specify a slippage protection parameter for the main entry points
 /// (like `deposit`, `mint`, `redeem` or `withdraw`). Even though there should be no specific sandwiching issue here,

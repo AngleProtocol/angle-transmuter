@@ -132,13 +132,8 @@ contract RedeemTest is Fixture, FunctionUtils {
             );
 
             // check collateral ratio first
-<<<<<<< HEAD
             (uint64 collatRatio, uint256 reservesValue) = kheops.getCollateralRatio();
             if (mintedStables > 0) assertApproxEqAbs(collatRatio, BASE_9, 1e5);
-=======
-            (uint64 collatRatio, uint256 reservesValue) = transmuter.getCollateralRatio();
-            if (mintedStables > 0) assertApproxEqAbs(collatRatio, BASE_9, 10 wei);
->>>>>>> b313c5d (feat: rename kheops into transmuter)
             else assertEq(collatRatio, type(uint64).max);
             assertEq(reservesValue, mintedStables);
 
@@ -867,15 +862,9 @@ contract RedeemTest is Fixture, FunctionUtils {
             assertLe(amountInValueReceived, amountBurnt + 1);
             valueCheck = (amountBurnt * fee) / BASE_9;
         }
-<<<<<<< HEAD
         assertApproxEqAbs(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt * fee) / denom, 1 wei);
         assertApproxEqAbs(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt * fee) / denom, 1 wei);
         assertApproxEqAbs(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt * fee) / denom, 1 wei);
-=======
-        assertEq(amounts[0], (eurA.balanceOf(address(transmuter)) * amountBurnt * fee) / denom);
-        assertEq(amounts[1], (eurB.balanceOf(address(transmuter)) * amountBurnt * fee) / denom);
-        assertEq(amounts[2], (eurY.balanceOf(address(transmuter)) * amountBurnt * fee) / denom);
->>>>>>> b313c5d (feat: rename kheops into transmuter)
         if (collatRatio < BASE_9) {
             assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
         }

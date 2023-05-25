@@ -156,8 +156,12 @@ contract MintTest is Fixture, FunctionUtils {
 =======
         uint256 amountOut = transmuter.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
         uint256 reflexiveAmountIn = transmuter.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
+<<<<<<< HEAD
         uint256 reflexiveAmountOut = transmuter.quoteIn(reflexiveAmountIn, _collaterals[fromToken], address(agToken));
 >>>>>>> b313c5d (feat: rename kheops into transmuter)
+=======
+        //uint256 reflexiveAmountOut = transmuter.quoteIn(reflexiveAmountIn, _collaterals[fromToken], address(agToken));
+>>>>>>> f1cb253 (fix: compilation errors)
         assertEq(supposedAmountOut, amountOut);
         if (amountOut > _minWallet) {
             _assertApproxEqRelDecimalWithTolerance(
