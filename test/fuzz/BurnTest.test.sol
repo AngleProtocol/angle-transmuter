@@ -833,7 +833,7 @@ contract BurnTest is Fixture, FunctionUtils {
             yFeeBurnUnbounded,
             false,
             false,
-            int256(BASE_9 / 2),
+            -int256(BASE_9 / 2),
             maxFee
         );
         vm.prank(governor);

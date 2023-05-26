@@ -663,7 +663,14 @@ contract MintTest is Fixture, FunctionUtils {
         uint64[10] memory xFeeMintUnbounded,
         int64[10] memory yFeeMintUnbounded
     ) internal returns (uint64[] memory xFeeMint, int64[] memory yFeeMint) {
-        (xFeeMint, yFeeMint) = _generateCurves(xFeeMintUnbounded, yFeeMintUnbounded, true, true, int256(BASE_9 / 2), 0);
+        (xFeeMint, yFeeMint) = _generateCurves(
+            xFeeMintUnbounded,
+            yFeeMintUnbounded,
+            true,
+            true,
+            -int256(BASE_9 / 2),
+            0
+        );
         vm.prank(governor);
         transmuter.setFees(collateral, xFeeMint, yFeeMint, true);
     }
