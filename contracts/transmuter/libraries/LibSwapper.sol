@@ -233,7 +233,7 @@ library LibSwapper {
                 if (!v.isMint && currentFees == int256(BASE_9)) revert InvalidSwap();
             }
             {
-                // In the mint case, when `!v.isExact`: = `b_{i+1} * (1+(g_i(0)+g_i(b_{i+1})/2)`
+                // In the mint case, when `!v.isExact`: = `b_{i+1} * (1+(g_i(0)+f_{i+1})/2)`
                 uint256 amountToNextBreakPointNormalizer = v.isExact ? v.amountToNextBreakPoint : v.isMint
                     ? invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
                     : applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
@@ -241,7 +241,7 @@ library LibSwapper {
                 if (amountToNextBreakPointNormalizer >= amountStable) {
                     uint256 deltaFees = uint256((v.upperFees - currentFees));
                     if (v.isExact) {
-                        // `M * (g_i(0) + g_i(M)) / 2 = g(0) + (g(b_{i+1}-g(0)) * M / 2b_{i+1})`
+                        // `(g_i(0) + g_i(M)) / 2 = g(0) + (f_{i+1} - g(0)) * M / (2 * b_{i+1})`
                         int64 midFee = int64(
                             currentFees +
                                 int256(
@@ -254,11 +254,10 @@ library LibSwapper {
                         );
                         return amount + _computeFee(quoteType, amountStable, midFee);
                     } else {
-                        // Here we are computing the `m_t` value introduced in the whitepaper, solution to a
-                        // second order equation
+                        // Here we are computing the `m_t` value introduced in the whitepaper
 
                         // `deltaFees == 0` means that the equation to find `m_t` becomes linear and so needs
-                        // to be solved differently
+                        // to be solved differently than as if it was a 2nd order
                         console.log(deltaFees, uint256(currentFees));
                         if (deltaFees == 0) return amount + _computeFee(quoteType, amountStable, int64(currentFees));
                         // ac4 is the value of `2M(f_{i+1}-f_i)/(b_{i+1}-b_i) = 2M(f_{i+1}-g(0))/b_{i+1}` used
