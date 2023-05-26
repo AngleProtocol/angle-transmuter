@@ -12,7 +12,7 @@ interface ITransmuterOracle {
     /// deviation from the target price
     function readMint() external view returns (uint256);
 
-    /// @notice Reads the oracle value for asset to use in a burn transaction as well as the deviation
-    /// from the target price for the asset
-    function readBurn() external view returns (uint256 oracleValue, uint256 deviation);
+    /// @notice Reads the oracle value for asset to use in a burn transaction as well as the ratio
+    /// between the current price and the target price for the asset
+    function readBurn() external view returns (uint256 oracleValue, uint256 ratio);
 }

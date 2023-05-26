@@ -45,9 +45,9 @@ library LibOracle {
 
     /// @notice Reads the oracle value that will be used for a burn operation for an asset with `oracleConfig`
     /// @return oracleValue The actual oracle value obtained
-    /// @return deviation If `oracle value < target price`, the ratio between the oracle value and the target
+    /// @return ratio If `oracle value < target price`, the ratio between the oracle value and the target
     /// price, otherwise `BASE_18`
-    function readBurn(bytes memory oracleConfig) internal view returns (uint256 oracleValue, uint256 deviation) {
+    function readBurn(bytes memory oracleConfig) internal view returns (uint256 oracleValue, uint256 ratio) {
         (OracleReadType readType, OracleTargetType targetType, bytes memory data) = _parseOracle(oracleConfig);
         if (readType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(data, (ITransmuterOracle));
@@ -55,8 +55,8 @@ library LibOracle {
         }
         uint256 _targetPrice = targetPrice(targetType);
         oracleValue = read(readType, _targetPrice, data);
-        deviation = BASE_18;
-        if (oracleValue < _targetPrice) deviation = (oracleValue * BASE_18) / _targetPrice;
+        ratio = BASE_18;
+        if (oracleValue < _targetPrice) ratio = (oracleValue * BASE_18) / _targetPrice;
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

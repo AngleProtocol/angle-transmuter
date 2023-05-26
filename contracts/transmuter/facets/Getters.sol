@@ -82,10 +82,10 @@ contract Getters is IGetters {
     /// @inheritdoc IGetters
     function getOracleValues(
         address collateral
-    ) external view returns (uint256 mint, uint256 burn, uint256 deviation, uint256 redemption) {
+    ) external view returns (uint256 mint, uint256 burn, uint256 ratio, uint256 redemption) {
         bytes memory oracleConfig = s.transmuterStorage().collaterals[collateral].oracleConfig;
-        (burn, deviation) = LibOracle.readBurn(oracleConfig);
-        return (LibOracle.readMint(oracleConfig), burn, deviation, LibOracle.readRedemption(oracleConfig));
+        (burn, ratio) = LibOracle.readBurn(oracleConfig);
+        return (LibOracle.readMint(oracleConfig), burn, ratio, LibOracle.readRedemption(oracleConfig));
     }
 
     /// @inheritdoc IGetters

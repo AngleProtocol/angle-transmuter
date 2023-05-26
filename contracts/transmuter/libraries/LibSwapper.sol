@@ -13,8 +13,6 @@ import { LibManager } from "./LibManager.sol";
 import { LibOracle } from "./LibOracle.sol";
 import { LibStorage as s } from "./LibStorage.sol";
 
-import { console } from "forge-std/console.sol";
-
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 import "../Storage.sol";
@@ -123,8 +121,8 @@ library LibSwapper {
         Collateral memory collatInfo,
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
-        (uint256 deviation, uint256 oracleValue) = getBurnOracle(collateral, collatInfo.oracleConfig);
-        amountIn = Math.mulDiv(LibHelpers.convertDecimalTo(amountOut, collatInfo.decimals, 18), oracleValue, deviation);
+        (uint256 ratio, uint256 oracleValue) = getBurnOracle(collateral, collatInfo.oracleConfig);
+        amountIn = Math.mulDiv(LibHelpers.convertDecimalTo(amountOut, collatInfo.decimals, 18), oracleValue, ratio);
         amountIn = quoteFees(collatInfo, QuoteType.BurnExactOutput, amountIn);
     }
 
@@ -134,9 +132,9 @@ library LibSwapper {
         Collateral memory collatInfo,
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
-        (uint256 deviation, uint256 oracleValue) = getBurnOracle(collateral, collatInfo.oracleConfig);
+        (uint256 ratio, uint256 oracleValue) = getBurnOracle(collateral, collatInfo.oracleConfig);
         amountOut = quoteFees(collatInfo, QuoteType.BurnExactInput, amountIn);
-        amountOut = LibHelpers.convertDecimalTo((amountOut * deviation) / oracleValue, 18, collatInfo.decimals);
+        amountOut = LibHelpers.convertDecimalTo((amountOut * ratio) / oracleValue, 18, collatInfo.decimals);
     }
 
     /// @notice Computes the fees to apply during a mint or burn operation
@@ -240,9 +238,10 @@ library LibSwapper {
 
                 if (amountToNextBreakPointNormalizer >= amountStable) {
                     uint256 deltaFees = uint256((v.upperFees - currentFees));
+                    int64 midFee;
                     if (v.isExact) {
                         // `(g_i(0) + g_i(M)) / 2 = g(0) + (f_{i+1} - g(0)) * M / (2 * b_{i+1})`
-                        int64 midFee = int64(
+                        midFee = int64(
                             currentFees +
                                 int256(
                                     deltaFees.mulDiv(
@@ -252,16 +251,12 @@ library LibSwapper {
                                     )
                                 )
                         );
-                        return amount + _computeFee(quoteType, amountStable, midFee);
                     } else {
-                        // Here we are computing the `m_t` value introduced in the whitepaper
+                        // Here instead of computing the closed form expression for `m_t` derived in the whitepaper,
+                        // we are computing: `(g(0)+g_i(m_t))/2 = g(0)+(f_{i+1}-f_i)/(b_{i+1}-b_i)m_t/2
 
-                        // `deltaFees == 0` means that the equation to find `m_t` becomes linear and so needs
-                        // to be solved differently than as if it was a 2nd order
-                        console.log(deltaFees, uint256(currentFees));
-                        if (deltaFees == 0) return amount + _computeFee(quoteType, amountStable, int64(currentFees));
                         // ac4 is the value of `2M(f_{i+1}-f_i)/(b_{i+1}-b_i) = 2M(f_{i+1}-g(0))/b_{i+1}` used
-                        // when solving the second order equation for `m_t` in both the mint and burn case
+                        // in the computation of `m_t` in both the mint and burn case
                         uint256 ac4 = BASE_9.mulDiv(
                             2 * amountStable * deltaFees,
                             v.amountToNextBreakPoint,
@@ -270,30 +265,42 @@ library LibSwapper {
                         if (v.isMint) {
                             // In the mint case:
                             // `m_t = (-1-g(0)+sqrt[(1+g(0))**2+2M(f_{i+1}-g(0))/b_{i+1})]/((f_{i+1}-g(0))/b_{i+1})`
-                            uint256 basePlusCurrent = uint256(int256(BASE_9) + currentFees);
-                            return
-                                amount +
-                                (v.amountToNextBreakPoint *
-                                    (Math.sqrt(basePlusCurrent ** 2 + ac4, Math.Rounding.Up) - basePlusCurrent)) /
-                                deltaFees;
+                            // And so: g(0)+(f_{i+1}-f_i)/(b_{i+1}-b_i)m_t/2
+                            //                      = (g(0)-1+sqrt[(1+g(0))**2+2M(f_{i+1}-g(0))/b_{i+1})])
+                            midFee = int64(
+                                (int256(
+                                    Math.sqrt((uint256(int256(BASE_9) + currentFees)) ** 2 + ac4, Math.Rounding.Up)
+                                ) +
+                                    currentFees -
+                                    int256(BASE_9)) / 2
+                            );
                         } else {
                             // In the burn case:
                             // `m_t = (1-g(0)+sqrt[(1-g(0))**2-2M(f_{i+1}-g(0))/b_{i+1})]/((f_{i+1}-g(0))/b_{i+1})`
+                            // And so: g(0)+(f_{i+1}-f_i)/(b_{i+1}-b_i)m_t/2
+                            //                      = (g(0)+1-sqrt[(1-g(0))**2-2M(f_{i+1}-g(0))/b_{i+1})])
                             uint256 baseMinusCurrent = uint256(int256(BASE_9) - currentFees);
-                            uint256 squareRoot = 0;
                             // Mathematically, this condition is always verified, but rounding errors may make this
                             // mathematical invariant break, in which case we consider that the square root is null
-                            if (baseMinusCurrent ** 2 > ac4)
-                                squareRoot = Math.sqrt(baseMinusCurrent ** 2 - ac4, Math.Rounding.Up);
-                            return
-                                amount +
-                                v.amountToNextBreakPoint.mulDiv(
-                                    squareRoot + baseMinusCurrent,
-                                    deltaFees,
-                                    Math.Rounding.Up
+                            if (baseMinusCurrent ** 2 > ac4) midFee = int64((currentFees + int256(BASE_9)) / 2);
+                            else
+                                midFee = int64(
+                                    int256(
+                                        Math.mulDiv(
+                                            uint256(
+                                                currentFees +
+                                                    int256(BASE_9) -
+                                                    int256(Math.sqrt(baseMinusCurrent ** 2 - ac4, Math.Rounding.Down))
+                                            ),
+                                            1,
+                                            2,
+                                            Math.Rounding.Up
+                                        )
+                                    )
                                 );
                         }
                     }
+                    return amount + _computeFee(quoteType, amountStable, midFee);
                 } else {
                     amountStable -= amountToNextBreakPointNormalizer;
                     amount += !v.isExact ? v.amountToNextBreakPoint : v.isMint
@@ -314,6 +321,7 @@ library LibSwapper {
             _computeFee(quoteType, amountStable, v.isMint ? collatInfo.yFeeMint[n - 1] : collatInfo.yFeeBurn[n - 1]);
     }
 
+    /// @notice Applies or inverts `fees` to an `amount` based on the type of operation
     function _computeFee(QuoteType quoteType, uint256 amount, int64 fees) private pure returns (uint256) {
         return
             quoteType == QuoteType.MintExactInput ? applyFeeMint(amount, fees) : quoteType == QuoteType.MintExactOutput
@@ -368,28 +376,28 @@ library LibSwapper {
         } else amountIn = amountOut.mulDiv(BASE_9, BASE_9 + uint256(int256(-fees)), Math.Rounding.Up);
     }
 
-    /// @notice Gets the oracle value and its `deviation` with respect to the target price when it comes to
+    /// @notice Gets the oracle value and the ratio with respect to the target price when it comes to
     /// burning for `collateral`
     function getBurnOracle(
         address collateral,
         bytes memory oracleConfig
-    ) internal view returns (uint256 deviation, uint256 oracleValue) {
+    ) internal view returns (uint256 minRatio, uint256 oracleValue) {
         TransmuterStorage storage ks = s.transmuterStorage();
-        deviation = BASE_18;
+        minRatio = BASE_18;
         address[] memory collateralList = ks.collateralList;
         uint256 length = collateralList.length;
         for (uint256 i; i < length; ++i) {
-            uint256 deviationObserved = BASE_18;
+            uint256 ratioObserved = BASE_18;
             if (collateralList[i] != collateral) {
                 uint256 oracleValueTmp;
-                (oracleValueTmp, deviationObserved) = LibOracle.readBurn(
-                    ks.collaterals[collateralList[i]].oracleConfig
-                );
-            } else (oracleValue, deviationObserved) = LibOracle.readBurn(oracleConfig);
-            if (deviationObserved < deviation) deviation = deviationObserved;
+                (oracleValueTmp, ratioObserved) = LibOracle.readBurn(ks.collaterals[collateralList[i]].oracleConfig);
+            } else (oracleValue, ratioObserved) = LibOracle.readBurn(oracleConfig);
+            if (ratioObserved < minRatio) minRatio = ratioObserved;
         }
     }
 
+    /// @notice Checks whether a managed collateral asset still has enough collateral available to process
+    /// a transfer
     function checkAmounts(Collateral memory collatInfo, uint256 amountOut) internal view {
         // Checking if enough is available for collateral assets that involve manager addresses
         if (collatInfo.isManaged > 0 && LibManager.maxAvailable(collatInfo.managerData) < amountOut)
