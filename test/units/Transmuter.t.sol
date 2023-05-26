@@ -8,8 +8,6 @@ import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
 import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
 
-import { console } from "forge-std/console.sol";
-
 import { MockAccessControlManager } from "mock/MockAccessControlManager.sol";
 import { MockChainlinkOracle } from "mock/MockChainlinkOracle.sol";
 import { MockTokenPermit } from "mock/MockTokenPermit.sol";

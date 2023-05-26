@@ -13,6 +13,8 @@ import { LibManager } from "./LibManager.sol";
 import { LibOracle } from "./LibOracle.sol";
 import { LibStorage as s } from "./LibStorage.sol";
 
+import { console } from "forge-std/console.sol";
+
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 import "../Storage.sol";
@@ -139,6 +141,7 @@ library LibSwapper {
 
     /// @notice Computes the fees to apply during a mint or burn operation
     /// @dev This function leverages the mathematical computations of the appendix of the Transmuter whitepaper
+    /// @dev Cost of the function is linear in the length of the `xFeeMint` or `xFeeBurn` array
     function quoteFees(
         Collateral memory collatInfo,
         QuoteType quoteType,
@@ -256,6 +259,7 @@ library LibSwapper {
 
                         // `deltaFees == 0` means that the equation to find `m_t` becomes linear and so needs
                         // to be solved differently
+                        console.log(deltaFees, uint256(currentFees));
                         if (deltaFees == 0) return amount + _computeFee(quoteType, amountStable, int64(currentFees));
                         // ac4 is the value of `2M(f_{i+1}-f_i)/(b_{i+1}-b_i) = 2M(f_{i+1}-g(0))/b_{i+1}` used
                         // when solving the second order equation for `m_t` in both the mint and burn case
@@ -270,11 +274,9 @@ library LibSwapper {
                             uint256 basePlusCurrent = uint256(int256(BASE_9) + currentFees);
                             return
                                 amount +
-                                v.amountToNextBreakPoint.mulDiv(
-                                    Math.sqrt(basePlusCurrent ** 2 + ac4, Math.Rounding.Up) - basePlusCurrent,
-                                    deltaFees,
-                                    Math.Rounding.Down
-                                );
+                                (v.amountToNextBreakPoint *
+                                    (Math.sqrt(basePlusCurrent ** 2 + ac4, Math.Rounding.Up) - basePlusCurrent)) /
+                                deltaFees;
                         } else {
                             // In the burn case:
                             // `m_t = (1-g(0)+sqrt[(1-g(0))**2-2M(f_{i+1}-g(0))/b_{i+1})]/((f_{i+1}-g(0))/b_{i+1})`
@@ -335,9 +337,10 @@ library LibSwapper {
     /// @notice Applies `fees` to an `amountIn` of assets to get an `amountOut` of stablecoins
     function applyFeeMint(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
         if (fees >= 0) {
+            uint256 feeCorrected = uint256(int256(fees));
             // Consider that if fees are above `BASE_12` this is equivalent to infinite fees
-            if (uint256(int256(fees)) >= BASE_12) revert InvalidSwap();
-            amountOut = (amountIn * BASE_9) / ((BASE_9 + uint256(int256(fees))));
+            if (feeCorrected >= BASE_12) revert InvalidSwap();
+            amountOut = (amountIn * BASE_9) / (BASE_9 + feeCorrected);
         } else amountOut = (amountIn * BASE_9) / (BASE_9 - uint256(int256(-fees)));
     }
 
@@ -345,9 +348,10 @@ library LibSwapper {
     /// that need to be brought during a mint
     function invertFeeMint(uint256 amountOut, int64 fees) internal pure returns (uint256 amountIn) {
         if (fees >= 0) {
+            uint256 feeCorrected = uint256(int256(fees));
             // Consider that if fees are above `BASE_12` this is equivalent to infinite fees
-            if (uint256(int256(fees)) >= BASE_12) revert InvalidSwap();
-            amountIn = amountOut.mulDiv(BASE_9 + uint256(int256(fees)), BASE_9, Math.Rounding.Up);
+            if (feeCorrected >= BASE_12) revert InvalidSwap();
+            amountIn = amountOut.mulDiv(BASE_9 + feeCorrected, BASE_9, Math.Rounding.Up);
         } else amountIn = amountOut.mulDiv(BASE_9 - uint256(int256(-fees)), BASE_9, Math.Rounding.Up);
     }
 
@@ -360,8 +364,9 @@ library LibSwapper {
     /// @notice Gets from an `amountOut` of assets and with `fees` the `amountIn` of stablecoins that need
     /// to be brought during a burn
     function invertFeeBurn(uint256 amountOut, int64 fees) internal pure returns (uint256 amountIn) {
-        if (fees >= 0) amountIn = amountOut.mulDiv(BASE_9, BASE_9 - uint256(int256(fees)), Math.Rounding.Up);
-        else amountIn = amountOut.mulDiv(BASE_9, BASE_9 + uint256(int256(-fees)), Math.Rounding.Up);
+        if (fees >= 0) {
+            amountIn = amountOut.mulDiv(BASE_9, BASE_9 - uint256(int256(fees)), Math.Rounding.Up);
+        } else amountIn = amountOut.mulDiv(BASE_9, BASE_9 + uint256(int256(-fees)), Math.Rounding.Up);
     }
 
     /// @notice Gets the oracle value and its `deviation` with respect to the target price when it comes to
