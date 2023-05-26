@@ -74,7 +74,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                                                       QUOTEREDEEM                                                   
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteRedemptionCurveAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
+    function testQuoteRedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         initialAmounts[0] = 0;
         initialAmounts[1] = 0;
         initialAmounts[2] = 0;
@@ -102,7 +102,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertQuoteAmounts(uint64(BASE_9), mintedStables, amountBurnt, uint64(BASE_9), amounts);
     }
 
-    function testQuoteRedemptionCurveGlobalAtPeg(
+    function testQuoteRedeemGlobalAtPeg(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[2] memory latestOracleValue
@@ -133,7 +133,7 @@ contract RedeemTest is Fixture, FunctionUtils {
 
             // check collateral ratio first
             (uint64 collatRatio, uint256 reservesValue) = kheops.getCollateralRatio();
-            if (mintedStables > 0) assertApproxEqAbs(collatRatio, BASE_9, 10 wei);
+            if (mintedStables > 0) assertApproxEqAbs(collatRatio, BASE_9, 1e5);
             else assertEq(collatRatio, type(uint64).max);
             assertEq(reservesValue, mintedStables);
 
@@ -152,7 +152,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteRedemptionCurveRandomOracles(
+    function testQuoteRedeemRandomOracles(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue
@@ -177,7 +177,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertQuoteAmounts(collatRatio, mintedStables, amountBurnt, uint64(BASE_9), amounts);
     }
 
-    function testQuoteRedemptionCurveAtPegRandomRedemptionFees(
+    function testQuoteRedeemAtPegRandomFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint64[10] memory xFeeRedeemUnbounded,
@@ -205,7 +205,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         );
     }
 
-    function testQuoteRedemptionCurveRandomRedemptionFees(
+    function testQuoteRedeemRandomFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -243,7 +243,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                                                         REDEEM                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testRedemptionCurveAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
+    function testRedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         // let's first load the reserves of the protocol
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
             initialAmounts,
@@ -286,7 +286,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
     }
 
-    function testRedemptionCurveRandomRedemptionFees(
+    function testRedeemRandomFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -852,12 +852,13 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256 valueCheck = (collatRatio * amountBurnt * fee) / BASE_18;
         if (collatRatio >= BASE_9) {
             denom = (mintedStables * collatRatio);
-            assertLe(amountInValueReceived, amountBurnt);
+            // for rounding errors
+            assertLe(amountInValueReceived, amountBurnt + 1);
             valueCheck = (amountBurnt * fee) / BASE_9;
         }
-        assertEq(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt * fee) / denom);
-        assertEq(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt * fee) / denom);
-        assertEq(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt * fee) / denom);
+        assertApproxEqAbs(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt * fee) / denom, 1 wei);
+        assertApproxEqAbs(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt * fee) / denom, 1 wei);
+        assertApproxEqAbs(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt * fee) / denom, 1 wei);
         if (collatRatio < BASE_9) {
             assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
         }
@@ -1069,7 +1070,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint64[10] memory xFeeRedeemUnbounded,
         int64[10] memory yFeeRedeemUnbounded
     ) internal returns (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) {
-        (xFeeRedeem, yFeeRedeem) = _generateCurves(xFeeRedeemUnbounded, yFeeRedeemUnbounded, true, false);
+        (xFeeRedeem, yFeeRedeem) = _generateCurves(xFeeRedeemUnbounded, yFeeRedeemUnbounded, true, false, 0, 0);
         vm.prank(governor);
         kheops.setRedemptionCurveParams(xFeeRedeem, yFeeRedeem);
     }

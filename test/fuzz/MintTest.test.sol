@@ -7,7 +7,7 @@ import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
 import "../Fixture.sol";
 import "../utils/FunctionUtils.sol";
-import "contracts/utils/Errors.sol";
+import "contracts/utils/Errors.sol" as Errors;
 
 contract MintTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
@@ -57,6 +57,10 @@ contract MintTest is Fixture, FunctionUtils {
         _maxTokenAmount.push(_maxAmountWithoutDecimals * 10 ** IERC20Metadata(_collaterals[2]).decimals());
     }
 
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                         TESTS                                                      
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
     function testQuoteMintExactInputSimple(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
@@ -92,7 +96,7 @@ contract MintTest is Fixture, FunctionUtils {
         vm.prank(governor);
         kheops.setFees(_collaterals[fromToken], xFeeMint, yFeeMint, true);
 
-        if (mintFee == int256(BASE_12)) vm.expectRevert();
+        if (mintFee == int256(BASE_12)) vm.expectRevert(Errors.InvalidSwap.selector);
         uint256 amountOut = kheops.quoteIn(mintAmount, _collaterals[fromToken], address(agToken));
         if (mintFee == int256(BASE_12)) return;
 
@@ -108,7 +112,6 @@ contract MintTest is Fixture, FunctionUtils {
     function testQuoteMintReflexivitySimple(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
-        uint256[3] memory latestOracleValue,
         uint256 amountIn,
         uint256 fromToken
     ) public {
@@ -144,7 +147,6 @@ contract MintTest is Fixture, FunctionUtils {
         ) * (uint256(oracleValue) > BASE_8 ? BASE_8 : uint256(oracleValue))) / BASE_8;
         uint256 amountOut = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
         uint256 reflexiveAmountIn = kheops.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
-        uint256 reflexiveAmountOut = kheops.quoteIn(reflexiveAmountIn, _collaterals[fromToken], address(agToken));
         assertEq(supposedAmountOut, amountOut);
         if (amountOut > _minWallet) {
             _assertApproxEqRelDecimalWithTolerance(
@@ -182,9 +184,9 @@ contract MintTest is Fixture, FunctionUtils {
             18
         ) * BASE_9) / (BASE_9 + uint64(mintFee));
 
-        if (uint64(mintFee) == BASE_12) vm.expectRevert();
+        if (uint64(mintFee) == BASE_12) vm.expectRevert(Errors.InvalidSwap.selector);
         uint256 amountOut = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
-        if (uint64(mintFee) == BASE_12) vm.expectRevert();
+        if (uint64(mintFee) == BASE_12) vm.expectRevert(Errors.InvalidSwap.selector);
         uint256 reflexiveAmountIn = kheops.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
         if (uint64(mintFee) == BASE_12) return;
 
@@ -230,9 +232,9 @@ contract MintTest is Fixture, FunctionUtils {
         ) * BASE_9) / (BASE_9 + uint64(mintFee))) * (uint256(oracleValue) > BASE_8 ? BASE_8 : uint256(oracleValue))) /
             BASE_8;
 
-        if (uint64(mintFee) == BASE_12) vm.expectRevert();
+        if (uint64(mintFee) == BASE_12) vm.expectRevert(Errors.InvalidSwap.selector);
         uint256 amountOut = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
-        if (uint64(mintFee) == BASE_12) vm.expectRevert();
+        if (uint64(mintFee) == BASE_12) vm.expectRevert(Errors.InvalidSwap.selector);
         uint256 reflexiveAmountIn = kheops.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
         if (uint64(mintFee) == BASE_12) return;
 
@@ -248,7 +250,9 @@ contract MintTest is Fixture, FunctionUtils {
         }
     }
 
-    // =========================== PIECEWISE LINEAR FEES ===========================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                 PIECEWISE LINEAR FEES                                              
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testQuoteMintExactOutputReflexivityFixPiecewiseFees(
         uint256[3] memory initialAmounts,
@@ -419,12 +423,7 @@ contract MintTest is Fixture, FunctionUtils {
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         stableAmount = bound(stableAmount, 2, _maxAmountWithoutDecimals * BASE_18);
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-            charlie,
-            sweeper,
-            initialAmounts,
-            transferProportion
-        );
+        (uint256 mintedStables, ) = _loadReserves(charlie, sweeper, initialAmounts, transferProportion);
         if (mintedStables == 0) return;
         _updateOracles(latestOracleValue);
         _randomMintFees(_collaterals[fromToken], xFeeMintUnbounded, yFeeMintUnbounded);
@@ -467,12 +466,7 @@ contract MintTest is Fixture, FunctionUtils {
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         amountIn = bound(amountIn, 2, _maxTokenAmount[fromToken]);
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-            charlie,
-            sweeper,
-            initialAmounts,
-            transferProportion
-        );
+        (uint256 mintedStables, ) = _loadReserves(charlie, sweeper, initialAmounts, transferProportion);
         if (mintedStables == 0) return;
         _updateOracles(latestOracleValue);
         _randomMintFees(_collaterals[fromToken], xFeeMintUnbounded, yFeeMintUnbounded);
@@ -502,7 +496,99 @@ contract MintTest is Fixture, FunctionUtils {
         }
     }
 
-    // =================================== UTILS ===================================
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                         MINT                                                       
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testMintExactOutput(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint256[3] memory latestOracleValue,
+        uint64[10] memory xFeeMintUnbounded,
+        int64[10] memory yFeeMintUnbounded,
+        uint256 stableAmount,
+        uint256 fromToken
+    ) public {
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        stableAmount = bound(stableAmount, 2, _maxAmountWithoutDecimals * BASE_18);
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            charlie,
+            sweeper,
+            initialAmounts,
+            transferProportion
+        );
+        if (mintedStables == 0) return;
+        _updateOracles(latestOracleValue);
+        _randomMintFees(_collaterals[fromToken], xFeeMintUnbounded, yFeeMintUnbounded);
+
+        uint256 prevBalanceStable = agToken.balanceOf(alice);
+        uint256 prevKheopsCollat = IERC20(_collaterals[fromToken]).balanceOf(address(kheops));
+
+        uint256 amountIn = kheops.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
+        _mintExactOutput(alice, _collaterals[fromToken], stableAmount, amountIn);
+
+        uint256 balanceStable = agToken.balanceOf(alice);
+
+        assertEq(balanceStable, prevBalanceStable + stableAmount);
+        assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), 0);
+        assertEq(IERC20(_collaterals[fromToken]).balanceOf(address(kheops)), prevKheopsCollat + amountIn);
+
+        (uint256 newStableAmountCollat, uint256 newStableAmount) = kheops.getIssuedByCollateral(
+            _collaterals[fromToken]
+        );
+
+        assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken] + stableAmount, 1 wei);
+        assertApproxEqAbs(newStableAmount, mintedStables + stableAmount, 1 wei);
+    }
+
+    function testMintExactInput(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint256[3] memory latestOracleValue,
+        uint64[10] memory xFeeMintUnbounded,
+        int64[10] memory yFeeMintUnbounded,
+        uint256 amountIn,
+        uint256 fromToken
+    ) public {
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        amountIn = bound(amountIn, 2, _maxTokenAmount[fromToken]);
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            charlie,
+            sweeper,
+            initialAmounts,
+            transferProportion
+        );
+        if (mintedStables == 0) return;
+        _updateOracles(latestOracleValue);
+        _randomMintFees(_collaterals[fromToken], xFeeMintUnbounded, yFeeMintUnbounded);
+
+        uint256 prevBalanceStable = agToken.balanceOf(alice);
+        uint256 prevKheopsCollat = IERC20(_collaterals[fromToken]).balanceOf(address(kheops));
+
+        // we could end up with fees = 100% making the quote revert
+        try kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken)) returns (uint256 stableAmount) {
+            _mintExactInput(alice, _collaterals[fromToken], amountIn, stableAmount);
+
+            uint256 balanceStable = agToken.balanceOf(alice);
+
+            assertEq(balanceStable, prevBalanceStable + stableAmount);
+            assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), 0);
+            assertEq(IERC20(_collaterals[fromToken]).balanceOf(address(kheops)), prevKheopsCollat + amountIn);
+
+            (uint256 newStableAmountCollat, uint256 newStableAmount) = kheops.getIssuedByCollateral(
+                _collaterals[fromToken]
+            );
+
+            assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken] + stableAmount, 1 wei);
+            assertApproxEqAbs(newStableAmount, mintedStables + stableAmount, 1 wei);
+        } catch {}
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                         UTILS                                                      
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function _loadReserves(
         address owner,
@@ -565,7 +651,7 @@ contract MintTest is Fixture, FunctionUtils {
             (BASE_9 - xThres[indexExposure]);
     }
 
-    function _updateOracles(uint256[3] memory latestOracleValue) internal returns (uint64 collatRatio) {
+    function _updateOracles(uint256[3] memory latestOracleValue) internal {
         for (uint256 i; i < _collaterals.length; i++) {
             latestOracleValue[i] = bound(latestOracleValue[i], _minOracleValue, BASE_18);
             MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(int256(latestOracleValue[i]));
@@ -577,7 +663,7 @@ contract MintTest is Fixture, FunctionUtils {
         uint64[10] memory xFeeMintUnbounded,
         int64[10] memory yFeeMintUnbounded
     ) internal returns (uint64[] memory xFeeMint, int64[] memory yFeeMint) {
-        (xFeeMint, yFeeMint) = _generateCurves(xFeeMintUnbounded, yFeeMintUnbounded, true, true);
+        (xFeeMint, yFeeMint) = _generateCurves(xFeeMintUnbounded, yFeeMintUnbounded, true, true, int256(BASE_9 / 2), 0);
         vm.prank(governor);
         kheops.setFees(collateral, xFeeMint, yFeeMint, true);
     }
@@ -588,14 +674,6 @@ contract MintTest is Fixture, FunctionUtils {
             IERC20(tokens[i]).transfer(sweeper, IERC20(tokens[i]).balanceOf(owner));
         }
         vm.stopPrank();
-    }
-
-    function _logIssuedCollateral() internal view {
-        for (uint256 i; i < _collaterals.length; i++) {
-            (uint256 collateralIssued, uint256 total) = kheops.getIssuedByCollateral(_collaterals[i]);
-            if (i == 0) console.log("Total stablecoins issued ", total);
-            console.log("Stablecoins issued by ", i, collateralIssued);
-        }
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
