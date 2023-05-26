@@ -1,0 +1,200 @@
+yarn run v1.22.10
+$ FOUNDRY_PROFILE=dev forge test -vvv --gas-report
+No files changed, compilation skipped
+
+Running 2 tests for test/invariants/BasicInvariants.sol:BasicInvariants
+[32m[PASS][0m invariantIssuedCoherent() (runs: 10, calls: 300, reverts: 52)
+[32m[PASS][0m invariantSystemState() (runs: 10, calls: 300, reverts: 52)
+Test result: [32mok[0m. 2 passed; 0 failed; finished in 11.26s
+
+Running 7 tests for test/units/Kheops.t.sol:TestKheops
+[32m[PASS][0m testFacetsHaveCorrectSelectors() (gas: 1217547)
+[32m[PASS][0m testInterfaceCorrectlyImplemented() (gas: 956136)
+[32m[PASS][0m testQuoteCollateralRatio() (gas: 323865)
+[32m[PASS][0m testQuoteCollateralRatioDirectCall() (gas: 5654)
+[32m[PASS][0m testQuoteInScenario() (gas: 115089)
+[32m[PASS][0m testSelectorsAssociatedWithCorrectFacet() (gas: 1045380)
+[32m[PASS][0m testSimpleSwapInScenario() (gas: 332035)
+Test result: [32mok[0m. 7 passed; 0 failed; finished in 23.38s
+
+Running 4 tests for test/fuzz/SwapTest.test.sol:SwapTest
+[32m[PASS][0m testSwapRevertDeadline(uint256[3],uint256,uint256[3],uint256,uint256,uint256,uint256,uint256) (runs: 10000, μ: 1323589, ~: 1381627)
+[32m[PASS][0m testSwapRevertInvalidTokens(uint256[3],uint256,uint256[3],uint256,uint256) (runs: 10000, μ: 4160447, ~: 4164532)
+[32m[PASS][0m testSwapRevertPaused(uint256[3],uint256,uint256[3],uint256,uint256) (runs: 10000, μ: 1256338, ~: 1261739)
+[32m[PASS][0m testSwapRevertSlippage(uint256[3],uint256,uint256[3],uint256,uint256,uint256,uint256) (runs: 10000, μ: 1340806, ~: 1401150)
+Test result: [32mok[0m. 4 passed; 0 failed; finished in 92.71s
+
+Running 13 tests for test/fuzz/BurnTest.test.sol:BurnTest
+[32m[PASS][0m testBurnExactInput(uint256[3],uint256,uint256[3],uint64[10],int64[10],uint256,uint256) (runs: 10000, μ: 1381743, ~: 1374173)
+[32m[PASS][0m testBurnExactOutput(uint256[3],uint256,uint256[3],uint64[10],int64[10],uint256,uint256) (runs: 10000, μ: 1371352, ~: 1363846)
+[32m[PASS][0m testQuoteBurnExactInputIndependant(uint256[3],uint256,uint256,uint256[3],uint64[10],int64[10],uint256,uint256) (runs: 10000, μ: 1459001, ~: 1459493)
+[32m[PASS][0m testQuoteBurnExactInputNonNullFees(uint256[3],uint256,int64,uint256,uint256) (runs: 10000, μ: 993624, ~: 999776)
+[32m[PASS][0m testQuoteBurnExactInputReflexivityFees(uint256[3],uint256,int64,uint256,uint256) (runs: 10000, μ: 1032893, ~: 1038945)
+[32m[PASS][0m testQuoteBurnExactInputReflexivityFixPiecewiseFees(uint256[3],uint256,uint256[3],int64,uint256,uint256) (runs: 10000, μ: 1283985, ~: 1263368)
+[32m[PASS][0m testQuoteBurnExactInputReflexivityOracleFees(uint256[3],uint256,uint256[3],int64,uint256,uint256) (runs: 10000, μ: 1332227, ~: 1337011)
+[32m[PASS][0m testQuoteBurnExactInputSimple(uint256[3],uint256,uint256,uint256) (runs: 10000, μ: 952256, ~: 957848)
+[32m[PASS][0m testQuoteBurnExactOutputIndependant(uint256[3],uint256,uint256,uint256[3],uint64[10],int64[10],uint256,uint256) (runs: 10000, μ: 1416306, ~: 1408625)
+[32m[PASS][0m testQuoteBurnReflexivityRandOracleAndPiecewiseFees(uint256[3],uint256,uint256[3],uint64[10],int64[10],uint256,uint256) (runs: 10000, μ: 1388866, ~: 1390621)
+[32m[PASS][0m testQuoteBurnReflexivityRandPiecewiseFees(uint256[3],uint256,uint64[10],int64[10],uint256,uint256) (runs: 10000, μ: 1101238, ~: 1108778)
+[32m[PASS][0m testQuoteBurnReflexivityRandomOracle(uint256[3],uint256,uint256[3],uint256,uint256) (runs: 10000, μ: 1289987, ~: 1295497)
+[32m[PASS][0m testQuoteBurnReflexivitySimple(uint256[3],uint256,uint256,uint256) (runs: 10000, μ: 991833, ~: 998548)
+Test result: [32mok[0m. 13 passed; 0 failed; finished in 195.14s
+
+Running 12 tests for test/fuzz/MintTest.test.sol:MintTest
+[32m[PASS][0m testMintExactInput(uint256[3],uint256,uint256[3],uint64[10],int64[10],uint256,uint256) (runs: 10000, μ: 1594534, ~: 1605810)
+[32m[PASS][0m testMintExactOutput(uint256[3],uint256,uint256[3],uint64[10],int64[10],uint256,uint256) (runs: 10000, μ: 1594814, ~: 1606109)
+[32m[PASS][0m testQuoteMintExactInputIndependant(uint256[3],uint256,uint256,uint256[3],uint64[10],int64[10],uint256,uint256) (runs: 10000, μ: 1631216, ~: 1644184)
+[32m[PASS][0m testQuoteMintExactInputNonNullFees(uint256[3],uint256,int64,uint256,uint256) (runs: 10000, μ: 974215, ~: 980309)
+[32m[PASS][0m testQuoteMintExactInputReflexivityFees(uint256[3],uint256,int64,uint256,uint256) (runs: 10000, μ: 994252, ~: 1000743)
+[32m[PASS][0m testQuoteMintExactInputReflexivityOracleFees(uint256[3],uint256,uint256[3],int64,uint256,uint256) (runs: 10000, μ: 1287318, ~: 1293323)
+[32m[PASS][0m testQuoteMintExactInputSimple(uint256[3],uint256,uint256,uint256) (runs: 10000, μ: 926741, ~: 932167)
+[32m[PASS][0m testQuoteMintExactOutputIndependant(uint256[3],uint256,uint256,uint256[3],uint64[10],int64[10],uint256,uint256) (runs: 10000, μ: 1630832, ~: 1642222)
+[32m[PASS][0m testQuoteMintExactOutputReflexivityFixPiecewiseFees(uint256[3],uint256,uint256[3],int64,uint256,uint256) (runs: 10000, μ: 1311000, ~: 1330688)
+[32m[PASS][0m testQuoteMintReflexivityRandPiecewiseFees(uint256[3],uint256,uint256[3],uint64[10],int64[10],uint256,uint256) (runs: 10000, μ: 1401842, ~: 1405582)
+[32m[PASS][0m testQuoteMintReflexivityRandomOracle(uint256[3],uint256,uint256[3],uint256,uint256) (runs: 10000, μ: 1239393, ~: 1245124)
+[32m[PASS][0m testQuoteMintReflexivitySimple(uint256[3],uint256,uint256,uint256) (runs: 10000, μ: 943984, ~: 949724)
+Test result: [32mok[0m. 12 passed; 0 failed; finished in 263.78s
+
+Running 11 tests for test/fuzz/RedeemTest.t.sol:RedeemTest
+[32m[PASS][0m testMultiForfeitRedemptionCurveWithManagerRandomRedemptionFees(uint256[3],uint256[3],bool[3],uint256[30],uint256[30],uint256[30],bool[33],uint256,uint256,uint256[3],uint64[10],int64[10]) (runs: 10000, μ: 47330456, ~: 47805372)
+[32m[PASS][0m testMultiRedemptionCurveRandomRedemptionFees(uint256[3],uint256,uint256,uint256[3],uint64[10],int64[10]) (runs: 10000, μ: 1808212, ~: 1806570)
+[32m[PASS][0m testMultiRedemptionCurveWithManagerRandomRedemptionFees(uint256[3],uint256[3],bool[3],uint256[30],uint256[30],uint256[30],uint256,uint256,uint256[3],uint64[10],int64[10]) (runs: 10000, μ: 47540305, ~: 47963464)
+[32m[PASS][0m testQuoteRedeemAllAtPeg(uint256[3],uint256) (runs: 10000, μ: 850425, ~: 850436)
+[32m[PASS][0m testQuoteRedeemAtPegRandomFees(uint256[3],uint256,uint64[10],int64[10]) (runs: 10000, μ: 1088589, ~: 1091706)
+[32m[PASS][0m testQuoteRedeemGlobalAtPeg(uint256[3],uint256,uint256[2]) (runs: 10000, μ: 1137528, ~: 1105140)
+[32m[PASS][0m testQuoteRedeemRandomFees(uint256[3],uint256,uint256[3],uint64[10],int64[10]) (runs: 10000, μ: 1432504, ~: 1432357)
+[32m[PASS][0m testQuoteRedeemRandomOracles(uint256[3],uint256,uint256[3]) (runs: 10000, μ: 1339451, ~: 1342980)
+[32m[PASS][0m testQuoteRedemptionCurveWithManagerRandomRedemptionFees(uint256[3],uint256[3],bool[3],uint256[30],uint256,uint256[30],uint256[30],uint256[3],uint64[10],int64[10]) (runs: 10000, μ: 45934258, ~: 46093750)
+[32m[PASS][0m testRedeemAllAtPeg(uint256[3],uint256) (runs: 10000, μ: 1128840, ~: 1142479)
+[32m[PASS][0m testRedeemRandomFees(uint256[3],uint256,uint256[3],uint64[10],int64[10]) (runs: 10000, μ: 1567281, ~: 1565207)
+Test result: [32mok[0m. 11 passed; 0 failed; finished in 263.78s
+| contracts/kheops/DiamondProxy.sol:DiamondProxy contract |                 |        |        |         |         |
+|---------------------------------------------------------|-----------------|--------|--------|---------|---------|
+| Deployment Cost                                         | Deployment Size |        |        |         |         |
+| 3706215                                                 | 10012           |        |        |         |         |
+| Function Name                                           | min             | avg    | median | max     | # calls |
+| facetAddress                                            | 1036            | 3103   | 3036   | 7536    | 37      |
+| facetFunctionSelectors                                  | 30759           | 44615  | 31609  | 119259  | 7       |
+| getCollateralRatio                                      | 69400           | 144134 | 72175  | 318534  | 10      |
+| getIssuedByCollateral                                   | 1697            | 2903   | 1697   | 6197    | 29      |
+| isValidSelector                                         | 976             | 3043   | 2976   | 7476    | 37      |
+| quoteIn                                                 | 20880           | 41840  | 45394  | 105389  | 29      |
+| quoteOut                                                | 20703           | 36165  | 27759  | 69385   | 22      |
+| quoteRedemptionCurve                                    | 60894           | 129210 | 71868  | 271722  | 14      |
+| redeem                                                  | 81162           | 374670 | 153550 | 1017271 | 7       |
+| redeemWithForfeit                                       | 997960          | 997960 | 997960 | 997960  | 1       |
+| setCollateralManager                                    | 183739          | 282504 | 309152 | 354622  | 9       |
+| setFees                                                 | 10384           | 15590  | 10416  | 186690  | 259     |
+| setRedemptionCurveParams                                | 26434           | 72391  | 79334  | 79334   | 47      |
+| swapExactInput                                          | 1653            | 115076 | 108536 | 157424  | 133     |
+| swapExactOutput                                         | 3719            | 37342  | 33633  | 90371   | 12      |
+| togglePause                                             | 4636            | 12522  | 12522  | 20409   | 2       |
+
+
+| contracts/kheops/configs/Test.sol:Test contract |                 |         |         |         |         |
+|-------------------------------------------------|-----------------|---------|---------|---------|---------|
+| Deployment Cost                                 | Deployment Size |         |         |         |         |
+| 2646062                                         | 13248           |         |         |         |         |
+| Function Name                                   | min             | avg     | median  | max     | # calls |
+| initialize                                      | 1952252         | 1952252 | 1952252 | 1952252 | 49      |
+
+
+| contracts/kheops/facets/DiamondLoupe.sol:DiamondLoupe contract |                 |       |        |        |         |
+|----------------------------------------------------------------|-----------------|-------|--------|--------|---------|
+| Deployment Cost                                                | Deployment Size |       |        |        |         |
+| 509743                                                         | 2578            |       |        |        |         |
+| Function Name                                                  | min             | avg   | median | max    | # calls |
+| facetAddress                                                   | 591             | 2536  | 2591   | 2591   | 37      |
+| facetFunctionSelectors                                         | 30305           | 43493 | 31137  | 114305 | 7       |
+
+
+| contracts/kheops/facets/Getters.sol:Getters contract |                 |        |        |        |         |
+|------------------------------------------------------|-----------------|--------|--------|--------|---------|
+| Deployment Cost                                      | Deployment Size |        |        |        |         |
+| 1987105                                              | 9957            |        |        |        |         |
+| Function Name                                        | min             | avg    | median | max    | # calls |
+| getCollateralRatio                                   | 64455           | 139189 | 67230  | 313589 | 10      |
+| getIssuedByCollateral                                | 1249            | 1249   | 1249   | 1249   | 29      |
+| isValidSelector                                      | 531             | 2476   | 2531   | 2531   | 37      |
+
+
+| contracts/kheops/facets/Redeemer.sol:Redeemer contract |                 |        |        |         |         |
+|--------------------------------------------------------|-----------------|--------|--------|---------|---------|
+| Deployment Cost                                        | Deployment Size |        |        |         |         |
+| 2473865                                                | 12388           |        |        |         |         |
+| Function Name                                          | min             | avg    | median | max     | # calls |
+| quoteRedemptionCurve                                   | 60246           | 125109 | 66872  | 266557  | 14      |
+| redeem                                                 | 78645           | 372629 | 153033 | 1014449 | 7       |
+| redeemWithForfeit                                      | 995129          | 995129 | 995129 | 995129  | 1       |
+
+
+| contracts/kheops/facets/Setters.sol:Setters contract |                 |        |        |        |         |
+|------------------------------------------------------|-----------------|--------|--------|--------|---------|
+| Deployment Cost                                      | Deployment Size |        |        |        |         |
+| 3356531                                              | 16796           |        |        |        |         |
+| Function Name                                        | min             | avg    | median | max    | # calls |
+| setCollateralManager                                 | 178731          | 280467 | 308607 | 354065 | 9       |
+| setFees                                              | 9997            | 14864  | 10028  | 181609 | 259     |
+| setRedemptionCurveParams                             | 23962           | 71408  | 78862  | 78862  | 47      |
+| togglePause                                          | 4188            | 9824   | 9824   | 15461  | 2       |
+
+
+| contracts/kheops/facets/Swapper.sol:Swapper contract |                 |        |        |        |         |
+|------------------------------------------------------|-----------------|--------|--------|--------|---------|
+| Deployment Cost                                      | Deployment Size |        |        |        |         |
+| 2983271                                              | 14932           |        |        |        |         |
+| Function Name                                        | min             | avg    | median | max    | # calls |
+| quoteIn                                              | 18423           | 39710  | 42937  | 100432 | 29      |
+| quoteOut                                             | 18246           | 34072  | 25302  | 66928  | 22      |
+| swapExactInput                                       | 1177            | 113568 | 108156 | 153444 | 133     |
+| swapExactOutput                                      | 1243            | 34908  | 31157  | 87896  | 12      |
+
+
+| test/mock/MockAccessControlManager.sol:MockAccessControlManager contract |                 |       |        |       |         |
+|--------------------------------------------------------------------------|-----------------|-------|--------|-------|---------|
+| Deployment Cost                                                          | Deployment Size |       |        |       |         |
+| 111159                                                                   | 587             |       |        |       |         |
+| Function Name                                                            | min             | avg   | median | max   | # calls |
+| isGovernor                                                               | 549             | 1215  | 549    | 2549  | 9       |
+| isGovernorOrGuardian                                                     | 765             | 1355  | 765    | 4765  | 308     |
+| toggleGovernor                                                           | 22481           | 22481 | 22481  | 22481 | 49      |
+| toggleGuardian                                                           | 22523           | 22523 | 22523  | 22523 | 49      |
+
+
+| test/mock/MockChainlinkOracle.sol:MockChainlinkOracle contract |                 |        |        |        |         |
+|----------------------------------------------------------------|-----------------|--------|--------|--------|---------|
+| Deployment Cost                                                | Deployment Size |        |        |        |         |
+| 658519                                                         | 3326            |        |        |        |         |
+| Function Name                                                  | min             | avg    | median | max    | # calls |
+| latestRoundData                                                | 1609            | 4322   | 1609   | 15609  | 791     |
+| setLatestAnswer                                                | 114472          | 126478 | 131572 | 131572 | 282     |
+
+
+| test/mock/MockManager.sol:MockManager contract |                 |         |         |         |         |
+|------------------------------------------------|-----------------|---------|---------|---------|---------|
+| Deployment Cost                                | Deployment Size |         |         |         |         |
+| 948311                                         | 4804            |         |         |         |         |
+| Function Name                                  | min             | avg     | median  | max     | # calls |
+| getUnderlyingBalances                          | 14235           | 46208   | 56866   | 71782   | 36      |
+| setSubCollaterals                              | 445720          | 1067851 | 1245604 | 1512233 | 9       |
+| transfer                                       | 24691           | 26479   | 26326   | 29051   | 64      |
+
+
+| test/mock/MockTokenPermit.sol:MockTokenPermit contract |                 |       |        |       |         |
+|--------------------------------------------------------|-----------------|-------|--------|-------|---------|
+| Deployment Cost                                        | Deployment Size |       |        |       |         |
+| 1463994                                                | 8240            |       |        |       |         |
+| Function Name                                          | min             | avg   | median | max   | # calls |
+| approve                                                | 4768            | 23712 | 24668  | 24668 | 125     |
+| balanceOf                                              | 624             | 1104  | 624    | 2624  | 1070    |
+| burnSelf                                               | 3875            | 4520  | 4843   | 4843  | 12      |
+| decimals                                               | 379             | 545   | 379    | 2379  | 433     |
+| mint                                                   | 4808            | 19524 | 4808   | 48608 | 125     |
+| name                                                   | 1241            | 1593  | 1241   | 3241  | 51      |
+| symbol                                                 | 1261            | 1613  | 1261   | 3261  | 51      |
+| transfer                                               | 3274            | 14899 | 23174  | 25174 | 200     |
+| transferFrom                                           | 2984            | 21792 | 22283  | 22283 | 118     |
+
+
+
+Done in 264.99s.

@@ -64,9 +64,27 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
+
       - name: Run Foundry tests
-        run: FOUNDRY_PROFILE=ci forge test -vvv
+        run: FOUNDRY_PROFILE=ci forge test -vvv --gas-report > gasreport.ansi
         env:
           ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
           ETH_NODE_URI_POLYGON: ${{ secrets.ETH_NODE_URI_POLYGON }}
           ETH_NODE_URI_GOERLI: ${{ secrets.ETH_NODE_URI_GOERLI }}
+
+      - name: Compare gas reports
+        uses: Rubilmax/foundry-gas-diff@v3.14
+        with:
+          summaryQuantile: 0.9 # only display the 10% most significant gas diffs in the summary (defaults to 20%)
+          sortCriteria: avg,max # sort diff rows by criteria
+          sortOrders: desc,asc # and directions
+          ignore: test-foundry/**/* # filter out gas reports from specific paths (test/ is included by default)
+        id: gas_diff
+
+      - name: Add gas diff to sticky comment
+        if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          # delete the comment in case changes no longer impact gas costs
+          delete: ${{ !steps.gas_diff.outputs.markdown }}
+          message: ${{ steps.gas_diff.outputs.markdown }}
