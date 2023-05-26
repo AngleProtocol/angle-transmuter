@@ -257,11 +257,13 @@ library LibSwapper {
 
                         // ac4 is the value of `2M(f_{i+1}-f_i)/(b_{i+1}-b_i) = 2M(f_{i+1}-g(0))/b_{i+1}` used
                         // in the computation of `m_t` in both the mint and burn case
-                        uint256 ac4 = BASE_9.mulDiv(
+                        uint256 ac4 = Math.mulDiv(
                             2 * amountStable * deltaFees,
+                            BASE_9,
                             v.amountToNextBreakPoint,
                             Math.Rounding.Up
                         );
+
                         if (v.isMint) {
                             // In the mint case:
                             // `m_t = (-1-g(0)+sqrt[(1+g(0))**2+2M(f_{i+1}-g(0))/b_{i+1})]/((f_{i+1}-g(0))/b_{i+1})`
@@ -290,7 +292,12 @@ library LibSwapper {
                                             uint256(
                                                 currentFees +
                                                     int256(BASE_9) -
-                                                    int256(Math.sqrt(baseMinusCurrent ** 2 - ac4, Math.Rounding.Down))
+                                                    int256(
+                                                        Math.sqrt(
+                                                            uint256(int256(BASE_9) - currentFees) ** 2 - ac4,
+                                                            Math.Rounding.Down
+                                                        )
+                                                    )
                                             ),
                                             1,
                                             2,
@@ -344,10 +351,10 @@ library LibSwapper {
     /// @notice Applies `fees` to an `amountIn` of assets to get an `amountOut` of stablecoins
     function applyFeeMint(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
         if (fees >= 0) {
-            uint256 feeCorrected = uint256(int256(fees));
+            uint256 castedFees = uint256(int256(fees));
             // Consider that if fees are above `BASE_12` this is equivalent to infinite fees
-            if (feeCorrected >= BASE_12) revert InvalidSwap();
-            amountOut = (amountIn * BASE_9) / (BASE_9 + feeCorrected);
+            if (castedFees >= BASE_12) revert InvalidSwap();
+            amountOut = (amountIn * BASE_9) / (BASE_9 + castedFees);
         } else amountOut = (amountIn * BASE_9) / (BASE_9 - uint256(int256(-fees)));
     }
 
@@ -355,10 +362,10 @@ library LibSwapper {
     /// that need to be brought during a mint
     function invertFeeMint(uint256 amountOut, int64 fees) internal pure returns (uint256 amountIn) {
         if (fees >= 0) {
-            uint256 feeCorrected = uint256(int256(fees));
+            uint256 castedFees = uint256(int256(fees));
             // Consider that if fees are above `BASE_12` this is equivalent to infinite fees
-            if (feeCorrected >= BASE_12) revert InvalidSwap();
-            amountIn = amountOut.mulDiv(BASE_9 + feeCorrected, BASE_9, Math.Rounding.Up);
+            if (castedFees >= BASE_12) revert InvalidSwap();
+            amountIn = amountOut.mulDiv(BASE_9 + castedFees, BASE_9, Math.Rounding.Up);
         } else amountIn = amountOut.mulDiv(BASE_9 - uint256(int256(-fees)), BASE_9, Math.Rounding.Up);
     }
 
