@@ -157,12 +157,12 @@ library LibSwapper {
             // Handling the initialisation and constant fees
             if (normalizedStablesMem == 0 || n == 1)
                 return _computeFee(quoteType, amountStable, v.isMint ? collatInfo.yFeeMint[0] : collatInfo.yFeeBurn[0]);
-            // Increase precision because if there is a factor 1e9 betwen total stablecoin supply and
-            // one specific collateral it will return a null current exposure
+            // Increasing precision for `currentExposure` because otherwise if there is a factor 1e9 between total
+            // stablecoin supply and one specific collateral, exposure can be null
             currentExposure = uint64((collatInfo.normalizedStables * BASE_18) / normalizedStablesMem);
 
             uint256 normalizerMem = ks.normalizer;
-            // Store the current stablecoin supply for this collateral
+            // Store the current amount of stablecoins issued from this collateral
             collatInfo.normalizedStables = uint224((uint256(collatInfo.normalizedStables) * normalizerMem) / BASE_27);
             v.otherStablecoinSupply = (normalizerMem * normalizedStablesMem) / BASE_27 - collatInfo.normalizedStables;
         }
@@ -178,21 +178,23 @@ library LibSwapper {
 
         while (i < n - 1) {
             // We compute a linear by part function on the amount swapped
+            // The `amountToNextBreakPoint` variable is the `b_{i+1}` value from the whitepaper
             if (v.isMint) {
                 v.lowerExposure = collatInfo.xFeeMint[i];
                 v.upperExposure = collatInfo.xFeeMint[i + 1];
                 v.lowerFees = collatInfo.yFeeMint[i];
                 v.upperFees = collatInfo.yFeeMint[i + 1];
-                // This is the `b_{i+1}` value from the whitepaper
                 v.amountToNextBreakPoint =
                     (v.otherStablecoinSupply * v.upperExposure) /
                     (BASE_9 - v.upperExposure) -
                     collatInfo.normalizedStables;
             } else {
+                // The exposures in the burn case are decreasing
                 v.lowerExposure = collatInfo.xFeeBurn[i];
                 v.upperExposure = collatInfo.xFeeBurn[i + 1];
                 v.lowerFees = collatInfo.yFeeBurn[i];
                 v.upperFees = collatInfo.yFeeBurn[i + 1];
+                // The `b_{i+1}` value in the burn case is the opposite value of the mint case
                 v.amountToNextBreakPoint =
                     collatInfo.normalizedStables -
                     (v.otherStablecoinSupply * v.upperExposure) /
@@ -205,7 +207,7 @@ library LibSwapper {
             if (v.lowerExposure * BASE_9 == currentExposure) currentFees = v.lowerFees;
             else if (v.lowerFees == v.upperFees) currentFees = v.lowerFees;
             else {
-                // This is the opposite of the `b_i` value from the whitepaper
+                // This is the opposite of the `b_i` value from the whitepaper.
                 uint256 amountFromPrevBreakPoint = v.isMint
                     ? collatInfo.normalizedStables -
                         (v.otherStablecoinSupply * v.lowerExposure) /
@@ -214,96 +216,83 @@ library LibSwapper {
                         (BASE_9 - v.lowerExposure) -
                         collatInfo.normalizedStables;
 
-                // precision breaks, the protocol takes less risks and charge the highest fee
+                // In case of precision breaks, charging the highest fee possible
                 if (v.amountToNextBreakPoint + amountFromPrevBreakPoint == 0) {
                     currentFees = v.upperFees;
                 } else {
                     // `slope` is in base 18
                     uint256 slope = ((uint256(v.upperFees - v.lowerFees) * BASE_36) /
                         (v.amountToNextBreakPoint + amountFromPrevBreakPoint));
+                    // `currentFees` is the `g(0)` value from the whitepaper
                     currentFees = v.lowerFees + int256((slope * amountFromPrevBreakPoint) / BASE_36);
                 }
-                // Safeguard for the protocol to not issue free money if quoteType == BurnExactOutput
-                // --> amountToNextBreakPointNormalizer = 0 --> amountToNextBreakPointNormalizer < amountStable
-                // Then amountStable is never decrease while amount increase
+                // Safeguard for the protocol not to issue free money if `quoteType == BurnExactOutput`
                 if (!v.isMint && currentFees == int256(BASE_9)) revert InvalidSwap();
             }
             {
+                // In the mint case, when `!v.isExact`: = `b_{i+1} * (1+(g_i(0)+g_i(b_{i+1})/2)`
                 uint256 amountToNextBreakPointNormalizer = v.isExact ? v.amountToNextBreakPoint : v.isMint
                     ? invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
                     : applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
 
                 if (amountToNextBreakPointNormalizer >= amountStable) {
-                    int64 midFee;
+                    uint256 deltaFees = uint256((v.upperFees - currentFees));
                     if (v.isExact) {
-                        // `M*(g_i(0)+g_i(M))/2 = g(0) + g(b_{i+1}-g(0)) / 2b_{i+1} * M`
-                        midFee = int64(
+                        // `M * (g_i(0) + g_i(M)) / 2 = g(0) + (g(b_{i+1}-g(0)) * M / 2b_{i+1})`
+                        int64 midFee = int64(
                             currentFees +
                                 int256(
-                                    Math.mulDiv(
-                                        uint256(v.upperFees - currentFees),
+                                    deltaFees.mulDiv(
                                         amountStable,
                                         2 * amountToNextBreakPointNormalizer,
                                         Math.Rounding.Up
                                     )
                                 )
                         );
-                    } else if (v.isMint) {
-                        // v.upperFees - currentFees >=0 because mint fee are increasing
-                        uint256 ac4 = Math.mulDiv(
-                            2 * amountStable * uint256(v.upperFees - currentFees),
-                            BASE_9,
-                            v.amountToNextBreakPoint,
-                            Math.Rounding.Up
-                        );
-                        midFee = int64(
-                            (int256(
-                                Math.sqrt(
-                                    // BASE_9 + currentFees >= 0
-                                    // TODO why?
-                                    (uint256(int256(BASE_9) + currentFees)) ** 2 + ac4,
-                                    Math.Rounding.Up
-                                )
-                            ) +
-                                currentFees -
-                                int256(BASE_9)) / 2
-                        );
+                        return amount + _computeFee(quoteType, amountStable, midFee);
                     } else {
-                        // v.upperFees - currentFees >=0 because burn fee are increasing
-                        uint256 ac4 = Math.mulDiv(
-                            2 * amountStable * uint256(v.upperFees - currentFees),
-                            BASE_9,
+                        // Here we are computing the `m_t` value introduced in the whitepaper, solution to a
+                        // second order equation
+
+                        // `deltaFees == 0` means that the equation to find `m_t` becomes linear and so needs
+                        // to be solved differently
+                        if (deltaFees == 0) return amount + _computeFee(quoteType, amountStable, int64(currentFees));
+                        // ac4 is the value of `2M(f_{i+1}-f_i)/(b_{i+1}-b_i) = 2M(f_{i+1}-g(0))/b_{i+1}` used
+                        // when solving the second order equation for `m_t` in both the mint and burn case
+                        uint256 ac4 = BASE_9.mulDiv(
+                            2 * amountStable * deltaFees,
                             v.amountToNextBreakPoint,
                             Math.Rounding.Up
                         );
-                        // rounding error on ac4: it can be larger than expected and makes the
-                        // the mathematical invariant breaks
-                        if ((uint256(int256(BASE_9) - currentFees)) ** 2 < ac4)
-                            midFee = int64((currentFees + int256(BASE_9)) / 2);
-                        else {
-                            midFee = int64(
-                                int256(
-                                    Math.mulDiv(
-                                        uint256(
-                                            currentFees +
-                                                int256(BASE_9) -
-                                                int256(
-                                                    Math.sqrt(
-                                                        // BASE_9 - currentFees >= 0
-                                                        (uint256(int256(BASE_9) - currentFees)) ** 2 - ac4,
-                                                        Math.Rounding.Down
-                                                    )
-                                                )
-                                        ),
-                                        1,
-                                        2,
-                                        Math.Rounding.Up
-                                    )
-                                )
-                            );
+                        if (v.isMint) {
+                            // In the mint case:
+                            // `m_t = (-1-g(0)+sqrt[(1+g(0))**2+2M(f_{i+1}-g(0))/b_{i+1})]/((f_{i+1}-g(0))/b_{i+1})`
+                            uint256 basePlusCurrent = uint256(int256(BASE_9) + currentFees);
+                            return
+                                amount +
+                                v.amountToNextBreakPoint.mulDiv(
+                                    Math.sqrt(basePlusCurrent ** 2 + ac4, Math.Rounding.Up) - basePlusCurrent,
+                                    deltaFees,
+                                    Math.Rounding.Down
+                                );
+                        } else {
+                            // In the burn case:
+                            // `m_t = (1-g(0)+sqrt[(1-g(0))**2-2M(f_{i+1}-g(0))/b_{i+1})]/((f_{i+1}-g(0))/b_{i+1})`
+                            uint256 baseMinusCurrent = uint256(int256(BASE_9) - currentFees);
+                            uint256 squareRoot = 0;
+                            // Mathematically, this condition is always verified, but rounding errors may make this
+                            // mathematical invariant break, in which case we consider that the square root is null
+                            if (baseMinusCurrent ** 2 > ac4)
+                                squareRoot = Math.sqrt(baseMinusCurrent ** 2 - ac4, Math.Rounding.Up);
+                            return
+                                amount +
+                                v.amountToNextBreakPoint.mulDiv(
+                                    squareRoot + baseMinusCurrent,
+                                    deltaFees,
+                                    Math.Rounding.Up
+                                );
                         }
                     }
-                    return amount + _computeFee(quoteType, amountStable, midFee);
                 } else {
                     amountStable -= amountToNextBreakPointNormalizer;
                     amount += !v.isExact ? v.amountToNextBreakPoint : v.isMint
