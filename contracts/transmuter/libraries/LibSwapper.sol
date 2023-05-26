@@ -42,6 +42,7 @@ library LibSwapper {
         address to
     );
     using SafeERC20 for IERC20;
+    using Math for uint256;
 
     /// @notice Processes the internal metric updates and the transfers following mint or burn operations
     function swap(
@@ -137,7 +138,7 @@ library LibSwapper {
     }
 
     /// @notice Computes the fees to apply during a mint or burn operation
-    /// @dev This function leverages the mathematical computations of the appendix of the whitepaper
+    /// @dev This function leverages the mathematical computations of the appendix of the Transmuter whitepaper
     function quoteFees(
         Collateral memory collatInfo,
         QuoteType quoteType,
@@ -153,22 +154,21 @@ library LibSwapper {
         uint256 currentExposure;
         {
             uint256 normalizedStablesMem = ks.normalizedStables;
-            uint256 normalizerMem = ks.normalizer;
-
             // Handling the initialisation and constant fees
             if (normalizedStablesMem == 0 || n == 1)
                 return _computeFee(quoteType, amountStable, v.isMint ? collatInfo.yFeeMint[0] : collatInfo.yFeeBurn[0]);
-
             // Increase precision because if there is a factor 1e9 betwen total stablecoin supply and
             // one specific collateral it will return a null current exposure
             currentExposure = uint64((collatInfo.normalizedStables * BASE_18) / normalizedStablesMem);
 
-            // store the current stablecoin supply for this collateral
+            uint256 normalizerMem = ks.normalizer;
+            // Store the current stablecoin supply for this collateral
             collatInfo.normalizedStables = uint224((uint256(collatInfo.normalizedStables) * normalizerMem) / BASE_27);
             v.otherStablecoinSupply = (normalizerMem * normalizedStablesMem) / BASE_27 - collatInfo.normalizedStables;
         }
 
         uint256 amount;
+        // Finding in which segment the current exposure to the collateral is
         uint256 i = LibHelpers.findLowerBound(
             v.isMint,
             v.isMint ? collatInfo.xFeeMint : collatInfo.xFeeBurn,
@@ -177,12 +177,13 @@ library LibSwapper {
         );
 
         while (i < n - 1) {
-            // We transform the linear function on exposure to a linear function depending on the amount swapped
+            // We compute a linear by part function on the amount swapped
             if (v.isMint) {
                 v.lowerExposure = collatInfo.xFeeMint[i];
                 v.upperExposure = collatInfo.xFeeMint[i + 1];
                 v.lowerFees = collatInfo.yFeeMint[i];
                 v.upperFees = collatInfo.yFeeMint[i + 1];
+                // This is the `b_{i+1}` value from the whitepaper
                 v.amountToNextBreakPoint =
                     (v.otherStablecoinSupply * v.upperExposure) /
                     (BASE_9 - v.upperExposure) -
@@ -197,13 +198,14 @@ library LibSwapper {
                     (v.otherStablecoinSupply * v.upperExposure) /
                     (BASE_9 - v.upperExposure);
             }
-
+            // Computing the `g_i(0)` value from the whitepaper
             int256 currentFees;
             // We can only enter the else in the first iteration of the loop as otherwise we will
             // always be at the beginning of the new segment
             if (v.lowerExposure * BASE_9 == currentExposure) currentFees = v.lowerFees;
             else if (v.lowerFees == v.upperFees) currentFees = v.lowerFees;
             else {
+                // This is the opposite of the `b_i` value from the whitepaper
                 uint256 amountFromPrevBreakPoint = v.isMint
                     ? collatInfo.normalizedStables -
                         (v.otherStablecoinSupply * v.lowerExposure) /
@@ -216,7 +218,7 @@ library LibSwapper {
                 if (v.amountToNextBreakPoint + amountFromPrevBreakPoint == 0) {
                     currentFees = v.upperFees;
                 } else {
-                    // slope is in base 18
+                    // `slope` is in base 18
                     uint256 slope = ((uint256(v.upperFees - v.lowerFees) * BASE_36) /
                         (v.amountToNextBreakPoint + amountFromPrevBreakPoint));
                     currentFees = v.lowerFees + int256((slope * amountFromPrevBreakPoint) / BASE_36);
@@ -226,7 +228,6 @@ library LibSwapper {
                 // Then amountStable is never decrease while amount increase
                 if (!v.isMint && currentFees == int256(BASE_9)) revert InvalidSwap();
             }
-
             {
                 uint256 amountToNextBreakPointNormalizer = v.isExact ? v.amountToNextBreakPoint : v.isMint
                     ? invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
@@ -235,6 +236,7 @@ library LibSwapper {
                 if (amountToNextBreakPointNormalizer >= amountStable) {
                     int64 midFee;
                     if (v.isExact) {
+                        // `M*(g_i(0)+g_i(M))/2 = g(0) + g(b_{i+1}-g(0)) / 2b_{i+1} * M`
                         midFee = int64(
                             currentFees +
                                 int256(
@@ -258,6 +260,7 @@ library LibSwapper {
                             (int256(
                                 Math.sqrt(
                                     // BASE_9 + currentFees >= 0
+                                    // TODO why?
                                     (uint256(int256(BASE_9) + currentFees)) ** 2 + ac4,
                                     Math.Rounding.Up
                                 )
@@ -308,68 +311,72 @@ library LibSwapper {
                         : applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
                     currentExposure = v.upperExposure * BASE_9;
                     ++i;
-                    // update for the rest of the swaps the normalized stables
+                    // Update for the rest of the swaps the stablecoins issued from the asset
                     collatInfo.normalizedStables = v.isMint
                         ? collatInfo.normalizedStables + uint224(v.amountToNextBreakPoint)
                         : collatInfo.normalizedStables - uint224(v.amountToNextBreakPoint);
                 }
             }
         }
-        // Now i == n-1 so we are in an area where fees are constant
+        // If `i == n-1`, we are in an area where fees are constant
         return
             amount +
             _computeFee(quoteType, amountStable, v.isMint ? collatInfo.yFeeMint[n - 1] : collatInfo.yFeeBurn[n - 1]);
     }
 
-    function _computeFee(QuoteType quoteType, uint256 amountIn, int64 fees) private pure returns (uint256) {
+    function _computeFee(QuoteType quoteType, uint256 amount, int64 fees) private pure returns (uint256) {
         return
-            quoteType == QuoteType.MintExactInput
-                ? applyFeeMint(amountIn, fees)
-                : quoteType == QuoteType.MintExactOutput
-                ? invertFeeMint(amountIn, fees)
+            quoteType == QuoteType.MintExactInput ? applyFeeMint(amount, fees) : quoteType == QuoteType.MintExactOutput
+                ? invertFeeMint(amount, fees)
                 : quoteType == QuoteType.BurnExactInput
-                ? applyFeeBurn(amountIn, fees)
-                : invertFeeBurn(amountIn, fees);
+                ? applyFeeBurn(amount, fees)
+                : invertFeeBurn(amount, fees);
     }
 
+    /// @notice Checks whether an operation is a mint operation or not
     function _isMint(QuoteType quoteType) private pure returns (bool) {
         return quoteType == QuoteType.MintExactInput || quoteType == QuoteType.MintExactOutput;
     }
 
+    /// @notice Checks whether a swap involves an amount of stablecoins that is known in exact in advance or not
     function _isExact(QuoteType quoteType) private pure returns (bool) {
         return quoteType == QuoteType.MintExactOutput || quoteType == QuoteType.BurnExactInput;
     }
 
+    /// @notice Applies `fees` to an `amountIn` of assets to get an `amountOut` of stablecoins
     function applyFeeMint(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
         if (fees >= 0) {
             // Consider that if fees are above `BASE_12` this is equivalent to infinite fees
-            if (uint256(int256(fees)) >= BASE_12) {
-                revert InvalidSwap();
-            }
+            if (uint256(int256(fees)) >= BASE_12) revert InvalidSwap();
             amountOut = (amountIn * BASE_9) / ((BASE_9 + uint256(int256(fees))));
         } else amountOut = (amountIn * BASE_9) / (BASE_9 - uint256(int256(-fees)));
     }
 
+    /// @notice Gets from an `amountOut` of stablecoins and with `fees`, the `amountIn` of assets
+    /// that need to be brought during a mint
     function invertFeeMint(uint256 amountOut, int64 fees) internal pure returns (uint256 amountIn) {
         if (fees >= 0) {
             // Consider that if fees are above `BASE_12` this is equivalent to infinite fees
-            if (uint256(int256(fees)) >= BASE_12) {
-                revert InvalidSwap();
-            }
-            amountIn = Math.mulDiv(amountOut, BASE_9 + uint256(int256(fees)), BASE_9, Math.Rounding.Up);
-        } else amountIn = Math.mulDiv(amountOut, BASE_9 - uint256(int256(-fees)), BASE_9, Math.Rounding.Up);
+            if (uint256(int256(fees)) >= BASE_12) revert InvalidSwap();
+            amountIn = amountOut.mulDiv(BASE_9 + uint256(int256(fees)), BASE_9, Math.Rounding.Up);
+        } else amountIn = amountOut.mulDiv(BASE_9 - uint256(int256(-fees)), BASE_9, Math.Rounding.Up);
     }
 
+    /// @notice Applies `fees` to an `amountIn` of stablecoins to get an `amountOut` of assets
     function applyFeeBurn(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
         if (fees >= 0) amountOut = ((BASE_9 - uint256(int256(fees))) * amountIn) / BASE_9;
         else amountOut = ((BASE_9 + uint256(int256(-fees))) * amountIn) / BASE_9;
     }
 
+    /// @notice Gets from an `amountOut` of assets and with `fees` the `amountIn` of stablecoins that need
+    /// to be brought during a burn
     function invertFeeBurn(uint256 amountOut, int64 fees) internal pure returns (uint256 amountIn) {
-        if (fees >= 0) amountIn = Math.mulDiv(amountOut, BASE_9, BASE_9 - uint256(int256(fees)), Math.Rounding.Up);
-        else amountIn = Math.mulDiv(amountOut, BASE_9, BASE_9 + uint256(int256(-fees)), Math.Rounding.Up);
+        if (fees >= 0) amountIn = amountOut.mulDiv(BASE_9, BASE_9 - uint256(int256(fees)), Math.Rounding.Up);
+        else amountIn = amountOut.mulDiv(BASE_9, BASE_9 + uint256(int256(-fees)), Math.Rounding.Up);
     }
 
+    /// @notice Gets the oracle value and its `deviation` with respect to the target price when it comes to
+    /// burning for `collateral`
     function getBurnOracle(
         address collateral,
         bytes memory oracleConfig

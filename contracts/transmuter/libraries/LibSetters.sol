@@ -95,12 +95,9 @@ library LibSetters {
         if (
             // Mint inflexion points should be in [0,BASE_9[
             (setter == 0 && (xFee[n - 1] >= BASE_9 || xFee[0] != 0 || yFee[n - 1] > int256(BASE_12))) ||
-            // Burn inflexion points should be in [0,BASE_9] but fees should be constant in the  first segment [BASE_9, x_{n-1}[
-            (setter == 1 &&
-                (xFee[n - 1] < 0 ||
-                    xFee[0] != BASE_9 ||
-                    yFee[n - 1] > int256(BASE_9) ||
-                    (n > 1 && (yFee[0] != yFee[1])))) ||
+            // Burn inflexion points should be in [0,BASE_9] but fees should be constant in the
+            // first segment [BASE_9, x_{n-1}[
+            (setter == 1 && (xFee[0] != BASE_9 || yFee[n - 1] > int256(BASE_9) || (n > 1 && (yFee[0] != yFee[1])))) ||
             // Redemption inflexion points should be in [0,BASE_9]
             (setter == 2 && (xFee[n - 1] > BASE_9 || yFee[n - 1] > int256(BASE_9)))
         ) revert InvalidParams();
