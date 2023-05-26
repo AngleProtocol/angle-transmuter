@@ -237,14 +237,14 @@ library LibSwapper {
                     : applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
 
                 if (amountToNextBreakPointNormalizer >= amountStable) {
-                    uint256 deltaFees = uint256((v.upperFees - currentFees));
                     int64 midFee;
                     if (v.isExact) {
                         // `(g_i(0) + g_i(M)) / 2 = g(0) + (f_{i+1} - g(0)) * M / (2 * b_{i+1})`
                         midFee = int64(
                             currentFees +
                                 int256(
-                                    deltaFees.mulDiv(
+                                    Math.mulDiv(
+                                        uint256((v.upperFees - currentFees)),
                                         amountStable,
                                         2 * amountToNextBreakPointNormalizer,
                                         Math.Rounding.Up
@@ -258,7 +258,7 @@ library LibSwapper {
                         // ac4 is the value of `2M(f_{i+1}-f_i)/(b_{i+1}-b_i) = 2M(f_{i+1}-g(0))/b_{i+1}` used
                         // in the computation of `m_t` in both the mint and burn case
                         uint256 ac4 = Math.mulDiv(
-                            2 * amountStable * deltaFees,
+                            2 * amountStable * uint256(v.upperFees - currentFees),
                             BASE_9,
                             v.amountToNextBreakPoint,
                             Math.Rounding.Up
@@ -284,7 +284,8 @@ library LibSwapper {
                             uint256 baseMinusCurrent = uint256(int256(BASE_9) - currentFees);
                             // Mathematically, this condition is always verified, but rounding errors may make this
                             // mathematical invariant break, in which case we consider that the square root is null
-                            if (baseMinusCurrent ** 2 > ac4) midFee = int64((currentFees + int256(BASE_9)) / 2);
+                            if ((uint256(int256(BASE_9) - currentFees)) ** 2 > ac4)
+                                midFee = int64((currentFees + int256(BASE_9)) / 2);
                             else
                                 midFee = int64(
                                     int256(
@@ -292,12 +293,7 @@ library LibSwapper {
                                             uint256(
                                                 currentFees +
                                                     int256(BASE_9) -
-                                                    int256(
-                                                        Math.sqrt(
-                                                            uint256(int256(BASE_9) - currentFees) ** 2 - ac4,
-                                                            Math.Rounding.Down
-                                                        )
-                                                    )
+                                                    int256(Math.sqrt(baseMinusCurrent ** 2 - ac4, Math.Rounding.Down))
                                             ),
                                             1,
                                             2,
