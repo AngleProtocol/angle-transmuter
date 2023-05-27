@@ -18,6 +18,7 @@ contract MintTest is Fixture, FunctionUtils {
     uint256 internal _minOracleValue = 10 ** 3; // 10**(-6)
     uint256 internal _minWallet = 10 ** 18; // in base 18
     uint256 internal _maxWallet = 10 ** (18 + 12); // in base 18
+    int64 internal _minMintFee = -int64(int256(BASE_9 / 2));
 
     address[] internal _collaterals;
     AggregatorV3Interface[] internal _oracles;
@@ -26,22 +27,25 @@ contract MintTest is Fixture, FunctionUtils {
     function setUp() public override {
         super.setUp();
 
-        // set Fees to 0 on all collaterals
+        // set mint Fees to 0 on all collaterals
         uint64[] memory xFeeMint = new uint64[](1);
         xFeeMint[0] = uint64(0);
         uint64[] memory xFeeBurn = new uint64[](1);
         xFeeBurn[0] = uint64(BASE_9);
-        int64[] memory yFee = new int64[](1);
-        yFee[0] = 0;
+        int64[] memory yFeeMint = new int64[](1);
+        yFeeMint[0] = 0;
+        int64[] memory yFeeBurn = new int64[](1);
+        // to fit the minFee on mint and not revert in the checkFees
+        yFeeBurn[0] = -_minMintFee;
         int64[] memory yFeeRedemption = new int64[](1);
         yFeeRedemption[0] = int64(int256(BASE_9));
         vm.startPrank(governor);
-        transmuter.setFees(address(eurA), xFeeMint, yFee, true);
-        transmuter.setFees(address(eurA), xFeeBurn, yFee, false);
-        transmuter.setFees(address(eurB), xFeeMint, yFee, true);
-        transmuter.setFees(address(eurB), xFeeBurn, yFee, false);
-        transmuter.setFees(address(eurY), xFeeMint, yFee, true);
-        transmuter.setFees(address(eurY), xFeeBurn, yFee, false);
+        transmuter.setFees(address(eurA), xFeeMint, yFeeMint, true);
+        transmuter.setFees(address(eurA), xFeeBurn, yFeeBurn, false);
+        transmuter.setFees(address(eurB), xFeeMint, yFeeMint, true);
+        transmuter.setFees(address(eurB), xFeeBurn, yFeeBurn, false);
+        transmuter.setFees(address(eurY), xFeeMint, yFeeMint, true);
+        transmuter.setFees(address(eurY), xFeeBurn, yFeeBurn, false);
         transmuter.setRedemptionCurveParams(xFeeMint, yFeeRedemption);
         vm.stopPrank();
 
@@ -663,14 +667,7 @@ contract MintTest is Fixture, FunctionUtils {
         uint64[10] memory xFeeMintUnbounded,
         int64[10] memory yFeeMintUnbounded
     ) internal returns (uint64[] memory xFeeMint, int64[] memory yFeeMint) {
-        (xFeeMint, yFeeMint) = _generateCurves(
-            xFeeMintUnbounded,
-            yFeeMintUnbounded,
-            true,
-            true,
-            -int256(BASE_9 / 2),
-            0
-        );
+        (xFeeMint, yFeeMint) = _generateCurves(xFeeMintUnbounded, yFeeMintUnbounded, true, true, _minMintFee, 0);
         vm.prank(governor);
         transmuter.setFees(collateral, xFeeMint, yFeeMint, true);
     }

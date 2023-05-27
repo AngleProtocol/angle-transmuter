@@ -18,6 +18,7 @@ contract BurnTest is Fixture, FunctionUtils {
     uint256 internal _minOracleValue = 10 ** 3; // 10**(-6)
     uint256 internal _minWallet = 10 ** 18; // in base 18
     uint256 internal _maxWallet = 10 ** (18 + 12); // in base 18
+    int64 internal _minBurnFee = -int64(int256(BASE_9 / 2));
 
     address[] internal _collaterals;
     AggregatorV3Interface[] internal _oracles;
@@ -689,13 +690,16 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256 prevTransmuterCollat = IERC20(_collaterals[fromToken]).balanceOf(address(transmuter));
 
         uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
-        _burnExactInput(alice, _collaterals[fromToken], stableAmount, amountOut);
+        bool burnMoreThanHad = _burnExactInput(alice, _collaterals[fromToken], stableAmount, amountOut);
 
         uint256 balanceStable = agToken.balanceOf(alice);
 
         assertEq(balanceStable, prevBalanceStable - stableAmount);
         assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), amountOut);
-        assertEq(IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)), prevTransmuterCollat - amountOut);
+        assertEq(
+            IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)),
+            burnMoreThanHad ? 0 : prevTransmuterCollat - amountOut
+        );
 
         (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(
             _collaterals[fromToken]
@@ -782,6 +786,21 @@ contract BurnTest is Fixture, FunctionUtils {
         transferProportion = bound(transferProportion, 0, BASE_9);
         if (receiver != address(0)) agToken.transfer(receiver, (mintedStables * transferProportion) / BASE_9);
         vm.stopPrank();
+
+        _setMintFeesForNegativeBurnFees();
+    }
+
+    function _setMintFeesForNegativeBurnFees() internal {
+        // set mint Fees to be consistent with the min fee on Burn
+        uint64[] memory xFee = new uint64[](1);
+        xFee[0] = uint64(0);
+        int64[] memory yFee = new int64[](1);
+        yFee[0] = -_minBurnFee;
+        vm.startPrank(governor);
+        kheops.setFees(address(eurA), xFee, yFee, true);
+        kheops.setFees(address(eurB), xFee, yFee, true);
+        kheops.setFees(address(eurY), xFee, yFee, true);
+        vm.stopPrank();
     }
 
     function _getExposures(
@@ -828,14 +847,7 @@ contract BurnTest is Fixture, FunctionUtils {
         int64[10] memory yFeeBurnUnbounded,
         int256 maxFee
     ) internal returns (uint64[] memory xFeeBurn, int64[] memory yFeeBurn) {
-        (xFeeBurn, yFeeBurn) = _generateCurves(
-            xFeeBurnUnbounded,
-            yFeeBurnUnbounded,
-            false,
-            false,
-            -int256(BASE_9 / 2),
-            maxFee
-        );
+        (xFeeBurn, yFeeBurn) = _generateCurves(xFeeBurnUnbounded, yFeeBurnUnbounded, false, false, _minBurnFee, maxFee);
         vm.prank(governor);
         transmuter.setFees(collateral, xFeeBurn, yFeeBurn, false);
     }
@@ -874,7 +886,12 @@ contract BurnTest is Fixture, FunctionUtils {
         address tokenOut,
         uint256 amountStable,
         uint256 estimatedAmountOut
-    ) internal {
+    ) internal returns (bool burnMoreThanHad) {
+        // we need to increase the balance because fees are negative and we need to transfer more than what we received with the mint
+        if (IERC20(tokenOut).balanceOf(address(kheops)) < estimatedAmountOut) {
+            deal(tokenOut, address(kheops), estimatedAmountOut);
+            burnMoreThanHad = true;
+        }
         vm.startPrank(owner);
         transmuter.swapExactInput(
             amountStable,
