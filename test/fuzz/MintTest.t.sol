@@ -63,7 +63,7 @@ contract MintTest is Fixture, FunctionUtils {
                                                          TESTS                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteMintExactInputSimple(
+    function testFuzz_QuoteMintExactInputSimple(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256 mintAmount,
@@ -79,7 +79,7 @@ contract MintTest is Fixture, FunctionUtils {
         assertEq(_convertDecimalTo(mintAmount, IERC20Metadata(_collaterals[fromToken]).decimals(), 18), amountOut);
     }
 
-    function testQuoteMintExactInputNonNullFees(
+    function testFuzz_QuoteMintExactInputNonNullFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         int64 mintFee,
@@ -111,7 +111,7 @@ contract MintTest is Fixture, FunctionUtils {
         assertEq(supposedAmountOut, amountOut);
     }
 
-    function testQuoteMintReflexivitySimple(
+    function testFuzz_QuoteMintReflexivitySimple(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256 amountIn,
@@ -128,7 +128,7 @@ contract MintTest is Fixture, FunctionUtils {
         assertEq(amountIn, reflexiveAmountIn);
     }
 
-    function testQuoteMintReflexivityRandomOracle(
+    function testFuzz_QuoteMintReflexivityRandomOracle(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -161,7 +161,7 @@ contract MintTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteMintExactInputReflexivityFees(
+    function testFuzz_QuoteMintExactInputReflexivityFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         int64 mintFee,
@@ -204,7 +204,7 @@ contract MintTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteMintExactInputReflexivityOracleFees(
+    function testFuzz_QuoteMintExactInputReflexivityOracleFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -256,7 +256,7 @@ contract MintTest is Fixture, FunctionUtils {
                                                  PIECEWISE LINEAR FEES                                              
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteMintExactOutputReflexivityFixPiecewiseFees(
+    function testFuzz_QuoteMintExactOutputReflexivityFixPiecewiseFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -374,7 +374,7 @@ contract MintTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteMintReflexivityRandPiecewiseFees(
+    function testFuzz_QuoteMintReflexivityRandPiecewiseFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -412,7 +412,7 @@ contract MintTest is Fixture, FunctionUtils {
                                                    INDEPENDANT PATH                                                 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteMintExactOutputIndependant(
+    function testFuzz_QuoteMintExactOutputIndependant(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256 splitProportion,
@@ -455,7 +455,7 @@ contract MintTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteMintExactInputIndependant(
+    function testFuzz_QuoteMintExactInputIndependant(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256 splitProportion,
@@ -502,7 +502,7 @@ contract MintTest is Fixture, FunctionUtils {
                                                          MINT                                                       
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testMintExactOutput(
+    function testFuzz_MintExactOutput(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -544,7 +544,7 @@ contract MintTest is Fixture, FunctionUtils {
         assertApproxEqAbs(newStableAmount, mintedStables + stableAmount, 1 wei);
     }
 
-    function testMintExactInput(
+    function testFuzz_MintExactInput(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,

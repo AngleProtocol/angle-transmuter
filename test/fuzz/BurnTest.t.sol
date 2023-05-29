@@ -64,7 +64,7 @@ contract BurnTest is Fixture, FunctionUtils {
                                                          TESTS                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteBurnExactInputSimple(
+    function testFuzz_QuoteBurnExactInputSimple(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256 burnAmount,
@@ -85,7 +85,7 @@ contract BurnTest is Fixture, FunctionUtils {
         assertEq(_convertDecimalTo(burnAmount, 18, IERC20Metadata(_collaterals[fromToken]).decimals()), amountOut);
     }
 
-    function testQuoteBurnExactInputNonNullFees(
+    function testFuzz_QuoteBurnExactInputNonNullFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         int64 burnFee,
@@ -122,7 +122,7 @@ contract BurnTest is Fixture, FunctionUtils {
         assertEq(supposedAmountOut, amountOut);
     }
 
-    function testQuoteBurnReflexivitySimple(
+    function testFuzz_QuoteBurnReflexivitySimple(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256 burnAmount,
@@ -159,7 +159,7 @@ contract BurnTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteBurnReflexivityRandomOracle(
+    function testFuzz_QuoteBurnReflexivityRandomOracle(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -196,7 +196,7 @@ contract BurnTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteBurnExactInputReflexivityFees(
+    function testFuzz_QuoteBurnExactInputReflexivityFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         int64 burnFee,
@@ -240,7 +240,7 @@ contract BurnTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteBurnExactInputReflexivityOracleFees(
+    function testFuzz_QuoteBurnExactInputReflexivityOracleFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -298,7 +298,7 @@ contract BurnTest is Fixture, FunctionUtils {
                                                  PIECEWISE LINEAR FEES                                              
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteBurnExactInputReflexivityFixPiecewiseFees(
+    function testFuzz_QuoteBurnExactInputReflexivityFixPiecewiseFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -449,7 +449,7 @@ contract BurnTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteBurnReflexivityRandPiecewiseFees(
+    function testFuzz_QuoteBurnReflexivityRandPiecewiseFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint64[10] memory xFeeBurnUnbounded,
@@ -500,7 +500,7 @@ contract BurnTest is Fixture, FunctionUtils {
     }
 
     // Oracle precision worsen reflexivity
-    function testQuoteBurnReflexivityRandOracleAndPiecewiseFees(
+    function testFuzz_QuoteBurnReflexivityRandOracleAndPiecewiseFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -556,7 +556,7 @@ contract BurnTest is Fixture, FunctionUtils {
                                                    INDEPENDENT PATH                                                 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteBurnExactInputIndependant(
+    function testFuzz_QuoteBurnExactInputIndependant(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256 splitProportion,
@@ -612,7 +612,7 @@ contract BurnTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteBurnExactOutputIndependant(
+    function testFuzz_QuoteBurnExactOutputIndependant(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256 splitProportion,
@@ -665,7 +665,7 @@ contract BurnTest is Fixture, FunctionUtils {
                                                          BURN                                                       
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testBurnExactInput(
+    function testFuzz_BurnExactInput(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -708,7 +708,7 @@ contract BurnTest is Fixture, FunctionUtils {
         assertApproxEqAbs(newStableAmount, mintedStables - stableAmount, 1 wei);
     }
 
-    function testBurnExactOutput(
+    function testFuzz_BurnExactOutput(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,

@@ -65,12 +65,12 @@ contract TestTransmuter is Fixture {
         }
     }
 
-    function testQuoteInScenario() public {
+    function test_QuoteInScenario() public {
         uint256 quote = (transmuter.quoteIn(BASE_6, address(eurA), address(agToken)));
         assertEq(quote, BASE_27 / (BASE_9 + BASE_9 / 99));
     }
 
-    function testSimpleSwapInScenario() public {
+    function test_SimpleSwapInScenario() public {
         deal(address(eurA), alice, BASE_6);
 
         startHoax(alice);
@@ -80,12 +80,12 @@ contract TestTransmuter is Fixture {
         assertEq(agToken.balanceOf(alice), BASE_27 / (BASE_9 + BASE_9 / 99));
     }
 
-    function testQuoteCollateralRatio() public {
+    function test_QuoteCollateralRatio() public {
         transmuter.getCollateralRatio();
         assertEq(uint256(0), uint256(0));
     }
 
-    function testQuoteCollateralRatioDirectCall() public {
+    function test_QuoteCollateralRatioDirectCall() public {
         LibRedeemer.getCollateralRatio();
         assertEq(uint256(0), uint256(0));
     }
