@@ -7,11 +7,9 @@ import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
 
-    
-    
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         ENUMS                                                      
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/  
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
 enum FacetCutAction {
     Add,
@@ -55,7 +53,6 @@ enum OracleTargetType {
     SFRXETH
 }
 
-    
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     STRUCTS                                                     
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
@@ -63,12 +60,12 @@ enum OracleTargetType {
 struct FacetCut {
     address facetAddress;                        // Facet contract address
     FacetCutAction action;                       // Can be add, remove or replace
-    bytes4[] functionSelectors;                  // Ex. bytes4(keccak256("transfer(address,uint256)")) 
+    bytes4[] functionSelectors;                  // Ex. bytes4(keccak256("transfer(address,uint256)"))
 }
 
 struct Facet {
     address facetAddress;                        // Facet contract address
-    bytes4[] functionSelectors;                  // Ex. bytes4(keccak256("transfer(address,uint256)")) 
+    bytes4[] functionSelectors;                  // Ex. bytes4(keccak256("transfer(address,uint256)"))
 }
 
 struct FacetInfo {
@@ -101,7 +98,7 @@ struct Collateral {
     ManagerStorage managerData;                  // For managed collateral, data used to handle the strategies
 }
 
-struct KheopsStorage {
+struct TransmuterStorage {
     IAgToken agToken;                            // agToken handled by the system
     uint8 pausedRedemption;                      // If redemption is paused
     uint128 normalizedStables;                   // Normalized amount of stablecoins issued by the system
@@ -111,5 +108,5 @@ struct KheopsStorage {
     int64[] yRedemptionCurve;                    // Value of the redemption fees at `xRedemptionCurve`
     mapping(address => Collateral) collaterals;  // Maps a collateral asset to its parameters
     mapping(address => uint256) isTrusted;       // If an address is trusted to update the normalizer value
-    mapping(address => uint256) isSellerTrusted; // If an address is trusted to sell reward tokens accruing to Kheops
+    mapping(address => uint256) isSellerTrusted; // If an address is trusted to sell accruing reward tokens
 }

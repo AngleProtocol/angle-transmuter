@@ -8,8 +8,8 @@ import { stdError } from "forge-std/Test.sol";
 
 import { IERC20Metadata } from "mock/MockTokenPermit.sol";
 
-import { ManagerStorage } from "contracts/kheops/Storage.sol";
-import "contracts/kheops/libraries/LibHelpers.sol";
+import { ManagerStorage } from "contracts/transmuter/Storage.sol";
+import "contracts/transmuter/libraries/LibHelpers.sol";
 
 import "../Fixture.sol";
 import "../utils/FunctionUtils.sol";
@@ -49,13 +49,13 @@ contract RedeemTest is Fixture, FunctionUtils {
         int64[] memory yFeeRedemption = new int64[](1);
         yFeeRedemption[0] = int64(int256(BASE_9));
         vm.startPrank(governor);
-        kheops.setFees(address(eurA), xFeeMint, yFee, true);
-        kheops.setFees(address(eurA), xFeeBurn, yFee, false);
-        kheops.setFees(address(eurB), xFeeMint, yFee, true);
-        kheops.setFees(address(eurB), xFeeBurn, yFee, false);
-        kheops.setFees(address(eurY), xFeeMint, yFee, true);
-        kheops.setFees(address(eurY), xFeeBurn, yFee, false);
-        kheops.setRedemptionCurveParams(xFeeMint, yFeeRedemption);
+        transmuter.setFees(address(eurA), xFeeMint, yFee, true);
+        transmuter.setFees(address(eurA), xFeeBurn, yFee, false);
+        transmuter.setFees(address(eurB), xFeeMint, yFee, true);
+        transmuter.setFees(address(eurB), xFeeBurn, yFee, false);
+        transmuter.setFees(address(eurY), xFeeMint, yFee, true);
+        transmuter.setFees(address(eurY), xFeeBurn, yFee, false);
+        transmuter.setRedemptionCurveParams(xFeeMint, yFeeRedemption);
         vm.stopPrank();
 
         _collaterals.push(address(eurA));
@@ -83,7 +83,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         (uint256 mintedStables, ) = _loadReserves(initialAmounts, transferProportion);
 
         // check collateral ratio first
-        (uint64 collatRatio, uint256 reservesValue) = kheops.getCollateralRatio();
+        (uint64 collatRatio, uint256 reservesValue) = transmuter.getCollateralRatio();
         if (mintedStables > 0) assertEq(collatRatio, BASE_9);
         else assertEq(collatRatio, type(uint64).max);
         assertEq(reservesValue, mintedStables);
@@ -93,7 +93,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-        (address[] memory tokens, uint256[] memory amounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        (address[] memory tokens, uint256[] memory amounts) = transmuter.quoteRedemptionCurve(amountBurnt);
         vm.stopPrank();
 
         if (mintedStables == 0) return;
@@ -132,7 +132,7 @@ contract RedeemTest is Fixture, FunctionUtils {
             );
 
             // check collateral ratio first
-            (uint64 collatRatio, uint256 reservesValue) = kheops.getCollateralRatio();
+            (uint64 collatRatio, uint256 reservesValue) = transmuter.getCollateralRatio();
             if (mintedStables > 0) assertApproxEqAbs(collatRatio, BASE_9, 1e5);
             else assertEq(collatRatio, type(uint64).max);
             assertEq(reservesValue, mintedStables);
@@ -142,7 +142,7 @@ contract RedeemTest is Fixture, FunctionUtils {
             vm.startPrank(alice);
             uint256 amountBurnt = agToken.balanceOf(alice);
             if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-            (address[] memory tokens, uint256[] memory amounts) = kheops.quoteRedemptionCurve(amountBurnt);
+            (address[] memory tokens, uint256[] memory amounts) = transmuter.quoteRedemptionCurve(amountBurnt);
             vm.stopPrank();
 
             if (mintedStables == 0) return;
@@ -168,7 +168,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-        (address[] memory tokens, uint256[] memory amounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        (address[] memory tokens, uint256[] memory amounts) = transmuter.quoteRedemptionCurve(amountBurnt);
         vm.stopPrank();
 
         if (mintedStables == 0) return;
@@ -190,7 +190,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-        (address[] memory tokens, uint256[] memory amounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        (address[] memory tokens, uint256[] memory amounts) = transmuter.quoteRedemptionCurve(amountBurnt);
         vm.stopPrank();
 
         if (mintedStables == 0) return;
@@ -226,7 +226,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-        (address[] memory tokens, uint256[] memory amounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        (address[] memory tokens, uint256[] memory amounts) = transmuter.quoteRedemptionCurve(amountBurnt);
         vm.stopPrank();
 
         if (mintedStables == 0) return;
@@ -256,11 +256,11 @@ contract RedeemTest is Fixture, FunctionUtils {
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-        (, uint256[] memory quoteAmounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
         // uint256[] memory forfeitTokens = new uint256[](0);
         uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
-        (address[] memory tokens, uint256[] memory amounts) = kheops.redeem(
+        (address[] memory tokens, uint256[] memory amounts) = transmuter.redeem(
             amountBurnt,
             alice,
             block.timestamp + 1 days,
@@ -276,7 +276,7 @@ contract RedeemTest is Fixture, FunctionUtils {
 
         // Testing implicitly the ks.normalizer and ks.normalizedStables
         for (uint256 i; i < _collaterals.length; ++i) {
-            (uint256 stableIssuedByCollateral, uint256 totalStable) = kheops.getIssuedByCollateral(_collaterals[i]);
+            (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(_collaterals[i]);
             assertApproxEqAbs(
                 stableIssuedByCollateral,
                 (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
@@ -314,14 +314,14 @@ contract RedeemTest is Fixture, FunctionUtils {
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-        (, uint256[] memory quoteAmounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
         address[] memory tokens;
         uint256[] memory amounts;
         {
             // uint256[] memory forfeitTokens = new uint256[](0);
             uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
-            (tokens, amounts) = kheops.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
+            (tokens, amounts) = transmuter.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
         }
         vm.stopPrank();
 
@@ -334,7 +334,7 @@ contract RedeemTest is Fixture, FunctionUtils {
 
         // Testing implicitly the ks.normalizer and ks.normalizedStables
         for (uint256 i; i < _collaterals.length; ++i) {
-            (uint256 stableIssuedByCollateral, uint256 totalStable) = kheops.getIssuedByCollateral(_collaterals[i]);
+            (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(_collaterals[i]);
             assertApproxEqAbs(
                 stableIssuedByCollateral,
                 (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
@@ -367,14 +367,14 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256 amountBurnt = agToken.balanceOf(alice);
         uint256 amountBurntBob;
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-        (, uint256[] memory quoteAmounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
         {
             address[] memory tokens;
             uint256[] memory amounts;
             {
                 uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
-                (tokens, amounts) = kheops.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
+                (tokens, amounts) = transmuter.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
             }
             vm.stopPrank();
 
@@ -387,7 +387,9 @@ contract RedeemTest is Fixture, FunctionUtils {
 
             // Testing implicitly the ks.normalizer and ks.normalizedStables
             for (uint256 i; i < _collaterals.length; ++i) {
-                (uint256 stableIssuedByCollateral, uint256 totalStable) = kheops.getIssuedByCollateral(_collaterals[i]);
+                (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(
+                    _collaterals[i]
+                );
                 assertApproxEqAbs(
                     stableIssuedByCollateral,
                     (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
@@ -402,11 +404,11 @@ contract RedeemTest is Fixture, FunctionUtils {
             redeemProportion = bound(redeemProportion, 0, BASE_9);
             amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
             if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-            (, quoteAmounts) = kheops.quoteRedemptionCurve(amountBurntBob);
+            (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurntBob);
             if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
             {
                 uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
-                (tokens, amounts) = kheops.redeem(amountBurntBob, bob, block.timestamp + 1 days, minAmountOuts);
+                (tokens, amounts) = transmuter.redeem(amountBurntBob, bob, block.timestamp + 1 days, minAmountOuts);
             }
             vm.stopPrank();
 
@@ -422,7 +424,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256 totalStable2;
         for (uint256 i; i < _collaterals.length; ++i) {
             uint256 stableIssuedByCollateral;
-            (stableIssuedByCollateral, totalStable2) = kheops.getIssuedByCollateral(_collaterals[i]);
+            (stableIssuedByCollateral, totalStable2) = transmuter.getIssuedByCollateral(_collaterals[i]);
             uint256 realStableIssueByCollateralLeft = (collateralMintedStables[i] * (mintedStables - amountBurntBob)) /
                 (mintedStables + amountBurnt);
             _assertApproxEqRelDecimalWithTolerance(
@@ -500,7 +502,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-        (address[] memory tokens, uint256[] memory amounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        (address[] memory tokens, uint256[] memory amounts) = transmuter.quoteRedemptionCurve(amountBurnt);
         vm.stopPrank();
 
         if (mintedStables == 0) return;
@@ -560,14 +562,14 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256 amountBurnt = agToken.balanceOf(alice);
         uint256 amountBurntBob;
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-        (, uint256[] memory quoteAmounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
         {
             address[] memory tokens;
             uint256[] memory amounts;
             {
                 uint256[] memory minAmountOuts = new uint256[](quoteAmounts.length);
-                (tokens, amounts) = kheops.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
+                (tokens, amounts) = transmuter.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
             }
             vm.stopPrank();
 
@@ -582,7 +584,9 @@ contract RedeemTest is Fixture, FunctionUtils {
             }
             // Testing implicitly the ks.normalizer and ks.normalizedStables
             for (uint256 i; i < _collaterals.length; ++i) {
-                (uint256 stableIssuedByCollateral, uint256 totalStable) = kheops.getIssuedByCollateral(_collaterals[i]);
+                (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(
+                    _collaterals[i]
+                );
                 assertApproxEqAbs(
                     stableIssuedByCollateral,
                     (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
@@ -597,11 +601,11 @@ contract RedeemTest is Fixture, FunctionUtils {
             redeemProportion = bound(redeemProportion, 0, BASE_9);
             amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
             if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-            (, quoteAmounts) = kheops.quoteRedemptionCurve(amountBurntBob);
+            (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurntBob);
             if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
             {
                 uint256[] memory minAmountOuts = new uint256[](quoteAmounts.length);
-                (tokens, amounts) = kheops.redeem(amountBurntBob, bob, block.timestamp + 1 days, minAmountOuts);
+                (tokens, amounts) = transmuter.redeem(amountBurntBob, bob, block.timestamp + 1 days, minAmountOuts);
             }
             vm.stopPrank();
 
@@ -620,7 +624,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256 totalStable2;
         for (uint256 i; i < _collaterals.length; ++i) {
             uint256 stableIssuedByCollateral;
-            (stableIssuedByCollateral, totalStable2) = kheops.getIssuedByCollateral(_collaterals[i]);
+            (stableIssuedByCollateral, totalStable2) = transmuter.getIssuedByCollateral(_collaterals[i]);
             uint256 realStableIssueByCollateralLeft = (collateralMintedStables[i] * (mintedStables - amountBurntBob)) /
                 (mintedStables + amountBurnt);
             _assertApproxEqRelDecimalWithTolerance(
@@ -692,7 +696,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256 amountBurnt = agToken.balanceOf(alice);
         uint256 amountBurntBob;
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-        (, uint256[] memory quoteAmounts) = kheops.quoteRedemptionCurve(amountBurnt);
+        (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
         {
             address[] memory tokens;
             uint256[] memory amounts;
@@ -700,7 +704,7 @@ contract RedeemTest is Fixture, FunctionUtils {
             {
                 uint256[] memory minAmountOuts = new uint256[](quoteAmounts.length);
                 if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-                (tokens, amounts) = kheops.redeemWithForfeit(
+                (tokens, amounts) = transmuter.redeemWithForfeit(
                     amountBurnt,
                     alice,
                     block.timestamp + 1 days,
@@ -719,7 +723,9 @@ contract RedeemTest is Fixture, FunctionUtils {
 
             // Testing implicitly the ks.normalizer and ks.normalizedStables
             for (uint256 i; i < _collaterals.length; ++i) {
-                (uint256 stableIssuedByCollateral, uint256 totalStable) = kheops.getIssuedByCollateral(_collaterals[i]);
+                (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(
+                    _collaterals[i]
+                );
                 assertApproxEqAbs(
                     stableIssuedByCollateral,
                     (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
@@ -734,11 +740,11 @@ contract RedeemTest is Fixture, FunctionUtils {
             redeemProportion = bound(redeemProportion, 0, BASE_9);
             amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
             if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-            (, quoteAmounts) = kheops.quoteRedemptionCurve(amountBurntBob);
+            (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurntBob);
             if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
             {
                 uint256[] memory minAmountOuts = new uint256[](quoteAmounts.length);
-                (tokens, amounts) = kheops.redeem(amountBurntBob, bob, block.timestamp + 1 days, minAmountOuts);
+                (tokens, amounts) = transmuter.redeem(amountBurntBob, bob, block.timestamp + 1 days, minAmountOuts);
             }
             vm.stopPrank();
 
@@ -757,7 +763,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256 totalStable2;
         for (uint256 i; i < _collaterals.length; ++i) {
             uint256 stableIssuedByCollateral;
-            (stableIssuedByCollateral, totalStable2) = kheops.getIssuedByCollateral(_collaterals[i]);
+            (stableIssuedByCollateral, totalStable2) = transmuter.getIssuedByCollateral(_collaterals[i]);
             uint256 realStableIssueByCollateralLeft = (collateralMintedStables[i] * (mintedStables - amountBurntBob)) /
                 (mintedStables + amountBurnt);
             _assertApproxEqRelDecimalWithTolerance(
@@ -856,9 +862,9 @@ contract RedeemTest is Fixture, FunctionUtils {
             assertLe(amountInValueReceived, amountBurnt + 1);
             valueCheck = (amountBurnt * fee) / BASE_9;
         }
-        assertApproxEqAbs(amounts[0], (eurA.balanceOf(address(kheops)) * amountBurnt * fee) / denom, 1 wei);
-        assertApproxEqAbs(amounts[1], (eurB.balanceOf(address(kheops)) * amountBurnt * fee) / denom, 1 wei);
-        assertApproxEqAbs(amounts[2], (eurY.balanceOf(address(kheops)) * amountBurnt * fee) / denom, 1 wei);
+        assertApproxEqAbs(amounts[0], (eurA.balanceOf(address(transmuter)) * amountBurnt * fee) / denom, 1 wei);
+        assertApproxEqAbs(amounts[1], (eurB.balanceOf(address(transmuter)) * amountBurnt * fee) / denom, 1 wei);
+        assertApproxEqAbs(amounts[2], (eurY.balanceOf(address(transmuter)) * amountBurnt * fee) / denom, 1 wei);
         if (collatRatio < BASE_9) {
             assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
         }
@@ -914,7 +920,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                 uint256 expect;
                 uint256 subCollateralBalance;
                 if (address(_managers[_collaterals[i]]) == address(0))
-                    subCollateralBalance = listSubCollaterals[k].balanceOf(address(kheops));
+                    subCollateralBalance = listSubCollaterals[k].balanceOf(address(transmuter));
                 else subCollateralBalance = listSubCollaterals[k].balanceOf(address(_managers[_collaterals[i]]));
                 if (collatRatio < BASE_9) {
                     expect = (subCollateralBalance * amountBurnt * fee) / (mintedStables * BASE_9);
@@ -960,9 +966,9 @@ contract RedeemTest is Fixture, FunctionUtils {
         for (uint256 i; i < _collaterals.length; ++i) {
             initialAmounts[i] = bound(initialAmounts[i], 0, _maxTokenAmount[i]);
             deal(_collaterals[i], alice, initialAmounts[i]);
-            IERC20(_collaterals[i]).approve(address(kheops), initialAmounts[i]);
+            IERC20(_collaterals[i]).approve(address(transmuter), initialAmounts[i]);
 
-            collateralMintedStables[i] = kheops.swapExactInput(
+            collateralMintedStables[i] = transmuter.swapExactInput(
                 initialAmounts[i],
                 0,
                 _collaterals[i],
@@ -1016,7 +1022,7 @@ contract RedeemTest is Fixture, FunctionUtils {
 
         // check collateral ratio first
         uint256 reservesValue;
-        (collatRatio, reservesValue) = kheops.getCollateralRatio();
+        (collatRatio, reservesValue) = transmuter.getCollateralRatio();
         if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
         else assertEq(collatRatio, type(uint64).max);
         assertEq(reservesValue, mintedStables);
@@ -1059,7 +1065,7 @@ contract RedeemTest is Fixture, FunctionUtils {
 
         // check collateral ratio first
         uint256 reservesValue;
-        (collatRatio, reservesValue) = kheops.getCollateralRatio();
+        (collatRatio, reservesValue) = transmuter.getCollateralRatio();
 
         if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
         else assertEq(collatRatio, type(uint64).max);
@@ -1072,7 +1078,7 @@ contract RedeemTest is Fixture, FunctionUtils {
     ) internal returns (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) {
         (xFeeRedeem, yFeeRedeem) = _generateCurves(xFeeRedeemUnbounded, yFeeRedeemUnbounded, true, false, 0, 0);
         vm.prank(governor);
-        kheops.setRedemptionCurveParams(xFeeRedeem, yFeeRedeem);
+        transmuter.setRedemptionCurveParams(xFeeRedeem, yFeeRedeem);
     }
 
     function _sweepBalances(address owner, address[] memory tokens) internal {
@@ -1179,6 +1185,6 @@ contract RedeemTest is Fixture, FunctionUtils {
         _managers[token] = manager;
 
         vm.prank(governor);
-        kheops.setCollateralManager(token, managerData);
+        transmuter.setCollateralManager(token, managerData);
     }
 }

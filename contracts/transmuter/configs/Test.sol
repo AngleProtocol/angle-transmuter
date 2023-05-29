@@ -27,7 +27,7 @@ contract Test {
     ) external {
         Setters.setAccessControlManager(_accessControlManager);
 
-        KheopsStorage storage ks = s.kheopsStorage();
+        TransmuterStorage storage ks = s.transmuterStorage();
         ks.normalizer = uint128(BASE_27);
         ks.agToken = IAgToken(_agToken);
 

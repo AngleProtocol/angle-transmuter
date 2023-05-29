@@ -36,13 +36,13 @@ contract MintTest is Fixture, FunctionUtils {
         int64[] memory yFeeRedemption = new int64[](1);
         yFeeRedemption[0] = int64(int256(BASE_9));
         vm.startPrank(governor);
-        kheops.setFees(address(eurA), xFeeMint, yFee, true);
-        kheops.setFees(address(eurA), xFeeBurn, yFee, false);
-        kheops.setFees(address(eurB), xFeeMint, yFee, true);
-        kheops.setFees(address(eurB), xFeeBurn, yFee, false);
-        kheops.setFees(address(eurY), xFeeMint, yFee, true);
-        kheops.setFees(address(eurY), xFeeBurn, yFee, false);
-        kheops.setRedemptionCurveParams(xFeeMint, yFeeRedemption);
+        transmuter.setFees(address(eurA), xFeeMint, yFee, true);
+        transmuter.setFees(address(eurA), xFeeBurn, yFee, false);
+        transmuter.setFees(address(eurB), xFeeMint, yFee, true);
+        transmuter.setFees(address(eurB), xFeeBurn, yFee, false);
+        transmuter.setFees(address(eurY), xFeeMint, yFee, true);
+        transmuter.setFees(address(eurY), xFeeBurn, yFee, false);
+        transmuter.setRedemptionCurveParams(xFeeMint, yFeeRedemption);
         vm.stopPrank();
 
         _collaterals.push(address(eurA));
@@ -72,7 +72,7 @@ contract MintTest is Fixture, FunctionUtils {
 
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         mintAmount = bound(mintAmount, 0, _maxTokenAmount[fromToken]);
-        uint256 amountOut = kheops.quoteIn(mintAmount, _collaterals[fromToken], address(agToken));
+        uint256 amountOut = transmuter.quoteIn(mintAmount, _collaterals[fromToken], address(agToken));
 
         assertEq(_convertDecimalTo(mintAmount, IERC20Metadata(_collaterals[fromToken]).decimals(), 18), amountOut);
     }
@@ -94,10 +94,10 @@ contract MintTest is Fixture, FunctionUtils {
         int64[] memory yFeeMint = new int64[](1);
         yFeeMint[0] = mintFee;
         vm.prank(governor);
-        kheops.setFees(_collaterals[fromToken], xFeeMint, yFeeMint, true);
+        transmuter.setFees(_collaterals[fromToken], xFeeMint, yFeeMint, true);
 
         if (mintFee == int256(BASE_12)) vm.expectRevert(Errors.InvalidSwap.selector);
-        uint256 amountOut = kheops.quoteIn(mintAmount, _collaterals[fromToken], address(agToken));
+        uint256 amountOut = transmuter.quoteIn(mintAmount, _collaterals[fromToken], address(agToken));
         if (mintFee == int256(BASE_12)) return;
 
         uint256 supposedAmountOut = ((_convertDecimalTo(
@@ -120,8 +120,8 @@ contract MintTest is Fixture, FunctionUtils {
 
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         amountIn = bound(amountIn, 0, _maxTokenAmount[fromToken]);
-        uint256 amountOut = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
-        uint256 reflexiveAmountIn = kheops.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
+        uint256 amountOut = transmuter.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
+        uint256 reflexiveAmountIn = transmuter.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
         assertEq(_convertDecimalTo(amountIn, IERC20Metadata(_collaterals[fromToken]).decimals(), 18), amountOut);
         assertEq(amountIn, reflexiveAmountIn);
     }
@@ -145,8 +145,8 @@ contract MintTest is Fixture, FunctionUtils {
             IERC20Metadata(_collaterals[fromToken]).decimals(),
             18
         ) * (uint256(oracleValue) > BASE_8 ? BASE_8 : uint256(oracleValue))) / BASE_8;
-        uint256 amountOut = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
-        uint256 reflexiveAmountIn = kheops.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
+        uint256 amountOut = transmuter.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
+        uint256 reflexiveAmountIn = transmuter.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
         assertEq(supposedAmountOut, amountOut);
         if (amountOut > _minWallet) {
             _assertApproxEqRelDecimalWithTolerance(
@@ -176,7 +176,7 @@ contract MintTest is Fixture, FunctionUtils {
         int64[] memory yFeeMint = new int64[](1);
         yFeeMint[0] = mintFee;
         vm.prank(governor);
-        kheops.setFees(_collaterals[fromToken], xFeeMint, yFeeMint, true);
+        transmuter.setFees(_collaterals[fromToken], xFeeMint, yFeeMint, true);
 
         uint256 supposedAmountOut = (_convertDecimalTo(
             amountIn,
@@ -185,9 +185,9 @@ contract MintTest is Fixture, FunctionUtils {
         ) * BASE_9) / (BASE_9 + uint64(mintFee));
 
         if (uint64(mintFee) == BASE_12) vm.expectRevert(Errors.InvalidSwap.selector);
-        uint256 amountOut = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
+        uint256 amountOut = transmuter.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
         if (uint64(mintFee) == BASE_12) vm.expectRevert(Errors.InvalidSwap.selector);
-        uint256 reflexiveAmountIn = kheops.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
+        uint256 reflexiveAmountIn = transmuter.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
         if (uint64(mintFee) == BASE_12) return;
 
         assertEq(supposedAmountOut, amountOut);
@@ -222,7 +222,7 @@ contract MintTest is Fixture, FunctionUtils {
         int64[] memory yFeeMint = new int64[](1);
         yFeeMint[0] = mintFee;
         vm.prank(governor);
-        kheops.setFees(_collaterals[fromToken], xFeeMint, yFeeMint, true);
+        transmuter.setFees(_collaterals[fromToken], xFeeMint, yFeeMint, true);
 
         (, int256 oracleValue, , , ) = _oracles[fromToken].latestRoundData();
         uint256 supposedAmountOut = (((_convertDecimalTo(
@@ -233,9 +233,9 @@ contract MintTest is Fixture, FunctionUtils {
             BASE_8;
 
         if (uint64(mintFee) == BASE_12) vm.expectRevert(Errors.InvalidSwap.selector);
-        uint256 amountOut = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
+        uint256 amountOut = transmuter.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
         if (uint64(mintFee) == BASE_12) vm.expectRevert(Errors.InvalidSwap.selector);
-        uint256 reflexiveAmountIn = kheops.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
+        uint256 reflexiveAmountIn = transmuter.quoteOut(amountOut, _collaterals[fromToken], address(agToken));
         if (uint64(mintFee) == BASE_12) return;
 
         assertApproxEqAbs(supposedAmountOut, amountOut, 1 wei);
@@ -282,7 +282,7 @@ contract MintTest is Fixture, FunctionUtils {
         yFeeMint[0] = int64(0);
         yFeeMint[1] = upperFees;
         vm.prank(governor);
-        kheops.setFees(_collaterals[fromToken], xFeeMint, yFeeMint, true);
+        transmuter.setFees(_collaterals[fromToken], xFeeMint, yFeeMint, true);
 
         uint256[] memory exposures = _getExposures(mintedStables, collateralMintedStables);
         (
@@ -350,8 +350,8 @@ contract MintTest is Fixture, FunctionUtils {
             );
         }
 
-        uint256 amountIn = kheops.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
-        uint256 reflexiveAmountStable = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
+        uint256 amountIn = transmuter.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
+        uint256 reflexiveAmountStable = transmuter.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
 
         if (stableAmount > _minWallet) {
             _assertApproxEqRelDecimalWithTolerance(
@@ -389,11 +389,11 @@ contract MintTest is Fixture, FunctionUtils {
         _updateOracles(latestOracleValue);
         _randomMintFees(_collaterals[fromToken], xFeeMintUnbounded, yFeeMintUnbounded);
 
-        uint256 amountIn = kheops.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
+        uint256 amountIn = transmuter.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
         uint256 reflexiveAmountStable;
         // Sometimes this can crash by a division by 0
         if (amountIn == 0) reflexiveAmountStable = 0;
-        else reflexiveAmountStable = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
+        else reflexiveAmountStable = transmuter.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
 
         if (stableAmount > _minWallet) {
             _assertApproxEqRelDecimalWithTolerance(
@@ -428,15 +428,15 @@ contract MintTest is Fixture, FunctionUtils {
         _updateOracles(latestOracleValue);
         _randomMintFees(_collaterals[fromToken], xFeeMintUnbounded, yFeeMintUnbounded);
 
-        uint256 amountIn = kheops.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
-        // uint256 reflexiveAmountStable = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
+        uint256 amountIn = transmuter.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
+        // uint256 reflexiveAmountStable = transmuter.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
         splitProportion = bound(splitProportion, 0, BASE_9);
         uint256 amountStableSplit1 = (stableAmount * splitProportion) / BASE_9;
         amountStableSplit1 = amountStableSplit1 == 0 ? 1 : amountStableSplit1;
-        uint256 amountInSplit1 = kheops.quoteOut(amountStableSplit1, _collaterals[fromToken], address(agToken));
+        uint256 amountInSplit1 = transmuter.quoteOut(amountStableSplit1, _collaterals[fromToken], address(agToken));
         // do the swap to update the system
         _mintExactOutput(alice, _collaterals[fromToken], amountStableSplit1, amountInSplit1);
-        uint256 amountInSplit2 = kheops.quoteOut(
+        uint256 amountInSplit2 = transmuter.quoteOut(
             stableAmount - amountStableSplit1,
             _collaterals[fromToken],
             address(agToken)
@@ -471,15 +471,15 @@ contract MintTest is Fixture, FunctionUtils {
         _updateOracles(latestOracleValue);
         _randomMintFees(_collaterals[fromToken], xFeeMintUnbounded, yFeeMintUnbounded);
 
-        uint256 amountStable = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
-        // uint256 reflexiveAmountStable = kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
+        uint256 amountStable = transmuter.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
+        // uint256 reflexiveAmountStable = transmuter.quoteIn(amountIn, _collaterals[fromToken], address(agToken));
         splitProportion = bound(splitProportion, 0, BASE_9);
         uint256 amountInSplit1 = (amountIn * splitProportion) / BASE_9;
         amountInSplit1 = amountInSplit1 == 0 ? 1 : amountInSplit1;
-        uint256 amountStableSplit1 = kheops.quoteIn(amountInSplit1, _collaterals[fromToken], address(agToken));
+        uint256 amountStableSplit1 = transmuter.quoteIn(amountInSplit1, _collaterals[fromToken], address(agToken));
         // do the swap to update the system
         _mintExactInput(alice, _collaterals[fromToken], amountInSplit1, amountStableSplit1);
-        uint256 amountStableSplit2 = kheops.quoteIn(
+        uint256 amountStableSplit2 = transmuter.quoteIn(
             amountIn - amountInSplit1,
             _collaterals[fromToken],
             address(agToken)
@@ -523,18 +523,18 @@ contract MintTest is Fixture, FunctionUtils {
         _randomMintFees(_collaterals[fromToken], xFeeMintUnbounded, yFeeMintUnbounded);
 
         uint256 prevBalanceStable = agToken.balanceOf(alice);
-        uint256 prevKheopsCollat = IERC20(_collaterals[fromToken]).balanceOf(address(kheops));
+        uint256 prevTransmuterCollat = IERC20(_collaterals[fromToken]).balanceOf(address(transmuter));
 
-        uint256 amountIn = kheops.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
+        uint256 amountIn = transmuter.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
         _mintExactOutput(alice, _collaterals[fromToken], stableAmount, amountIn);
 
         uint256 balanceStable = agToken.balanceOf(alice);
 
         assertEq(balanceStable, prevBalanceStable + stableAmount);
         assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), 0);
-        assertEq(IERC20(_collaterals[fromToken]).balanceOf(address(kheops)), prevKheopsCollat + amountIn);
+        assertEq(IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)), prevTransmuterCollat + amountIn);
 
-        (uint256 newStableAmountCollat, uint256 newStableAmount) = kheops.getIssuedByCollateral(
+        (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(
             _collaterals[fromToken]
         );
 
@@ -565,19 +565,19 @@ contract MintTest is Fixture, FunctionUtils {
         _randomMintFees(_collaterals[fromToken], xFeeMintUnbounded, yFeeMintUnbounded);
 
         uint256 prevBalanceStable = agToken.balanceOf(alice);
-        uint256 prevKheopsCollat = IERC20(_collaterals[fromToken]).balanceOf(address(kheops));
+        uint256 prevTransmuterCollat = IERC20(_collaterals[fromToken]).balanceOf(address(transmuter));
 
         // we could end up with fees = 100% making the quote revert
-        try kheops.quoteIn(amountIn, _collaterals[fromToken], address(agToken)) returns (uint256 stableAmount) {
+        try transmuter.quoteIn(amountIn, _collaterals[fromToken], address(agToken)) returns (uint256 stableAmount) {
             _mintExactInput(alice, _collaterals[fromToken], amountIn, stableAmount);
 
             uint256 balanceStable = agToken.balanceOf(alice);
 
             assertEq(balanceStable, prevBalanceStable + stableAmount);
             assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), 0);
-            assertEq(IERC20(_collaterals[fromToken]).balanceOf(address(kheops)), prevKheopsCollat + amountIn);
+            assertEq(IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)), prevTransmuterCollat + amountIn);
 
-            (uint256 newStableAmountCollat, uint256 newStableAmount) = kheops.getIssuedByCollateral(
+            (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(
                 _collaterals[fromToken]
             );
 
@@ -602,9 +602,9 @@ contract MintTest is Fixture, FunctionUtils {
         for (uint256 i; i < _collaterals.length; i++) {
             initialAmounts[i] = bound(initialAmounts[i], 0, _maxTokenAmount[i]);
             deal(_collaterals[i], owner, initialAmounts[i]);
-            IERC20(_collaterals[i]).approve(address(kheops), initialAmounts[i]);
+            IERC20(_collaterals[i]).approve(address(transmuter), initialAmounts[i]);
 
-            collateralMintedStables[i] = kheops.swapExactInput(
+            collateralMintedStables[i] = transmuter.swapExactInput(
                 initialAmounts[i],
                 0,
                 _collaterals[i],
@@ -665,7 +665,7 @@ contract MintTest is Fixture, FunctionUtils {
     ) internal returns (uint64[] memory xFeeMint, int64[] memory yFeeMint) {
         (xFeeMint, yFeeMint) = _generateCurves(xFeeMintUnbounded, yFeeMintUnbounded, true, true, int256(BASE_9 / 2), 0);
         vm.prank(governor);
-        kheops.setFees(collateral, xFeeMint, yFeeMint, true);
+        transmuter.setFees(collateral, xFeeMint, yFeeMint, true);
     }
 
     function _sweepBalances(address owner, address[] memory tokens) internal {
@@ -688,16 +688,23 @@ contract MintTest is Fixture, FunctionUtils {
     ) internal {
         vm.startPrank(owner);
         deal(tokenIn, owner, estimatedAmountIn);
-        IERC20(tokenIn).approve(address(kheops), type(uint256).max);
-        kheops.swapExactOutput(amountStable, estimatedAmountIn, tokenIn, address(agToken), owner, block.timestamp * 2);
+        IERC20(tokenIn).approve(address(transmuter), type(uint256).max);
+        transmuter.swapExactOutput(
+            amountStable,
+            estimatedAmountIn,
+            tokenIn,
+            address(agToken),
+            owner,
+            block.timestamp * 2
+        );
         vm.stopPrank();
     }
 
     function _mintExactInput(address owner, address tokenIn, uint256 amountIn, uint256 estimatedStable) internal {
         vm.startPrank(owner);
         deal(tokenIn, owner, amountIn);
-        IERC20(tokenIn).approve(address(kheops), type(uint256).max);
-        kheops.swapExactInput(amountIn, estimatedStable, tokenIn, address(agToken), owner, block.timestamp * 2);
+        IERC20(tokenIn).approve(address(transmuter), type(uint256).max);
+        transmuter.swapExactInput(amountIn, estimatedStable, tokenIn, address(agToken), owner, block.timestamp * 2);
         vm.stopPrank();
     }
 }

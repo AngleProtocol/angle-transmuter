@@ -43,8 +43,8 @@ import { IRewardHandler } from "./IRewardHandler.sol";
 import { ISetters } from "./ISetters.sol";
 import { ISwapper } from "./ISwapper.sol";
 
-/// @title IKheops
+/// @title ITransmuter
 /// @author Angle Labs, Inc.
-interface IKheops is IDiamondCut, IDiamondLoupe, IGetters, IRedeemer, IRewardHandler, ISetters, ISwapper {
+interface ITransmuter is IDiamondCut, IDiamondLoupe, IGetters, IRedeemer, IRewardHandler, ISetters, ISwapper {
 
 }

@@ -5,7 +5,7 @@ import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
 import "../Fixture.sol";
 import "../utils/FunctionUtils.sol";
-import "contracts/kheops/Storage.sol" as Storage;
+import "contracts/transmuter/Storage.sol" as Storage;
 import "contracts/utils/Errors.sol" as Errors;
 
 contract SwapTest is Fixture, FunctionUtils {
@@ -35,13 +35,13 @@ contract SwapTest is Fixture, FunctionUtils {
         int64[] memory yFeeRedemption = new int64[](1);
         yFeeRedemption[0] = int64(int256(BASE_9));
         vm.startPrank(governor);
-        kheops.setFees(address(eurA), xFeeMint, yFee, true);
-        kheops.setFees(address(eurA), xFeeBurn, yFee, false);
-        kheops.setFees(address(eurB), xFeeMint, yFee, true);
-        kheops.setFees(address(eurB), xFeeBurn, yFee, false);
-        kheops.setFees(address(eurY), xFeeMint, yFee, true);
-        kheops.setFees(address(eurY), xFeeBurn, yFee, false);
-        kheops.setRedemptionCurveParams(xFeeMint, yFeeRedemption);
+        transmuter.setFees(address(eurA), xFeeMint, yFee, true);
+        transmuter.setFees(address(eurA), xFeeBurn, yFee, false);
+        transmuter.setFees(address(eurB), xFeeMint, yFee, true);
+        transmuter.setFees(address(eurB), xFeeBurn, yFee, false);
+        transmuter.setFees(address(eurY), xFeeMint, yFee, true);
+        transmuter.setFees(address(eurY), xFeeBurn, yFee, false);
+        transmuter.setRedemptionCurveParams(xFeeMint, yFeeRedemption);
         vm.stopPrank();
 
         _collaterals.push(address(eurA));
@@ -79,13 +79,13 @@ contract SwapTest is Fixture, FunctionUtils {
 
         vm.startPrank(alice);
         vm.expectRevert(Errors.InvalidTokens.selector);
-        kheops.swapExactOutput(amount, 0, testToken1, testToken2, alice, block.timestamp * 2);
+        transmuter.swapExactOutput(amount, 0, testToken1, testToken2, alice, block.timestamp * 2);
         vm.expectRevert(Errors.InvalidTokens.selector);
-        kheops.swapExactInput(amount, 0, testToken1, testToken2, alice, block.timestamp * 2);
+        transmuter.swapExactInput(amount, 0, testToken1, testToken2, alice, block.timestamp * 2);
         vm.expectRevert(Errors.InvalidTokens.selector);
-        kheops.swapExactOutput(amount, 0, testToken2, testToken1, alice, block.timestamp * 2);
+        transmuter.swapExactOutput(amount, 0, testToken2, testToken1, alice, block.timestamp * 2);
         vm.expectRevert(Errors.InvalidTokens.selector);
-        kheops.swapExactInput(amount, 0, testToken2, testToken1, alice, block.timestamp * 2);
+        transmuter.swapExactInput(amount, 0, testToken2, testToken1, alice, block.timestamp * 2);
         vm.stopPrank();
     }
 
@@ -104,19 +104,19 @@ contract SwapTest is Fixture, FunctionUtils {
         _updateOracles(latestOracleValue);
 
         vm.startPrank(governor);
-        kheops.togglePause(_collaterals[fromToken], Storage.PauseType.Mint);
-        kheops.togglePause(_collaterals[fromToken], Storage.PauseType.Burn);
+        transmuter.togglePause(_collaterals[fromToken], Storage.PauseType.Mint);
+        transmuter.togglePause(_collaterals[fromToken], Storage.PauseType.Burn);
         vm.stopPrank();
 
         vm.startPrank(alice);
         vm.expectRevert(Errors.Paused.selector);
-        kheops.swapExactOutput(amount, 0, _collaterals[fromToken], address(agToken), alice, block.timestamp * 2);
+        transmuter.swapExactOutput(amount, 0, _collaterals[fromToken], address(agToken), alice, block.timestamp * 2);
         vm.expectRevert(Errors.Paused.selector);
-        kheops.swapExactInput(amount, 0, _collaterals[fromToken], address(agToken), alice, block.timestamp * 2);
+        transmuter.swapExactInput(amount, 0, _collaterals[fromToken], address(agToken), alice, block.timestamp * 2);
         vm.expectRevert(Errors.Paused.selector);
-        kheops.swapExactOutput(amount, 0, address(agToken), _collaterals[fromToken], alice, block.timestamp * 2);
+        transmuter.swapExactOutput(amount, 0, address(agToken), _collaterals[fromToken], alice, block.timestamp * 2);
         vm.expectRevert(Errors.Paused.selector);
-        kheops.swapExactInput(amount, 0, address(agToken), _collaterals[fromToken], alice, block.timestamp * 2);
+        transmuter.swapExactInput(amount, 0, address(agToken), _collaterals[fromToken], alice, block.timestamp * 2);
         vm.stopPrank();
     }
 
@@ -149,14 +149,14 @@ contract SwapTest is Fixture, FunctionUtils {
         if (burnAmount == 0) return;
         _updateOracles(latestOracleValue);
 
-        uint256 amountIn = kheops.quoteOut(stableAmount, _collaterals[fromTokenMint], address(agToken));
-        uint256 amountOut = kheops.quoteIn(burnAmount, address(agToken), _collaterals[fromTokenBurn]);
-        uint256 reflexiveBurnAmount = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromTokenBurn]);
+        uint256 amountIn = transmuter.quoteOut(stableAmount, _collaterals[fromTokenMint], address(agToken));
+        uint256 amountOut = transmuter.quoteIn(burnAmount, address(agToken), _collaterals[fromTokenBurn]);
+        uint256 reflexiveBurnAmount = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromTokenBurn]);
 
         vm.startPrank(alice);
         if (amountIn > 0) {
             vm.expectRevert(Errors.TooBigAmountIn.selector);
-            kheops.swapExactOutput(
+            transmuter.swapExactOutput(
                 stableAmount,
                 amountIn - 1,
                 _collaterals[fromTokenMint],
@@ -167,7 +167,7 @@ contract SwapTest is Fixture, FunctionUtils {
         }
         if (stableAmount > 0) {
             vm.expectRevert(Errors.TooSmallAmountOut.selector);
-            kheops.swapExactInput(
+            transmuter.swapExactInput(
                 amountIn,
                 stableAmount + 1,
                 _collaterals[fromTokenMint],
@@ -181,7 +181,7 @@ contract SwapTest is Fixture, FunctionUtils {
         vm.startPrank(charlie);
         if (amountOut > 0 && burnAmount > 0) {
             vm.expectRevert(Errors.TooBigAmountIn.selector);
-            kheops.swapExactOutput(
+            transmuter.swapExactOutput(
                 amountOut,
                 reflexiveBurnAmount - 1,
                 address(agToken),
@@ -192,7 +192,7 @@ contract SwapTest is Fixture, FunctionUtils {
         }
         if (burnAmount > 0) {
             vm.expectRevert(Errors.TooSmallAmountOut.selector);
-            kheops.swapExactInput(
+            transmuter.swapExactInput(
                 burnAmount,
                 amountOut + 1,
                 address(agToken),
@@ -236,15 +236,15 @@ contract SwapTest is Fixture, FunctionUtils {
         if (burnAmount == 0) return;
         _updateOracles(latestOracleValue);
 
-        uint256 amountIn = kheops.quoteOut(stableAmount, _collaterals[fromTokenMint], address(agToken));
-        uint256 amountOut = kheops.quoteIn(burnAmount, address(agToken), _collaterals[fromTokenBurn]);
+        uint256 amountIn = transmuter.quoteOut(stableAmount, _collaterals[fromTokenMint], address(agToken));
+        uint256 amountOut = transmuter.quoteIn(burnAmount, address(agToken), _collaterals[fromTokenBurn]);
         uint256 curTimestamp = block.timestamp;
         skip(elapseTimestamp);
 
         vm.startPrank(alice);
         if (amountIn > 0) {
             vm.expectRevert(Errors.TooLate.selector);
-            kheops.swapExactOutput(
+            transmuter.swapExactOutput(
                 stableAmount,
                 amountIn,
                 _collaterals[fromTokenMint],
@@ -254,12 +254,12 @@ contract SwapTest is Fixture, FunctionUtils {
             );
         }
         vm.expectRevert(Errors.TooLate.selector);
-        kheops.swapExactInput(amountIn, 0, _collaterals[fromTokenMint], address(agToken), alice, curTimestamp);
+        transmuter.swapExactInput(amountIn, 0, _collaterals[fromTokenMint], address(agToken), alice, curTimestamp);
         vm.stopPrank();
 
         vm.startPrank(charlie);
         vm.expectRevert(Errors.TooLate.selector);
-        kheops.swapExactOutput(
+        transmuter.swapExactOutput(
             amountOut,
             burnAmount,
             address(agToken),
@@ -269,7 +269,7 @@ contract SwapTest is Fixture, FunctionUtils {
         );
         if (burnAmount > 0) {
             vm.expectRevert(Errors.TooLate.selector);
-            kheops.swapExactInput(
+            transmuter.swapExactInput(
                 burnAmount,
                 amountOut,
                 address(agToken),
@@ -297,9 +297,9 @@ contract SwapTest is Fixture, FunctionUtils {
         for (uint256 i; i < _collaterals.length; i++) {
             initialAmounts[i] = bound(initialAmounts[i], 0, _maxTokenAmount[i]);
             deal(_collaterals[i], owner, initialAmounts[i]);
-            IERC20(_collaterals[i]).approve(address(kheops), initialAmounts[i]);
+            IERC20(_collaterals[i]).approve(address(transmuter), initialAmounts[i]);
 
-            collateralMintedStables[i] = kheops.swapExactInput(
+            collateralMintedStables[i] = transmuter.swapExactInput(
                 initialAmounts[i],
                 0,
                 _collaterals[i],

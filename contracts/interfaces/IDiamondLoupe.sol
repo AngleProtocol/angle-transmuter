@@ -2,7 +2,7 @@
 
 pragma solidity >=0.5.0;
 
-import "../kheops/Storage.sol";
+import "../transmuter/Storage.sol";
 
 /// @notice IDiamondLoupe
 /// @author Angle Labs, Inc.

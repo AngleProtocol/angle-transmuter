@@ -24,22 +24,22 @@ contract BasicInvariants is Calls {
     }
 
     // function invariantReservesAboveIssued() public {
-    //     (uint256 issuedA, ) = kheops.getIssuedByCollateral(address(eurA));
+    //     (uint256 issuedA, ) = transmuter.getIssuedByCollateral(address(eurA));
     //     assertLe(
     //         issuedA,
-    //         IERC20(eurA).balanceOf(address(kheops)) * 10 ** (18 - IERC20Metadata(address(eurA)).decimals())
+    //         IERC20(eurA).balanceOf(address(transmuter)) * 10 ** (18 - IERC20Metadata(address(eurA)).decimals())
     //     );
-    //     (uint256 issuedB, ) = kheops.getIssuedByCollateral(address(eurB));
+    //     (uint256 issuedB, ) = transmuter.getIssuedByCollateral(address(eurB));
     //     assertLe(
     //         issuedB,
-    //         IERC20(eurB).balanceOf(address(kheops)) * 10 ** (18 - IERC20Metadata(address(eurB)).decimals())
+    //         IERC20(eurB).balanceOf(address(transmuter)) * 10 ** (18 - IERC20Metadata(address(eurB)).decimals())
     //     );
     // }
 
     function invariantIssuedCoherent() public {
-        (uint256 issuedA, uint256 issued) = kheops.getIssuedByCollateral(address(eurA));
-        (uint256 issuedB, ) = kheops.getIssuedByCollateral(address(eurB));
-        (uint256 issuedY, ) = kheops.getIssuedByCollateral(address(eurY));
+        (uint256 issuedA, uint256 issued) = transmuter.getIssuedByCollateral(address(eurA));
+        (uint256 issuedB, ) = transmuter.getIssuedByCollateral(address(eurB));
+        (uint256 issuedY, ) = transmuter.getIssuedByCollateral(address(eurY));
         assertEq(issued, issuedA + issuedB + issuedY);
     }
 

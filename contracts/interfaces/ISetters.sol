@@ -4,12 +4,12 @@ pragma solidity >=0.5.0;
 
 import { IERC20 } from "oz/interfaces/IERC20.sol";
 
-import "../kheops/Storage.sol";
+import "../transmuter/Storage.sol";
 
 /// @title ISetters
 /// @author Angle Labs, Inc.
 interface ISetters {
-    /// @notice Recovers `amount` of `token` from the Kheops contract
+    /// @notice Recovers `amount` of `token` from the Transmuter contract
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external;
 
     /// @notice Sets a new access control manager address

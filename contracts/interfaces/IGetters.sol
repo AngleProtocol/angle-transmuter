@@ -5,7 +5,7 @@ pragma solidity >=0.5.0;
 import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
 
-import "../kheops/Storage.sol";
+import "../transmuter/Storage.sol";
 
 /// @title IGetters
 /// @author Angle Labs, Inc.
@@ -17,7 +17,7 @@ interface IGetters {
     /// @notice Reference to the `accessControlManager` contract of the system
     function accessControlManager() external view returns (IAccessControlManager);
 
-    /// @notice Stablecoin minted by kheops
+    /// @notice Stablecoin minted by transmuter
     function agToken() external view returns (IAgToken);
 
     /// @notice Returns the list of collateral assets supported by the system
@@ -35,11 +35,11 @@ interface IGetters {
     /// ratio when users come to redeem
     function getRedemptionFees() external view returns (uint64[] memory, int64[] memory);
 
-    /// @notice Returns the collateral ratio of Kheops in base `10**9` and the total amount of stablecoins issued
+    /// @notice Returns the collateral ratio of Transmuter in base `10**9` and the total amount of stablecoins issued
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 stablecoinsIssued);
 
     /// @notice Returns the amount of stablecoins issued from `collateral` and the total amount of stablecoins issued
-    /// through Kheops
+    /// through Transmuter
     function getIssuedByCollateral(
         address collateral
     ) external view returns (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued);
@@ -48,13 +48,13 @@ interface IGetters {
     /// @return mint Oracle value that will be used for `collateral` for a mint transaction
     /// @return burn Oracle value that will be used for `collateral` for a burn transaction. This value
     /// is computed using the oracle values of all the other `collateral` assets of the system.
-    /// @return deviation Ratio, in base `10**18` between the oracle value of the `collateral` its target price.
+    /// @return ratio Ratio, in base `10**18` between the oracle value of the `collateral` its target price.
     /// This value is 10**18 if the oracle is greater than the collateral price
     /// @return redemption Oracle value that would be used to price `collateral` when computing the collateral ratio
     /// during a redemption
     function getOracleValues(
         address collateral
-    ) external view returns (uint256 mint, uint256 burn, uint256 deviation, uint256 redemption);
+    ) external view returns (uint256 mint, uint256 burn, uint256 ratio, uint256 redemption);
 
     /// @notice Returns the data used to compute oracle values for `collateral`
     /// @return readType Type of oracle (Chainlink, external smart contract, ...)

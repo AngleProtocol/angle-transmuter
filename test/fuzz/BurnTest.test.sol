@@ -36,13 +36,13 @@ contract BurnTest is Fixture, FunctionUtils {
         int64[] memory yFeeRedemption = new int64[](1);
         yFeeRedemption[0] = int64(int256(BASE_9));
         vm.startPrank(governor);
-        kheops.setFees(address(eurA), xFeeMint, yFee, true);
-        kheops.setFees(address(eurA), xFeeBurn, yFee, false);
-        kheops.setFees(address(eurB), xFeeMint, yFee, true);
-        kheops.setFees(address(eurB), xFeeBurn, yFee, false);
-        kheops.setFees(address(eurY), xFeeMint, yFee, true);
-        kheops.setFees(address(eurY), xFeeBurn, yFee, false);
-        kheops.setRedemptionCurveParams(xFeeMint, yFeeRedemption);
+        transmuter.setFees(address(eurA), xFeeMint, yFee, true);
+        transmuter.setFees(address(eurA), xFeeBurn, yFee, false);
+        transmuter.setFees(address(eurB), xFeeMint, yFee, true);
+        transmuter.setFees(address(eurB), xFeeBurn, yFee, false);
+        transmuter.setFees(address(eurY), xFeeMint, yFee, true);
+        transmuter.setFees(address(eurY), xFeeBurn, yFee, false);
+        transmuter.setRedemptionCurveParams(xFeeMint, yFeeRedemption);
         vm.stopPrank();
 
         _collaterals.push(address(eurA));
@@ -77,7 +77,7 @@ contract BurnTest is Fixture, FunctionUtils {
 
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         burnAmount = bound(burnAmount, 0, collateralMintedStables[fromToken]);
-        uint256 amountOut = kheops.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
+        uint256 amountOut = transmuter.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
 
         assertEq(_convertDecimalTo(burnAmount, 18, IERC20Metadata(_collaterals[fromToken]).decimals()), amountOut);
     }
@@ -104,9 +104,9 @@ contract BurnTest is Fixture, FunctionUtils {
         int64[] memory yFeeBurn = new int64[](1);
         yFeeBurn[0] = burnFee;
         vm.prank(governor);
-        kheops.setFees(_collaterals[fromToken], xFeeBurn, yFeeBurn, false);
+        transmuter.setFees(_collaterals[fromToken], xFeeBurn, yFeeBurn, false);
 
-        uint256 amountOut = kheops.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
+        uint256 amountOut = transmuter.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
 
         uint256 supposedAmountOut = (
             _convertDecimalTo(
@@ -135,8 +135,8 @@ contract BurnTest is Fixture, FunctionUtils {
 
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         burnAmount = bound(burnAmount, 0, collateralMintedStables[fromToken]);
-        uint256 amountOut = kheops.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
-        uint256 reflexiveBurnAmount = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
+        uint256 amountOut = transmuter.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
+        uint256 reflexiveBurnAmount = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
         if (amountOut == 0) return;
         _assertApproxEqRelDecimalWithTolerance(
             amountOut,
@@ -179,8 +179,8 @@ contract BurnTest is Fixture, FunctionUtils {
             18,
             IERC20Metadata(_collaterals[fromToken]).decimals()
         );
-        uint256 amountOut = kheops.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
-        uint256 reflexiveBurnAmount = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
+        uint256 amountOut = transmuter.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
+        uint256 reflexiveBurnAmount = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
         _assertApproxEqRelDecimalWithTolerance(supposedAmountOut, amountOut, amountOut, _MAX_PERCENTAGE_DEVIATION, 18);
         if (amountOut > _minWallet) {
             _assertApproxEqRelDecimalWithTolerance(
@@ -215,7 +215,7 @@ contract BurnTest is Fixture, FunctionUtils {
         int64[] memory yFeeBurn = new int64[](1);
         yFeeBurn[0] = burnFee;
         vm.prank(governor);
-        kheops.setFees(_collaterals[fromToken], xFeeBurn, yFeeBurn, false);
+        transmuter.setFees(_collaterals[fromToken], xFeeBurn, yFeeBurn, false);
 
         uint256 supposedAmountOut = _convertDecimalTo(
             (burnAmount * (BASE_9 - uint64(burnFee))) / BASE_9,
@@ -223,8 +223,8 @@ contract BurnTest is Fixture, FunctionUtils {
             IERC20Metadata(_collaterals[fromToken]).decimals()
         );
 
-        uint256 amountOut = kheops.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
-        uint256 reflexiveBurnAmount = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
+        uint256 amountOut = transmuter.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
+        uint256 reflexiveBurnAmount = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
         assertEq(supposedAmountOut, amountOut);
         if (amountOut > _minWallet) {
             _assertApproxEqRelDecimalWithTolerance(
@@ -262,15 +262,15 @@ contract BurnTest is Fixture, FunctionUtils {
         int64[] memory yFeeBurn = new int64[](1);
         yFeeBurn[0] = burnFee;
         vm.prank(governor);
-        kheops.setFees(_collaterals[fromToken], xFeeBurn, yFeeBurn, false);
+        transmuter.setFees(_collaterals[fromToken], xFeeBurn, yFeeBurn, false);
 
         uint256 supposedAmountOut = _convertDecimalTo(
             _getBurnOracle((burnAmount * (BASE_9 - uint64(burnFee))), fromToken) / BASE_9,
             18,
             IERC20Metadata(_collaterals[fromToken]).decimals()
         );
-        uint256 amountOut = kheops.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
-        uint256 reflexiveBurnAmount = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
+        uint256 amountOut = transmuter.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
+        uint256 reflexiveBurnAmount = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
         if (amountOut == 0) return;
 
         _assertApproxEqRelDecimalWithTolerance(
@@ -326,7 +326,7 @@ contract BurnTest is Fixture, FunctionUtils {
         yFeeBurn[1] = int64(0);
         yFeeBurn[2] = upperFees;
         vm.prank(governor);
-        kheops.setFees(_collaterals[fromToken], xFeeBurn, yFeeBurn, false);
+        transmuter.setFees(_collaterals[fromToken], xFeeBurn, yFeeBurn, false);
 
         uint256 supposedAmountOut;
         {
@@ -411,16 +411,21 @@ contract BurnTest is Fixture, FunctionUtils {
             IERC20Metadata(_collaterals[fromToken]).decimals()
         );
 
-        uint256 amountOut = kheops.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
+        uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
         if (amountOut == 0) return;
-        uint256 reflexiveAmountStable = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
+        uint256 reflexiveAmountStable = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
         // TODO Anyone know how we could do without this double reflexivity?
-        // The problem to compare reflexiveAmountStable and amountOut is: suppose there are very high fees at the end segment BASE_9-1
+        // The problem to compare reflexiveAmountStable and amountOut is: suppose there are very high fees
+        // at the end segment BASE_9-1
         // Suppose also that when burning M stablecoins, M-N are used up until xFeeBurn[2] yielding C collateral
-        // Then the remaining N yield EPS<<0 collateral --> total collateral C+EPS but with precision error (collateral being with 6 decimals)
-        // --> I end up with C
+        // Then the remaining N yield EPS<<0 collateral --> total collateral C+EPS but with precision error
+        // (collateral being with 6 decimals) --> I end up with C
         // Now quote C collateral to burn --> M-N
-        uint256 reflexiveAmountOut = kheops.quoteIn(reflexiveAmountStable, address(agToken), _collaterals[fromToken]);
+        uint256 reflexiveAmountOut = transmuter.quoteIn(
+            reflexiveAmountStable,
+            address(agToken),
+            _collaterals[fromToken]
+        );
 
         if (stableAmount > _minWallet) {
             _assertApproxEqRelDecimalWithTolerance(
@@ -468,11 +473,11 @@ contract BurnTest is Fixture, FunctionUtils {
         if (stableAmount == 0) return;
 
         // _logIssuedCollateral();
-        uint256 amountOut = kheops.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
+        uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
         // This will crash if the
         if (amountOut != 0) {
-            uint256 reflexiveAmountStable = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
-            uint256 reflexiveAmountOut = kheops.quoteIn(
+            uint256 reflexiveAmountStable = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
+            uint256 reflexiveAmountOut = transmuter.quoteIn(
                 reflexiveAmountStable,
                 address(agToken),
                 _collaterals[fromToken]
@@ -521,11 +526,11 @@ contract BurnTest is Fixture, FunctionUtils {
         if (stableAmount == 0) return;
 
         // _logIssuedCollateral();
-        uint256 amountOut = kheops.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
+        uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
         // This will crash if the
         if (amountOut != 0) {
-            uint256 reflexiveAmountStable = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
-            uint256 reflexiveAmountOut = kheops.quoteIn(
+            uint256 reflexiveAmountStable = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
+            uint256 reflexiveAmountOut = transmuter.quoteIn(
                 reflexiveAmountStable,
                 address(agToken),
                 _collaterals[fromToken]
@@ -544,9 +549,9 @@ contract BurnTest is Fixture, FunctionUtils {
         }
     }
 
-    // /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                INDEPENDANT PATH
-    // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                   INDEPENDENT PATH                                                 
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testQuoteBurnExactInputIndependant(
         uint256[3] memory initialAmounts,
@@ -580,14 +585,14 @@ contract BurnTest is Fixture, FunctionUtils {
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
         if (stableAmount == 0) return;
 
-        uint256 amountOut = kheops.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
+        uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
         splitProportion = bound(splitProportion, 0, BASE_9);
         uint256 amountStableSplit1 = (stableAmount * splitProportion) / BASE_9;
         amountStableSplit1 = amountStableSplit1 == 0 ? 1 : amountStableSplit1;
-        uint256 amountOutSplit1 = kheops.quoteIn(amountStableSplit1, address(agToken), _collaterals[fromToken]);
+        uint256 amountOutSplit1 = transmuter.quoteIn(amountStableSplit1, address(agToken), _collaterals[fromToken]);
         // do the swap to update the system
         _burnExactInput(alice, _collaterals[fromToken], amountStableSplit1, amountOutSplit1);
-        uint256 amountOutSplit2 = kheops.quoteIn(
+        uint256 amountOutSplit2 = transmuter.quoteIn(
             stableAmount - amountStableSplit1,
             address(agToken),
             _collaterals[fromToken]
@@ -625,18 +630,18 @@ contract BurnTest is Fixture, FunctionUtils {
             yFeeBurnUnbounded,
             int256(BASE_9) - int256(BASE_9) / 1000
         );
-        amountOut = bound(amountOut, 0, IERC20(_collaterals[fromToken]).balanceOf(address(kheops)));
+        amountOut = bound(amountOut, 0, IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)));
         if (amountOut == 0) return;
 
-        uint256 amountStable = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
+        uint256 amountStable = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
         splitProportion = bound(splitProportion, 0, BASE_9);
         uint256 amountOutSplit1 = (amountOut * splitProportion) / BASE_9;
         amountOutSplit1 = amountOutSplit1 == 0 ? 1 : amountOutSplit1;
-        uint256 amountStableSplit1 = kheops.quoteOut(amountOutSplit1, address(agToken), _collaterals[fromToken]);
+        uint256 amountStableSplit1 = transmuter.quoteOut(amountOutSplit1, address(agToken), _collaterals[fromToken]);
         // do the swap to update the system
         bool notReverted = _burnExactOutput(alice, _collaterals[fromToken], amountOutSplit1, amountStableSplit1);
         if (notReverted) return;
-        uint256 amountStableSplit2 = kheops.quoteOut(
+        uint256 amountStableSplit2 = transmuter.quoteOut(
             amountOut - amountOutSplit1,
             address(agToken),
             _collaterals[fromToken]
@@ -681,18 +686,18 @@ contract BurnTest is Fixture, FunctionUtils {
         if (stableAmount == 0) return;
 
         uint256 prevBalanceStable = agToken.balanceOf(alice);
-        uint256 prevKheopsCollat = IERC20(_collaterals[fromToken]).balanceOf(address(kheops));
+        uint256 prevTransmuterCollat = IERC20(_collaterals[fromToken]).balanceOf(address(transmuter));
 
-        uint256 amountOut = kheops.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
+        uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
         _burnExactInput(alice, _collaterals[fromToken], stableAmount, amountOut);
 
         uint256 balanceStable = agToken.balanceOf(alice);
 
         assertEq(balanceStable, prevBalanceStable - stableAmount);
         assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), amountOut);
-        assertEq(IERC20(_collaterals[fromToken]).balanceOf(address(kheops)), prevKheopsCollat - amountOut);
+        assertEq(IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)), prevTransmuterCollat - amountOut);
 
-        (uint256 newStableAmountCollat, uint256 newStableAmount) = kheops.getIssuedByCollateral(
+        (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(
             _collaterals[fromToken]
         );
 
@@ -720,23 +725,23 @@ contract BurnTest is Fixture, FunctionUtils {
         if (mintedStables == 0) return;
         _updateOracles(latestOracleValue);
         _randomBurnFees(_collaterals[fromToken], xFeeBurnUnbounded, yFeeBurnUnbounded, int256(BASE_9) - 1);
-        amountOut = bound(amountOut, 0, IERC20(_collaterals[fromToken]).balanceOf(address(kheops)));
+        amountOut = bound(amountOut, 0, IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)));
         if (amountOut == 0) return;
 
         uint256 prevBalanceStable = agToken.balanceOf(alice);
 
-        uint256 stableAmount = kheops.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
+        uint256 stableAmount = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
         bool notReverted = _burnExactOutput(alice, _collaterals[fromToken], amountOut, stableAmount);
         if (notReverted) return;
 
         uint256 balanceStable = agToken.balanceOf(alice);
-        uint256 prevKheopsCollat = IERC20(_collaterals[fromToken]).balanceOf(address(kheops));
+        uint256 prevTransmuterCollat = IERC20(_collaterals[fromToken]).balanceOf(address(transmuter));
 
         assertEq(balanceStable, prevBalanceStable - stableAmount);
         assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), amountOut);
-        assertEq(IERC20(_collaterals[fromToken]).balanceOf(address(kheops)), prevKheopsCollat - amountOut);
+        assertEq(IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)), prevTransmuterCollat - amountOut);
 
-        (uint256 newStableAmountCollat, uint256 newStableAmount) = kheops.getIssuedByCollateral(
+        (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(
             _collaterals[fromToken]
         );
 
@@ -760,9 +765,9 @@ contract BurnTest is Fixture, FunctionUtils {
         for (uint256 i; i < _collaterals.length; i++) {
             initialAmounts[i] = bound(initialAmounts[i], 0, _maxTokenAmount[i]);
             deal(_collaterals[i], owner, initialAmounts[i]);
-            IERC20(_collaterals[i]).approve(address(kheops), initialAmounts[i]);
+            IERC20(_collaterals[i]).approve(address(transmuter), initialAmounts[i]);
 
-            collateralMintedStables[i] = kheops.swapExactInput(
+            collateralMintedStables[i] = transmuter.swapExactInput(
                 initialAmounts[i],
                 0,
                 _collaterals[i],
@@ -832,7 +837,7 @@ contract BurnTest is Fixture, FunctionUtils {
             maxFee
         );
         vm.prank(governor);
-        kheops.setFees(collateral, xFeeBurn, yFeeBurn, false);
+        transmuter.setFees(collateral, xFeeBurn, yFeeBurn, false);
     }
 
     function _sweepBalances(address owner, address[] memory tokens) internal {
@@ -845,7 +850,7 @@ contract BurnTest is Fixture, FunctionUtils {
 
     // function _logIssuedCollateral() internal view {
     //     for (uint256 i; i < _collaterals.length; i++) {
-    //         (uint256 collateralIssued, uint256 total) = kheops.getIssuedByCollateral(_collaterals[i]);
+    //         (uint256 collateralIssued, uint256 total) = transmuter.getIssuedByCollateral(_collaterals[i]);
     //     }
     // }
 
@@ -871,7 +876,14 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256 estimatedAmountOut
     ) internal {
         vm.startPrank(owner);
-        kheops.swapExactInput(amountStable, estimatedAmountOut, address(agToken), tokenOut, owner, block.timestamp * 2);
+        transmuter.swapExactInput(
+            amountStable,
+            estimatedAmountOut,
+            address(agToken),
+            tokenOut,
+            owner,
+            block.timestamp * 2
+        );
         vm.stopPrank();
     }
 
@@ -883,11 +895,11 @@ contract BurnTest is Fixture, FunctionUtils {
     ) internal returns (bool) {
         // _logIssuedCollateral();
         vm.startPrank(owner);
-        (uint256 maxAmount, ) = kheops.getIssuedByCollateral(tokenOut);
+        (uint256 maxAmount, ) = transmuter.getIssuedByCollateral(tokenOut);
         uint256 balanceStableOwner = agToken.balanceOf(owner);
         if (estimatedStable > maxAmount) vm.expectRevert(stdError.arithmeticError);
         else if (estimatedStable > balanceStableOwner) vm.expectRevert("ERC20: burn amount exceeds balance");
-        kheops.swapExactOutput(amountOut, estimatedStable, address(agToken), tokenOut, owner, block.timestamp * 2);
+        transmuter.swapExactOutput(amountOut, estimatedStable, address(agToken), tokenOut, owner, block.timestamp * 2);
         if (amountOut > maxAmount) return false;
         vm.stopPrank();
         return true;
