@@ -58,6 +58,7 @@ library LibRedeemer {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             // If a token is in the `forfeitTokens` list, then it is not sent as part of the redemption process
             if (amounts[i] > 0 && LibHelpers.checkList(tokens[i], forfeitTokens) < 0) {
+                // TODO Cache if we can avoid stack too deep
                 if (ks.collaterals[collateralListMem[indexCollateral]].isManaged > 0) {
                     LibManager.transferTo(
                         tokens[i],
