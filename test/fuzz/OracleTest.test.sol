@@ -2,11 +2,12 @@
 pragma solidity ^0.8.17;
 
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
+import { ITransmuterOracle, MockExternalOracle } from "../mock/MockExternalOracle.sol";
 import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
 import "../Fixture.sol";
 import "../utils/FunctionUtils.sol";
 import "../utils/FunctionUtils.sol";
-import "contracts/kheops/Storage.sol" as Storage;
+import "contracts/transmuter/Storage.sol" as Storage;
 import "contracts/utils/Errors.sol" as Errors;
 import { IStETH } from "contracts/interfaces/external/lido/IStETH.sol";
 import { ISfrxETH } from "contracts/interfaces/external/frax/ISfrxETH.sol";
@@ -39,13 +40,13 @@ contract OracleTest is Fixture, FunctionUtils {
         int64[] memory yFeeRedemption = new int64[](1);
         yFeeRedemption[0] = int64(int256(BASE_9));
         vm.startPrank(governor);
-        kheops.setFees(address(eurA), xFeeMint, yFee, true);
-        kheops.setFees(address(eurA), xFeeBurn, yFee, false);
-        kheops.setFees(address(eurB), xFeeMint, yFee, true);
-        kheops.setFees(address(eurB), xFeeBurn, yFee, false);
-        kheops.setFees(address(eurY), xFeeMint, yFee, true);
-        kheops.setFees(address(eurY), xFeeBurn, yFee, false);
-        kheops.setRedemptionCurveParams(xFeeMint, yFeeRedemption);
+        transmuter.setFees(address(eurA), xFeeMint, yFee, true);
+        transmuter.setFees(address(eurA), xFeeBurn, yFee, false);
+        transmuter.setFees(address(eurB), xFeeMint, yFee, true);
+        transmuter.setFees(address(eurB), xFeeBurn, yFee, false);
+        transmuter.setFees(address(eurY), xFeeMint, yFee, true);
+        transmuter.setFees(address(eurY), xFeeBurn, yFee, false);
+        transmuter.setRedemptionCurveParams(xFeeMint, yFeeRedemption);
         vm.stopPrank();
 
         _collaterals.push(address(eurA));
@@ -81,7 +82,7 @@ contract OracleTest is Fixture, FunctionUtils {
         skip(elapseTimestamp);
 
         if (newStalePeriods[fromToken] < elapseTimestamp) vm.expectRevert(Errors.InvalidChainlinkRate.selector);
-        kheops.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
+        transmuter.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
     }
 
     function testOracleReadBurnRevertStale(
@@ -103,7 +104,7 @@ contract OracleTest is Fixture, FunctionUtils {
         skip(elapseTimestamp);
 
         if (minStalePeriod < elapseTimestamp) vm.expectRevert(Errors.InvalidChainlinkRate.selector);
-        kheops.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
+        transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
     }
 
     function testOracleReadRedemptionRevertStale(
@@ -125,14 +126,95 @@ contract OracleTest is Fixture, FunctionUtils {
         skip(elapseTimestamp);
 
         if (minStalePeriod < elapseTimestamp) vm.expectRevert(Errors.InvalidChainlinkRate.selector);
-        kheops.getCollateralRatio();
+        transmuter.getCollateralRatio();
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                       GETORACLE                                                    
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testGetOracle(
+        uint8[3] memory newChainlinkDecimals,
+        uint8[3] memory newCircuitChainIsMultiplied,
+        uint8[3] memory newQuoteType,
+        uint8[3] memory newReadType,
+        uint8[3] memory newTargetType,
+        uint256[4] memory latestExchangeRateStakeETH
+    ) public {
+        for (uint i; i < _collaterals.length; i++) {
+            bytes memory data;
+            {
+                Storage.OracleReadType readType;
+                Storage.OracleTargetType targetType;
+                (readType, targetType, data) = transmuter.getOracle(address(_collaterals[i]));
+
+                assertEq(uint(readType), uint(Storage.OracleReadType.CHAINLINK_FEEDS));
+                assertEq(uint(targetType), uint(Storage.OracleTargetType.STABLE));
+            }
+            (
+                AggregatorV3Interface[] memory circuitChainlink,
+                uint32[] memory stalePeriods,
+                uint8[] memory circuitChainIsMultiplied,
+                uint8[] memory chainlinkDecimals,
+                Storage.OracleQuoteType quoteType
+            ) = abi.decode(data, (AggregatorV3Interface[], uint32[], uint8[], uint8[], Storage.OracleQuoteType));
+            assertEq(circuitChainlink.length, 1);
+            assertEq(circuitChainIsMultiplied.length, 1);
+            assertEq(chainlinkDecimals.length, 1);
+            assertEq(stalePeriods.length, 1);
+            assertEq(address(circuitChainlink[0]), address(_oracles[i]));
+            assertEq(circuitChainIsMultiplied[0], 1);
+            assertEq(chainlinkDecimals[0], 8);
+            assertEq(uint(quoteType), uint(Storage.OracleQuoteType.UNIT));
+        }
+
+        _updateStakeETHExchangeRates(latestExchangeRateStakeETH);
+        address[] memory externalOracles = _updateOracles(
+            newChainlinkDecimals,
+            newCircuitChainIsMultiplied,
+            newQuoteType,
+            newReadType,
+            newTargetType
+        );
+
+        for (uint i; i < _collaterals.length; i++) {
+            bytes memory data;
+            {
+                Storage.OracleReadType readType;
+                Storage.OracleTargetType targetType;
+                (readType, targetType, data) = transmuter.getOracle(address(_collaterals[i]));
+
+                assertEq(uint8(readType), newReadType[i]);
+                assertEq(uint8(targetType), newTargetType[i]);
+            }
+            if (newReadType[i] == 1) {
+                ITransmuterOracle externalOracle = abi.decode(data, (ITransmuterOracle));
+                assertEq(address(externalOracle), externalOracles[i]);
+            } else {
+                (
+                    AggregatorV3Interface[] memory circuitChainlink,
+                    uint32[] memory stalePeriods,
+                    uint8[] memory circuitChainIsMultiplied,
+                    uint8[] memory chainlinkDecimals,
+                    Storage.OracleQuoteType quoteType
+                ) = abi.decode(data, (AggregatorV3Interface[], uint32[], uint8[], uint8[], Storage.OracleQuoteType));
+                assertEq(circuitChainlink.length, 1);
+                assertEq(circuitChainIsMultiplied.length, 1);
+                assertEq(chainlinkDecimals.length, 1);
+                assertEq(stalePeriods.length, 1);
+                assertEq(address(circuitChainlink[0]), address(_oracles[i]));
+                assertEq(circuitChainIsMultiplied[0], newCircuitChainIsMultiplied[i]);
+                assertEq(chainlinkDecimals[0], newChainlinkDecimals[i]);
+                assertEq(uint8(quoteType), newQuoteType[i]);
+            }
+        }
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     READREDEMPTION                                                  
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testOracleReadRedemption(
+    function testOracleReadRedemptionSuccess(
         uint8[3] memory newChainlinkDecimals,
         uint8[3] memory newCircuitChainIsMultiplied,
         uint8[3] memory newQuoteType,
@@ -143,19 +225,28 @@ contract OracleTest is Fixture, FunctionUtils {
     ) public {
         _updateStakeETHExchangeRates(latestExchangeRateStakeETH);
         _updateOracleValues(latestOracleValue);
-        _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
+        address[] memory externalOracles = _updateOracles(
+            newChainlinkDecimals,
+            newCircuitChainIsMultiplied,
+            newQuoteType,
+            newReadType,
+            newTargetType
+        );
 
         for (uint i; i < _collaterals.length; i++) {
-            (, , , uint256 redemption) = kheops.getOracleValues(address(_collaterals[i]));
+            (, , , uint256 redemption) = transmuter.getOracleValues(address(_collaterals[i]));
             uint256 oracleRedemption;
             uint256 targetPrice = newTargetType[i] == 0 ? BASE_18 : latestExchangeRateStakeETH[newTargetType[i] - 1];
             uint256 quoteAmount = newQuoteType[i] == 0 ? BASE_18 : targetPrice;
-            if (newReadType[i] == 1) oracleRedemption = targetPrice;
-            else {
+            if (newReadType[i] == 2) oracleRedemption = targetPrice;
+            else if (newReadType[i] == 0) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 oracleRedemption = newCircuitChainIsMultiplied[i] == 1
                     ? (quoteAmount * uint256(value)) / 10 ** (newChainlinkDecimals[i])
                     : (quoteAmount * 10 ** (newChainlinkDecimals[i])) / uint256(value);
+            } else {
+                (, int256 value, , , ) = _oracles[i].latestRoundData();
+                oracleRedemption = uint256(value) * 1e12;
             }
             assertEq(redemption, oracleRedemption);
         }
@@ -179,18 +270,21 @@ contract OracleTest is Fixture, FunctionUtils {
         _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
 
         for (uint i; i < _collaterals.length; i++) {
-            (uint256 mint, , , ) = kheops.getOracleValues(address(_collaterals[i]));
+            (uint256 mint, , , ) = transmuter.getOracleValues(address(_collaterals[i]));
             uint256 oracleMint;
             uint256 targetPrice = newTargetType[i] == 0 ? BASE_18 : latestExchangeRateStakeETH[newTargetType[i] - 1];
             uint256 quoteAmount = newQuoteType[i] == 0 ? BASE_18 : targetPrice;
-            if (newReadType[i] == 1) oracleMint = targetPrice;
-            else {
+            if (newReadType[i] == 2) oracleMint = targetPrice;
+            else if (newReadType[i] == 0) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 oracleMint = newCircuitChainIsMultiplied[i] == 1
                     ? (quoteAmount * uint256(value)) / 10 ** (newChainlinkDecimals[i])
                     : (quoteAmount * 10 ** (newChainlinkDecimals[i])) / uint256(value);
+            } else {
+                (, int256 value, , , ) = _oracles[i].latestRoundData();
+                oracleMint = uint256(value) * 1e12;
             }
-            if (targetPrice < oracleMint) oracleMint = targetPrice;
+            if (newReadType[i] != 1 && targetPrice < oracleMint) oracleMint = targetPrice;
             assertEq(mint, oracleMint);
         }
     }
@@ -213,19 +307,23 @@ contract OracleTest is Fixture, FunctionUtils {
         _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
 
         for (uint i; i < _collaterals.length; i++) {
-            (, uint256 burn, uint256 deviation, ) = kheops.getOracleValues(address(_collaterals[i]));
+            (, uint256 burn, uint256 deviation, ) = transmuter.getOracleValues(address(_collaterals[i]));
             uint256 oracleBurn;
             uint256 oracleDeviation = BASE_18;
             uint256 targetPrice = newTargetType[i] == 0 ? BASE_18 : latestExchangeRateStakeETH[newTargetType[i] - 1];
             uint256 quoteAmount = newQuoteType[i] == 0 ? BASE_18 : targetPrice;
-            if (newReadType[i] == 1) oracleBurn = targetPrice;
-            else {
+            if (newReadType[i] == 2) oracleBurn = targetPrice;
+            else if (newReadType[i] == 0) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 oracleBurn = newCircuitChainIsMultiplied[i] == 1
                     ? (quoteAmount * uint256(value)) / 10 ** (newChainlinkDecimals[i])
                     : (quoteAmount * 10 ** (newChainlinkDecimals[i])) / uint256(value);
+            } else {
+                (, int256 value, , , ) = _oracles[i].latestRoundData();
+                oracleBurn = uint256(value) * 1e12;
+                oracleDeviation = 1e18;
             }
-            if (targetPrice > oracleBurn) oracleDeviation = (oracleBurn * BASE_18) / targetPrice;
+            if (newReadType[i] != 1 && targetPrice > oracleBurn) oracleDeviation = (oracleBurn * BASE_18) / targetPrice;
             assertEq(burn, oracleBurn);
             assertEq(deviation, oracleDeviation);
         }
@@ -247,9 +345,9 @@ contract OracleTest is Fixture, FunctionUtils {
         for (uint256 i; i < _collaterals.length; i++) {
             initialAmounts[i] = bound(initialAmounts[i], 0, _maxTokenAmount[i]);
             deal(_collaterals[i], owner, initialAmounts[i]);
-            IERC20(_collaterals[i]).approve(address(kheops), initialAmounts[i]);
+            IERC20(_collaterals[i]).approve(address(transmuter), initialAmounts[i]);
 
-            collateralMintedStables[i] = kheops.swapExactInput(
+            collateralMintedStables[i] = transmuter.swapExactInput(
                 initialAmounts[i],
                 0,
                 _collaterals[i],
@@ -272,21 +370,21 @@ contract OracleTest is Fixture, FunctionUtils {
         uint8[3] memory newQuoteType,
         uint8[3] memory newReadType,
         uint8[3] memory newTargetType
-    ) internal {
+    ) internal returns (address[] memory externalOracles) {
+        externalOracles = new address[](3);
         vm.startPrank(governor);
         for (uint256 i; i < _collaterals.length; i++) {
             newChainlinkDecimals[i] = uint8(bound(newChainlinkDecimals[i], 2, 18));
             newCircuitChainIsMultiplied[i] = uint8(bound(newCircuitChainIsMultiplied[i], 0, 1));
             newQuoteType[i] = uint8(bound(newQuoteType[i], 0, 1));
-            // TODO add external oracle case
-            newReadType[i] = uint8(bound(newReadType[i], 0, 1));
+            newReadType[i] = uint8(bound(newReadType[i], 0, 2));
             newTargetType[i] = uint8(bound(newTargetType[i], 0, 4));
 
             Storage.OracleReadType readType = newReadType[i] == 0
                 ? Storage.OracleReadType.CHAINLINK_FEEDS
                 : newReadType[i] == 1
-                ? Storage.OracleReadType.NO_ORACLE
-                : Storage.OracleReadType.EXTERNAL;
+                ? Storage.OracleReadType.EXTERNAL
+                : Storage.OracleReadType.NO_ORACLE;
             Storage.OracleTargetType targetType = newTargetType[i] == 0
                 ? Storage.OracleTargetType.STABLE
                 : newTargetType[i] == 1
@@ -302,7 +400,9 @@ contract OracleTest is Fixture, FunctionUtils {
 
             bytes memory readData;
             if (readType == Storage.OracleReadType.EXTERNAL) {
-                readData = abi.encode(_oracles[i]);
+                MockExternalOracle newOracle = new MockExternalOracle(_oracles[i]);
+                externalOracles[i] = address(newOracle);
+                readData = abi.encode(ITransmuterOracle(address(externalOracles[i])));
             } else {
                 AggregatorV3Interface[] memory circuitChainlink = new AggregatorV3Interface[](1);
                 uint32[] memory stalePeriods = new uint32[](1);
@@ -320,7 +420,7 @@ contract OracleTest is Fixture, FunctionUtils {
                     quoteType
                 );
             }
-            kheops.setOracle(_collaterals[i], abi.encode(readType, targetType, readData));
+            transmuter.setOracle(_collaterals[i], abi.encode(readType, targetType, readData));
         }
         vm.stopPrank();
     }
@@ -381,7 +481,7 @@ contract OracleTest is Fixture, FunctionUtils {
                 chainlinkDecimals,
                 quoteType
             );
-            kheops.setOracle(
+            transmuter.setOracle(
                 _collaterals[i],
                 abi.encode(Storage.OracleReadType.CHAINLINK_FEEDS, Storage.OracleTargetType.STABLE, readData)
             );

@@ -797,9 +797,9 @@ contract BurnTest is Fixture, FunctionUtils {
         int64[] memory yFee = new int64[](1);
         yFee[0] = -_minBurnFee;
         vm.startPrank(governor);
-        kheops.setFees(address(eurA), xFee, yFee, true);
-        kheops.setFees(address(eurB), xFee, yFee, true);
-        kheops.setFees(address(eurY), xFee, yFee, true);
+        transmuter.setFees(address(eurA), xFee, yFee, true);
+        transmuter.setFees(address(eurB), xFee, yFee, true);
+        transmuter.setFees(address(eurY), xFee, yFee, true);
         vm.stopPrank();
     }
 
@@ -888,8 +888,8 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256 estimatedAmountOut
     ) internal returns (bool burnMoreThanHad) {
         // we need to increase the balance because fees are negative and we need to transfer more than what we received with the mint
-        if (IERC20(tokenOut).balanceOf(address(kheops)) < estimatedAmountOut) {
-            deal(tokenOut, address(kheops), estimatedAmountOut);
+        if (IERC20(tokenOut).balanceOf(address(transmuter)) < estimatedAmountOut) {
+            deal(tokenOut, address(transmuter), estimatedAmountOut);
             burnMoreThanHad = true;
         }
         vm.startPrank(owner);

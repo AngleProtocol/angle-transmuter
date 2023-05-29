@@ -3,9 +3,9 @@
 pragma solidity ^0.8.17;
 
 import { AggregatorV3Interface } from "contracts/interfaces/external/chainlink/AggregatorV3Interface.sol";
-import { IKheopsOracle } from "contracts/interfaces/IKheopsOracle.sol";
+import { ITransmuterOracle } from "contracts/interfaces/ITransmuterOracle.sol";
 
-contract MockExternalOracle is IKheopsOracle {
+contract MockExternalOracle is ITransmuterOracle {
     AggregatorV3Interface feed;
 
     constructor(AggregatorV3Interface _feed) {
