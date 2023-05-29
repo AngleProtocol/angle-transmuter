@@ -9,7 +9,7 @@ gas_reports = ["*"]
 via_ir = true
 sizes = true
 optimizer_runs=1000
-solc_version = '0.8.17'
+solc_version = '0.8.19'
 
 ffi = true
 
@@ -31,8 +31,17 @@ polygon = { key = "${POLYGON_ETHERSCAN_API_KEY}" }
 goerli = { key = "${GOERLI_ETHERSCAN_API_KEY}" }
 
 [profile.dev]
+optimizer = false
 src = 'test'
 via_ir = false
+
+
+[profile.dev.fuzz]
+runs = 1
+
+[profile.dev.invariant]
+runs = 1
+depth = 1
 
 [profile.ci]
 src = 'test'

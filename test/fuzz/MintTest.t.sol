@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
+import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
+
 import { stdError } from "forge-std/Test.sol";
 
-import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
-import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
-import "../Fixture.sol";
-import "../utils/FunctionUtils.sol";
 import "contracts/utils/Errors.sol" as Errors;
+
+import "../Fixture.sol";
+import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
+import "../utils/FunctionUtils.sol";
 
 contract MintTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;

@@ -21,10 +21,15 @@ enum ManagerType {
     EXTERNAL
 }
 
-enum PauseType {
+enum ActionType {
     Mint,
     Burn,
     Redeem
+}
+
+enum TrustedType {
+    Updater,
+    Seller
 }
 
 enum QuoteType {
@@ -86,8 +91,8 @@ struct ManagerStorage {
 
 struct Collateral {
     uint8 isManaged;                             // If the collateral is managed through external strategies
-    uint8 unpausedMint;                          // If minting from this asset is unpaused
-    uint8 unpausedBurn;                          // If burning to this asset is unpaused
+    uint8 isMintLive;                            // If minting from this asset is unpaused
+    uint8 isBurnLive;                            // If burning to this asset is unpaused
     uint8 decimals;                              // IERC20Metadata(collateral).decimals()
     uint224 normalizedStables;                   // Normalized amount of stablecoins issued from this collateral
     uint64[] xFeeMint;                           // Increasing exposures in [0,BASE_9[
@@ -100,7 +105,7 @@ struct Collateral {
 
 struct TransmuterStorage {
     IAgToken agToken;                            // agToken handled by the system
-    uint8 pausedRedemption;                      // If redemption is paused
+    uint8 isRedemptionLive;                      // If redemption is unpaused
     uint128 normalizedStables;                   // Normalized amount of stablecoins issued by the system
     uint128 normalizer;                          // To reconcile `normalizedStables` values with the actual amount
     address[] collateralList;                    // List of collateral assets supported by the system

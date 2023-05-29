@@ -6,10 +6,11 @@ pragma solidity >=0.5.0;
 /// @author Angle Labs, Inc.
 interface IManager {
     /// @notice Transfers `amount` of `token` to the `to` address
-    /// @param redeem Whether the transfer operation is part of a redemption or not. If not, this means that
-    /// it's a burn or a recover and the system can try to withdraw from its strategies if it does not have
-    /// funds immediately available
-    function transfer(address token, address to, uint256 amount, bool redeem) external;
+    function transfer(address token, address to, uint256 amount) external;
+
+    /// @notice Withdraw from strategies if it does not have funds immediately available and transfers `amount`
+    /// of `token` to the `to` address
+    function withdrawAndTransfer(address token, address to, uint256 amount) external;
 
     /// @notice Removes all funds from the manager and sends them back to the Transmuter contract
     function pullAll() external;
