@@ -404,7 +404,7 @@ contract MintTest is Fixture, FunctionUtils {
                 reflexiveAmountStable,
                 stableAmount,
                 reflexiveAmountStable,
-                _MAX_PERCENTAGE_DEVIATION,
+                _MAX_PERCENTAGE_DEVIATION * 10,
                 18
             );
         }

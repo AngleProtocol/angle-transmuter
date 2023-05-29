@@ -106,11 +106,33 @@ contract OracleTest is Fixture, FunctionUtils {
         kheops.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
     }
 
+    function testOracleReadRedemptionRevertStale(
+        uint256[3] memory initialAmounts,
+        uint256[3] memory latestOracleValue,
+        uint32[3] memory newStalePeriods,
+        uint256 elapseTimestamp,
+        uint256 stableAmount,
+        uint256 fromToken
+    ) public {
+        // fr the stale periods in Chainlink
+        elapseTimestamp = bound(elapseTimestamp, 1, 365 days);
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        stableAmount = bound(stableAmount, 2, _maxAmountWithoutDecimals * BASE_18);
+
+        _loadReserves(alice, alice, initialAmounts, 0);
+        _updateOracleValues(latestOracleValue);
+        uint256 minStalePeriod = _updateOracleStalePeriods(newStalePeriods);
+        skip(elapseTimestamp);
+
+        if (minStalePeriod < elapseTimestamp) vm.expectRevert(Errors.InvalidChainlinkRate.selector);
+        kheops.getCollateralRatio();
+    }
+
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     READREDEMPTION                                                  
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testOracleReadBurnRevertStale(
+    function testOracleReadRedemption(
         uint8[3] memory newChainlinkDecimals,
         uint8[3] memory newCircuitChainIsMultiplied,
         uint8[3] memory newQuoteType,
@@ -119,9 +141,9 @@ contract OracleTest is Fixture, FunctionUtils {
         uint256[3] memory latestOracleValue,
         uint256[4] memory latestExchangeRateStakeETH
     ) public {
-        _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
-        _updateOracleValues(latestOracleValue);
         _updateStakeETHExchangeRates(latestExchangeRateStakeETH);
+        _updateOracleValues(latestOracleValue);
+        _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
 
         for (uint i; i < _collaterals.length; i++) {
             (, , , uint256 redemption) = kheops.getOracleValues(address(_collaterals[i]));
@@ -136,6 +158,76 @@ contract OracleTest is Fixture, FunctionUtils {
                     : (quoteAmount * 10 ** (newChainlinkDecimals[i])) / uint256(value);
             }
             assertEq(redemption, oracleRedemption);
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                       READMINT                                                     
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testOracleReadMintSuccess(
+        uint8[3] memory newChainlinkDecimals,
+        uint8[3] memory newCircuitChainIsMultiplied,
+        uint8[3] memory newQuoteType,
+        uint8[3] memory newReadType,
+        uint8[3] memory newTargetType,
+        uint256[3] memory latestOracleValue,
+        uint256[4] memory latestExchangeRateStakeETH
+    ) public {
+        _updateStakeETHExchangeRates(latestExchangeRateStakeETH);
+        _updateOracleValues(latestOracleValue);
+        _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
+
+        for (uint i; i < _collaterals.length; i++) {
+            (uint256 mint, , , ) = kheops.getOracleValues(address(_collaterals[i]));
+            uint256 oracleMint;
+            uint256 targetPrice = newTargetType[i] == 0 ? BASE_18 : latestExchangeRateStakeETH[newTargetType[i] - 1];
+            uint256 quoteAmount = newQuoteType[i] == 0 ? BASE_18 : targetPrice;
+            if (newReadType[i] == 1) oracleMint = targetPrice;
+            else {
+                (, int256 value, , , ) = _oracles[i].latestRoundData();
+                oracleMint = newCircuitChainIsMultiplied[i] == 1
+                    ? (quoteAmount * uint256(value)) / 10 ** (newChainlinkDecimals[i])
+                    : (quoteAmount * 10 ** (newChainlinkDecimals[i])) / uint256(value);
+            }
+            if (targetPrice < oracleMint) oracleMint = targetPrice;
+            assertEq(mint, oracleMint);
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                       READBURN                                                     
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testOracleReadBurnSuccess(
+        uint8[3] memory newChainlinkDecimals,
+        uint8[3] memory newCircuitChainIsMultiplied,
+        uint8[3] memory newQuoteType,
+        uint8[3] memory newReadType,
+        uint8[3] memory newTargetType,
+        uint256[3] memory latestOracleValue,
+        uint256[4] memory latestExchangeRateStakeETH
+    ) public {
+        _updateStakeETHExchangeRates(latestExchangeRateStakeETH);
+        _updateOracleValues(latestOracleValue);
+        _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
+
+        for (uint i; i < _collaterals.length; i++) {
+            (, uint256 burn, uint256 deviation, ) = kheops.getOracleValues(address(_collaterals[i]));
+            uint256 oracleBurn;
+            uint256 oracleDeviation = BASE_18;
+            uint256 targetPrice = newTargetType[i] == 0 ? BASE_18 : latestExchangeRateStakeETH[newTargetType[i] - 1];
+            uint256 quoteAmount = newQuoteType[i] == 0 ? BASE_18 : targetPrice;
+            if (newReadType[i] == 1) oracleBurn = targetPrice;
+            else {
+                (, int256 value, , , ) = _oracles[i].latestRoundData();
+                oracleBurn = newCircuitChainIsMultiplied[i] == 1
+                    ? (quoteAmount * uint256(value)) / 10 ** (newChainlinkDecimals[i])
+                    : (quoteAmount * 10 ** (newChainlinkDecimals[i])) / uint256(value);
+            }
+            if (targetPrice > oracleBurn) oracleDeviation = (oracleBurn * BASE_18) / targetPrice;
+            assertEq(burn, oracleBurn);
+            assertEq(deviation, oracleDeviation);
         }
     }
 
@@ -241,12 +333,8 @@ contract OracleTest is Fixture, FunctionUtils {
     }
 
     function _updateStakeETHExchangeRates(uint256[4] memory latestExchangeRateStakeETH) internal {
-        for (uint256 i; i < _collaterals.length; i++) {
-            latestExchangeRateStakeETH[i] = bound(
-                latestExchangeRateStakeETH[i],
-                _minOracleValue * BASE_12,
-                BASE_18 * BASE_9
-            );
+        for (uint256 i; i < latestExchangeRateStakeETH.length; i++) {
+            latestExchangeRateStakeETH[i] = bound(latestExchangeRateStakeETH[i], _minOracleValue * BASE_12, BASE_27);
         }
         vm.mockCall(
             address(STETH),

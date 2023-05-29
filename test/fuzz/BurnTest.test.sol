@@ -914,8 +914,8 @@ contract BurnTest is Fixture, FunctionUtils {
         vm.startPrank(owner);
         (uint256 maxAmount, ) = transmuter.getIssuedByCollateral(tokenOut);
         uint256 balanceStableOwner = agToken.balanceOf(owner);
-        if (estimatedStable > maxAmount) vm.expectRevert(stdError.arithmeticError);
-        else if (estimatedStable > balanceStableOwner) vm.expectRevert("ERC20: burn amount exceeds balance");
+        if (estimatedStable > balanceStableOwner) vm.expectRevert("ERC20: burn amount exceeds balance");
+        else if (estimatedStable > maxAmount) vm.expectRevert(stdError.arithmeticError);
         transmuter.swapExactOutput(amountOut, estimatedStable, address(agToken), tokenOut, owner, block.timestamp * 2);
         if (amountOut > maxAmount) return false;
         vm.stopPrank();
