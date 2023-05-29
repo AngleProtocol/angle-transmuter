@@ -152,10 +152,10 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
             revert NotAllowed();
         ITransmuter _transmuter = transmuter;
         IAgToken _agToken = IAgToken(asset());
-        (uint64 collatRatio, uint256 reserves) = _transmuter.getCollateralRatio();
+        (uint64 collatRatio, uint256 stablecoinsIssued) = _transmuter.getCollateralRatio();
         if (collatRatio > BASE_9) {
             // The surplus of profit minus a fee is distributed through this contract
-            minted = (collatRatio * reserves) / BASE_9 - reserves;
+            minted = (collatRatio * stablecoinsIssued) / BASE_9 - stablecoinsIssued;
             // Updating normalizer in order not to double count profits
             _transmuter.updateNormalizer(minted, true);
             uint256 surplusForProtocol = (minted * protocolSafetyFee) / BASE_9;
@@ -172,7 +172,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
             }
         } else {
             // If the protocol is under-collateralized, slashing the profits that are still being vested
-            uint256 missing = reserves - (collatRatio * reserves) / BASE_9;
+            uint256 missing = stablecoinsIssued - (collatRatio * stablecoinsIssued) / BASE_9;
             uint256 currentLockedProfit = lockedProfit();
             if (missing > currentLockedProfit) {
                 vestingProfit = 0;

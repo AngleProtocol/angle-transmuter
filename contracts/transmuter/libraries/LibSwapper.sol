@@ -17,6 +17,8 @@ import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 import "../Storage.sol";
 
+import { console } from "forge-std/console.sol";
+
 // Struct to help storing local variables to avoid stack too deep issues
 struct LocalVariables {
     bool isMint;
@@ -58,7 +60,7 @@ library LibSwapper {
         TransmuterStorage storage ks = s.transmuterStorage();
         if (block.timestamp > deadline) revert TooLate();
         if (mint) {
-            uint128 changeAmount = uint128((amountOut * BASE_27) / ks.normalizer);
+            uint128 changeAmount = uint128(amountOut.mulDiv(BASE_27, ks.normalizer, Math.Rounding.Up));
             // The amount of stablecoins issued from a collateral are not stored as absolute variables, but
             // as variables normalized by a `normalizer`
             ks.collaterals[tokenIn].normalizedStables += uint224(changeAmount);

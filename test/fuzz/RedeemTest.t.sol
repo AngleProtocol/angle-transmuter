@@ -83,10 +83,10 @@ contract RedeemTest is Fixture, FunctionUtils {
         (uint256 mintedStables, ) = _loadReserves(initialAmounts, transferProportion);
 
         // check collateral ratio first
-        (uint64 collatRatio, uint256 reservesValue) = transmuter.getCollateralRatio();
+        (uint64 collatRatio, uint256 stablecoinsIssued) = transmuter.getCollateralRatio();
         if (mintedStables > 0) assertEq(collatRatio, BASE_9);
         else assertEq(collatRatio, type(uint64).max);
-        assertEq(reservesValue, mintedStables);
+        assertEq(stablecoinsIssued, mintedStables);
 
         // currently oracles are all set to 1 --> collateral ratio = 1
         // --> redemption should be exactly in proportion of current balances
@@ -132,10 +132,10 @@ contract RedeemTest is Fixture, FunctionUtils {
             );
 
             // check collateral ratio first
-            (uint64 collatRatio, uint256 reservesValue) = transmuter.getCollateralRatio();
+            (uint64 collatRatio, uint256 stablecoinsIssued) = transmuter.getCollateralRatio();
             if (mintedStables > 0) assertApproxEqAbs(collatRatio, BASE_9, 1e5);
             else assertEq(collatRatio, type(uint64).max);
-            assertEq(reservesValue, mintedStables);
+            assertEq(stablecoinsIssued, mintedStables);
 
             // currently oracles are all set to 1 --> collateral ratio = 1
             // --> redemption should be exactly in proportion of current balances
@@ -1021,11 +1021,11 @@ contract RedeemTest is Fixture, FunctionUtils {
         else computedCollatRatio = type(uint64).max;
 
         // check collateral ratio first
-        uint256 reservesValue;
-        (collatRatio, reservesValue) = transmuter.getCollateralRatio();
+        uint256 stablecoinsIssued;
+        (collatRatio, stablecoinsIssued) = transmuter.getCollateralRatio();
         if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
         else assertEq(collatRatio, type(uint64).max);
-        assertEq(reservesValue, mintedStables);
+        assertEq(stablecoinsIssued, mintedStables);
     }
 
     function _updateOraclesWithSubCollaterals(
@@ -1064,12 +1064,12 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
 
         // check collateral ratio first
-        uint256 reservesValue;
-        (collatRatio, reservesValue) = transmuter.getCollateralRatio();
+        uint256 stablecoinsIssued;
+        (collatRatio, stablecoinsIssued) = transmuter.getCollateralRatio();
 
         if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
         else assertEq(collatRatio, type(uint64).max);
-        assertEq(reservesValue, mintedStables);
+        assertEq(stablecoinsIssued, mintedStables);
     }
 
     function _randomRedeemptionFees(

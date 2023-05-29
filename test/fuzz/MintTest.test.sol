@@ -62,7 +62,59 @@ contract MintTest is Fixture, FunctionUtils {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                         TESTS                                                      
+                                                 GETISSUEDBYCOLLATERAL                                              
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testMintGetIssuedByCollateral(
+        uint256[3] memory initialAmounts,
+        uint256[2] memory transferProportions,
+        uint256[3] memory amounts,
+        uint256[3] memory latestOracleValue
+    ) public {
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            charlie,
+            sweeper,
+            initialAmounts,
+            transferProportions[0]
+        );
+
+        uint256 computedTotalStable;
+        for (uint256 i; i < collateralMintedStables.length; i++) {
+            computedTotalStable += collateralMintedStables[i];
+            (uint256 stablecoinsFromCollateral, ) = transmuter.getIssuedByCollateral(address(_collaterals[i]));
+            assertEq(collateralMintedStables[i], stablecoinsFromCollateral);
+        }
+
+        assertEq(computedTotalStable, agToken.totalSupply());
+        assertEq(mintedStables, agToken.totalSupply());
+        (, uint256 totalStablecoins) = transmuter.getIssuedByCollateral(address(_collaterals[0]));
+        assertEq(computedTotalStable, totalStablecoins);
+
+        _updateOracles(latestOracleValue);
+
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables2, uint256[] memory collateralMintedStables2) = _loadReserves(
+            charlie,
+            sweeper,
+            amounts,
+            transferProportions[1]
+        );
+        for (uint256 i; i < collateralMintedStables2.length; i++) {
+            computedTotalStable += collateralMintedStables2[i];
+            (uint256 stablecoinsFromCollateral, ) = transmuter.getIssuedByCollateral(address(_collaterals[i]));
+            assertEq(collateralMintedStables[i] + collateralMintedStables2[i], stablecoinsFromCollateral);
+        }
+
+        assertEq(computedTotalStable, agToken.totalSupply());
+        assertEq(mintedStables + mintedStables2, agToken.totalSupply());
+
+        (, totalStablecoins) = transmuter.getIssuedByCollateral(address(_collaterals[0]));
+        assertEq(computedTotalStable, totalStablecoins);
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                         MINT                                                       
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testQuoteMintExactInputSimple(
