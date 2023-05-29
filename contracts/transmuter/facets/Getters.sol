@@ -94,4 +94,32 @@ contract Getters is IGetters {
     ) external view returns (OracleReadType readType, OracleTargetType targetType, bytes memory data) {
         return LibOracle.getOracle(collateral);
     }
+
+    /// @inheritdoc IGetters
+    function isPaused(address collateral, ActionType action) external view returns (bool) {
+        if (action == ActionType.Mint || action == ActionType.Burn) {
+            Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
+            if (collatInfo.decimals == 0) revert NotCollateral();
+            if (action == ActionType.Mint) {
+                return collatInfo.isMintLive == 0;
+            } else {
+                return collatInfo.isBurnLive == 0;
+            }
+        } else {
+            TransmuterStorage storage ks = s.transmuterStorage();
+            return ks.isRedemptionLive == 0;
+        }
+    }
+
+    /// @inheritdoc IGetters
+    function isTrusted(address sender) external view returns (bool) {
+        TransmuterStorage storage ks = s.transmuterStorage();
+        return ks.isTrusted[sender] == 1;
+    }
+
+    /// @inheritdoc IGetters
+    function isTrustedSeller(address sender) external view returns (bool) {
+        TransmuterStorage storage ks = s.transmuterStorage();
+        return ks.isSellerTrusted[sender] == 1;
+    }
 }

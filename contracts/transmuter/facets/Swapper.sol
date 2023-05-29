@@ -48,7 +48,7 @@ contract Swapper is ISwapper {
             : LibSwapper.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
         if (amountOut < amountOutMin) revert TooSmallAmountOut();
         // Once the exact amounts are known, the system needs to update its internal metrics and process the transfers
-        LibSwapper.swap(collatInfo, amountIn, amountOut, tokenIn, tokenOut, to, deadline, mint);
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, deadline, mint);
     }
 
     /// @inheritdoc ISwapper
@@ -67,7 +67,7 @@ contract Swapper is ISwapper {
             ? LibSwapper.quoteMintExactOutput(collatInfo, amountOut)
             : LibSwapper.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         if (amountIn > amountInMax) revert TooBigAmountIn();
-        LibSwapper.swap(collatInfo, amountIn, amountOut, tokenIn, tokenOut, to, deadline, mint);
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, deadline, mint);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -11,7 +11,6 @@ import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV
 
 import { MockAccessControlManager } from "mock/MockAccessControlManager.sol";
 import { MockChainlinkOracle } from "mock/MockChainlinkOracle.sol";
-import { MockManager } from "mock/MockManager.sol";
 import { MockTokenPermit } from "mock/MockTokenPermit.sol";
 
 import { CollateralSetup, Test } from "contracts/transmuter/configs/Test.sol";

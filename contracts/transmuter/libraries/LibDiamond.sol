@@ -48,8 +48,6 @@ library LibDiamond {
                 _replaceFunctions(facetAddress, functionSelectors);
             } else if (action == FacetCutAction.Remove) {
                 _removeFunctions(facetAddress, functionSelectors);
-            } else {
-                revert IncorrectFacetCutAction(uint8(action));
             }
         }
 

@@ -69,7 +69,7 @@ contract Test {
         yMintFee[3] = int64(uint64(BASE_12));
 
         Setters.setFees(eurA.collateral, xMintFee, yMintFee, true);
-        Setters.togglePause(eurA.collateral, PauseType.Mint);
+        Setters.togglePause(eurA.collateral, ActionType.Mint);
 
         uint64[] memory xBurnFee = new uint64[](4);
         xBurnFee[0] = uint64(BASE_9);
@@ -85,7 +85,7 @@ contract Test {
         yBurnFee[3] = int64(uint64(BASE_9));
 
         Setters.setFees(eurA.collateral, xBurnFee, yBurnFee, false);
-        Setters.togglePause(eurA.collateral, PauseType.Burn);
+        Setters.togglePause(eurA.collateral, ActionType.Burn);
 
         // Setup second collateral
         Setters.addCollateral(eurB.collateral);
@@ -119,7 +119,7 @@ contract Test {
         yMintFee[3] = int64(uint64(BASE_9));
 
         Setters.setFees(eurB.collateral, xMintFee, yMintFee, true);
-        Setters.togglePause(eurB.collateral, PauseType.Mint);
+        Setters.togglePause(eurB.collateral, ActionType.Mint);
 
         xBurnFee = new uint64[](4);
         xBurnFee[0] = uint64(BASE_9);
@@ -135,7 +135,7 @@ contract Test {
         yBurnFee[3] = int64(uint64(BASE_9));
 
         Setters.setFees(eurB.collateral, xBurnFee, yBurnFee, false);
-        Setters.togglePause(eurB.collateral, PauseType.Burn);
+        Setters.togglePause(eurB.collateral, ActionType.Burn);
 
         // Setup third collateral
         Setters.addCollateral(eurY.collateral);
@@ -169,7 +169,7 @@ contract Test {
         yMintFee[3] = int64(uint64(BASE_9));
 
         Setters.setFees(eurY.collateral, xMintFee, yMintFee, true);
-        Setters.togglePause(eurY.collateral, PauseType.Mint);
+        Setters.togglePause(eurY.collateral, ActionType.Mint);
 
         xBurnFee = new uint64[](4);
         xBurnFee[0] = uint64(BASE_9);
@@ -185,9 +185,9 @@ contract Test {
         yBurnFee[3] = int64(uint64(BASE_9));
 
         Setters.setFees(eurY.collateral, xBurnFee, yBurnFee, false);
-        Setters.togglePause(eurY.collateral, PauseType.Burn);
+        Setters.togglePause(eurY.collateral, ActionType.Burn);
 
         // Redeem
-        Setters.togglePause(eurA.collateral, PauseType.Redeem);
+        Setters.togglePause(eurA.collateral, ActionType.Redeem);
     }
 }

@@ -65,4 +65,13 @@ interface IGetters {
     function getOracle(
         address collateral
     ) external view returns (OracleReadType readType, OracleTargetType targetType, bytes memory data);
+
+    /// @notice Returns if the associated functionality is paused or not
+    function isPaused(address collateral, ActionType action) external view returns (bool);
+
+    /// @notice Returns if `sender` is trusted to update normalizers
+    function isTrusted(address sender) external view returns (bool);
+
+    /// @notice Returns if `sender` is trusted to update sell rewards
+    function isTrustedSeller(address sender) external view returns (bool);
 }

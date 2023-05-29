@@ -42,6 +42,7 @@ library LibRedeemer {
         address[] memory forfeitTokens
     ) internal returns (address[] memory tokens, uint256[] memory amounts) {
         TransmuterStorage storage ks = s.transmuterStorage();
+        if (ks.isRedemptionLive == 0) revert Paused();
         if (block.timestamp > deadline) revert TooLate();
         uint256[] memory subCollateralsTracker;
         (tokens, amounts, subCollateralsTracker) = quoteRedemptionCurve(amount);
@@ -56,17 +57,15 @@ library LibRedeemer {
         for (uint256 i; i < amounts.length; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             // If a token is in the `forfeitTokens` list, then it is not sent as part of the redemption process
-            if (LibHelpers.checkList(tokens[i], forfeitTokens) < 0) {
-                ManagerStorage memory emptyManagerData;
-                LibHelpers.transferCollateralTo(
-                    tokens[i],
-                    to,
-                    amounts[i],
-                    true,
-                    ks.collaterals[collateralListMem[indexCollateral]].isManaged > 0
-                        ? ks.collaterals[collateralListMem[indexCollateral]].managerData
-                        : emptyManagerData
-                );
+            if (amounts[i] > 0 && LibHelpers.checkList(tokens[i], forfeitTokens) < 0) {
+                if (ks.collaterals[collateralListMem[indexCollateral]].isManaged > 0) {
+                    LibManager.transferTo(
+                        tokens[i],
+                        to,
+                        amounts[i],
+                        ks.collaterals[collateralListMem[indexCollateral]].managerData
+                    );
+                } else IERC20(tokens[i]).safeTransfer(to, amounts[i]);
             }
             if (subCollateralsTracker[indexCollateral] - 1 <= i) ++indexCollateral;
         }

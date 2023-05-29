@@ -2,11 +2,13 @@
 pragma solidity ^0.8.17;
 
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
-import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
-import "../Fixture.sol";
-import "../utils/FunctionUtils.sol";
+
 import "contracts/transmuter/Storage.sol" as Storage;
 import "contracts/utils/Errors.sol" as Errors;
+
+import "../Fixture.sol";
+import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
+import "../utils/FunctionUtils.sol";
 
 contract SwapTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
@@ -104,8 +106,8 @@ contract SwapTest is Fixture, FunctionUtils {
         _updateOracles(latestOracleValue);
 
         vm.startPrank(governor);
-        transmuter.togglePause(_collaterals[fromToken], Storage.PauseType.Mint);
-        transmuter.togglePause(_collaterals[fromToken], Storage.PauseType.Burn);
+        transmuter.togglePause(_collaterals[fromToken], Storage.ActionType.Mint);
+        transmuter.togglePause(_collaterals[fromToken], Storage.ActionType.Burn);
         vm.stopPrank();
 
         vm.startPrank(alice);

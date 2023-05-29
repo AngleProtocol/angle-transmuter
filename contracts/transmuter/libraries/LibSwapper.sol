@@ -32,6 +32,9 @@ struct LocalVariables {
 /// @title LibSwapper
 /// @author Angle Labs, Inc.
 library LibSwapper {
+    using SafeERC20 for IERC20;
+    using Math for uint256;
+
     // The `to` address is not indexed as there cannot be 4 indexed addresses in an event.
     event Swap(
         address indexed tokenIn,
@@ -41,12 +44,9 @@ library LibSwapper {
         address indexed from,
         address to
     );
-    using SafeERC20 for IERC20;
-    using Math for uint256;
 
     /// @notice Processes the internal metric updates and the transfers following mint or burn operations
     function swap(
-        Collateral memory collatInfo,
         uint256 amountIn,
         uint256 amountOut,
         address tokenIn,
@@ -63,13 +63,11 @@ library LibSwapper {
             // as variables normalized by a `normalizer`
             ks.collaterals[tokenIn].normalizedStables += uint224(changeAmount);
             ks.normalizedStables += changeAmount;
-            {
-                ManagerStorage memory emptyManagerData;
-                LibHelpers.transferCollateralFrom(
-                    tokenIn,
-                    amountIn,
-                    collatInfo.isManaged > 0 ? collatInfo.managerData : emptyManagerData
-                );
+            if (amountIn > 0) {
+                // TODO Cache if variable
+                if (ks.collaterals[tokenIn].isManaged > 0)
+                    LibManager.transferFrom(tokenIn, amountIn, ks.collaterals[tokenIn].managerData);
+                else IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
             }
             IAgToken(tokenOut).mint(to, amountOut);
         } else {
@@ -81,15 +79,11 @@ library LibSwapper {
                 ks.normalizedStables -= changeAmount;
             }
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-            {
-                ManagerStorage memory emptyManagerData;
-                LibHelpers.transferCollateralTo(
-                    tokenOut,
-                    to,
-                    amountOut,
-                    false,
-                    collatInfo.isManaged > 0 ? collatInfo.managerData : emptyManagerData
-                );
+
+            if (amountOut > 0) {
+                if (ks.collaterals[tokenOut].isManaged > 0)
+                    LibManager.withdrawAndTransferTo(tokenOut, to, amountOut, ks.collaterals[tokenOut].managerData);
+                else IERC20(tokenOut).safeTransfer(to, amountOut);
             }
         }
         emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
@@ -417,11 +411,11 @@ library LibSwapper {
         if (tokenIn == _agToken) {
             collatInfo = ks.collaterals[tokenOut];
             mint = false;
-            if (collatInfo.unpausedMint == 0) revert Paused();
+            if (collatInfo.isBurnLive == 0) revert Paused();
         } else if (tokenOut == _agToken) {
             collatInfo = ks.collaterals[tokenIn];
             mint = true;
-            if (collatInfo.unpausedBurn == 0) revert Paused();
+            if (collatInfo.isMintLive == 0) revert Paused();
         } else revert InvalidTokens();
     }
 }

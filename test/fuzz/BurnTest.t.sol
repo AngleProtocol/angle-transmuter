@@ -2,12 +2,15 @@
 pragma solidity ^0.8.17;
 
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
-import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
-import "../Fixture.sol";
-import "../utils/FunctionUtils.sol";
-import "../utils/FunctionUtils.sol";
-import "contracts/utils/Errors.sol";
+
 import { stdError } from "forge-std/Test.sol";
+
+import "contracts/utils/Errors.sol";
+
+import "../Fixture.sol";
+import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
+import "../utils/FunctionUtils.sol";
+import "../utils/FunctionUtils.sol";
 
 contract BurnTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
