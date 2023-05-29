@@ -98,7 +98,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertQuoteAmounts(uint64(BASE_9), mintedStables, amountBurnt, uint64(BASE_9), amounts);
     }
 
-    function testQuoteRedeemGlobalAtPeg(
+    function testFuzz_QuoteRedeemGlobalAtPeg(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[2] memory latestOracleValue
@@ -148,7 +148,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteRedeemRandomOracles(
+    function testFuzz_QuoteRedeemRandomOracles(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue
@@ -173,7 +173,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertQuoteAmounts(collatRatio, mintedStables, amountBurnt, uint64(BASE_9), amounts);
     }
 
-    function testQuoteRedeemAtPegRandomFees(
+    function testFuzz_QuoteRedeemAtPegRandomFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint64[10] memory xFeeRedeemUnbounded,
@@ -201,7 +201,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         );
     }
 
-    function testQuoteRedeemRandomFees(
+    function testFuzz_QuoteRedeemRandomFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -239,7 +239,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                                                         REDEEM                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testRedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
+    function testFuzz_RedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         // let's first load the reserves of the protocol
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
             initialAmounts,
@@ -282,7 +282,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
     }
 
-    function testRedeemRandomFees(
+    function testFuzz_RedeemRandomFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -340,7 +340,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
     }
 
-    function testMultiRedemptionCurveRandomRedemptionFees(
+    function testFuzz_MultiRedemptionCurveRandomRedemptionFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256 redeemProportion,
@@ -444,7 +444,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                                                   REDEEM WITH MANAGER                                               
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteRedemptionCurveWithManagerRandomRedemptionFees(
+    function testFuzz_QuoteRedemptionCurveWithManagerRandomRedemptionFees(
         uint256[3] memory initialAmounts,
         uint256[3] memory nbrSubCollaterals,
         bool[3] memory isManaged,
@@ -511,7 +511,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertQuoteAmountsWithManager(collatRatio, collatRatioAboveLimit, mintedStables, amountBurnt, fee, amounts);
     }
 
-    function testMultiRedemptionCurveWithManagerRandomRedemptionFees(
+    function testFuzz_MultiRedemptionCurveWithManagerRandomRedemptionFees(
         uint256[3] memory initialAmounts,
         uint256[3] memory nbrSubCollaterals,
         bool[3] memory isManaged,
@@ -644,7 +644,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                                                   REDEEM WITH FORFEIT                                               
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testMultiForfeitRedemptionCurveWithManagerRandomRedemptionFees(
+    function testFuzz_MultiForfeitRedemptionCurveWithManagerRandomRedemptionFees(
         uint256[6] memory initialValue, // initialAmounts of size 3 / nbrSubCollaterals of size 3
         bool[3] memory isManaged,
         uint256[3 * _MAX_SUB_COLLATERALS] memory airdropAmounts,
