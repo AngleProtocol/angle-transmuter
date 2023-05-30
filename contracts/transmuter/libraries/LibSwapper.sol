@@ -17,8 +17,6 @@ import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 import "../Storage.sol";
 
-import { console } from "forge-std/console.sol";
-
 // Struct to help storing local variables to avoid stack too deep issues
 struct LocalVariables {
     bool isMint;
