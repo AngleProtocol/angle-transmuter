@@ -18,6 +18,7 @@ contract BurnTest is Fixture, FunctionUtils {
     uint256 internal _minOracleValue = 10 ** 3; // 10**(-6)
     uint256 internal _minWallet = 10 ** 18; // in base 18
     uint256 internal _maxWallet = 10 ** (18 + 12); // in base 18
+    int64 internal _minBurnFee = -int64(int256(BASE_9 / 2));
 
     address[] internal _collaterals;
     AggregatorV3Interface[] internal _oracles;
@@ -58,7 +59,117 @@ contract BurnTest is Fixture, FunctionUtils {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                         TESTS                                                      
+                                                 GETISSUEDBYCOLLATERAL                                              
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testBurnGetIssuedByCollateral(
+        uint256[3] memory initialAmounts,
+        uint256[3] memory amounts,
+        uint256[3] memory burntAmounts,
+        uint256[3] memory latestOracleValue
+    ) public {
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            charlie,
+            sweeper,
+            initialAmounts,
+            0
+        );
+        _setMintFeesForNegativeBurnFees(0);
+        _updateOracles(latestOracleValue);
+
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables2, uint256[] memory collateralMintedStables2) = _loadReserves(
+            charlie,
+            sweeper,
+            amounts,
+            0
+        );
+
+        (bool succeed, uint256 burntStables, uint256[] memory collateralBurntStables) = _emptyReserves(
+            charlie,
+            burntAmounts
+        );
+        if (!succeed) return;
+
+        uint256 computedTotalStable = mintedStables + mintedStables2;
+        for (uint256 i; i < collateralMintedStables.length; i++) {
+            computedTotalStable -= collateralBurntStables[i];
+            (uint256 stablecoinsFromCollateral, ) = transmuter.getIssuedByCollateral(address(_collaterals[i]));
+            assertEq(
+                collateralMintedStables[i] + collateralMintedStables2[i] - collateralBurntStables[i],
+                stablecoinsFromCollateral
+            );
+        }
+
+        assertEq(computedTotalStable, agToken.totalSupply());
+        assertEq(mintedStables + mintedStables2 - burntStables, agToken.totalSupply());
+        (, uint256 totalStablecoins) = transmuter.getIssuedByCollateral(address(_collaterals[0]));
+        assertEq(computedTotalStable, totalStablecoins);
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                  GETCOLLATERALRATIO                                                
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testBurnGetCollateralRatio(
+        uint256[3] memory initialAmounts,
+        uint256[3] memory amounts,
+        uint256[3] memory burntAmounts,
+        uint256[3] memory latestOracleValue
+    ) public {
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            charlie,
+            sweeper,
+            initialAmounts,
+            0
+        );
+        _setMintFeesForNegativeBurnFees(0);
+        _updateOracles(latestOracleValue);
+
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables2, uint256[] memory collateralMintedStables2) = _loadReserves(
+            charlie,
+            sweeper,
+            amounts,
+            0
+        );
+
+        (bool succeed, uint256 burntStables, uint256[] memory collateralBurntStables) = _emptyReserves(
+            charlie,
+            burntAmounts
+        );
+        if (!succeed) return;
+
+        uint256 collateralisation;
+        for (uint256 i; i < _collaterals.length; ++i) {
+            (, int256 oracleValue, , , ) = MockChainlinkOracle(address(_oracles[i])).latestRoundData();
+            uint8 decimals = IERC20Metadata(address(_collaterals[i])).decimals();
+            collateralisation += ((IERC20(_collaterals[i]).balanceOf(address(transmuter)) *
+                10 ** (18 - decimals) *
+                uint256(oracleValue)) / BASE_8);
+        }
+
+        uint256 computedCollatRatio = type(uint64).max;
+        bool collatRatioAboveLimit;
+        if (mintedStables + mintedStables2 - burntStables > 0) {
+            computedCollatRatio = uint64(
+                (collateralisation * BASE_9) / (mintedStables + mintedStables2 - burntStables)
+            );
+            if ((collateralisation * BASE_9) / (mintedStables + mintedStables2 - burntStables) > type(uint64).max)
+                collatRatioAboveLimit = true;
+        }
+
+        (uint64 collatRatio, uint256 reservesValue) = transmuter.getCollateralRatio();
+        if (!collatRatioAboveLimit) {
+            assertApproxEqAbs(computedCollatRatio, collatRatio, 1 wei);
+            assertApproxEqAbs(mintedStables + mintedStables2 - burntStables, reservesValue, 1 wei);
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                         BURN                                                       
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testQuoteBurnExactInputSimple(
@@ -689,13 +800,16 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256 prevTransmuterCollat = IERC20(_collaterals[fromToken]).balanceOf(address(transmuter));
 
         uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
-        _burnExactInput(alice, _collaterals[fromToken], stableAmount, amountOut);
+        bool burnMoreThanHad = _burnExactInput(alice, _collaterals[fromToken], stableAmount, amountOut);
 
         uint256 balanceStable = agToken.balanceOf(alice);
 
         assertEq(balanceStable, prevBalanceStable - stableAmount);
         assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), amountOut);
-        assertEq(IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)), prevTransmuterCollat - amountOut);
+        assertEq(
+            IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)),
+            burnMoreThanHad ? 0 : prevTransmuterCollat - amountOut
+        );
 
         (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(
             _collaterals[fromToken]
@@ -782,6 +896,53 @@ contract BurnTest is Fixture, FunctionUtils {
         transferProportion = bound(transferProportion, 0, BASE_9);
         if (receiver != address(0)) agToken.transfer(receiver, (mintedStables * transferProportion) / BASE_9);
         vm.stopPrank();
+
+        _setMintFeesForNegativeBurnFees(-_minBurnFee);
+    }
+
+    function _emptyReserves(
+        address owner,
+        uint256[3] memory amounts
+    ) internal returns (bool succeed, uint256 burntStables, uint256[] memory collateralBurntStables) {
+        collateralBurntStables = new uint256[](_collaterals.length);
+        succeed = true;
+
+        vm.startPrank(owner);
+        for (uint256 i; i < _collaterals.length; i++) {
+            amounts[i] = bound(amounts[i], 0, IERC20(_collaterals[i]).balanceOf(address(transmuter)));
+            (uint256 maxAmount, ) = transmuter.getIssuedByCollateral(_collaterals[i]);
+            uint256 estimatedStable = transmuter.quoteOut(amounts[i], address(agToken), _collaterals[i]);
+            uint256 balanceStableOwner = agToken.balanceOf(owner);
+            if (estimatedStable > maxAmount && estimatedStable > balanceStableOwner)
+                vm.expectRevert(stdError.arithmeticError);
+            else if (estimatedStable > balanceStableOwner) vm.expectRevert("ERC20: burn amount exceeds balance");
+            else if (estimatedStable > maxAmount) vm.expectRevert(stdError.arithmeticError);
+            collateralBurntStables[i] = transmuter.swapExactOutput(
+                amounts[i],
+                estimatedStable,
+                address(agToken),
+                _collaterals[i],
+                owner,
+                block.timestamp * 2
+            );
+            if (estimatedStable > balanceStableOwner || estimatedStable > maxAmount)
+                return (false, burntStables, collateralBurntStables);
+            burntStables += collateralBurntStables[i];
+        }
+        vm.stopPrank();
+    }
+
+    function _setMintFeesForNegativeBurnFees(int64 smallestFee) internal {
+        // set mint Fees to be consistent with the min fee on Burn
+        uint64[] memory xFee = new uint64[](1);
+        xFee[0] = uint64(0);
+        int64[] memory yFee = new int64[](1);
+        yFee[0] = smallestFee;
+        vm.startPrank(governor);
+        transmuter.setFees(address(eurA), xFee, yFee, true);
+        transmuter.setFees(address(eurB), xFee, yFee, true);
+        transmuter.setFees(address(eurY), xFee, yFee, true);
+        vm.stopPrank();
     }
 
     function _getExposures(
@@ -828,14 +989,7 @@ contract BurnTest is Fixture, FunctionUtils {
         int64[10] memory yFeeBurnUnbounded,
         int256 maxFee
     ) internal returns (uint64[] memory xFeeBurn, int64[] memory yFeeBurn) {
-        (xFeeBurn, yFeeBurn) = _generateCurves(
-            xFeeBurnUnbounded,
-            yFeeBurnUnbounded,
-            false,
-            false,
-            int256(BASE_9 / 2),
-            maxFee
-        );
+        (xFeeBurn, yFeeBurn) = _generateCurves(xFeeBurnUnbounded, yFeeBurnUnbounded, false, false, _minBurnFee, maxFee);
         vm.prank(governor);
         transmuter.setFees(collateral, xFeeBurn, yFeeBurn, false);
     }
@@ -848,11 +1002,12 @@ contract BurnTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    // function _logIssuedCollateral() internal view {
-    //     for (uint256 i; i < _collaterals.length; i++) {
-    //         (uint256 collateralIssued, uint256 total) = transmuter.getIssuedByCollateral(_collaterals[i]);
-    //     }
-    // }
+    function _logIssuedCollateral() internal view {
+        for (uint256 i; i < _collaterals.length; i++) {
+            (uint256 collateralIssued, uint256 total) = transmuter.getIssuedByCollateral(_collaterals[i]);
+            // console.log("collateralIssued ", i, collateralIssued);
+        }
+    }
 
     function _getBurnOracle(uint256 amount, uint256 fromToken) internal view returns (uint256) {
         uint256 minDeviation = BASE_8;
@@ -874,7 +1029,12 @@ contract BurnTest is Fixture, FunctionUtils {
         address tokenOut,
         uint256 amountStable,
         uint256 estimatedAmountOut
-    ) internal {
+    ) internal returns (bool burnMoreThanHad) {
+        // we need to increase the balance because fees are negative and we need to transfer more than what we received with the mint
+        if (IERC20(tokenOut).balanceOf(address(transmuter)) < estimatedAmountOut) {
+            deal(tokenOut, address(transmuter), estimatedAmountOut);
+            burnMoreThanHad = true;
+        }
         vm.startPrank(owner);
         transmuter.swapExactInput(
             amountStable,
