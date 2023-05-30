@@ -907,8 +907,6 @@ contract BurnTest is Fixture, FunctionUtils {
         collateralBurntStables = new uint256[](_collaterals.length);
         succeed = true;
 
-        _logIssuedCollateral();
-
         vm.startPrank(owner);
         for (uint256 i; i < _collaterals.length; i++) {
             amounts[i] = bound(amounts[i], 0, IERC20(_collaterals[i]).balanceOf(address(transmuter)));
@@ -1007,7 +1005,7 @@ contract BurnTest is Fixture, FunctionUtils {
     function _logIssuedCollateral() internal view {
         for (uint256 i; i < _collaterals.length; i++) {
             (uint256 collateralIssued, uint256 total) = transmuter.getIssuedByCollateral(_collaterals[i]);
-            console.log("collateralIssued ", i, collateralIssued);
+            // console.log("collateralIssued ", i, collateralIssued);
         }
     }
 
