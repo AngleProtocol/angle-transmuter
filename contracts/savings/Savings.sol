@@ -63,7 +63,7 @@ contract Savings is ERC4626Upgradeable, AccessControl {
                                                 PARAMETERS / REFERENCES                                             
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Inflation rate (per second)
+    /// @notice Inflation rate (per second) in BASE_27
     uint256 public rate;
 
     /// @notice Last time rewards were accrued
@@ -256,7 +256,8 @@ contract Savings is ERC4626Upgradeable, AccessControl {
 
     /// @notice Provides an estimated Annual Percentage Rate for base depositors on this contract
     function estimatedAPR() external view returns (uint256 apr) {
-        return _computeUpdatedAssets(BASE_18, 24 * 365 * 3600) - BASE_18;
+        // 365 days = 31536000 seconds
+        return _computeUpdatedAssets(BASE_18, 31536000) - BASE_18;
     }
 
     /// @notice Wrapper on top of the `computeUpdatedAssets` function

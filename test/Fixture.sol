@@ -9,6 +9,7 @@ import { IAgToken } from "interfaces/IAgToken.sol";
 import { IManager } from "interfaces/IManager.sol";
 import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
 
+import { ProxyAdmin, TransparentUpgradeableProxy } from "mock/MockProxyAdmin.sol";
 import { MockAccessControlManager } from "mock/MockAccessControlManager.sol";
 import { MockChainlinkOracle } from "mock/MockChainlinkOracle.sol";
 import { MockManager } from "mock/MockManager.sol";
@@ -24,6 +25,7 @@ import { console } from "forge-std/console.sol";
 
 contract Fixture is Transmuter {
     IAccessControlManager public accessControlManager;
+    ProxyAdmin public proxyAdmin;
     IAgToken public agToken;
 
     IERC20 public eurA;
@@ -62,6 +64,7 @@ contract Fixture is Transmuter {
         accessControlManager = IAccessControlManager(address(new MockAccessControlManager()));
         MockAccessControlManager(address(accessControlManager)).toggleGovernor(governor);
         MockAccessControlManager(address(accessControlManager)).toggleGuardian(guardian);
+        proxyAdmin = new ProxyAdmin();
 
         // agToken
         agToken = IAgToken(address(new MockTokenPermit("agEUR", "agEUR", 18)));
@@ -92,6 +95,14 @@ contract Fixture is Transmuter {
                 CollateralSetup(address(eurY), address(oracleY))
             )
         );
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                         UTILS                                                      
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function deployUpgradeable(address implementation, bytes memory data) public returns (address) {
+        return address(new TransparentUpgradeableProxy(implementation, address(proxyAdmin), data));
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
