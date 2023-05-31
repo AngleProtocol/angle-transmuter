@@ -418,7 +418,6 @@ contract SavingsTest is Fixture, FunctionUtils {
             uint256 prevShares = _saving.totalSupply();
             uint256 balanceAsset = _saving.totalAssets();
             uint256 supposedAmount = _saving.previewMint(shares[2]);
-            uint256 amount;
             (returnAmount, , receiver) = _mint(shares[2], supposedAmount, alice, address(0), indexReceiver);
             assertEq(agToken.balanceOf(alice), 0);
             uint256 expectedAmount = (shares[2] * balanceAsset) / prevShares;
@@ -438,14 +437,14 @@ contract SavingsTest is Fixture, FunctionUtils {
                     unwrap(powu(ud(BASE_18 + rates[1] / BASE_9), elapseTimestamps[2]))) /
                 unwrap(powu(ud(BASE_18), elapseTimestamps[2]));
 
-            uint256 redeemableAmount = (returnAmount *
+            uint256 withdrawableAmount = (returnAmount *
                 unwrap(powu(ud(BASE_18 + rates[1] / BASE_9), elapseTimestamps[2]))) /
                 unwrap(powu(ud(BASE_18), elapseTimestamps[2]));
 
             _assertApproxEqRelDecimalWithTolerance(
                 _saving.previewRedeem(_saving.balanceOf(receiver)),
-                redeemableAmount,
-                redeemableAmount,
+                withdrawableAmount,
+                withdrawableAmount,
                 _MAX_PERCENTAGE_DEVIATION * 100,
                 18
             );
@@ -463,6 +462,69 @@ contract SavingsTest is Fixture, FunctionUtils {
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         REDEEM                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testRedeemSimple(
+        uint256[2] memory amounts,
+        uint256 propWithdraw,
+        uint256 rate,
+        uint256 indexReceiver,
+        uint256[2] memory elapseTimestamps
+    ) public {
+        for (uint256 i; i < amounts.length; i++) amounts[i] = bound(amounts[i], 0, _maxAmount);
+        // shorten the time otherwise the DL diverge too much from the actual formula (1+rate)**seconds
+        for (uint256 i; i < elapseTimestamps.length; i++)
+            elapseTimestamps[i] = bound(elapseTimestamps[i], 0, _maxElapseTime / 100);
+        rate = bound(rate, _minRate, _maxRate);
+        propWithdraw = bound(propWithdraw, 0, BASE_9);
+        address receiver = actors[bound(indexReceiver, 0, _nbrActor - 1)];
+
+        _deposit(amounts[0], sweeper, sweeper, 0);
+
+        vm.prank(governor);
+        _saving.setRate(rate);
+
+        // first time elapse
+        skip(elapseTimestamps[0]);
+        _deposit(amounts[1], alice, alice, 0);
+
+        // second time elapse
+        skip(elapseTimestamps[1]);
+
+        uint256 withdrawableAmount = (amounts[1] * unwrap(powu(ud(BASE_18 + rate / BASE_9), elapseTimestamps[1]))) /
+            unwrap(powu(ud(BASE_18), elapseTimestamps[1]));
+
+        if (withdrawableAmount > _minAmount) {
+            _assertApproxEqRelDecimalWithTolerance(
+                _saving.previewRedeem(_saving.balanceOf(alice)),
+                withdrawableAmount,
+                withdrawableAmount,
+                _MAX_PERCENTAGE_DEVIATION * 100,
+                18
+            );
+
+            {
+                address[] memory tokens = new address[](1);
+                tokens[0] = address(agToken);
+                _sweepBalances(alice, tokens);
+                _sweepBalances(receiver, tokens);
+            }
+
+            uint256 shares = _saving.balanceOf(alice);
+            uint256 sharesToRedeem = (shares * propWithdraw) / BASE_9;
+            vm.prank(alice);
+            uint256 amount = _saving.redeem(sharesToRedeem, receiver, alice);
+
+            _assertApproxEqRelDecimalWithTolerance(
+                amount,
+                (withdrawableAmount * propWithdraw) / BASE_9,
+                amount,
+                _MAX_PERCENTAGE_DEVIATION * 100,
+                18
+            );
+            assertEq(agToken.balanceOf(receiver), amount);
+            assertEq(agToken.balanceOf(alice), 0);
+        }
+    }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                        WITHDRAW                                                     
@@ -508,5 +570,13 @@ contract SavingsTest is Fixture, FunctionUtils {
         uint256 amount = _saving.mint(shares, receiver);
         vm.stopPrank();
         return (amount, shares, receiver);
+    }
+
+    function _sweepBalances(address owner, address[] memory tokens) internal {
+        vm.startPrank(owner);
+        for (uint256 i; i < tokens.length; ++i) {
+            IERC20(tokens[i]).transfer(sweeper, IERC20(tokens[i]).balanceOf(owner));
+        }
+        vm.stopPrank();
     }
 }
