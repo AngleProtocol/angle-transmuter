@@ -59,6 +59,8 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
     using SafeERC20 for IERC20;
     using MathUpgradeable for uint256;
 
+    uint256 internal constant _SIGNIFICANT_DEVIATION = BASE_6;
+
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                 PARAMETERS / REFERENCES                                             
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
@@ -153,7 +155,8 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
         ITransmuter _transmuter = transmuter;
         IAgToken _agToken = IAgToken(asset());
         (uint64 collatRatio, uint256 stablecoinsIssued) = _transmuter.getCollateralRatio();
-        if (collatRatio > BASE_9) {
+        // It needs to deviate significantly (>0.1%) from the target in order to accrue
+        if (collatRatio > BASE_9 + BASE_6) {
             // The surplus of profit minus a fee is distributed through this contract
             minted = (collatRatio * stablecoinsIssued) / BASE_9 - stablecoinsIssued;
             // Updating normalizer in order not to double count profits
@@ -170,7 +173,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
                 lastUpdate = uint64(block.timestamp);
                 _agToken.mint(address(this), surplus);
             }
-        } else {
+        } else if (collatRatio < BASE_9 - BASE_6) {
             // If the protocol is under-collateralized, slashing the profits that are still being vested
             uint256 missing = stablecoinsIssued - (collatRatio * stablecoinsIssued) / BASE_9;
             uint256 currentLockedProfit = lockedProfit();

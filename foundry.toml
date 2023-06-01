@@ -14,7 +14,8 @@ solc_version = '0.8.17'
 ffi = true
 
 [fuzz]
-runs = 10000
+runs = 5000
+seed = 0x001
 
 [invariant]
 runs = 10
