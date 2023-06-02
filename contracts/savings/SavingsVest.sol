@@ -59,8 +59,6 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
     using SafeERC20 for IERC20;
     using MathUpgradeable for uint256;
 
-    uint256 internal constant _SIGNIFICANT_DEVIATION = BASE_6;
-
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                 PARAMETERS / REFERENCES                                             
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
