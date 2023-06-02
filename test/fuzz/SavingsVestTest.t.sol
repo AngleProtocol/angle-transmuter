@@ -106,9 +106,9 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         assertEq(_saving.asset(), address(agToken));
         assertEq(_saving.name(), _name);
         assertEq(_saving.symbol(), _symbol);
-        assertEq(_saving.totalAssets(), _initDeposit);
-        assertEq(_saving.totalSupply(), _initDeposit);
-        assertEq(agToken.balanceOf(address(_saving)), _initDeposit);
+        assertEq(_saving.totalAssets(), _firstDeposit + _initDeposit);
+        assertEq(_saving.totalSupply(), _firstDeposit + _initDeposit);
+        assertEq(agToken.balanceOf(address(_saving)), _firstDeposit + _initDeposit);
         assertEq(_saving.balanceOf(address(governor)), 0);
         assertEq(_saving.balanceOf(address(_saving)), _initDeposit);
     }
@@ -236,7 +236,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         _saving.accrue();
         skip(elapseTimestamps);
         _updateTimestampOracles();
-        if (elapseTimestamps < 1 days) vm.expectRevert(Errors.NotAllowed.selector);
+        if (_saving.lastUpdate() > 0 && elapseTimestamps < 1 days) vm.expectRevert(Errors.NotAllowed.selector);
         _saving.accrue();
         vm.stopPrank();
     }
@@ -420,6 +420,8 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         uint64 collatRatio = _updateOraclesWithAsserts(latestOracleValue, mintedStables, collateralMintedStables);
         vm.prank(governor);
         uint256 minted = _saving.accrue();
+        // This would be the case if the number of unit of stable is of order 10**20 making the normalisedStables (global) overflow
+        if (minted + mintedStables > (uint256(type(uint128).max) * 999) / 1000) return;
 
         if (collatRatio > BASE_9 + BASE_6) {
             skip(elapseTimestamps);
@@ -442,13 +444,15 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         elapseTimestamps = bound(elapseTimestamps, 0, _maxElapseTime);
         vestingPeriod = uint64(bound(vestingPeriod, 1, 365 days));
 
-        bytes32 what = "VP";
-        vm.prank(governor);
-        _saving.setParams(what, vestingPeriod);
+        {
+            bytes32 what = "VP";
+            vm.prank(governor);
+            _saving.setParams(what, vestingPeriod);
 
-        what = "PF";
-        vm.prank(governor);
-        _saving.setParams(what, protocolSafetyFee);
+            what = "PF";
+            vm.prank(governor);
+            _saving.setParams(what, protocolSafetyFee);
+        }
 
         // let's first load the reserves of the protocol
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(initialAmounts, 0);
@@ -459,35 +463,53 @@ contract SavingsVestTest is Fixture, FunctionUtils {
 
         vm.prank(governor);
         uint256 minted = _saving.accrue();
-        mintedStables += minted;
-        for (uint256 i; i < collateralMintedStables.length; i++) {
-            (uint256 stablecoinsFromCollateral, ) = transmuter.getIssuedByCollateral(_collaterals[i]);
-            collateralMintedStables[i] = stablecoinsFromCollateral;
-        }
+        // Do checks only if it didn't overflow
+        if (minted + mintedStables > (uint256(type(uint128).max) * 999) / 1000) return;
 
-        // Do checks only if the there has been a profit and it didn't overflowed
-        if (collatRatio > BASE_9 + BASE_6 && minted + mintedStables > (uint256(type(uint128).max) * 999) / 1000) {
+        uint256 netMinted = minted - (protocolSafetyFee * minted) / BASE_9;
+        // Do checks only if the there has been a profit
+        if (collatRatio > BASE_9 + BASE_6) {
             skip(elapseTimestamps);
+            collatRatio = _updateOracles(latestOracleValue);
+
             uint256 prevLockedProfit = vestingPeriod > elapseTimestamps
-                ? minted - (minted * elapseTimestamps) / vestingPeriod
+                ? netMinted - (netMinted * elapseTimestamps) / vestingPeriod
                 : 0;
             uint256 prevTotalAssets = _saving.totalAssets();
+            assertEq(_saving.lockedProfit(), prevLockedProfit);
+            for (uint256 i; i < collateralMintedStables.length; i++) {
+                (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) = transmuter.getIssuedByCollateral(
+                    _collaterals[i]
+                );
+                collateralMintedStables[i] = stablecoinsFromCollateral;
+                mintedStables = stablecoinsIssued;
+            }
 
-            collatRatio = _updateOracles(latestOracleValue);
             vm.prank(governor);
             minted = _saving.accrue();
 
             if (collatRatio > BASE_9 + BASE_6) {
-                if (minted + mintedStables > (uint256(type(uint128).max) * 999) / 1000) return;
-
-                uint256 expectedMint = (collatRatio * mintedStables) / BASE_9 - mintedStables;
-                uint256 shareProtocol = (protocolSafetyFee * expectedMint) / BASE_9;
-
-                assertEq(minted, expectedMint);
-                assertEq(_saving.vestingProfit(), prevLockedProfit + minted - shareProtocol);
+                if (minted + mintedStables > (uint256(type(uint128).max) * 999) / 1000 || minted < _minAmount) return;
+                {
+                    uint256 expectedMint = (collatRatio * mintedStables) / BASE_9 - mintedStables;
+                    _assertApproxEqRelDecimalWithTolerance(minted, expectedMint, minted, _MAX_PERCENTAGE_DEVIATION, 18);
+                }
+                netMinted = minted - (protocolSafetyFee * minted) / BASE_9;
+                _assertApproxEqRelDecimalWithTolerance(
+                    _saving.vestingProfit(),
+                    prevLockedProfit + netMinted,
+                    prevLockedProfit + netMinted,
+                    _MAX_PERCENTAGE_DEVIATION,
+                    18
+                );
                 assertEq(_saving.lastUpdate(), block.timestamp);
-                assertEq(agToken.balanceOf(address(_saving)), prevTotalAssets + minted - shareProtocol);
-
+                _assertApproxEqRelDecimalWithTolerance(
+                    agToken.balanceOf(address(_saving)),
+                    prevTotalAssets + prevLockedProfit + netMinted,
+                    prevTotalAssets + prevLockedProfit + netMinted,
+                    _MAX_PERCENTAGE_DEVIATION,
+                    18
+                );
                 // check that kheops accounting was updated
                 {
                     (uint64 newCollatRatio, uint256 newStablecoinsIssued) = transmuter.getCollateralRatio();
@@ -501,41 +523,22 @@ contract SavingsVestTest is Fixture, FunctionUtils {
                         18
                     );
                 }
-                uint256 stablecoinsIssued;
-                for (uint256 i; i < _collaterals.length; ++i) {
-                    uint256 stablecoinsFromCollateral;
-                    (stablecoinsFromCollateral, stablecoinsIssued) = transmuter.getIssuedByCollateral(_collaterals[i]);
-
-                    if (stablecoinsFromCollateral >= _minAmount)
+            } else if (collatRatio < BASE_9 - BASE_6) {
+                uint256 expectedBurn = mintedStables - (collatRatio * mintedStables) / BASE_9;
+                if (expectedBurn > prevLockedProfit) {
+                    assertEq(_saving.vestingProfit(), 0);
+                    assertEq(_saving.lastUpdate(), netMinted > 0 ? block.timestamp - elapseTimestamps : 0);
+                    assertEq(agToken.balanceOf(address(_saving)), prevTotalAssets);
+                    {
+                        (uint64 newCollatRatio, uint256 newStablecoinsIssued) = transmuter.getCollateralRatio();
+                        assertLe(collatRatio, newCollatRatio);
                         _assertApproxEqRelDecimalWithTolerance(
-                            stablecoinsFromCollateral,
-                            collateralMintedStables[i].mulDiv(mintedStables + minted, mintedStables),
-                            stablecoinsFromCollateral,
+                            newStablecoinsIssued,
+                            mintedStables - prevLockedProfit,
+                            newStablecoinsIssued,
                             _MAX_PERCENTAGE_DEVIATION,
                             18
                         );
-                }
-                _assertApproxEqRelDecimalWithTolerance(
-                    stablecoinsIssued,
-                    mintedStables + minted,
-                    stablecoinsIssued,
-                    _MAX_PERCENTAGE_DEVIATION,
-                    18
-                );
-            } else if (collatRatio < BASE_9 - BASE_6) {
-                assertEq(_saving.lockedProfit(), prevLockedProfit);
-                uint256 expectedBurn = mintedStables - (collatRatio * mintedStables) / BASE_9;
-                console.log("expectedBurn ", expectedBurn);
-                if (expectedBurn > prevLockedProfit) {
-                    console.log("not enough to cover");
-
-                    assertEq(_saving.vestingProfit(), 0);
-                    assertEq(_saving.lastUpdate(), block.timestamp - elapseTimestamps);
-                    assertEq(agToken.balanceOf(address(_saving)), prevTotalAssets - (expectedBurn - prevLockedProfit));
-                    {
-                        (uint64 newCollatRatio, uint256 newStablecoinsIssued) = transmuter.getCollateralRatio();
-                        assertEq(newCollatRatio, collatRatio);
-                        assertEq(newStablecoinsIssued, mintedStables);
                     }
                     uint256 stablecoinsIssued;
                     for (uint256 i; i < _collaterals.length; ++i) {
@@ -543,18 +546,44 @@ contract SavingsVestTest is Fixture, FunctionUtils {
                         (stablecoinsFromCollateral, stablecoinsIssued) = transmuter.getIssuedByCollateral(
                             _collaterals[i]
                         );
-                        assertEq(stablecoinsFromCollateral, collateralMintedStables[i]);
+                        assertLe(stablecoinsFromCollateral, collateralMintedStables[i]);
                     }
-                    assertEq(stablecoinsIssued, mintedStables);
+                    assertLe(stablecoinsIssued, mintedStables);
                 } else {
-                    console.log("enough to cover");
-                    assertEq(_saving.vestingProfit(), prevLockedProfit - expectedBurn);
+                    assertApproxEqAbs(_saving.vestingProfit(), prevLockedProfit - expectedBurn, 10 wei);
                     assertEq(_saving.lastUpdate(), block.timestamp);
-                    assertEq(agToken.balanceOf(address(_saving)), prevTotalAssets - expectedBurn);
+                    assertApproxEqAbs(
+                        agToken.balanceOf(address(_saving)),
+                        prevTotalAssets + prevLockedProfit - expectedBurn,
+                        10 wei
+                    );
+
+                    {
+                        (uint64 newCollatRatio, uint256 newStablecoinsIssued) = transmuter.getCollateralRatio();
+                        // Otherwise the approximation of the needed burn can be too inacurate
+                        // collatRatio will stay lower though as getCollateralRatio is always rounding up
+                        // leading to a smaller amount being burnt in the `accrue` function
+                        if (collatRatio > BASE_6) assertApproxEqAbs(newCollatRatio, BASE_9, 1e5);
+                        _assertApproxEqRelDecimalWithTolerance(
+                            newStablecoinsIssued,
+                            mintedStables - expectedBurn,
+                            newStablecoinsIssued,
+                            _MAX_PERCENTAGE_DEVIATION,
+                            18
+                        );
+                    }
                 }
-            } else {}
+            }
         }
     }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                          MINT / DEPOSIT / REDEEM / WITHDRAW                                        
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    // From now we consider that lockedProfit and accrue function are working as intended and we only test the process
+    // of minting, depositing, redeeming and withdrawing and checking that it returns the correct amount of tokens considering the
+    // distributed profit.
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                          UTILS                                                      
