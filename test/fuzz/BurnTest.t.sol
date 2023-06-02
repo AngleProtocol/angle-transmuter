@@ -119,27 +119,14 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256[3] memory latestOracleValue
     ) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-            charlie,
-            sweeper,
-            initialAmounts,
-            0
-        );
+        (uint256 mintedStables, ) = _loadReserves(charlie, sweeper, initialAmounts, 0);
         _setMintFeesForNegativeBurnFees(0);
         _updateOracles(latestOracleValue);
 
         // let's first load the reserves of the protocol
-        (uint256 mintedStables2, uint256[] memory collateralMintedStables2) = _loadReserves(
-            charlie,
-            sweeper,
-            amounts,
-            0
-        );
+        (uint256 mintedStables2, ) = _loadReserves(charlie, sweeper, amounts, 0);
 
-        (bool succeed, uint256 burntStables, uint256[] memory collateralBurntStables) = _emptyReserves(
-            charlie,
-            burntAmounts
-        );
+        (bool succeed, uint256 burntStables, ) = _emptyReserves(charlie, burntAmounts);
         if (!succeed) return;
 
         uint256 collateralisation;
@@ -1002,12 +989,12 @@ contract BurnTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function _logIssuedCollateral() internal view {
-        for (uint256 i; i < _collaterals.length; i++) {
-            (uint256 collateralIssued, uint256 total) = transmuter.getIssuedByCollateral(_collaterals[i]);
-            // console.log("collateralIssued ", i, collateralIssued);
-        }
-    }
+    // function _logIssuedCollateral() internal view {
+    //     for (uint256 i; i < _collaterals.length; i++) {
+    //         (uint256 collateralIssued, uint256 total) = transmuter.getIssuedByCollateral(_collaterals[i]);
+    //         console.log("collateralIssued ", i, collateralIssued);
+    //     }
+    // }
 
     function _getBurnOracle(uint256 amount, uint256 fromToken) internal view returns (uint256) {
         uint256 minDeviation = BASE_8;

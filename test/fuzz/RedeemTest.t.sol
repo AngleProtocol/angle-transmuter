@@ -27,7 +27,6 @@ contract RedeemTest is Fixture, FunctionUtils {
     // making this value smaller worsen rounding and make test harder to pass.
     // Trade off between bullet proof against all oracles and all interactions
     uint256 internal _minOracleValue = 10 ** 3; // 10**(-6)
-    uint256 internal _percentageLossAccepted = 10 ** 15; // 0.1%
     uint256 internal _minWallet = 10 ** (3 + 18);
 
     address[] internal _collaterals;
@@ -75,10 +74,6 @@ contract RedeemTest is Fixture, FunctionUtils {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testQuoteRedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
-        initialAmounts[0] = 0;
-        initialAmounts[1] = 0;
-        initialAmounts[2] = 0;
-        transferProportion = 0;
         // let's first load the reserves of the protocol
         (uint256 mintedStables, ) = _loadReserves(initialAmounts, transferProportion);
 
@@ -875,7 +870,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         //     assertApproxEqRelDecimal(
         //         amountInValueReceived,
         //         valueCheck,
-        //         _percentageLossAccepted,
+        //         _MAX_PERCENTAGE_DEVIATION,
         //         18
         //     );
     }
@@ -938,14 +933,14 @@ contract RedeemTest is Fixture, FunctionUtils {
                 //     assertApproxEqRelDecimal(
                 //         amountInValueReceived,
                 //         (collatRatio * amountBurnt * fee) / BASE_18,
-                //         _percentageLossAccepted,
+                //         _MAX_PERCENTAGE_DEVIATION,
                 //         18
                 //     );
             } else {
                 //     assertApproxEqRelDecimal(
                 //         amountInValueReceived,
                 //         (amountBurnt * fee) / BASE_9,
-                //         _percentageLossAccepted,
+                //         _MAX_PERCENTAGE_DEVIATION,
                 //         18
                 //     );
             }
