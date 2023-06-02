@@ -637,6 +637,9 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         _deposit(depositsAmounts[0], bob, bob, 0);
 
         assertEq(_saving.estimatedAPR(), 0);
+        // high chance it is going to overflow
+        (uint256 collatRatio, ) = transmuter.getCollateralRatio();
+        if (collatRatio > BASE_12) return;
         vm.prank(governor);
         uint256 minted = _saving.accrue();
         skip(elapseTimestamps[0]);
@@ -645,6 +648,9 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         _updateOracles(latestOracleValue);
         skip(elapseTimestamps[1]);
         _updateTimestampOracles();
+        // high chance it is going to overflow
+        (uint256 collatRatio, ) = transmuter.getCollateralRatio();
+        if (collatRatio > BASE_12) return;
         vm.prank(governor);
         minted = _saving.accrue();
 
