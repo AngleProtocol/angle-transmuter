@@ -649,7 +649,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         skip(elapseTimestamps[1]);
         _updateTimestampOracles();
         // high chance it is going to overflow
-        (uint256 collatRatio, ) = transmuter.getCollateralRatio();
+        (collatRatio, ) = transmuter.getCollateralRatio();
         if (collatRatio > BASE_12) return;
         vm.prank(governor);
         minted = _saving.accrue();
