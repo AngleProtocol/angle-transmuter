@@ -90,9 +90,6 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
     /// @notice Whether the contract is paused or not
     uint8 public paused;
 
-    /// @notice Number of decimals for `_asset`
-    uint8 internal _numDecimals;
-
     uint256[46] private __gap;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +126,6 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
         transmuter = _transmuter;
         accessControlManager = _accessControlManager;
         uint8 numDecimals = asset_.decimals();
-        _numDecimals = numDecimals;
         _deposit(msg.sender, address(this), 10 ** numDecimals / divizer, BASE_18 / divizer);
     }
 
