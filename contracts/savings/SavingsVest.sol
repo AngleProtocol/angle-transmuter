@@ -134,13 +134,13 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                       MODIFIERS                                                    
+                                                       MODIFIER                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Checks whether the whole contract is paused or not
-    modifier whenNotPaused() {
-        if (paused > 0) revert Paused();
-        _;
+    /// @inheritdoc ERC20Upgradeable
+    function _beforeTokenTransfer(address from, address to, uint256) internal virtual override {
+        // Lets transfer freely even when paused but no mint or burn
+        if ((from == address(0) || to == address(0)) && paused > 0) revert Paused();
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -221,70 +221,6 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                             ERC4626 INTERACTION FUNCTIONS                                          
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    /// @inheritdoc ERC4626Upgradeable
-    function deposit(uint256 assets, address receiver) public override whenNotPaused returns (uint256 shares) {
-        shares = _convertToShares(assets, MathUpgradeable.Rounding.Down);
-        _deposit(_msgSender(), receiver, assets, shares);
-    }
-
-    /// @inheritdoc ERC4626Upgradeable
-    function mint(uint256 shares, address receiver) public override whenNotPaused returns (uint256 assets) {
-        assets = _convertToAssets(shares, MathUpgradeable.Rounding.Up);
-        _deposit(_msgSender(), receiver, assets, shares);
-    }
-
-    /// @inheritdoc ERC4626Upgradeable
-    function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner
-    ) public override whenNotPaused returns (uint256 shares) {
-        shares = _convertToShares(assets, MathUpgradeable.Rounding.Up);
-        _withdraw(_msgSender(), receiver, owner, assets, shares);
-    }
-
-    /// @inheritdoc ERC4626Upgradeable
-    function redeem(
-        uint256 shares,
-        address receiver,
-        address owner
-    ) public override whenNotPaused returns (uint256 assets) {
-        assets = _convertToAssets(shares, MathUpgradeable.Rounding.Down);
-        _withdraw(_msgSender(), receiver, owner, assets, shares);
-    }
-
-    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                   INTERNAL HELPERS                                                 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    /// @notice Same as the function above except that the `totalAssets` value does not have to be recomputed here
-    function _convertToShares(
-        uint256 assets,
-        MathUpgradeable.Rounding rounding
-    ) internal view override returns (uint256 shares) {
-        uint256 supply = totalSupply();
-        return
-            (assets == 0 || supply == 0)
-                ? assets.mulDiv(BASE_18, 10 ** _numDecimals, rounding)
-                : assets.mulDiv(supply, totalAssets(), rounding);
-    }
-
-    /// @notice Same as the function above except that the `totalAssets` value does not have to be recomputed here
-    function _convertToAssets(
-        uint256 shares,
-        MathUpgradeable.Rounding rounding
-    ) internal view override returns (uint256 assets) {
-        uint256 supply = totalSupply();
-        return
-            (supply == 0)
-                ? shares.mulDiv(10 ** _numDecimals, BASE_18, rounding)
-                : shares.mulDiv(totalAssets(), supply, rounding);
-    }
-
-    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         HELPER                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
@@ -293,7 +229,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
         uint256 currentlyVestingProfit = vestingProfit;
         uint256 weightedAssets = vestingPeriod * totalAssets();
         if (currentlyVestingProfit != 0 && weightedAssets != 0)
-            apr = (currentlyVestingProfit * 3600 * 24 * 365 * BASE_9) / weightedAssets;
+            apr = (currentlyVestingProfit * 3600 * 24 * 365 * BASE_18) / weightedAssets;
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

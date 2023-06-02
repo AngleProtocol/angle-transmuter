@@ -146,6 +146,10 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         _saving.setParams(what, paused);
 
         vm.startPrank(alice);
+
+        deal(address(agToken), alice, BASE_18);
+        agToken.approve(address(_saving), BASE_18);
+
         vm.expectRevert(Errors.Paused.selector);
         _saving.deposit(BASE_18, alice);
 
@@ -153,10 +157,14 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         _saving.mint(BASE_18, alice);
 
         vm.expectRevert(Errors.Paused.selector);
-        _saving.redeem(BASE_18, alice, alice);
+        _saving.redeem(_firstDeposit, alice, alice);
 
         vm.expectRevert(Errors.Paused.selector);
-        _saving.withdraw(BASE_18, alice, alice);
+        _saving.withdraw(_firstDeposit, alice, alice);
+
+        _saving.transfer(bob, _firstDeposit);
+        assertEq(_saving.balanceOf(bob), _firstDeposit);
+        assertEq(_saving.balanceOf(alice), 0);
 
         vm.stopPrank();
     }
@@ -310,9 +318,11 @@ contract SavingsVestTest is Fixture, FunctionUtils {
     function testAccrueRandomCollatRatioSimple(
         uint256[3] memory initialAmounts,
         uint64 protocolSafetyFee,
-        uint256[3] memory latestOracleValue
+        uint256[3] memory latestOracleValue,
+        uint256 elapseTimestamps
     ) public {
         protocolSafetyFee = uint64(bound(protocolSafetyFee, 0, BASE_9));
+        elapseTimestamps = bound(elapseTimestamps, 0, _maxElapseTime);
 
         bytes32 what = "PF";
         vm.prank(governor);
@@ -338,6 +348,8 @@ contract SavingsVestTest is Fixture, FunctionUtils {
             assertEq(minted, expectedMint);
             assertEq(_saving.vestingProfit(), minted - shareProtocol);
             assertEq(_saving.lastUpdate(), block.timestamp);
+            // because the vesting period is null
+            assertEq(_saving.totalAssets(), _initDeposit + _firstDeposit + minted - shareProtocol);
             assertEq(agToken.balanceOf(address(_saving)), _initDeposit + _firstDeposit + minted - shareProtocol);
             assertEq(agToken.balanceOf(_surplusManager), shareProtocol);
 
@@ -381,6 +393,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
             assertEq(minted, 0);
             assertEq(_saving.vestingProfit(), 0);
             assertEq(_saving.lastUpdate(), 0);
+            assertEq(_saving.totalAssets(), _initDeposit + _firstDeposit);
             assertEq(agToken.balanceOf(address(_saving)), _initDeposit + _firstDeposit);
             assertEq(agToken.balanceOf(_surplusManager), 0);
 
@@ -470,6 +483,15 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         // Do checks only if the there has been a profit
         if (collatRatio > BASE_9 + BASE_6) {
             skip(elapseTimestamps);
+            assertApproxEqAbs(
+                _saving.totalAssets(),
+                _initDeposit +
+                    _firstDeposit +
+                    (netMinted * (elapseTimestamps > vestingPeriod ? vestingPeriod : elapseTimestamps)) /
+                    vestingPeriod,
+                1 wei
+            );
+
             collatRatio = _updateOracles(latestOracleValue);
 
             uint256 prevLockedProfit = vestingPeriod > elapseTimestamps
@@ -578,12 +600,90 @@ contract SavingsVestTest is Fixture, FunctionUtils {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                          MINT / DEPOSIT / REDEEM / WITHDRAW                                        
+                                                     ESTIMATEDAPR                                                   
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    // From now we consider that lockedProfit and accrue function are working as intended and we only test the process
-    // of minting, depositing, redeeming and withdrawing and checking that it returns the correct amount of tokens considering the
-    // distributed profit.
+    // Testing if the estimatedAPR is empirically correct - by waiting an amount of time and check the increase balance
+    function testEstimatedAPR(
+        uint256[3] memory initialAmounts,
+        uint256[3] memory depositsAmounts,
+        uint64 protocolSafetyFee,
+        uint64 vestingPeriod,
+        uint256[3] memory increaseOracleValue,
+        uint256[3] memory latestOracleValue,
+        uint256[3] memory elapseTimestamps
+    ) public {
+        protocolSafetyFee = uint64(bound(protocolSafetyFee, 0, BASE_9));
+        vestingPeriod = uint64(bound(vestingPeriod, 1, 365 days));
+        for (uint256 i; i < elapseTimestamps.length; i++)
+            elapseTimestamps[i] = bound(elapseTimestamps[i], 0, _maxElapseTime);
+        for (uint256 i; i < depositsAmounts.length; i++) depositsAmounts[i] = bound(depositsAmounts[i], 0, _maxAmount);
+
+        {
+            bytes32 what = "VP";
+            vm.prank(governor);
+            _saving.setParams(what, vestingPeriod);
+
+            what = "PF";
+            vm.prank(governor);
+            _saving.setParams(what, protocolSafetyFee);
+        }
+
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(initialAmounts, 0);
+        if (mintedStables == 0) return;
+
+        _updateIncreaseOracles(increaseOracleValue);
+        _deposit(depositsAmounts[0], bob, bob, 0);
+
+        assertEq(_saving.estimatedAPR(), 0);
+        vm.prank(governor);
+        uint256 minted = _saving.accrue();
+        skip(elapseTimestamps[0]);
+        _updateTimestampOracles();
+        _deposit(depositsAmounts[1], alice, alice, 0);
+        _updateOracles(latestOracleValue);
+        skip(elapseTimestamps[1]);
+        _updateTimestampOracles();
+        vm.prank(governor);
+        minted = _saving.accrue();
+
+        uint256 maxWithdrawAlice = _saving.maxWithdraw(alice);
+        uint256 maxWithdrawBob = _saving.maxWithdraw(bob);
+
+        uint256 estimatedAPR = _saving.estimatedAPR();
+        skip(elapseTimestamps[2]);
+        if (vestingPeriod + _saving.lastUpdate() > block.timestamp) {
+            if (elapseTimestamps[2] < vestingPeriod) {
+                uint256 newWithdrawAlice = maxWithdrawAlice +
+                    (maxWithdrawAlice * estimatedAPR * elapseTimestamps[2]) /
+                    (BASE_18 * (365 days));
+                uint256 newWithdrawBob = maxWithdrawBob +
+                    (maxWithdrawBob * estimatedAPR * elapseTimestamps[2]) /
+                    (BASE_18 * (365 days));
+                if (maxWithdrawAlice > _minAmount)
+                    _assertApproxEqRelDecimalWithTolerance(
+                        _saving.maxWithdraw(alice),
+                        newWithdrawAlice,
+                        newWithdrawAlice,
+                        _MAX_PERCENTAGE_DEVIATION,
+                        18
+                    );
+                if (maxWithdrawBob > _minAmount)
+                    _assertApproxEqRelDecimalWithTolerance(
+                        _saving.maxWithdraw(bob),
+                        newWithdrawBob,
+                        newWithdrawBob,
+                        _MAX_PERCENTAGE_DEVIATION,
+                        18
+                    );
+            }
+        } else if (vestingPeriod == 0) {
+            assertEq(estimatedAPR, 0);
+            assertEq(maxWithdrawAlice, _saving.maxWithdraw(alice));
+            assertEq(maxWithdrawBob, _saving.maxWithdraw(bob));
+        }
+    }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                          UTILS                                                      
@@ -682,23 +782,6 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         vm.stopPrank();
 
         return (shares, receiver);
-    }
-
-    function _mint(
-        uint256 shares,
-        uint256 estimatedAmount,
-        address owner,
-        address receiver,
-        uint256 indexReceiver
-    ) internal returns (uint256, uint256, address) {
-        if (receiver == address(0)) receiver = actors[bound(indexReceiver, 0, _nbrActor - 1)];
-
-        deal(address(agToken), owner, estimatedAmount);
-        vm.startPrank(owner);
-        agToken.approve(address(_saving), estimatedAmount);
-        uint256 amount = _saving.mint(shares, receiver);
-        vm.stopPrank();
-        return (amount, shares, receiver);
     }
 
     function _sweepBalances(address owner, address[] memory tokens) internal {

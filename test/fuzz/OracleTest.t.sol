@@ -225,13 +225,7 @@ contract OracleTest is Fixture, FunctionUtils {
     ) public {
         _updateStakeETHExchangeRates(latestExchangeRateStakeETH);
         _updateOracleValues(latestOracleValue);
-        address[] memory externalOracles = _updateOracles(
-            newChainlinkDecimals,
-            newCircuitChainIsMultiplied,
-            newQuoteType,
-            newReadType,
-            newTargetType
-        );
+        _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
 
         for (uint i; i < _collaterals.length; i++) {
             (, , , uint256 redemption) = transmuter.getOracleValues(address(_collaterals[i]));
