@@ -436,12 +436,11 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         // This would be the case if the number of unit of stable is of order 10**20 making the normalisedStables (global) overflow
         if (minted + mintedStables > (uint256(type(uint128).max) * 999) / 1000) return;
 
-        if (collatRatio > BASE_9 + BASE_6) {
+        if (minted > 0) {
             skip(elapseTimestamps);
             _updateTimestampOracles();
             if (elapseTimestamps < updateDelay) vm.expectRevert(Errors.NotAllowed.selector);
             _saving.accrue();
-            vm.stopPrank();
         }
     }
 
