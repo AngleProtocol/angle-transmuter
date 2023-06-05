@@ -6,8 +6,9 @@ import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
 import "../Fixture.sol";
 import "../utils/FunctionUtils.sol";
 import "../utils/FunctionUtils.sol";
-import "contracts/utils/Errors.sol";
+import "contracts/utils/Errors.sol" as Errors;
 import { stdError } from "forge-std/Test.sol";
+import { ManagerStorage, ManagerType } from "contracts/transmuter/Storage.sol";
 
 contract BurnTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
@@ -848,6 +849,55 @@ contract BurnTest is Fixture, FunctionUtils {
 
         assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken] - stableAmount, 1 wei);
         assertApproxEqAbs(newStableAmount, mintedStables - stableAmount, 1 wei);
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                   BURN WITH MANAGER                                                
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+    function testBurnMaxAvailableManager(uint256[3] memory initialAmounts, uint256 stableAmount) public {
+        // create a manager to be above the maxAvailable
+        MockManager manager = new MockManager(_collaterals[0]);
+        IERC20[] memory subCollaterals = new IERC20[](1);
+        AggregatorV3Interface[] memory oracles = new AggregatorV3Interface[](1);
+        subCollaterals[0] = IERC20(_collaterals[0]);
+        uint8[] memory decimals = new uint8[](1);
+        decimals[0] = IERC20Metadata(_collaterals[0]).decimals();
+        uint32[] memory stalePeriods = new uint32[](1);
+        uint8[] memory oracleIsMultiplied = new uint8[](1);
+        uint8[] memory chainlinkDecimals = new uint8[](1);
+        oracles[0] = oracleA;
+        stalePeriods[0] = 365 days;
+        oracleIsMultiplied[0] = 1;
+        chainlinkDecimals[0] = 8;
+
+        manager.setSubCollaterals(
+            subCollaterals,
+            abi.encode(decimals, oracles, stalePeriods, oracleIsMultiplied, chainlinkDecimals)
+        );
+        ManagerStorage memory managerData = ManagerStorage(
+            subCollaterals,
+            abi.encode(ManagerType.EXTERNAL, abi.encode(IManager(address(manager))))
+        );
+        vm.prank(governor);
+        transmuter.setCollateralManager(_collaterals[0], managerData);
+        // done
+
+        // let's first load the reserves of the protocol
+        (, uint256[] memory collateralMintedStables) = _loadReserves(alice, address(0), initialAmounts, 0);
+        if (collateralMintedStables[0] == 0) return;
+
+        // artificially make the manager maxAvailable to 0
+        deal(_collaterals[0], address(manager), 0);
+
+        stableAmount = bound(stableAmount, 0, collateralMintedStables[0]);
+        if (stableAmount == 0) return;
+
+        vm.expectRevert(Errors.InvalidSwap.selector);
+        transmuter.quoteIn(stableAmount, address(agToken), _collaterals[0]);
+        vm.startPrank(alice);
+        vm.expectRevert(Errors.InvalidSwap.selector);
+        transmuter.swapExactInput(stableAmount, 0, address(agToken), _collaterals[0], alice, block.timestamp * 2);
+        vm.stopPrank();
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
