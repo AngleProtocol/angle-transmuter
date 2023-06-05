@@ -58,6 +58,10 @@ enum OracleTargetType {
     SFRXETH
 }
 
+enum WhitelistType {
+    BACKED
+}
+
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     STRUCTS                                                     
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
@@ -94,7 +98,8 @@ struct Collateral {
     uint8 isMintLive;                            // If minting from this asset is unpaused
     uint8 isBurnLive;                            // If burning to this asset is unpaused
     uint8 decimals;                              // IERC20Metadata(collateral).decimals()
-    uint224 normalizedStables;                   // Normalized amount of stablecoins issued from this collateral
+    uint8 onlyWhitelisted;                       // If only whitelisted addresses can burn or redeem for this token
+    uint216 normalizedStables;                   // Normalized amount of stablecoins issued from this collateral
     uint64[] xFeeMint;                           // Increasing exposures in [0,BASE_9[
     int64[] yFeeMint;                            // Mint fees at the exposures specified in `xFeeMint`
     uint64[] xFeeBurn;                           // Decreasing exposures in ]0,BASE_9]
@@ -114,4 +119,6 @@ struct TransmuterStorage {
     mapping(address => Collateral) collaterals;  // Maps a collateral asset to its parameters
     mapping(address => uint256) isTrusted;       // If an address is trusted to update the normalizer value
     mapping(address => uint256) isSellerTrusted; // If an address is trusted to sell accruing reward tokens
+    mapping(WhitelistType => mapping(address => uint256)) isWhitelistedForType;
+                                                 // Whether an address is whitelisted for a specific whitelist type
 }

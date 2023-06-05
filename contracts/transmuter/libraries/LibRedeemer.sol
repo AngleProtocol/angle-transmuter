@@ -204,7 +204,7 @@ library LibRedeemer {
             // For each asset, we store the actual amount of stablecoins issued based on the newNormalizerValue
             // (and not a normalized value)
             for (uint256 i; i < collateralListLength; ++i) {
-                ks.collaterals[collateralListMem[i]].normalizedStables = uint224(
+                ks.collaterals[collateralListMem[i]].normalizedStables = uint216(
                     (ks.collaterals[collateralListMem[i]].normalizedStables * newNormalizerValue) / BASE_27
                 );
             }

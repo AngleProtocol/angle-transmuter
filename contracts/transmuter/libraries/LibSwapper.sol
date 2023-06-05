@@ -61,7 +61,7 @@ library LibSwapper {
             uint128 changeAmount = uint128(amountOut.mulDiv(BASE_27, ks.normalizer, Math.Rounding.Up));
             // The amount of stablecoins issued from a collateral are not stored as absolute variables, but
             // as variables normalized by a `normalizer`
-            ks.collaterals[tokenIn].normalizedStables += uint224(changeAmount);
+            ks.collaterals[tokenIn].normalizedStables += uint216(changeAmount);
             ks.normalizedStables += changeAmount;
             if (amountIn > 0) {
                 // TODO Cache if variable
@@ -75,7 +75,7 @@ library LibSwapper {
                 uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
                 // This will underflow when the system is trying to burn more stablecoins than what has been issued
                 // from this collateral
-                ks.collaterals[tokenOut].normalizedStables -= uint224(changeAmount);
+                ks.collaterals[tokenOut].normalizedStables -= uint216(changeAmount);
                 ks.normalizedStables -= changeAmount;
             }
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
@@ -158,7 +158,7 @@ library LibSwapper {
 
             uint256 normalizerMem = ks.normalizer;
             // Store the current amount of stablecoins issued from this collateral
-            collatInfo.normalizedStables = uint224((uint256(collatInfo.normalizedStables) * normalizerMem) / BASE_27);
+            collatInfo.normalizedStables = uint216((uint256(collatInfo.normalizedStables) * normalizerMem) / BASE_27);
             v.otherStablecoinSupply = (normalizerMem * normalizedStablesMem) / BASE_27 - collatInfo.normalizedStables;
         }
 
@@ -301,8 +301,8 @@ library LibSwapper {
                     ++i;
                     // Update for the rest of the swaps the stablecoins issued from the asset
                     collatInfo.normalizedStables = v.isMint
-                        ? collatInfo.normalizedStables + uint224(v.amountToNextBreakPoint)
-                        : collatInfo.normalizedStables - uint224(v.amountToNextBreakPoint);
+                        ? collatInfo.normalizedStables + uint216(v.amountToNextBreakPoint)
+                        : collatInfo.normalizedStables - uint216(v.amountToNextBreakPoint);
                 }
             }
         }

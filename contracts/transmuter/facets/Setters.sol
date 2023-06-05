@@ -140,10 +140,10 @@ contract Setters is AccessControlModifiers, ISetters {
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         if (addOrRemove) {
-            collatInfo.normalizedStables += uint224(amount);
+            collatInfo.normalizedStables += uint216(amount);
             ks.normalizedStables += amount;
         } else {
-            collatInfo.normalizedStables -= uint224(amount);
+            collatInfo.normalizedStables -= uint216(amount);
             ks.normalizedStables -= amount;
         }
         emit ReservesAdjusted(collateral, amount, addOrRemove);
