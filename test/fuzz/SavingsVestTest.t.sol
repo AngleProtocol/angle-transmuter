@@ -430,7 +430,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(initialAmounts, 0);
         if (mintedStables == 0) return;
 
-        uint64 collatRatio = _updateOraclesWithAsserts(latestOracleValue, mintedStables, collateralMintedStables);
+        _updateOraclesWithAsserts(latestOracleValue, mintedStables, collateralMintedStables);
         vm.prank(governor);
         uint256 minted = _saving.accrue();
         // This would be the case if the number of unit of stable is of order 10**20 making the normalisedStables (global) overflow
@@ -629,7 +629,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         }
 
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(initialAmounts, 0);
+        (uint256 mintedStables, ) = _loadReserves(initialAmounts, 0);
         if (mintedStables == 0) return;
 
         _updateIncreaseOracles(increaseOracleValue);

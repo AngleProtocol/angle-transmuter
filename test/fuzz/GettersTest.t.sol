@@ -47,7 +47,6 @@ contract GettersTest is Fixture, FunctionUtils {
 
     function testAccessControl() public {
         IAccessControlManager accessControlManagerTransmuter = transmuter.accessControlManager();
-        IAgToken agTokenTransmuter = transmuter.agToken();
         assertEq(true, accessControlManagerTransmuter.isGovernor(governor));
         assertEq(false, accessControlManagerTransmuter.isGovernor(guardian));
         assertEq(false, accessControlManagerTransmuter.isGovernor(alice));
