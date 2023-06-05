@@ -322,8 +322,12 @@ contract BurnTest is Fixture, FunctionUtils {
             IERC20Metadata(_collaterals[fromToken]).decimals()
         );
 
+        if (burnFee >= int256((BASE_9 * 999) / 1000)) vm.expectRevert(Errors.InvalidSwap.selector);
         uint256 amountOut = transmuter.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
+        if (burnFee >= int256((BASE_9 * 999) / 1000)) vm.expectRevert(Errors.InvalidSwap.selector);
         uint256 reflexiveBurnAmount = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
+        if (burnFee >= int256((BASE_9 * 999) / 1000)) return;
+
         assertEq(supposedAmountOut, amountOut);
         if (amountOut > _minWallet) {
             _assertApproxEqRelDecimalWithTolerance(
