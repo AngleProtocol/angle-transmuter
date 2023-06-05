@@ -6,7 +6,7 @@ pragma solidity >=0.5.0;
 /// @author Angle Labs, Inc.
 interface IManager {
     /// @notice Transfers `amount` of `token` to the `to` address
-    function transfer(address token, address to, uint256 amount) external;
+    function transferTo(address token, address to, uint256 amount) external;
 
     /// @notice Withdraw from strategies if it does not have funds immediately available and transfers `amount`
     /// of `token` to the `to` address

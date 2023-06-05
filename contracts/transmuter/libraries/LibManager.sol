@@ -22,7 +22,7 @@ library LibManager {
     /// with it
     function transferTo(address token, address to, uint256 amount, ManagerStorage memory managerData) internal {
         (ManagerType managerType, bytes memory data) = parseManagerData(managerData);
-        if (managerType == ManagerType.EXTERNAL) abi.decode(data, (IManager)).transfer(token, to, amount);
+        if (managerType == ManagerType.EXTERNAL) abi.decode(data, (IManager)).transferTo(token, to, amount);
     }
 
     /// @notice Performs a transfer of `token` for a collateral that is managed to a `to` address

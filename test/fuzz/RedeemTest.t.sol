@@ -764,6 +764,14 @@ contract RedeemTest is Fixture, FunctionUtils {
                     (mintedStables - amountBurntBob)) / (mintedStables + amountBurnt);
 
                 _assertApproxEqRelDecimalWithTolerance(
+                    realStableIssueByCollateralLeft,
+                    stableIssuedByCollateral,
+                    realStableIssueByCollateralLeft,
+                    _MAX_PERCENTAGE_DEVIATION,
+                    18
+                );
+
+                _assertApproxEqRelDecimalWithTolerance(
                     mintedStables - amountBurntBob,
                     totalStable2,
                     mintedStables - amountBurntBob,
