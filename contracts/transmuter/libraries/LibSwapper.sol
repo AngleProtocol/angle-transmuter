@@ -56,35 +56,33 @@ library LibSwapper {
         uint8 isManaged,
         bool mint
     ) internal {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        if (mint) {
-            uint128 changeAmount = uint128(amountOut.mulDiv(BASE_27, ks.normalizer, Math.Rounding.Up));
-            // The amount of stablecoins issued from a collateral are not stored as absolute variables, but
-            // as variables normalized by a `normalizer`
-            ks.collaterals[tokenIn].normalizedStables += uint216(changeAmount);
-            ks.normalizedStables += changeAmount;
-            if (amountIn > 0) {
+        if (amountIn > 0 && amountOut > 0) {
+            TransmuterStorage storage ks = s.transmuterStorage();
+            if (mint) {
+                uint128 changeAmount = uint128(amountOut.mulDiv(BASE_27, ks.normalizer, Math.Rounding.Up));
+                // The amount of stablecoins issued from a collateral are not stored as absolute variables, but
+                // as variables normalized by a `normalizer`
+                ks.collaterals[tokenIn].normalizedStables += uint216(changeAmount);
+                ks.normalizedStables += changeAmount;
                 if (isManaged > 0) LibManager.transferFrom(tokenIn, amountIn, ks.collaterals[tokenIn].managerData);
                 else IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
-            }
-            IAgToken(tokenOut).mint(to, amountOut);
-        } else {
-            {
-                uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
-                // This will underflow when the system is trying to burn more stablecoins than what has been issued
-                // from this collateral
-                ks.collaterals[tokenOut].normalizedStables -= uint216(changeAmount);
-                ks.normalizedStables -= changeAmount;
-            }
-            IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
+                IAgToken(tokenOut).mint(to, amountOut);
+            } else {
+                {
+                    uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
+                    // This will underflow when the system is trying to burn more stablecoins than what has been issued
+                    // from this collateral
+                    ks.collaterals[tokenOut].normalizedStables -= uint216(changeAmount);
+                    ks.normalizedStables -= changeAmount;
+                }
+                IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
 
-            if (amountOut > 0) {
                 if (isManaged > 0)
                     LibManager.withdrawAndTransferTo(tokenOut, to, amountOut, ks.collaterals[tokenOut].managerData);
                 else IERC20(tokenOut).safeTransfer(to, amountOut);
             }
+            emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
         }
-        emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
     }
 
     /// @notice Computes the `amountOut` of stablecoins to mint from `tokenIn` of a collateral with data `collatInfo`
