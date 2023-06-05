@@ -12,6 +12,7 @@ import { LibHelpers } from "./LibHelpers.sol";
 import { LibManager } from "./LibManager.sol";
 import { LibOracle } from "./LibOracle.sol";
 import { LibStorage as s } from "./LibStorage.sol";
+import { LibWhitelist } from "./LibWhitelist.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -58,14 +59,12 @@ library LibRedeemer {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             // If a token is in the `forfeitTokens` list, then it is not sent as part of the redemption process
             if (amounts[i] > 0 && LibHelpers.checkList(tokens[i], forfeitTokens) < 0) {
-                // TODO Cache if we can avoid stack too deep
-                if (ks.collaterals[collateralListMem[indexCollateral]].isManaged > 0) {
-                    LibManager.transferTo(
-                        tokens[i],
-                        to,
-                        amounts[i],
-                        ks.collaterals[collateralListMem[indexCollateral]].managerData
-                    );
+                Collateral storage collatInfo = ks.collaterals[collateralListMem[indexCollateral]];
+                if (
+                    collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, msg.sender)
+                ) revert NotWhitelisted();
+                if (collatInfo.isManaged > 0) {
+                    LibManager.transferTo(tokens[i], to, amounts[i], collatInfo.managerData);
                 } else IERC20(tokens[i]).safeTransfer(to, amounts[i]);
             }
             if (subCollateralsTracker[indexCollateral] - 1 <= i) ++indexCollateral;
@@ -192,7 +191,8 @@ library LibRedeemer {
         /*
              _normalizer * (BASE_27 + BASE_27 * amount / stablecoinsIssued) / BASE_27 = 
                 _normalizer + (_normalizer * BASE_27 * amount * (BASE_27 / (_normalizedStables * normalizer))) / BASE_27
-        */
+            */
+        // `_normalizedStables` can never be left to 0
         if (increase) newNormalizerValue = _normalizer + (amount * BASE_27) / _normalizedStables;
         else newNormalizerValue = _normalizer - (amount * BASE_27) / _normalizedStables;
         // If the `normalizer` gets too small or too big, it must be renormalized to later avoid the propagation of

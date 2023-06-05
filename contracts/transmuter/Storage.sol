@@ -59,7 +59,8 @@ enum OracleTargetType {
 }
 
 enum WhitelistType {
-    BACKED
+    BACKED,
+    EXTERNAL
 }
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -105,6 +106,7 @@ struct Collateral {
     uint64[] xFeeBurn;                           // Decreasing exposures in ]0,BASE_9]
     int64[] yFeeBurn;                            // Burn fees at the exposures specified in `xFeeBurn`
     bytes oracleConfig;                          // Data about the oracle used for the collateral
+    bytes whitelistData;                         // For whitelisted collateral, data used to verify whitelists
     ManagerStorage managerData;                  // For managed collateral, data used to handle the strategies
 }
 

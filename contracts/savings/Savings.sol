@@ -64,18 +64,15 @@ contract Savings is ERC4626Upgradeable, AccessControl {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Inflation rate (per second) in BASE_27
-    uint256 public rate;
+    uint208 public rate;
 
     /// @notice Last time rewards were accrued
-    uint64 public lastUpdate;
+    uint40 public lastUpdate;
 
     /// @notice Whether the contract is paused or not
     uint8 public paused;
 
-    /// @notice Number of decimals for `_asset`
-    uint184 internal _assetDecimals;
-
-    uint256[46] private __gap;
+    uint256[49] private __gap;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         EVENTS                                                      
@@ -110,9 +107,7 @@ contract Savings is ERC4626Upgradeable, AccessControl {
         __ERC4626_init(asset_);
         __ERC20_init(_name, _symbol);
         accessControlManager = _accessControlManager;
-        uint184 numDecimals = uint184(10 ** (asset_.decimals()));
-        _assetDecimals = numDecimals;
-        _deposit(msg.sender, address(this), numDecimals / divizer, BASE_18 / divizer);
+        _deposit(msg.sender, address(this), 10 ** (asset_.decimals()) / divizer, BASE_18 / divizer);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -133,7 +128,7 @@ contract Savings is ERC4626Upgradeable, AccessControl {
     function _accrue() internal returns (uint256 newTotalAssets) {
         uint256 currentBalance = super.totalAssets();
         newTotalAssets = _computeUpdatedAssets(currentBalance, block.timestamp - lastUpdate);
-        lastUpdate = uint64(block.timestamp);
+        lastUpdate = uint40(block.timestamp);
         uint256 earned = newTotalAssets - currentBalance;
         if (earned > 0) {
             IAgToken(asset()).mint(address(this), earned);
@@ -225,7 +220,7 @@ contract Savings is ERC4626Upgradeable, AccessControl {
         uint256 supply = totalSupply();
         return
             (assets == 0 || supply == 0)
-                ? assets.mulDiv(BASE_18, _assetDecimals, rounding)
+                ? assets.mulDiv(BASE_18, 10 ** (IERC20MetadataUpgradeable(asset()).decimals()), rounding)
                 : assets.mulDiv(supply, newTotalAssets, rounding);
     }
 
@@ -246,7 +241,7 @@ contract Savings is ERC4626Upgradeable, AccessControl {
         uint256 supply = totalSupply();
         return
             (supply == 0)
-                ? shares.mulDiv(_assetDecimals, BASE_18, rounding)
+                ? shares.mulDiv(10 ** (IERC20MetadataUpgradeable(asset()).decimals()), BASE_18, rounding)
                 : shares.mulDiv(newTotalAssets, supply, rounding);
     }
 
@@ -277,7 +272,7 @@ contract Savings is ERC4626Upgradeable, AccessControl {
     }
 
     /// @notice Updates the inflation rate for depositing `asset` in this contract
-    function setRate(uint256 newRate) external onlyGovernor {
+    function setRate(uint208 newRate) external onlyGovernor {
         _accrue();
         rate = newRate;
         emit RateUpdated(newRate);

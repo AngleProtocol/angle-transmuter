@@ -15,6 +15,7 @@ import { LibManager } from "../libraries/LibManager.sol";
 import { LibRedeemer } from "../libraries/LibRedeemer.sol";
 import { LibSetters } from "../libraries/LibSetters.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
+import { LibWhitelist } from "../libraries/LibWhitelist.sol";
 import { AccessControlModifiers } from "./AccessControlModifiers.sol";
 
 import "../../utils/Constants.sol";
@@ -32,6 +33,7 @@ contract Setters is AccessControlModifiers, ISetters {
     event RedemptionCurveParamsSet(uint64[] xFee, int64[] yFee);
     event ReservesAdjusted(address indexed collateral, uint256 amount, bool addOrRemove);
     event TrustedToggled(address indexed sender, bool isTrusted, TrustedType trustedType);
+    event WhitelistStatusToggled(WhitelistType whitelistType, address indexed who, uint256 whitelistStatus);
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                   GUARDIAN FUNCTIONS                                                
@@ -54,6 +56,14 @@ contract Setters is AccessControlModifiers, ISetters {
         ks.xRedemptionCurve = xFee;
         ks.yRedemptionCurve = yFee;
         emit RedemptionCurveParamsSet(xFee, yFee);
+    }
+
+    /// @inheritdoc ISetters
+    function toggleWhitelist(WhitelistType whitelistType, address who) external onlyGuardian {
+        TransmuterStorage storage ks = s.transmuterStorage();
+        uint256 whitelistStatus = 1 - ks.isWhitelistedForType[whitelistType][who];
+        ks.isWhitelistedForType[whitelistType][who] = whitelistStatus;
+        emit WhitelistStatusToggled(whitelistType, who, whitelistStatus);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -175,6 +185,15 @@ contract Setters is AccessControlModifiers, ISetters {
     /// @inheritdoc ISetters
     function setOracle(address collateral, bytes memory oracleConfig) external onlyGovernor {
         LibSetters.setOracle(collateral, oracleConfig);
+    }
+
+    /// @inheritdoc ISetters
+    function setWhitelistStatus(
+        address collateral,
+        uint8 whitelistStatus,
+        bytes memory whitelistData
+    ) external onlyGovernor {
+        LibSetters.setWhitelistStatus(collateral, whitelistStatus, whitelistData);
     }
 
     /// @inheritdoc ISetters

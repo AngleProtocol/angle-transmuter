@@ -10,6 +10,7 @@ import { ITransmuter } from "contracts/interfaces/ITransmuter.sol";
 import "contracts/utils/Errors.sol" as Errors;
 import "contracts/savings/SavingsVest.sol";
 import { UD60x18, ud, pow, powu, unwrap } from "prb/math/UD60x18.sol";
+import { TrustedType } from "contracts/transmuter/Storage.sol";
 
 import { stdError } from "forge-std/Test.sol";
 
@@ -94,7 +95,9 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         );
 
         _saving.setSurplusManager(_surplusManager);
-        transmuter.toggleTrusted(address(_saving), 0);
+        TrustedType trustedType;
+        trustedType = TrustedType.Updater;
+        transmuter.toggleTrusted(address(_saving), trustedType);
         vm.stopPrank();
 
         _deposit(_firstDeposit, alice, alice, 0);
@@ -433,7 +436,8 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         _updateOraclesWithAsserts(latestOracleValue, mintedStables, collateralMintedStables);
         vm.prank(governor);
         uint256 minted = _saving.accrue();
-        // This would be the case if the number of unit of stable is of order 10**20 making the normalisedStables (global) overflow
+        // This would be the case if the number of unit of stable is of order 10**20 making
+        // the normalisedStables (global) overflow
         if (minted + mintedStables > (uint256(type(uint128).max) * 999) / 1000) return;
 
         if (minted > 0) {

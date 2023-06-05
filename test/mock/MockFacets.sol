@@ -29,13 +29,13 @@ bytes32 constant NEW_STORAGE_POSITION = keccak256("new.storage");
 
 contract MockInitializer {
     function initialize() external {
-        NewStorageExpanded storage s;
+        NewStorageExpanded storage newStorage;
         bytes32 position = NEW_STORAGE_POSITION;
         assembly {
-            s.slot := position
+            newStorage.slot := position
         }
-        s.slot1 = 2;
-        s.slot2 = 20; // This eventually corresponds to nothing
+        newStorage.slot1 = 2;
+        newStorage.slot2 = 20; // This eventually corresponds to nothing
     }
 
     function initializeRevert() external pure returns (uint256) {
@@ -66,23 +66,23 @@ contract MockPureFacet is IMockFacet {
 contract MockWriteFacet is IMockFacet {
     // Reads the new struct
     function newFunction() external view returns (uint256) {
-        NewStorage storage s;
+        NewStorage storage newStorage;
         bytes32 position = NEW_STORAGE_POSITION;
         assembly {
-            s.slot := position
+            newStorage.slot := position
         }
-        return s.slot1;
+        return newStorage.slot1;
     }
 
     // Write 1 in the new struct
     function newFunction2() external returns (uint256) {
-        NewStorage storage s;
+        NewStorage storage newStorage;
         bytes32 position = NEW_STORAGE_POSITION;
         assembly {
-            s.slot := position
+            newStorage.slot := position
         }
-        s.slot1 = 1;
-        return s.slot1;
+        newStorage.slot1 = 1;
+        return newStorage.slot1;
     }
 }
 
@@ -94,22 +94,22 @@ struct NewStorageExpanded {
 contract MockWriteExpanded is IMockFacet {
     // Reads the new struct
     function newFunction() external view returns (uint256) {
-        NewStorageExpanded storage s;
+        NewStorageExpanded storage newStorage;
         bytes32 position = NEW_STORAGE_POSITION;
         assembly {
-            s.slot := position
+            newStorage.slot := position
         }
-        return s.slot1;
+        return newStorage.slot1;
     }
 
     // Write 1 in the new struct
-    function newFunction2() external returns (uint256) {
-        NewStorageExpanded storage s;
+    function newFunction2() external view returns (uint256) {
+        NewStorageExpanded storage newStorage;
         bytes32 position = NEW_STORAGE_POSITION;
         assembly {
-            s.slot := position
+            newStorage.slot := position
         }
-        return s.slot2;
+        return newStorage.slot2;
     }
 }
 

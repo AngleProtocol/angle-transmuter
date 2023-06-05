@@ -7,6 +7,7 @@ import "oz/token/ERC20/extensions/IERC20Metadata.sol";
 import { LibHelpers } from "./LibHelpers.sol";
 import { LibOracle } from "./LibOracle.sol";
 import { LibStorage as s } from "./LibStorage.sol";
+import { LibWhitelist } from "./LibWhitelist.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -16,6 +17,7 @@ import "../Storage.sol";
 /// @author Angle Labs, Inc.
 library LibSetters {
     event CollateralAdded(address indexed collateral);
+    event CollateralWhitelistStatusUpdated(address indexed collateral, bytes whitelistData, uint8 whitelistStatus);
     event FeesSet(address indexed collateral, uint64[] xFee, int64[] yFee, bool mint);
     event OracleSet(address indexed collateral, bytes oracleConfig);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -37,6 +39,18 @@ library LibSetters {
         collatInfo.decimals = uint8(IERC20Metadata(collateral).decimals());
         ks.collateralList.push(collateral);
         emit CollateralAdded(collateral);
+    }
+
+    /// @notice Internal version of `setWhitelistStatus`
+    function setWhitelistStatus(address collateral, uint8 whitelistStatus, bytes memory whitelistData) internal {
+        Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
+        if (whitelistStatus == 1) {
+            // Sanity check
+            LibWhitelist.parseWhitelistData(whitelistData);
+            collatInfo.whitelistData = whitelistData;
+        }
+        collatInfo.onlyWhitelisted = whitelistStatus;
+        emit CollateralWhitelistStatusUpdated(collateral, whitelistData, whitelistStatus);
     }
 
     /// @notice Internal version of `setOracle`

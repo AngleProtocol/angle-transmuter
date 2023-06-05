@@ -12,6 +12,7 @@ import { LibHelpers } from "./LibHelpers.sol";
 import { LibManager } from "./LibManager.sol";
 import { LibOracle } from "./LibOracle.sol";
 import { LibStorage as s } from "./LibStorage.sol";
+import { LibWhitelist } from "./LibWhitelist.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -52,11 +53,10 @@ library LibSwapper {
         address tokenIn,
         address tokenOut,
         address to,
-        uint256 deadline,
+        uint8 isManaged,
         bool mint
     ) internal {
         TransmuterStorage storage ks = s.transmuterStorage();
-        if (block.timestamp > deadline) revert TooLate();
         if (mint) {
             uint128 changeAmount = uint128(amountOut.mulDiv(BASE_27, ks.normalizer, Math.Rounding.Up));
             // The amount of stablecoins issued from a collateral are not stored as absolute variables, but
@@ -64,9 +64,7 @@ library LibSwapper {
             ks.collaterals[tokenIn].normalizedStables += uint216(changeAmount);
             ks.normalizedStables += changeAmount;
             if (amountIn > 0) {
-                // TODO Cache if variable
-                if (ks.collaterals[tokenIn].isManaged > 0)
-                    LibManager.transferFrom(tokenIn, amountIn, ks.collaterals[tokenIn].managerData);
+                if (isManaged > 0) LibManager.transferFrom(tokenIn, amountIn, ks.collaterals[tokenIn].managerData);
                 else IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
             }
             IAgToken(tokenOut).mint(to, amountOut);
@@ -81,7 +79,7 @@ library LibSwapper {
             IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
 
             if (amountOut > 0) {
-                if (ks.collaterals[tokenOut].isManaged > 0)
+                if (isManaged > 0)
                     LibManager.withdrawAndTransferTo(tokenOut, to, amountOut, ks.collaterals[tokenOut].managerData);
                 else IERC20(tokenOut).safeTransfer(to, amountOut);
             }
@@ -413,6 +411,8 @@ library LibSwapper {
             collatInfo = ks.collaterals[tokenOut];
             mint = false;
             if (collatInfo.isBurnLive == 0) revert Paused();
+            if (collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, msg.sender))
+                revert NotWhitelisted();
         } else if (tokenOut == _agToken) {
             collatInfo = ks.collaterals[tokenIn];
             mint = true;
