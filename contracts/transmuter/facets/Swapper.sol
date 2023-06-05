@@ -39,6 +39,7 @@ contract Swapper is ISwapper {
         address to,
         uint256 deadline
     ) external returns (uint256 amountOut) {
+        if (block.timestamp > deadline) revert TooLate();
         // Check whether this is a mint or a burn operation, and whether the collateral provided
         // is paused or not
         (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut);
@@ -48,7 +49,7 @@ contract Swapper is ISwapper {
             : LibSwapper.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
         if (amountOut < amountOutMin) revert TooSmallAmountOut();
         // Once the exact amounts are known, the system needs to update its internal metrics and process the transfers
-        LibSwapper.swap(collatInfo, amountIn, amountOut, tokenIn, tokenOut, to, deadline, mint);
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, collatInfo.isManaged, mint);
     }
 
     /// @inheritdoc ISwapper
@@ -62,12 +63,13 @@ contract Swapper is ISwapper {
         address to,
         uint256 deadline
     ) external returns (uint256 amountIn) {
+        if (block.timestamp > deadline) revert TooLate();
         (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut);
         amountIn = mint
             ? LibSwapper.quoteMintExactOutput(collatInfo, amountOut)
             : LibSwapper.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         if (amountIn > amountInMax) revert TooBigAmountIn();
-        LibSwapper.swap(collatInfo, amountIn, amountOut, tokenIn, tokenOut, to, deadline, mint);
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, collatInfo.isManaged, mint);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -79,6 +81,8 @@ contract Swapper is ISwapper {
     /// In case of a burn, they will also revert if the system does not have enough of `amountOut` for `tokenOut`.
     /// This balance must be available either directly on the contract or through the underlying strategies that manage
     /// the collateral.
+    /// In case of a burn again, they will also revert if the call concerns a collateral that requires a whitelist but
+    /// the calling address does not have it.
 
     /// @inheritdoc ISwapper
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256 amountOut) {

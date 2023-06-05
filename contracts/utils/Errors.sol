@@ -27,6 +27,7 @@ error NotCollateral();
 error NotGovernor();
 error NotGovernorOrGuardian();
 error NotTrusted();
+error NotWhitelisted();
 error OneInchSwapFailed();
 error Paused();
 error RemoveFacetAddressMustBeZeroAddress(address _facetAddress);

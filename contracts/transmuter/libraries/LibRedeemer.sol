@@ -12,6 +12,7 @@ import { LibHelpers } from "./LibHelpers.sol";
 import { LibManager } from "./LibManager.sol";
 import { LibOracle } from "./LibOracle.sol";
 import { LibStorage as s } from "./LibStorage.sol";
+import { LibWhitelist } from "./LibWhitelist.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -42,6 +43,7 @@ library LibRedeemer {
         address[] memory forfeitTokens
     ) internal returns (address[] memory tokens, uint256[] memory amounts) {
         TransmuterStorage storage ks = s.transmuterStorage();
+        if (ks.isRedemptionLive == 0) revert Paused();
         if (block.timestamp > deadline) revert TooLate();
         uint256[] memory subCollateralsTracker;
         (tokens, amounts, subCollateralsTracker) = quoteRedemptionCurve(amount);
@@ -56,17 +58,14 @@ library LibRedeemer {
         for (uint256 i; i < amounts.length; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             // If a token is in the `forfeitTokens` list, then it is not sent as part of the redemption process
-            if (LibHelpers.checkList(tokens[i], forfeitTokens) < 0) {
-                ManagerStorage memory emptyManagerData;
-                LibHelpers.transferCollateralTo(
-                    tokens[i],
-                    to,
-                    amounts[i],
-                    true,
-                    ks.collaterals[collateralListMem[indexCollateral]].isManaged > 0
-                        ? ks.collaterals[collateralListMem[indexCollateral]].managerData
-                        : emptyManagerData
-                );
+            if (amounts[i] > 0 && LibHelpers.checkList(tokens[i], forfeitTokens) < 0) {
+                Collateral storage collatInfo = ks.collaterals[collateralListMem[indexCollateral]];
+                if (
+                    collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, msg.sender)
+                ) revert NotWhitelisted();
+                if (collatInfo.isManaged > 0) {
+                    LibManager.transferTo(tokens[i], to, amounts[i], collatInfo.managerData);
+                } else IERC20(tokens[i]).safeTransfer(to, amounts[i]);
             }
             if (subCollateralsTracker[indexCollateral] - 1 <= i) ++indexCollateral;
         }
@@ -188,14 +187,13 @@ library LibRedeemer {
         TransmuterStorage storage ks = s.transmuterStorage();
         uint256 _normalizer = ks.normalizer;
         uint256 _normalizedStables = ks.normalizedStables;
-        if (_normalizedStables == 0)
-            newNormalizerValue = BASE_27;
-            // In case of an increase, the update formula used is the simplified version of the formula below:
-            /*
+        // In case of an increase, the update formula used is the simplified version of the formula below:
+        /*
              _normalizer * (BASE_27 + BASE_27 * amount / stablecoinsIssued) / BASE_27 = 
                 _normalizer + (_normalizer * BASE_27 * amount * (BASE_27 / (_normalizedStables * normalizer))) / BASE_27
             */
-        else if (increase) newNormalizerValue = _normalizer + (amount * BASE_27) / _normalizedStables;
+        // `_normalizedStables` can never be left to 0
+        if (increase) newNormalizerValue = _normalizer + (amount * BASE_27) / _normalizedStables;
         else newNormalizerValue = _normalizer - (amount * BASE_27) / _normalizedStables;
         // If the `normalizer` gets too small or too big, it must be renormalized to later avoid the propagation of
         // rounding errors, as well as overflows. In this rare case, the function has to iterate through all the
@@ -206,7 +204,7 @@ library LibRedeemer {
             // For each asset, we store the actual amount of stablecoins issued based on the newNormalizerValue
             // (and not a normalized value)
             for (uint256 i; i < collateralListLength; ++i) {
-                ks.collaterals[collateralListMem[i]].normalizedStables = uint224(
+                ks.collaterals[collateralListMem[i]].normalizedStables = uint216(
                     (ks.collaterals[collateralListMem[i]].normalizedStables * newNormalizerValue) / BASE_27
                 );
             }

@@ -123,8 +123,7 @@ contract SavingsVest is ERC4626Upgradeable, AccessControl {
         __ERC20_init(_name, _symbol);
         transmuter = _transmuter;
         accessControlManager = _accessControlManager;
-        uint8 numDecimals = asset_.decimals();
-        _deposit(msg.sender, address(this), 10 ** numDecimals / divizer, BASE_18 / divizer);
+        _deposit(msg.sender, address(this), 10 ** asset_.decimals() / divizer, BASE_18 / divizer);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

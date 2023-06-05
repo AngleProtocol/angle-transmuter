@@ -27,6 +27,13 @@ interface ISetters {
     /// @notice Changes the trusted status for `sender` when for selling rewards or updating the normalizer
     function toggleTrusted(address sender, uint8 trustedType) external;
 
+    /// @notice Changes the whitelist status for a collateral with `whitelistType` for an address `who`
+    function toggleWhitelist(WhitelistType whitelistType, address who) external;
+
+    /// @notice Changes whether a `collateral` can only be handled during burns and redemptions by whitelisted addresses
+    /// and sets the data used to read into the whitelist
+    function setWhitelistStatus(address collateral, uint8 whitelistStatus, bytes memory whitelistData) external;
+
     /// @notice Add `collateral` as a supported collateral in the system
     function addCollateral(address collateral) external;
 

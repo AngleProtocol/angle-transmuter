@@ -8,6 +8,7 @@ import { IGetters } from "interfaces/IGetters.sol";
 import { LibOracle } from "../libraries/LibOracle.sol";
 import { LibRedeemer } from "../libraries/LibRedeemer.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
+import { LibWhitelist } from "../libraries/LibWhitelist.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -93,5 +94,29 @@ contract Getters is IGetters {
         address collateral
     ) external view returns (OracleReadType readType, OracleTargetType targetType, bytes memory data) {
         return LibOracle.getOracle(collateral);
+    }
+
+    /// @inheritdoc IGetters
+    function isWhitelistedForType(WhitelistType whitelistType, address sender) external view returns (bool) {
+        TransmuterStorage storage ks = s.transmuterStorage();
+        return ks.isWhitelistedForType[whitelistType][sender] == 1;
+    }
+
+    /// @inheritdoc IGetters
+    function isWhitelistedForCollateral(address collateral, address sender) external view returns (bool) {
+        Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
+        return (collatInfo.onlyWhitelisted == 0 || LibWhitelist.checkWhitelist(collatInfo.whitelistData, sender));
+    }
+
+    /// @inheritdoc IGetters
+    function isWhitelistedCollateral(address collateral) external view returns (bool) {
+        Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
+        return collatInfo.onlyWhitelisted == 1;
+    }
+
+    /// @inheritdoc IGetters
+    function getCollateralWhitelistData(address collateral) external view returns (bytes memory) {
+        Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
+        return collatInfo.whitelistData;
     }
 }

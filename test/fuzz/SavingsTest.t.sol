@@ -104,7 +104,7 @@ contract SavingsTest is Fixture, FunctionUtils {
         // even currently we can not achieve a 0.1% precision
         rate = bound(rate, _minRate, _maxRate / 10);
         vm.prank(governor);
-        _saving.setRate(rate);
+        _saving.setRate(uint208(rate));
 
         assertEq(_saving.rate(), rate);
         uint256 estimatedAPR = (BASE_18 * unwrap(powu(ud(BASE_18 + rate / BASE_9), 365 days))) /
@@ -159,7 +159,7 @@ contract SavingsTest is Fixture, FunctionUtils {
         _deposit(amounts[0], sweeper, sweeper, 0);
 
         vm.prank(governor);
-        _saving.setRate(rate);
+        _saving.setRate(uint208(rate));
 
         // first time elapse
         skip(elapseTimestamps[0]);
@@ -252,14 +252,14 @@ contract SavingsTest is Fixture, FunctionUtils {
         _deposit(amounts[0], sweeper, sweeper, 0);
 
         vm.prank(governor);
-        _saving.setRate(rates[0]);
+        _saving.setRate(uint208(rates[0]));
 
         // first time elapse
         skip(elapseTimestamps[0]);
         _deposit(amounts[1], sweeper, sweeper, 0);
 
         vm.prank(governor);
-        _saving.setRate(rates[1]);
+        _saving.setRate(uint208(rates[1]));
 
         uint256 prevTotalAssets = _saving.totalAssets();
 
@@ -345,7 +345,7 @@ contract SavingsTest is Fixture, FunctionUtils {
         _deposit(shares[0], sweeper, sweeper, 0);
 
         vm.prank(governor);
-        _saving.setRate(rate);
+        _saving.setRate(uint208(rate));
 
         // first time elapse
         skip(elapseTimestamps[0]);
@@ -422,14 +422,14 @@ contract SavingsTest is Fixture, FunctionUtils {
         _deposit(shares[0], sweeper, sweeper, 0);
 
         vm.prank(governor);
-        _saving.setRate(rates[0]);
+        _saving.setRate(uint208(rates[0]));
 
         // first time elapse
         skip(elapseTimestamps[0]);
         _deposit(shares[1], sweeper, sweeper, 0);
 
         vm.prank(governor);
-        _saving.setRate(rates[1]);
+        _saving.setRate(uint208(rates[1]));
 
         uint256 prevTotalAssets = _saving.totalAssets();
 
@@ -504,7 +504,7 @@ contract SavingsTest is Fixture, FunctionUtils {
         _deposit(amounts[0], sweeper, sweeper, 0);
 
         vm.prank(governor);
-        _saving.setRate(rate);
+        _saving.setRate(uint208(rate));
 
         // first time elapse
         skip(elapseTimestamps[0]);
@@ -573,7 +573,7 @@ contract SavingsTest is Fixture, FunctionUtils {
         _deposit(amounts[0], sweeper, sweeper, 0);
 
         vm.prank(governor);
-        _saving.setRate(rate);
+        _saving.setRate(uint208(rate));
 
         // first time elapse
         skip(elapseTimestamps[0]);
@@ -623,7 +623,7 @@ contract SavingsTest is Fixture, FunctionUtils {
         _deposit(amounts[0], sweeper, sweeper, 0);
 
         vm.prank(governor);
-        _saving.setRate(rate);
+        _saving.setRate(uint208(rate));
 
         // first time elapse
         skip(elapseTimestamps[0]);
