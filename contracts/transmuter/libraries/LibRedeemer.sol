@@ -188,14 +188,12 @@ library LibRedeemer {
         TransmuterStorage storage ks = s.transmuterStorage();
         uint256 _normalizer = ks.normalizer;
         uint256 _normalizedStables = ks.normalizedStables;
-        if (_normalizedStables == 0)
-            newNormalizerValue = BASE_27;
-            // In case of an increase, the update formula used is the simplified version of the formula below:
-            /*
+        // In case of an increase, the update formula used is the simplified version of the formula below:
+        /*
              _normalizer * (BASE_27 + BASE_27 * amount / stablecoinsIssued) / BASE_27 = 
                 _normalizer + (_normalizer * BASE_27 * amount * (BASE_27 / (_normalizedStables * normalizer))) / BASE_27
-            */
-        else if (increase) newNormalizerValue = _normalizer + (amount * BASE_27) / _normalizedStables;
+        */
+        if (increase) newNormalizerValue = _normalizer + (amount * BASE_27) / _normalizedStables;
         else newNormalizerValue = _normalizer - (amount * BASE_27) / _normalizedStables;
         // If the `normalizer` gets too small or too big, it must be renormalized to later avoid the propagation of
         // rounding errors, as well as overflows. In this rare case, the function has to iterate through all the
