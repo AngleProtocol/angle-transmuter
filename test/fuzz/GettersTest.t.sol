@@ -45,6 +45,17 @@ contract GettersTest is Fixture, FunctionUtils {
         assertEq(address(accessControlManager), address(accessControlManagerTransmuter));
     }
 
+    function testAccessControl() public {
+        IAccessControlManager accessControlManagerTransmuter = transmuter.accessControlManager();
+        IAgToken agTokenTransmuter = transmuter.agToken();
+        assertEq(true, accessControlManagerTransmuter.isGovernor(governor));
+        assertEq(false, accessControlManagerTransmuter.isGovernor(guardian));
+        assertEq(false, accessControlManagerTransmuter.isGovernor(alice));
+        assertEq(true, accessControlManagerTransmuter.isGovernorOrGuardian(governor));
+        assertEq(true, accessControlManagerTransmuter.isGovernorOrGuardian(guardian));
+        assertEq(false, accessControlManagerTransmuter.isGovernorOrGuardian(alice));
+    }
+
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                    GETCOLLATERALLIST                                                
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/

@@ -217,16 +217,12 @@ library LibSwapper {
                         (BASE_9 - v.lowerExposure) -
                         collatInfo.normalizedStables;
 
-                // In case of precision breaks, charging the highest fee possible
-                if (v.amountToNextBreakPoint + amountFromPrevBreakPoint == 0) {
-                    currentFees = v.upperFees;
-                } else {
-                    // `slope` is in base 18
-                    uint256 slope = ((uint256(v.upperFees - v.lowerFees) * BASE_36) /
-                        (v.amountToNextBreakPoint + amountFromPrevBreakPoint));
-                    // `currentFees` is the `g(0)` value from the whitepaper
-                    currentFees = v.lowerFees + int256((slope * amountFromPrevBreakPoint) / BASE_36);
-                }
+                // `slope` is in base 18
+                uint256 slope = ((uint256(v.upperFees - v.lowerFees) * BASE_36) /
+                    (v.amountToNextBreakPoint + amountFromPrevBreakPoint));
+                // `currentFees` is the `g(0)` value from the whitepaper
+                currentFees = v.lowerFees + int256((slope * amountFromPrevBreakPoint) / BASE_36);
+
                 // Safeguard for the protocol not to issue free money if `quoteType == BurnExactOutput`
                 if (!v.isMint && currentFees == int256(BASE_9)) revert InvalidSwap();
             }

@@ -74,8 +74,7 @@ library LibOracle {
         else if (targetType == OracleTargetType.WSTETH) return STETH.getPooledEthByShares(1 ether);
         else if (targetType == OracleTargetType.CBETH) return CBETH.exchangeRate();
         else if (targetType == OracleTargetType.RETH) return RETH.getExchangeRate();
-        else if (targetType == OracleTargetType.SFRXETH) return SFRXETH.pricePerShare();
-        revert InvalidOracleType();
+        else return SFRXETH.pricePerShare();
     }
 
     /// @notice Computes the `quoteAmount` (for Chainlink oracles) depending on a `quoteType` encoded in the
@@ -84,8 +83,7 @@ library LibOracle {
     /// For others, like wstETH for which Chainlink only has an oracle for stETH, `quoteAmount` is the target price
     function quoteAmount(OracleQuoteType quoteType, uint256 _targetPrice) internal pure returns (uint256) {
         if (quoteType == OracleQuoteType.UNIT) return BASE_18;
-        else if (quoteType == OracleQuoteType.TARGET) return _targetPrice;
-        revert InvalidOracleType();
+        else return _targetPrice;
     }
 
     /// @notice Reads an oracle value for an asset based on its parsed `oracleConfig`
@@ -110,10 +108,7 @@ library LibOracle {
                 );
             }
             return quotePrice;
-        } else if (readType == OracleReadType.NO_ORACLE) {
-            return _targetPrice;
-        }
-        revert InvalidOracleType();
+        } else return _targetPrice;
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
