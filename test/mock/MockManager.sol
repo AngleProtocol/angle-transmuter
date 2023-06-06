@@ -14,7 +14,7 @@ import "../../contracts/utils/Errors.sol";
 contract MockManager {
     address public collateral;
     IERC20[] public subCollaterals;
-    bytes public managerConfig;
+    bytes public config;
     mapping(address => bool) public governors;
     mapping(address => bool) public guardians;
 
@@ -24,7 +24,7 @@ contract MockManager {
 
     function setSubCollaterals(IERC20[] memory _subCollaterals, bytes memory _managerConfig) external {
         subCollaterals = _subCollaterals;
-        managerConfig = _managerConfig;
+        config = _managerConfig;
     }
 
     function transferTo(address token, address to, uint256 amount) external {
@@ -39,7 +39,23 @@ contract MockManager {
         IERC20(token).transfer(to, amount);
     }
 
-    function pullAll() external {}
+    function withdrawAndTransfer(address token, address to, uint256 amount) external {
+        bool found;
+        for (uint256 i; i < subCollaterals.length; ++i) {
+            if (token == address(subCollaterals[i])) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) revert NotCollateral();
+        IERC20(token).transfer(to, amount);
+    }
+
+    function pullAll() external {
+        for (uint256 i; i < subCollaterals.length; ++i) {
+            subCollaterals[i].transfer(msg.sender, subCollaterals[i].balanceOf(address(this)));
+        }
+    }
 
     /// @notice Gets the balances of all the tokens controlled be the manager contract
     /// @return balances An array of size `subCollaterals` with current balances
@@ -51,7 +67,7 @@ contract MockManager {
             uint32[] memory stalePeriods,
             uint8[] memory oracleIsMultiplied,
             uint8[] memory chainlinkDecimals
-        ) = abi.decode(managerConfig, (uint8[], AggregatorV3Interface[], uint32[], uint8[], uint8[]));
+        ) = abi.decode(config, (uint8[], AggregatorV3Interface[], uint32[], uint8[], uint8[]));
         uint256 nbrCollaterals = subCollaterals.length;
         balances = new uint256[](nbrCollaterals);
         for (uint256 i = 0; i < nbrCollaterals; ++i) {

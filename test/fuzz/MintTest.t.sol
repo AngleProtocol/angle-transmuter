@@ -733,36 +733,4 @@ contract MintTest is Fixture, FunctionUtils {
         }
         vm.stopPrank();
     }
-
-    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        ACTIONS                                                     
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    function _mintExactOutput(
-        address owner,
-        address tokenIn,
-        uint256 amountStable,
-        uint256 estimatedAmountIn
-    ) internal {
-        vm.startPrank(owner);
-        deal(tokenIn, owner, estimatedAmountIn);
-        IERC20(tokenIn).approve(address(transmuter), type(uint256).max);
-        transmuter.swapExactOutput(
-            amountStable,
-            estimatedAmountIn,
-            tokenIn,
-            address(agToken),
-            owner,
-            block.timestamp * 2
-        );
-        vm.stopPrank();
-    }
-
-    function _mintExactInput(address owner, address tokenIn, uint256 amountIn, uint256 estimatedStable) internal {
-        vm.startPrank(owner);
-        deal(tokenIn, owner, amountIn);
-        IERC20(tokenIn).approve(address(transmuter), type(uint256).max);
-        transmuter.swapExactInput(amountIn, estimatedStable, tokenIn, address(agToken), owner, block.timestamp * 2);
-        vm.stopPrank();
-    }
 }

@@ -22,6 +22,7 @@ error InvalidParam();
 error InvalidParams();
 error InvalidSwap();
 error InvalidTokens();
+error InvalidUpdate();
 error NoSelectorsProvidedForFacetForCut(address _facetAddress);
 error NotAllowed();
 error NotCollateral();

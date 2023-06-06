@@ -38,6 +38,11 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
+    function getCollateralDecimals(address collateral) external view returns (uint8) {
+        return s.transmuterStorage().collaterals[collateral].decimals;
+    }
+
+    /// @inheritdoc IGetters
     function getCollateralMintFees(
         address collateral
     ) external view returns (uint64[] memory xFeeMint, int64[] memory yFeeMint) {
@@ -78,6 +83,21 @@ contract Getters is IGetters {
             (ks.collaterals[collateral].normalizedStables * _normalizer) / BASE_27,
             (ks.normalizedStables * _normalizer) / BASE_27
         );
+    }
+
+    /// @inheritdoc IGetters
+    function getTotalIssued(address collateral) external view returns (uint256) {
+        TransmuterStorage storage ks = s.transmuterStorage();
+        return (ks.normalizedStables * ks.normalizer) / BASE_27;
+    }
+
+    /// @inheritdoc IGetters
+    function getManagerData(address collateral) external view returns (bool, IERC20[] memory, bytes memory) {
+        Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
+        if (collatInfo.isManaged > 0) {
+            return (true, collatInfo.managerData.subCollaterals, collatInfo.managerData.config);
+        }
+        return (false, new IERC20[](0), "");
     }
 
     /// @inheritdoc IGetters

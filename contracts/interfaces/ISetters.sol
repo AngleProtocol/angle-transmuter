@@ -43,8 +43,8 @@ interface ISetters {
     /// @notice Add `collateral` as a supported collateral in the system
     function addCollateral(address collateral) external;
 
-    /// @notice Adjusts the normalized amount of stablecoins issued from `collateral` by `amount`
-    function adjustNormalizedStablecoins(address collateral, uint128 amount, bool addOrRemove) external;
+    /// @notice Adjusts the amount of stablecoins issued from `collateral` by `amount`
+    function adjustStablecoins(address collateral, uint128 amount, bool increase) external;
 
     /// @notice Revokes `collateral` from the system
     function revokeCollateral(address collateral) external;

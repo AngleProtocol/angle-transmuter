@@ -22,21 +22,21 @@ library LibManager {
     /// with it
     /// @dev Eventually pulls funds from strategies
     function transferTo(address token, address to, uint256 amount, ManagerStorage memory managerData) internal {
-        (ManagerType managerType, bytes memory data) = parseManagerData(managerData);
+        (ManagerType managerType, bytes memory data) = parseManagerConfig(managerData.config);
         if (managerType == ManagerType.EXTERNAL) abi.decode(data, (IManager)).transferTo(token, to, amount);
     }
 
     /// @notice Performs a collateral transfer from `msg.sender` to an address depending on the type of
     /// manager considered
     function transferFrom(address token, uint256 amount, ManagerStorage memory managerData) internal {
-        (ManagerType managerType, bytes memory data) = parseManagerData(managerData);
+        (ManagerType managerType, bytes memory data) = parseManagerConfig(managerData.config);
         if (managerType == ManagerType.EXTERNAL)
             IERC20(token).safeTransferFrom(msg.sender, address(abi.decode(data, (IManager))), amount);
     }
 
     /// @notice Tries to remove all funds from the strategies associated to `managerData`
-    function pullAll(ManagerStorage memory managerData) internal {
-        (ManagerType managerType, bytes memory data) = parseManagerData(managerData);
+    function pullAll(bytes memory config) internal {
+        (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
         if (managerType == ManagerType.EXTERNAL) abi.decode(data, (IManager)).pullAll();
     }
 
@@ -48,21 +48,21 @@ library LibManager {
     function getUnderlyingBalances(
         ManagerStorage memory managerData
     ) internal view returns (uint256[] memory balances, uint256 totalValue) {
-        (ManagerType managerType, bytes memory data) = parseManagerData(managerData);
+        (ManagerType managerType, bytes memory data) = parseManagerConfig(managerData.config);
         if (managerType == ManagerType.EXTERNAL) return abi.decode(data, (IManager)).getUnderlyingBalances();
     }
 
     /// @notice Returns available underlying tokens, for instance if liquidity is fully used and
     /// not withdrawable the function will return 0
     function maxAvailable(ManagerStorage memory managerData) internal view returns (uint256 available) {
-        (ManagerType managerType, bytes memory data) = parseManagerData(managerData);
+        (ManagerType managerType, bytes memory data) = parseManagerConfig(managerData.config);
         if (managerType == ManagerType.EXTERNAL) return abi.decode(data, (IManager)).maxAvailable();
     }
 
     /// @notice Decodes the `managerData` associated to a collateral
-    function parseManagerData(
-        ManagerStorage memory managerData
+    function parseManagerConfig(
+        bytes memory config
     ) internal pure returns (ManagerType managerType, bytes memory data) {
-        (managerType, data) = abi.decode(managerData.managerConfig, (ManagerType, bytes));
+        (managerType, data) = abi.decode(config, (ManagerType, bytes));
     }
 }

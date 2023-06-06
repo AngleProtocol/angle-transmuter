@@ -9,6 +9,8 @@ import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { ISetters } from "interfaces/ISetters.sol";
 
+import { console } from "forge-std/console.sol";
+
 import { LibDiamond } from "../libraries/LibDiamond.sol";
 import { LibHelpers } from "../libraries/LibHelpers.sol";
 import { LibManager } from "../libraries/LibManager.sol";
@@ -31,7 +33,7 @@ contract Setters is AccessControlModifiers, ISetters {
     event CollateralRevoked(address indexed collateral);
     event ManagerDataSet(address indexed collateral, ManagerStorage managerData);
     event RedemptionCurveParamsSet(uint64[] xFee, int64[] yFee);
-    event ReservesAdjusted(address indexed collateral, uint256 amount, bool addOrRemove);
+    event ReservesAdjusted(address indexed collateral, uint256 amount, bool increase);
     event TrustedToggled(address indexed sender, bool isTrusted, TrustedType trustedType);
     event WhitelistStatusToggled(WhitelistType whitelistType, address indexed who, uint256 whitelistStatus);
 
@@ -90,16 +92,17 @@ contract Setters is AccessControlModifiers, ISetters {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         uint8 isManaged = collatInfo.isManaged;
-        if (isManaged > 0) LibManager.pullAll(collatInfo.managerData);
-        if (managerData.managerConfig.length != 0) {
+        if (isManaged > 0) LibManager.pullAll(collatInfo.managerData.config);
+        if (managerData.config.length != 0) {
             // The first subCollateral given should be the actual collateral asset
             if (address(managerData.subCollaterals[0]) != collateral) revert InvalidParams();
             // Sanity check on the manager data that is passed
-            LibManager.parseManagerData(managerData);
+            LibManager.parseManagerConfig(managerData.config);
             collatInfo.isManaged = 1;
         } else {
             ManagerStorage memory emptyManagerData;
             managerData = emptyManagerData;
+            collatInfo.isManaged = 0;
         }
         collatInfo.managerData = managerData;
         emit CollateralManagerSet(collateral, managerData);
@@ -137,22 +140,26 @@ contract Setters is AccessControlModifiers, ISetters {
     }
 
     /// @inheritdoc ISetters
-    /// @dev The amount passed here must be a normalized amount and not an absolute amount
-    function adjustNormalizedStablecoins(address collateral, uint128 amount, bool addOrRemove) external onlyGovernor {
+    /// @dev The amount passed here must be an absolute amount
+    function adjustStablecoins(address collateral, uint128 amount, bool increase) external onlyGovernor {
         TransmuterStorage storage ks = s.transmuterStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
-        if (addOrRemove) {
-            collatInfo.normalizedStables += uint216(amount);
+        if (increase) {
+            uint256 normalizedAmount = (amount * BASE_27) / ks.normalizer;
+            collatInfo.normalizedStables += uint216(normalizedAmount); // TODO SafeCast
             ks.normalizedStables += amount;
         } else {
+            uint256 normalizedAmount = (amount * BASE_27) / ks.normalizer;
             collatInfo.normalizedStables -= uint216(amount);
             ks.normalizedStables -= amount;
         }
-        emit ReservesAdjusted(collateral, amount, addOrRemove);
+        emit ReservesAdjusted(collateral, amount, increase);
     }
 
     /// @inheritdoc ISetters
+    /// @dev Require `collatInfo.normalizedStables == 0`, that is to say that the collateral
+    /// is not used to back stables
     /// @dev The system may still have a non null balance of the collateral that is revoked: this should later
     /// be handled through a recoverERC20 call
     function revokeCollateral(address collateral) external onlyGovernor {
@@ -161,8 +168,8 @@ contract Setters is AccessControlModifiers, ISetters {
         if (collatInfo.decimals == 0 || collatInfo.normalizedStables > 0) revert NotCollateral();
         uint8 isManaged = collatInfo.isManaged;
         // If the collateral is managed through strategies, pulling all available funds from there
-        if (isManaged > 0) LibManager.pullAll(collatInfo.managerData);
-        delete ks.collaterals[collateral];
+        if (isManaged > 0) LibManager.pullAll(collatInfo.managerData.config);
+        delete ks.collaterals[collateral]; // TODO ensure deletion
         address[] memory collateralListMem = ks.collateralList;
         uint256 length = collateralListMem.length;
         for (uint256 i; i < length - 1; ++i) {
