@@ -5,12 +5,9 @@ pragma solidity >=0.5.0;
 /// @title IManager
 /// @author Angle Labs, Inc.
 interface IManager {
-    /// @notice Transfers `amount` of `token` to the `to` address
+    /// @notice Transfers `amount` of `token` to the `to` address, and eventually pulls funds from strategies
+    /// to achieve this
     function transferTo(address token, address to, uint256 amount) external;
-
-    /// @notice Withdraw from strategies if it does not have funds immediately available and transfers `amount`
-    /// of `token` to the `to` address
-    function withdrawAndTransferTo(address token, address to, uint256 amount) external;
 
     /// @notice Removes all funds from the manager and sends them back to the Transmuter contract
     function pullAll() external;

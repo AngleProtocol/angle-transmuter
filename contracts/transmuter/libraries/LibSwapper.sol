@@ -74,8 +74,7 @@ library LibSwapper {
                 ks.collaterals[tokenOut].normalizedStables -= uint216(changeAmount);
                 ks.normalizedStables -= changeAmount;
                 IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-                if (isManaged > 0)
-                    LibManager.withdrawAndTransferTo(tokenOut, to, amountOut, ks.collaterals[tokenOut].managerData);
+                if (isManaged > 0) LibManager.transferTo(tokenOut, to, amountOut, ks.collaterals[tokenOut].managerData);
                 else IERC20(tokenOut).safeTransfer(to, amountOut);
             }
         }
