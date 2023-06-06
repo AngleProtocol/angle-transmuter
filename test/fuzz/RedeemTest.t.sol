@@ -74,7 +74,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                                                       QUOTEREDEEM                                                   
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteRedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
+    function testFuzz_QuoteRedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         // let's first load the reserves of the protocol
         (uint256 mintedStables, ) = _loadReserves(initialAmounts, transferProportion);
 
