@@ -27,8 +27,6 @@ contract Trader is BaseActor {
         amount = bound(amount, 1, 10 ** 15);
         address collateral = _collaterals[collatNumber];
 
-        uint8 decimals = IERC20Metadata(collateral).decimals();
-
         if (
             (quoteType == QuoteType.BurnExactInput || quoteType == QuoteType.BurnExactOutput) &&
             agToken.balanceOf(_currentActor) == 0
@@ -46,7 +44,7 @@ contract Trader is BaseActor {
             console.log("Mint - Input");
             tokenIn = collateral;
             tokenOut = address(agToken);
-            amountIn = amount * 10 ** decimals;
+            amountIn = amount * 10 ** IERC20Metadata(collateral).decimals();
             amountOut = _transmuter.quoteIn(amountIn, tokenIn, tokenOut);
         } else if (quoteType == QuoteType.BurnExactInput) {
             console.log("Burn - Input");
@@ -64,11 +62,14 @@ contract Trader is BaseActor {
             console.log("Burn - Output");
             tokenIn = address(agToken);
             tokenOut = collateral;
-            amountOut = amount * 10 ** decimals;
+            amountOut = amount * 10 ** IERC20Metadata(collateral).decimals();
             amountIn = _transmuter.quoteOut(amountOut, tokenIn, tokenOut);
             // we need to decrease the amountOut wanted
             uint256 actorBalance = agToken.balanceOf(_currentActor);
-            if (actorBalance < amountIn) amountOut = _transmuter.quoteIn(actorBalance, tokenIn, tokenOut);
+            if (actorBalance < amountIn) {
+                amountIn = actorBalance;
+                amountOut = _transmuter.quoteIn(actorBalance, tokenIn, tokenOut);
+            }
         }
 
         console.log("Amount In: ", amountIn);
@@ -78,7 +79,12 @@ contract Trader is BaseActor {
 
         // If burning we can't burn more than the reserves
         if (quoteType == QuoteType.BurnExactInput || quoteType == QuoteType.BurnExactOutput) {
-            if (amountOut > IERC20(tokenOut).balanceOf(address(_transmuter))) {
+            (uint256 stablecoinsFromCollateral, uint256 totalStables) = _transmuter.getIssuedByCollateral(collateral);
+            if (
+                amountOut > IERC20(tokenOut).balanceOf(address(_transmuter)) ||
+                amountIn > stablecoinsFromCollateral ||
+                amountIn > totalStables
+            ) {
                 return (0, 0);
             }
         }
@@ -86,7 +92,7 @@ contract Trader is BaseActor {
         if (quoteType == QuoteType.MintExactInput || quoteType == QuoteType.MintExactOutput) {
             // Deal tokens to _currentActor if needed
             if (IERC20(tokenIn).balanceOf(_currentActor) < amountIn) {
-                deal(address(tokenIn), _currentActor, amountIn - IERC20(tokenIn).balanceOf(_currentActor));
+                deal(address(tokenIn), _currentActor, amountIn);
             }
         }
 

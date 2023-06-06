@@ -66,7 +66,10 @@ contract Arbitrager is BaseActor {
             amountIn = _transmuter.quoteOut(amountOut, tokenIn, tokenOut);
             // we need to decrease the amountOut wanted
             uint256 actorBalance = agToken.balanceOf(_currentActor);
-            if (actorBalance < amountIn) amountOut = _transmuter.quoteIn(actorBalance, tokenIn, tokenOut);
+            if (actorBalance < amountIn) {
+                amountIn = actorBalance;
+                amountOut = _transmuter.quoteIn(actorBalance, tokenIn, tokenOut);
+            }
         }
 
         console.log("Amount In: ", amountIn);
@@ -84,7 +87,7 @@ contract Arbitrager is BaseActor {
         if (quoteType == QuoteType.MintExactInput || quoteType == QuoteType.MintExactOutput) {
             // Deal tokens to _currentActor if needed
             if (IERC20(tokenIn).balanceOf(_currentActor) < amountIn) {
-                deal(address(tokenIn), _currentActor, amountIn - IERC20(tokenIn).balanceOf(_currentActor));
+                deal(address(tokenIn), _currentActor, amountIn);
             }
         }
 
@@ -139,8 +142,12 @@ contract Arbitrager is BaseActor {
             uint256 count;
             for (uint256 i; i < isForfeitTokens.length; ++i) if (isForfeitTokens[i]) count++;
             forfeitTokens = new address[](count);
+            count = 0;
             for (uint256 i; i < isForfeitTokens.length; ++i)
-                if (isForfeitTokens[i]) forfeitTokens[count++] = _collaterals[i];
+                if (isForfeitTokens[i]) {
+                    forfeitTokens[count] = _collaterals[i];
+                    count++;
+                }
         }
 
         uint256[] memory balanceTokens = new uint256[](_collaterals.length);

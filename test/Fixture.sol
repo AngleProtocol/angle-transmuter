@@ -94,6 +94,12 @@ contract Fixture is Transmuter {
                 CollateralSetup(address(eurY), address(oracleY))
             )
         );
+
+        vm.label(address(agToken), "AgToken");
+        vm.label(address(transmuter), "Transmuter");
+        vm.label(address(eurA), "eurA");
+        vm.label(address(eurB), "eurB");
+        vm.label(address(eurY), "eurY");
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

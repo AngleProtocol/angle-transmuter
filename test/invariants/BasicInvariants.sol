@@ -29,6 +29,22 @@ contract BasicInvariants is Fixture {
     function setUp() public virtual override {
         super.setUp();
 
+        {
+            // set Fees to 0 on all collaterals
+            uint64[] memory xFeeRedemption = new uint64[](4);
+            xFeeRedemption[0] = uint64(0);
+            xFeeRedemption[1] = uint64(1e9 / 2);
+            xFeeRedemption[2] = uint64((1e9 * 3) / 4);
+            xFeeRedemption[3] = uint64(1e9);
+            int64[] memory yFeeRedemption = new int64[](4);
+            yFeeRedemption[0] = int64(int256(1e9));
+            yFeeRedemption[1] = int64(int256(1e9));
+            yFeeRedemption[2] = int64(int256((1e9 * 9) / 10));
+            yFeeRedemption[3] = int64(int256(1e9));
+            vm.prank(governor);
+            transmuter.setRedemptionCurveParams(xFeeRedemption, yFeeRedemption);
+        }
+
         _collaterals.push(address(eurA));
         _collaterals.push(address(eurB));
         _collaterals.push(address(eurY));

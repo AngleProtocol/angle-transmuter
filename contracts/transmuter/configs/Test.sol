@@ -66,7 +66,7 @@ contract Test {
         yMintFee[0] = int64(uint64(BASE_9 / 99));
         yMintFee[1] = int64(uint64(BASE_9 / 99));
         yMintFee[2] = int64(uint64((3 * BASE_9) / 97));
-        yMintFee[3] = int64(uint64(BASE_12));
+        yMintFee[3] = int64(uint64(BASE_12 - 1));
 
         Setters.setFees(eurA.collateral, xMintFee, yMintFee, true);
         Setters.togglePause(eurA.collateral, ActionType.Mint);
@@ -82,7 +82,7 @@ contract Test {
         yBurnFee[0] = int64(uint64(BASE_9 / 99));
         yBurnFee[1] = int64(uint64(BASE_9 / 99));
         yBurnFee[2] = int64(uint64((3 * BASE_9) / 97));
-        yBurnFee[3] = int64(uint64(BASE_9));
+        yBurnFee[3] = int64(uint64(MAX_BURN_FEE - 1));
 
         Setters.setFees(eurA.collateral, xBurnFee, yBurnFee, false);
         Setters.togglePause(eurA.collateral, ActionType.Burn);
@@ -116,7 +116,7 @@ contract Test {
         yMintFee[0] = int64(uint64(BASE_9 / 100));
         yMintFee[1] = int64(uint64(BASE_9 / 100));
         yMintFee[2] = int64(uint64((5 * BASE_9) / 100));
-        yMintFee[3] = int64(uint64(BASE_9));
+        yMintFee[3] = int64(uint64(BASE_12 - 1));
 
         Setters.setFees(eurB.collateral, xMintFee, yMintFee, true);
         Setters.togglePause(eurB.collateral, ActionType.Mint);
@@ -132,7 +132,7 @@ contract Test {
         yBurnFee[0] = int64(uint64(BASE_9 / 100));
         yBurnFee[1] = int64(uint64(BASE_9 / 100));
         yBurnFee[2] = int64(uint64((5 * BASE_9) / 100));
-        yBurnFee[3] = int64(uint64(BASE_9));
+        yBurnFee[3] = int64(uint64(MAX_BURN_FEE - 1));
 
         Setters.setFees(eurB.collateral, xBurnFee, yBurnFee, false);
         Setters.togglePause(eurB.collateral, ActionType.Burn);
@@ -166,7 +166,7 @@ contract Test {
         yMintFee[0] = int64(uint64(BASE_9 / 100));
         yMintFee[1] = int64(uint64(BASE_9 / 100));
         yMintFee[2] = int64(uint64((5 * BASE_9) / 100));
-        yMintFee[3] = int64(uint64(BASE_9));
+        yMintFee[3] = int64(uint64(BASE_12 - 1));
 
         Setters.setFees(eurY.collateral, xMintFee, yMintFee, true);
         Setters.togglePause(eurY.collateral, ActionType.Mint);
@@ -182,7 +182,7 @@ contract Test {
         yBurnFee[0] = int64(uint64(BASE_9 / 100));
         yBurnFee[1] = int64(uint64(BASE_9 / 100));
         yBurnFee[2] = int64(uint64((5 * BASE_9) / 100));
-        yBurnFee[3] = int64(uint64(BASE_9));
+        yBurnFee[3] = int64(uint64(MAX_BURN_FEE - 1));
 
         Setters.setFees(eurY.collateral, xBurnFee, yBurnFee, false);
         Setters.togglePause(eurY.collateral, ActionType.Burn);

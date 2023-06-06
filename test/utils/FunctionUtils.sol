@@ -18,7 +18,7 @@ contract FunctionUtils is StdUtils {
         uint64[10] memory thresholds,
         int64[10] memory intercepts,
         bool increasing,
-        bool swap,
+        bool mint,
         int256 minFee,
         int256 maxFee
     ) internal view returns (uint64[] memory postThres, int64[] memory postIntercep) {
@@ -33,9 +33,9 @@ contract FunctionUtils is StdUtils {
                 ? int64(bound(int256(intercepts[i]), intercepts[i - 1], maxFee))
                 : intercepts[i - 1]; // Because the first degment of a burnFees should be constant
             if (
-                // For the swap functions we hardcoded BASE_12 as the maximum fees, after that it
+                // For the mint functions we hardcoded BASE_12 as the maximum fees, after that it
                 // is considered as 100% fees
-                (swap &&
+                (mint &&
                     (int256(BASE_9) <= int256(intercepts[i]) ||
                         int256(BASE_18) / (int256(BASE_9) - int256(intercepts[i])) - int256(BASE_9) >=
                         int256(BASE_12) - 1)) ||
@@ -47,7 +47,7 @@ contract FunctionUtils is StdUtils {
                 break;
             }
         }
-        if (swap) {
+        if (mint) {
             for (uint256 i = 0; i < thresholds.length; ++i) {
                 intercepts[i] = (int256(BASE_9) > int256(intercepts[i])) &&
                     (int256(BASE_18) / (int256(BASE_9) - int256(intercepts[i])) - int256(BASE_9) < int256(BASE_12))

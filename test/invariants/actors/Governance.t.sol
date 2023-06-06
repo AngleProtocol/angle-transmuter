@@ -55,12 +55,12 @@ contract Governance is BaseActor, FunctionUtils {
         (uint64[] memory xFeeBurn, int64[] memory yFeeBurn) = _generateCurves(
             xFee,
             yFee,
-            true,
-            true,
-            -minBurnFee,
-            int256(MAX_BURN_FEE)
+            false,
+            false,
+            (minBurnFee > 0) ? int256(0) : -minBurnFee,
+            int256(MAX_BURN_FEE) - 1
         );
-        _transmuter.setFees(_collaterals[collatNumber], xFeeBurn, yFeeBurn, true);
+        _transmuter.setFees(_collaterals[collatNumber], xFeeBurn, yFeeBurn, false);
     }
 
     function updateMintFees(
@@ -79,8 +79,8 @@ contract Governance is BaseActor, FunctionUtils {
             yFee,
             true,
             true,
-            -minMintFee,
-            int256(BASE_12)
+            (minMintFee > 0) ? int256(0) : -minMintFee,
+            int256(BASE_12) - 1
         );
         _transmuter.setFees(_collaterals[collatNumber], xFeeMint, yFeeMint, true);
     }
