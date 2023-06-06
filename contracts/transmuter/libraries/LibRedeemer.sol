@@ -186,7 +186,7 @@ library LibRedeemer {
         TransmuterStorage storage ks = s.transmuterStorage();
         uint256 _normalizer = ks.normalizer;
         uint256 _normalizedStables = ks.normalizedStables;
-        if (amount == 0 || ks.normalizedStables == 0) revert ZeroAmount();
+        if (ks.normalizedStables == 0) revert ZeroAmount();
         // In case of an increase, the update formula used is the simplified version of the formula below:
         /*
             _normalizer * (BASE_27 + BASE_27 * amount / stablecoinsIssued) / BASE_27
@@ -196,12 +196,11 @@ library LibRedeemer {
         if (increase) {
             newNormalizerValue = _normalizer + (amount * BASE_27) / _normalizedStables;
         } else {
-            if (amount > (_normalizer * _normalizedStables) / BASE_27) revert InvalidUpdate();
             newNormalizerValue = _normalizer - (amount * BASE_27) / _normalizedStables;
         }
         // If the `normalizer` gets too small or too big, it must be renormalized to later avoid the propagation of
         // rounding errors, as well as overflows. In this case, the function has to iterate through all the
-        // supported collateral assetstest_LargeIncrease
+        // supported collateral assets
         if (newNormalizerValue <= BASE_18 || newNormalizerValue >= BASE_36) {
             address[] memory collateralListMem = ks.collateralList;
             uint256 collateralListLength = collateralListMem.length;

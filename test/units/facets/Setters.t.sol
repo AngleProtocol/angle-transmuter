@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.17;
 
+import { stdError } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 
 import "mock/MockManager.sol";
@@ -637,12 +638,6 @@ contract Test_Setters_UpdateNormalizer is Fixture {
         transmuter.updateNormalizer(1 ether, true);
     }
 
-    function test_RevertWhen_ZeroAmount() public {
-        vm.expectRevert(Errors.ZeroAmount.selector);
-        hoax(governor);
-        transmuter.updateNormalizer(0, true);
-    }
-
     function test_RevertWhen_ZeroAmountNormalizedStables() public {
         vm.expectRevert(Errors.ZeroAmount.selector);
         hoax(governor);
@@ -653,7 +648,7 @@ contract Test_Setters_UpdateNormalizer is Fixture {
         _mintExactOutput(alice, address(eurA), 1 ether, 1 ether);
         _mintExactOutput(alice, address(eurB), 1 ether, 1 ether);
 
-        vm.expectRevert(Errors.InvalidUpdate.selector);
+        vm.expectRevert(stdError.arithmeticError); // Should be an underflow
         hoax(governor);
         transmuter.updateNormalizer(4 ether, false);
     }

@@ -9,8 +9,6 @@ import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { ISetters } from "interfaces/ISetters.sol";
 
-import { console } from "forge-std/console.sol";
-
 import { LibDiamond } from "../libraries/LibDiamond.sol";
 import { LibHelpers } from "../libraries/LibHelpers.sol";
 import { LibManager } from "../libraries/LibManager.sol";
