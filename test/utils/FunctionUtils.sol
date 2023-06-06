@@ -22,7 +22,6 @@ contract FunctionUtils is StdUtils {
         int256 minFee,
         int256 maxFee
     ) internal view returns (uint64[] memory postThres, int64[] memory postIntercep) {
-        if (maxFee == 0) maxFee = int256(BASE_9);
         thresholds[0] = increasing ? 0 : uint64(BASE_9);
         intercepts[0] = int64(bound(int256(intercepts[0]), minFee, maxFee));
         uint256 nbrInflexion = 1;

@@ -1,23 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.17;
 
-import { IERC20 } from "oz/token/ERC20/IERC20.sol";
-import { IERC20Metadata } from "oz/token/ERC20/extensions/IERC20Metadata.sol";
-
 import "contracts/utils/Constants.sol";
-import { BaseActor } from "./BaseActor.t.sol";
+import { BaseActor, ITransmuter, AggregatorV3Interface, IERC20, IERC20Metadata } from "./BaseActor.t.sol";
 import { QuoteType } from "contracts/transmuter/Storage.sol";
-import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
 
 import { console } from "forge-std/console.sol";
 
 contract Trader is BaseActor {
     constructor(
-        address transmuter,
+        ITransmuter transmuter,
         address[] memory collaterals,
         AggregatorV3Interface[] memory oracles,
         uint256 nbrTrader
-    ) BaseActor(nbrTrader, "Trader", collaterals, oracles) {}
+    ) BaseActor(nbrTrader, "Trader", transmuter, collaterals, oracles) {}
 
     function swap(
         uint256 collatNumber,
@@ -25,7 +21,7 @@ contract Trader is BaseActor {
         uint256 amount,
         uint256 actorIndex,
         uint256 recipientIndex
-    ) public useActor(actorIndex) returns (uint256 amountIn, uint256 amountOut) {
+    ) public useActor(actorIndex) countCall("swap") returns (uint256 amountIn, uint256 amountOut) {
         QuoteType quoteType = QuoteType(bound(actionType, 0, 3));
         collatNumber = bound(collatNumber, 0, 2);
         amount = bound(amount, 1, 10 ** 15);
