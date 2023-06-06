@@ -5,10 +5,11 @@ import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { stdError } from "forge-std/Test.sol";
 import { ManagerStorage, ManagerType } from "contracts/transmuter/Storage.sol";
 
-import "contracts/utils/Errors.sol";
+import "contracts/utils/Errors.sol" as Errors;
 
 import "../Fixture.sol";
 import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
+import { MockManager } from "../mock/MockManager.sol";
 import "../utils/FunctionUtils.sol";
 import "../utils/FunctionUtils.sol";
 
