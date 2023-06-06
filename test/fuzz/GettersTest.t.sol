@@ -38,14 +38,14 @@ contract GettersTest is Fixture, FunctionUtils {
                                                        RAW CALLS                                                    
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testGetRawCalls() public {
+    function test_GetRawCalls() public {
         IAccessControlManager accessControlManagerTransmuter = transmuter.accessControlManager();
         IAgToken agTokenTransmuter = transmuter.agToken();
         assertEq(address(agToken), address(agTokenTransmuter));
         assertEq(address(accessControlManager), address(accessControlManagerTransmuter));
     }
 
-    function testAccessControl() public {
+    function test_AccessControl() public {
         IAccessControlManager accessControlManagerTransmuter = transmuter.accessControlManager();
         assertEq(true, accessControlManagerTransmuter.isGovernor(governor));
         assertEq(false, accessControlManagerTransmuter.isGovernor(guardian));
@@ -59,7 +59,7 @@ contract GettersTest is Fixture, FunctionUtils {
                                                    GETCOLLATERALLIST                                                
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testGetCollateralList(uint256 addCollateral) public {
+    function testFuzz_GetCollateralList(uint256 addCollateral) public {
         addCollateral = bound(addCollateral, 0, 43);
         vm.startPrank(governor);
         for (uint256 i; i < addCollateral; i++) {
@@ -82,7 +82,7 @@ contract GettersTest is Fixture, FunctionUtils {
                                                  GETCOLLATERALMINTFEES                                              
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testGetCollateralMintFees(
+    function testFuzz_GetCollateralMintFees(
         uint256 fromToken,
         uint64[10] memory xFeeMintUnbounded,
         int64[10] memory yFeeMintUnbounded
@@ -105,7 +105,7 @@ contract GettersTest is Fixture, FunctionUtils {
                                                  GETCOLLATERALBURNFEES                                              
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testGetCollateralBurnFees(
+    function testFuzz_GetCollateralBurnFees(
         uint256 fromToken,
         uint64[10] memory xFeeBurnUnbounded,
         int64[10] memory yFeeBurnUnbounded
@@ -128,7 +128,7 @@ contract GettersTest is Fixture, FunctionUtils {
                                                    GETREDEMPTIONFEES                                                
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testGetCollateralRedemptionFees(
+    function testFuzz_GetCollateralRedemptionFees(
         uint64[10] memory xFeeRedemptionUnbounded,
         int64[10] memory yFeeRedemptionUnbounded
     ) public {

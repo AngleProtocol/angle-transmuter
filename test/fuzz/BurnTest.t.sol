@@ -65,7 +65,7 @@ contract BurnTest is Fixture, FunctionUtils {
                                                  GETISSUEDBYCOLLATERAL                                              
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testBurnGetIssuedByCollateral(
+    function testFuzz_BurnGetIssuedByCollateral(
         uint256[3] memory initialAmounts,
         uint256[3] memory amounts,
         uint256[3] memory burntAmounts,
@@ -115,7 +115,7 @@ contract BurnTest is Fixture, FunctionUtils {
                                                   GETCOLLATERALRATIO                                                
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testBurnGetCollateralRatio(
+    function testFuzz_BurnGetCollateralRatio(
         uint256[3] memory initialAmounts,
         uint256[3] memory amounts,
         uint256[3] memory burntAmounts,

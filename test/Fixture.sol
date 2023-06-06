@@ -20,8 +20,6 @@ import "contracts/utils/Errors.sol";
 
 import { Transmuter } from "./utils/Transmuter.sol";
 
-import { console } from "forge-std/console.sol";
-
 contract Fixture is Transmuter {
     IAccessControlManager public accessControlManager;
     ProxyAdmin public proxyAdmin;

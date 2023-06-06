@@ -62,7 +62,7 @@ contract SwapTest is Fixture, FunctionUtils {
                                                         REVERTS                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testSwapRevertInvalidTokens(
+    function test_RevertWhen_InvalidTokens(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -91,7 +91,7 @@ contract SwapTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function testSwapRevertPaused(
+    function test_RevertWhen_Paused(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -122,7 +122,7 @@ contract SwapTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function testSwapRevertSlippage(
+    function test_RevertWhen_Slippage(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -206,7 +206,7 @@ contract SwapTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function testSwapRevertDeadline(
+    function test_RevertWhen_Deadline(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,

@@ -10,7 +10,7 @@ interface IManager {
 
     /// @notice Withdraw from strategies if it does not have funds immediately available and transfers `amount`
     /// of `token` to the `to` address
-    function withdrawAndTransfer(address token, address to, uint256 amount) external;
+    function withdrawAndTransferTo(address token, address to, uint256 amount) external;
 
     /// @notice Removes all funds from the manager and sends them back to the Transmuter contract
     function pullAll() external;

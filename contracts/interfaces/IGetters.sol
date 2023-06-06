@@ -85,5 +85,5 @@ interface IGetters {
     function isWhitelistedCollateral(address collateral) external view returns (bool);
 
     /// @notice Gets the data needed to deal with whitelists for `collateral`
-    function getCollateralWhitelistData(address collateral) external view returns (bool);
+    function getCollateralWhitelistData(address collateral) external view returns (bytes memory);
 }

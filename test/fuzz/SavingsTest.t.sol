@@ -73,7 +73,7 @@ contract SavingsTest is Fixture, FunctionUtils {
                                                          PAUSE                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testPause() public {
+    function test_Pause() public {
         _deposit(BASE_18, alice, alice, 0);
 
         vm.prank(governor);
@@ -99,7 +99,7 @@ contract SavingsTest is Fixture, FunctionUtils {
                                                          APRS                                                       
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testSetRate(uint256 rate) public {
+    function testFuzz_SetRate(uint256 rate) public {
         // we need to decrease to a smaller maxRate = 37% otherwise the approximation is way off
         // even currently we can not achieve a 0.1% precision
         rate = bound(rate, _minRate, _maxRate / 10);
@@ -124,7 +124,7 @@ contract SavingsTest is Fixture, FunctionUtils {
                                                         DEPOSIT                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testDepositSimple(uint256 amount, uint256 indexReceiver) public {
+    function testFuzz_DepositSimple(uint256 amount, uint256 indexReceiver) public {
         amount = bound(amount, 0, _maxAmount);
 
         address receiver;
@@ -144,7 +144,7 @@ contract SavingsTest is Fixture, FunctionUtils {
         assertEq(_saving.balanceOf(receiver), shares);
     }
 
-    function testDepositSingleRate(
+    function testFuzz_DepositSingleRate(
         uint256[2] memory amounts,
         uint256 rate,
         uint256 indexReceiver,
@@ -237,7 +237,7 @@ contract SavingsTest is Fixture, FunctionUtils {
         }
     }
 
-    function testDepositMultiRate(
+    function testFuzz_DepositMultiRate(
         uint256[3] memory amounts,
         uint256[2] memory rates,
         uint256 indexReceiver,
@@ -315,7 +315,7 @@ contract SavingsTest is Fixture, FunctionUtils {
                                                          MINT                                                       
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testMintSimple(uint256 shares, uint256 indexReceiver) public {
+    function testFuzz_MintSimple(uint256 shares, uint256 indexReceiver) public {
         shares = bound(shares, 0, _maxAmount);
 
         uint256 amount;
@@ -330,7 +330,7 @@ contract SavingsTest is Fixture, FunctionUtils {
         assertEq(_saving.balanceOf(receiver), shares);
     }
 
-    function testMintNonNullRate(
+    function testFuzz_MintNonNullRate(
         uint256[2] memory shares,
         uint256 rate,
         uint256 indexReceiver,
@@ -407,7 +407,7 @@ contract SavingsTest is Fixture, FunctionUtils {
         }
     }
 
-    function testMintMultiRate(
+    function testFuzz_MintMultiRate(
         uint256[3] memory shares,
         uint256[2] memory rates,
         uint256 indexReceiver,
@@ -486,7 +486,7 @@ contract SavingsTest is Fixture, FunctionUtils {
                                                         REDEEM                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testRedeemSuccess(
+    function testFuzz_RedeemSuccess(
         uint256[2] memory amounts,
         uint256 propWithdraw,
         uint256 rate,
@@ -557,7 +557,7 @@ contract SavingsTest is Fixture, FunctionUtils {
                                                        WITHDRAW                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testMaxWithdrawSuccess(
+    function testFuzz_MaxWithdrawSuccess(
         uint256[2] memory amounts,
         uint256 rate,
         uint256 indexReceiver,
@@ -605,7 +605,7 @@ contract SavingsTest is Fixture, FunctionUtils {
         assertEq(_saving.balanceOf(alice), 0);
     }
 
-    function testWithdrawSuccess(
+    function testFuzz_WithdrawSuccess(
         uint256[2] memory amounts,
         uint256 propWithdraw,
         uint256 rate,

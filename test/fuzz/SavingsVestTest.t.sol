@@ -103,7 +103,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         _deposit(_firstDeposit, alice, alice, 0);
     }
 
-    function testInitialisation() public {
+    function test_Initialize() public {
         assertEq(address(_saving.accessControlManager()), address(accessControlManager));
         assertEq(address(_saving.transmuter()), address(transmuter));
         assertEq(_saving.asset(), address(agToken));
@@ -120,7 +120,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
                                                         SETTERS                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testRevertSetters() public {
+    function test_RevertWhen_Setters() public {
         bytes32 what = "PA";
 
         vm.startPrank(governor);
@@ -138,7 +138,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function testSetPause(uint64 paused) public {
+    function testFuzz_SetPause(uint64 paused) public {
         // Cautious if you try to set pause to something greater than
         // type(uint8).max, the cast may get you to a value not expected
         // if paused % 2**8 then it will not pause the protocol
@@ -172,7 +172,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function testSetVestingPeriod(uint64 vestingPeriod) public {
+    function testFuzz_SetVestingPeriod(uint64 vestingPeriod) public {
         // 365 days < 2**32
         vestingPeriod = uint64(bound(vestingPeriod, 1, 365 days));
 
@@ -182,7 +182,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         assertEq(_saving.vestingPeriod(), vestingPeriod);
     }
 
-    function testSetProtocolSafetyFee(uint64 protocolSafetyFee) public {
+    function testFuzz_SetProtocolSafetyFee(uint64 protocolSafetyFee) public {
         protocolSafetyFee = uint64(bound(protocolSafetyFee, 0, BASE_9));
 
         bytes32 what = "PF";
@@ -191,7 +191,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         assertEq(_saving.protocolSafetyFee(), protocolSafetyFee);
     }
 
-    function testSetUpdateDelay(uint64 updateDelay) public {
+    function testFuzz_SetUpdateDelay(uint64 updateDelay) public {
         // 365 days < 2**32
         updateDelay = uint64(bound(updateDelay, 0, 365 days));
 
@@ -201,7 +201,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         assertEq(_saving.updateDelay(), updateDelay);
     }
 
-    function testSetSurplusManager(address surplusManager) public {
+    function testFuzz_SetSurplusManager(address surplusManager) public {
         vm.prank(governor);
         _saving.setSurplusManager(surplusManager);
         assertEq(_saving.surplusManager(), surplusManager);
@@ -211,7 +211,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
                                                         ACCRUE                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testAccrueRevertWrongCaller(uint256[3] memory initialAmounts) public {
+    function test_RevertWhen_AccrueWrongCaller(uint256[3] memory initialAmounts) public {
         // no fuzzing as it shouldn't impact the result
         bytes32 what = "UD";
         vm.prank(governor);
@@ -229,7 +229,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function testAccrueAtPegLastUpdate(uint256[3] memory initialAmounts, uint256 elapseTimestamps) public {
+    function testFuzz_AccrueAtPegLastUpdate(uint256[3] memory initialAmounts, uint256 elapseTimestamps) public {
         elapseTimestamps = bound(elapseTimestamps, 0, _maxElapseTime);
 
         // no fuzzing as it shouldn't impact the result
@@ -252,7 +252,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function testAccrueAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
+    function testFuzz_AccrueAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         // no fuzzing as it shouldn't impact the result
         bytes32 what = "UD";
         vm.prank(governor);
@@ -275,7 +275,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         assertEq(agToken.balanceOf(_surplusManager), 0);
     }
 
-    function testAccrueGlobalAtPeg(
+    function testFuzz_AccrueGlobalAtPeg(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[2] memory latestOracleValue
@@ -318,7 +318,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         }
     }
 
-    function testAccrueRandomCollatRatioSimple(
+    function testFuzz_AccrueRandomCollatRatioSimple(
         uint256[3] memory initialAmounts,
         uint64 protocolSafetyFee,
         uint256[3] memory latestOracleValue,
@@ -416,7 +416,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         }
     }
 
-    function testAccrueRandomCollatRatioRevertUpdateDelay(
+    function testFuzz_AccrueRandomCollatRatioRevertUpdateDelay(
         uint256[3] memory initialAmounts,
         uint256 elapseTimestamps,
         uint32 updateDelay,
@@ -448,7 +448,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         }
     }
 
-    function testAccrueRandomNegativeColatRatio(
+    function testFuzz_AccrueRandomNegativeColatRatio(
         uint256[3] memory initialAmounts,
         uint64 protocolSafetyFee,
         uint64 vestingPeriod,
@@ -607,7 +607,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     // Testing if the estimatedAPR is empirically correct - by waiting an amount of time and check the increase balance
-    function testEstimatedAPR(
+    function testFuzz_EstimatedAPR(
         uint256[3] memory initialAmounts,
         uint256[3] memory depositsAmounts,
         uint64 protocolSafetyFee,

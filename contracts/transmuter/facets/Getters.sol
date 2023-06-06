@@ -114,20 +114,17 @@ contract Getters is IGetters {
 
     /// @inheritdoc IGetters
     function isTrusted(address sender) external view returns (bool) {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        return ks.isTrusted[sender] == 1;
+        return s.transmuterStorage().isTrusted[sender] == 1;
     }
 
     /// @inheritdoc IGetters
     function isTrustedSeller(address sender) external view returns (bool) {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        return ks.isSellerTrusted[sender] == 1;
+        return s.transmuterStorage().isSellerTrusted[sender] == 1;
     }
 
     /// @inheritdoc IGetters
     function isWhitelistedForType(WhitelistType whitelistType, address sender) external view returns (bool) {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        return ks.isWhitelistedForType[whitelistType][sender] == 1;
+        return s.transmuterStorage().isWhitelistedForType[whitelistType][sender] == 1;
     }
 
     /// @inheritdoc IGetters
@@ -138,13 +135,11 @@ contract Getters is IGetters {
 
     /// @inheritdoc IGetters
     function isWhitelistedCollateral(address collateral) external view returns (bool) {
-        Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
-        return collatInfo.onlyWhitelisted == 1;
+        return s.transmuterStorage().collaterals[collateral].onlyWhitelisted == 1;
     }
 
     /// @inheritdoc IGetters
     function getCollateralWhitelistData(address collateral) external view returns (bytes memory) {
-        Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
-        return collatInfo.whitelistData;
+        return s.transmuterStorage().collaterals[collateral].whitelistData;
     }
 }

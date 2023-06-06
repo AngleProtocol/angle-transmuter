@@ -67,7 +67,7 @@ contract MintTest is Fixture, FunctionUtils {
                                                  GETISSUEDBYCOLLATERAL                                              
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testMintGetIssuedByCollateral(
+    function testFuzz_MintGetIssuedByCollateral(
         uint256[3] memory initialAmounts,
         uint256[2] memory transferProportions,
         uint256[3] memory amounts,

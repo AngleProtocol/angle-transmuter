@@ -36,4 +36,3 @@ error TooBigAmountIn();
 error TooLate();
 error TooSmallAmountOut();
 error ZeroAddress();
-error ZeroAmount();

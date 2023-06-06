@@ -36,7 +36,7 @@ library LibManager {
         ManagerStorage memory managerData
     ) internal {
         (ManagerType managerType, bytes memory data) = parseManagerData(managerData);
-        if (managerType == ManagerType.EXTERNAL) abi.decode(data, (IManager)).withdrawAndTransfer(token, to, amount);
+        if (managerType == ManagerType.EXTERNAL) abi.decode(data, (IManager)).withdrawAndTransferTo(token, to, amount);
     }
 
     /// @notice Performs a collateral transfer from `msg.sender` to an address depending on the type of

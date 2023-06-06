@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.17;
 
-import { console } from "forge-std/console.sol";
-
 import "contracts/transmuter/Storage.sol";
 import { Test } from "contracts/transmuter/configs/Test.sol";
 import { Setters } from "contracts/transmuter/facets/Setters.sol";
@@ -474,13 +472,6 @@ contract Test_Setters_RecoverERC20 is Fixture {
         vm.expectRevert(Errors.NotGovernor.selector);
         hoax(guardian);
         transmuter.recoverERC20(address(agToken), agToken, alice, 1 ether);
-    }
-
-    function test_RevertWhen_ZeroAmount() public {
-        vm.expectRevert(Errors.ZeroAmount.selector);
-
-        hoax(governor);
-        transmuter.recoverERC20(address(agToken), agToken, alice, 0);
     }
 
     // TODO Tests with manager
