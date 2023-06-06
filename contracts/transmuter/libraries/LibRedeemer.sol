@@ -60,9 +60,8 @@ library LibRedeemer {
             // If a token is in the `forfeitTokens` list, then it is not sent as part of the redemption process
             if (amounts[i] > 0 && LibHelpers.checkList(tokens[i], forfeitTokens) < 0) {
                 Collateral storage collatInfo = ks.collaterals[collateralListMem[indexCollateral]];
-                if (
-                    collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, msg.sender)
-                ) revert NotWhitelisted();
+                if (collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, to))
+                    revert NotWhitelisted();
                 if (collatInfo.isManaged > 0) {
                     LibManager.transferTo(tokens[i], to, amounts[i], collatInfo.managerData);
                 } else IERC20(tokens[i]).safeTransfer(to, amounts[i]);

@@ -24,8 +24,8 @@ contract Redeemer is IRedeemer {
     /// `[collat 1, sub-collat 1 of collat 2, sub-collat 2 of collat 2, sub-collat 3 of collat 2, collat 3]`
     /// @dev The list of tokens outputted (and hence the minimum length of the `minAmountOuts` list) can be obtained
     /// by calling the `quoteRedemptionCurve` function
-    /// @dev Tokens requiring a whitelist must be forfeited by addresses which are not in the whitelist, otherwise
-    /// this function reverts
+    /// @dev Tokens requiring a whitelist must be forfeited if the redemption is to an address that is not in the
+    /// whitelist, otherwise this function reverts
     function redeem(
         uint256 amount,
         address receiver,

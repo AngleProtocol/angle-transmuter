@@ -54,6 +54,7 @@ library LibSwapper {
         address tokenOut,
         address to,
         uint8 isManaged,
+        uint8 onlyWhitelisted,
         bool mint
     ) internal {
         if (amountIn > 0 && amountOut > 0) {
@@ -68,6 +69,8 @@ library LibSwapper {
                 else IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
                 IAgToken(tokenOut).mint(to, amountOut);
             } else {
+                if (onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(ks.collaterals[tokenOut].whitelistData, to))
+                    revert NotWhitelisted();
                 uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
                 // This will underflow when the system is trying to burn more stablecoins than what has been issued
                 // from this collateral
@@ -402,8 +405,6 @@ library LibSwapper {
             collatInfo = ks.collaterals[tokenOut];
             mint = false;
             if (collatInfo.isBurnLive == 0) revert Paused();
-            if (collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, msg.sender))
-                revert NotWhitelisted();
         } else if (tokenOut == _agToken) {
             collatInfo = ks.collaterals[tokenIn];
             mint = true;

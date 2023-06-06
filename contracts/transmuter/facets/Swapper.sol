@@ -23,9 +23,9 @@ import "../Storage.sol";
 /// @dev In case of a burn, they will also revert if the system does not have enough of `amountOut` for `tokenOut`.
 /// This balance must be available either directly on the contract or, when applicable, through the underlying
 /// strategies that manage the collateral
-/// @dev In case of a burn again, they will also revert if the call concerns a collateral that requires a whitelist but
-/// the `msg.sender` does not have it
 /// @dev Functions here may be paused for some collateral assets (for either mint or burn), in which case they'll revert
+/// @dev In case of a burn again, the swap functions will revert if the call concerns a collateral that requires a
+/// whitelist but the `to` address does not have it. The quote functions will not revert in this case.
 contract Swapper is ISwapper {
     using SafeERC20 for IERC20;
 
@@ -53,7 +53,16 @@ contract Swapper is ISwapper {
             : LibSwapper.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
         if (amountOut < amountOutMin) revert TooSmallAmountOut();
         // Once the exact amounts are known, the system needs to update its internal metrics and process the transfers
-        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, collatInfo.isManaged, mint);
+        LibSwapper.swap(
+            amountIn,
+            amountOut,
+            tokenIn,
+            tokenOut,
+            to,
+            collatInfo.isManaged,
+            collatInfo.onlyWhitelisted,
+            mint
+        );
     }
 
     /// @inheritdoc ISwapper
@@ -73,7 +82,16 @@ contract Swapper is ISwapper {
             ? LibSwapper.quoteMintExactOutput(collatInfo, amountOut)
             : LibSwapper.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         if (amountIn > amountInMax) revert TooBigAmountIn();
-        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, collatInfo.isManaged, mint);
+        LibSwapper.swap(
+            amountIn,
+            amountOut,
+            tokenIn,
+            tokenOut,
+            to,
+            collatInfo.isManaged,
+            collatInfo.onlyWhitelisted,
+            mint
+        );
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
