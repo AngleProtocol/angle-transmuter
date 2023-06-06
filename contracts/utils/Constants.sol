@@ -31,6 +31,7 @@ uint256 constant BASE_18 = 1e18;
 uint256 constant HALF_BASE_27 = 1e27 / 2;
 uint256 constant BASE_27 = 1e27;
 uint256 constant BASE_36 = 1e36;
+uint256 constant MAX_BURN_FEE = 999_000_000;
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                COMMON ADDRESSES                                                 

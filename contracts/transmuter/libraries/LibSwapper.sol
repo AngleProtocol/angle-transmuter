@@ -361,15 +361,20 @@ library LibSwapper {
 
     /// @notice Applies `fees` to an `amountIn` of stablecoins to get an `amountOut` of assets
     function applyFeeBurn(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
-        if (fees >= 0) amountOut = ((BASE_9 - uint256(int256(fees))) * amountIn) / BASE_9;
-        else amountOut = ((BASE_9 + uint256(int256(-fees))) * amountIn) / BASE_9;
+        if (fees >= 0) {
+            uint256 castedFees = uint256(int256(fees));
+            if (castedFees >= MAX_BURN_FEE) revert InvalidSwap();
+            amountOut = ((BASE_9 - castedFees) * amountIn) / BASE_9;
+        } else amountOut = ((BASE_9 + uint256(int256(-fees))) * amountIn) / BASE_9;
     }
 
     /// @notice Gets from an `amountOut` of assets and with `fees` the `amountIn` of stablecoins that need
     /// to be brought during a burn
     function invertFeeBurn(uint256 amountOut, int64 fees) internal pure returns (uint256 amountIn) {
         if (fees >= 0) {
-            amountIn = amountOut.mulDiv(BASE_9, BASE_9 - uint256(int256(fees)), Math.Rounding.Up);
+            uint256 castedFees = uint256(int256(fees));
+            if (castedFees >= MAX_BURN_FEE) revert InvalidSwap();
+            amountIn = amountOut.mulDiv(BASE_9, BASE_9 - castedFees, Math.Rounding.Up);
         } else amountIn = amountOut.mulDiv(BASE_9, BASE_9 + uint256(int256(-fees)), Math.Rounding.Up);
     }
 
