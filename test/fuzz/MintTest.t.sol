@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
+import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
+
 import { stdError } from "forge-std/Test.sol";
 
-import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
-import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
-import "../Fixture.sol";
-import "../utils/FunctionUtils.sol";
 import "contracts/utils/Errors.sol" as Errors;
+
+import "../Fixture.sol";
+import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
+import "../utils/FunctionUtils.sol";
 
 contract MintTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
@@ -65,7 +67,7 @@ contract MintTest is Fixture, FunctionUtils {
                                                  GETISSUEDBYCOLLATERAL                                              
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testMintGetIssuedByCollateral(
+    function testFuzz_MintGetIssuedByCollateral(
         uint256[3] memory initialAmounts,
         uint256[2] memory transferProportions,
         uint256[3] memory amounts,
@@ -117,7 +119,7 @@ contract MintTest is Fixture, FunctionUtils {
                                                          MINT                                                       
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteMintExactInputSimple(
+    function testFuzz_QuoteMintExactInputSimple(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256 mintAmount,
@@ -133,7 +135,7 @@ contract MintTest is Fixture, FunctionUtils {
         assertEq(_convertDecimalTo(mintAmount, IERC20Metadata(_collaterals[fromToken]).decimals(), 18), amountOut);
     }
 
-    function testQuoteMintExactInputNonNullFees(
+    function testFuzz_QuoteMintExactInputNonNullFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         int64 mintFee,
@@ -165,7 +167,7 @@ contract MintTest is Fixture, FunctionUtils {
         assertEq(supposedAmountOut, amountOut);
     }
 
-    function testQuoteMintReflexivitySimple(
+    function testFuzz_QuoteMintReflexivitySimple(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256 amountIn,
@@ -182,7 +184,7 @@ contract MintTest is Fixture, FunctionUtils {
         assertEq(amountIn, reflexiveAmountIn);
     }
 
-    function testQuoteMintReflexivityRandomOracle(
+    function testFuzz_QuoteMintReflexivityRandomOracle(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -215,7 +217,7 @@ contract MintTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteMintExactInputReflexivityFees(
+    function testFuzz_QuoteMintExactInputReflexivityFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         int64 mintFee,
@@ -258,7 +260,7 @@ contract MintTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteMintExactInputReflexivityOracleFees(
+    function testFuzz_QuoteMintExactInputReflexivityOracleFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -310,7 +312,7 @@ contract MintTest is Fixture, FunctionUtils {
                                                  PIECEWISE LINEAR FEES                                              
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteMintExactOutputReflexivityFixPiecewiseFees(
+    function testFuzz_QuoteMintExactOutputReflexivityFixPiecewiseFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -428,7 +430,7 @@ contract MintTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteMintReflexivityRandPiecewiseFees(
+    function testFuzz_QuoteMintReflexivityRandPiecewiseFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -466,7 +468,7 @@ contract MintTest is Fixture, FunctionUtils {
                                                    INDEPENDANT PATH                                                 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteMintExactOutputIndependant(
+    function testFuzz_QuoteMintExactOutputIndependant(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256 splitProportion,
@@ -509,7 +511,7 @@ contract MintTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteMintExactInputIndependant(
+    function testFuzz_QuoteMintExactInputIndependant(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256 splitProportion,
@@ -556,7 +558,7 @@ contract MintTest is Fixture, FunctionUtils {
                                                          MINT                                                       
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testMintExactOutput(
+    function testFuzz_MintExactOutput(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -598,7 +600,7 @@ contract MintTest is Fixture, FunctionUtils {
         assertApproxEqAbs(newStableAmount, mintedStables + stableAmount, 1 wei);
     }
 
-    function testMintExactInput(
+    function testFuzz_MintExactInput(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,

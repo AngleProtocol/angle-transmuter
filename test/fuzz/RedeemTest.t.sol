@@ -7,6 +7,7 @@ import "oz/utils/Strings.sol";
 import { stdError } from "forge-std/Test.sol";
 
 import { IERC20Metadata } from "mock/MockTokenPermit.sol";
+import { MockManager } from "mock/MockManager.sol";
 
 import { ManagerStorage } from "contracts/transmuter/Storage.sol";
 import "contracts/transmuter/libraries/LibHelpers.sol";
@@ -73,7 +74,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                                                       QUOTEREDEEM                                                   
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteRedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
+    function testFuzz_QuoteRedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         // let's first load the reserves of the protocol
         (uint256 mintedStables, ) = _loadReserves(initialAmounts, transferProportion);
 
@@ -97,7 +98,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertQuoteAmounts(uint64(BASE_9), mintedStables, amountBurnt, uint64(BASE_9), amounts);
     }
 
-    function testQuoteRedeemGlobalAtPeg(
+    function testFuzz_QuoteRedeemGlobalAtPeg(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[2] memory latestOracleValue
@@ -147,7 +148,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
     }
 
-    function testQuoteRedeemRandomOracles(
+    function testFuzz_QuoteRedeemRandomOracles(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue
@@ -172,7 +173,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertQuoteAmounts(collatRatio, mintedStables, amountBurnt, uint64(BASE_9), amounts);
     }
 
-    function testQuoteRedeemAtPegRandomFees(
+    function testFuzz_QuoteRedeemAtPegRandomFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint64[10] memory xFeeRedeemUnbounded,
@@ -200,7 +201,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         );
     }
 
-    function testQuoteRedeemRandomFees(
+    function testFuzz_QuoteRedeemRandomFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -238,7 +239,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                                                         REDEEM                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testRedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
+    function testFuzz_RedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         // let's first load the reserves of the protocol
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
             initialAmounts,
@@ -281,7 +282,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
     }
 
-    function testRedeemRandomFees(
+    function testFuzz_RedeemRandomFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
@@ -339,7 +340,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
     }
 
-    function testMultiRedemptionCurveRandomRedemptionFees(
+    function testFuzz_MultiRedemptionCurveRandomRedemptionFees(
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256 redeemProportion,
@@ -443,7 +444,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                                                   REDEEM WITH MANAGER                                               
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testQuoteRedemptionCurveWithManagerRandomRedemptionFees(
+    function testFuzz_QuoteRedemptionCurveWithManagerRandomRedemptionFees(
         uint256[3] memory initialAmounts,
         uint256[3] memory nbrSubCollaterals,
         bool[3] memory isManaged,
@@ -510,7 +511,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertQuoteAmountsWithManager(collatRatio, collatRatioAboveLimit, mintedStables, amountBurnt, fee, amounts);
     }
 
-    function testMultiRedemptionCurveWithManagerRandomRedemptionFees(
+    function testFuzz_MultiRedemptionCurveWithManagerRandomRedemptionFees(
         uint256[3] memory initialAmounts,
         uint256[3] memory nbrSubCollaterals,
         bool[3] memory isManaged,
@@ -643,9 +644,8 @@ contract RedeemTest is Fixture, FunctionUtils {
                                                   REDEEM WITH FORFEIT                                               
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testMultiForfeitRedemptionCurveWithManagerRandomRedemptionFees(
-        uint256[3] memory initialAmounts,
-        uint256[3] memory nbrSubCollaterals,
+    function testFuzz_MultiForfeitRedemptionCurveWithManagerRandomRedemptionFees(
+        uint256[6] memory initialValue, // initialAmounts of size 3 / nbrSubCollaterals of size 3
         bool[3] memory isManaged,
         uint256[3 * _MAX_SUB_COLLATERALS] memory airdropAmounts,
         uint256[3 * _MAX_SUB_COLLATERALS] memory latestSubCollatOracleValue,
@@ -654,14 +654,14 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256 transferProportion,
         uint256 redeemProportion,
         uint256[3] memory latestOracleValue,
-        uint64[10] memory xFeeRedeemUnbounded,
-        int64[10] memory yFeeRedeemUnbounded
+        uint64[10] memory xFeeRedeemUnbounded, // X and Y arrays of length 10 each
+        int64[10] memory yFeeRedeemUnbounded // X and Y arrays of length 10 each
     ) public {
         for (uint256 i; i < _collaterals.length; ++i) {
             // Randomly set subcollaterals and manager if needed
             (IERC20[] memory subCollaterals, AggregatorV3Interface[] memory oracles) = _createManager(
                 _collaterals[i],
-                nbrSubCollaterals[i],
+                initialValue[3 + i],
                 isManaged[i],
                 i * _MAX_SUB_COLLATERALS,
                 latestSubCollatOracleValue,
@@ -672,7 +672,7 @@ contract RedeemTest is Fixture, FunctionUtils {
 
         // let's first load the reserves of the protocol
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-            initialAmounts,
+            [initialValue[0], initialValue[1], initialValue[2]],
             transferProportion
         );
         // airdrop amounts in the subcollaterals
@@ -755,27 +755,30 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
 
         // Testing implicitly the ks.normalizer and ks.normalizedStables
-        uint256 totalStable2;
-        for (uint256 i; i < _collaterals.length; ++i) {
-            uint256 stableIssuedByCollateral;
-            (stableIssuedByCollateral, totalStable2) = transmuter.getIssuedByCollateral(_collaterals[i]);
-            uint256 realStableIssueByCollateralLeft = (collateralMintedStables[i] * (mintedStables - amountBurntBob)) /
-                (mintedStables + amountBurnt);
+        {
+            uint256 totalStable2;
+            for (uint256 i; i < _collaterals.length; ++i) {
+                uint256 stableIssuedByCollateral;
+                (stableIssuedByCollateral, totalStable2) = transmuter.getIssuedByCollateral(_collaterals[i]);
+                uint256 realStableIssueByCollateralLeft = (collateralMintedStables[i] *
+                    (mintedStables - amountBurntBob)) / (mintedStables + amountBurnt);
+
+                _assertApproxEqRelDecimalWithTolerance(
+                    realStableIssueByCollateralLeft,
+                    stableIssuedByCollateral,
+                    realStableIssueByCollateralLeft,
+                    _MAX_PERCENTAGE_DEVIATION,
+                    18
+                );
+            }
             _assertApproxEqRelDecimalWithTolerance(
-                realStableIssueByCollateralLeft,
-                stableIssuedByCollateral,
-                realStableIssueByCollateralLeft,
+                mintedStables - amountBurntBob,
+                totalStable2,
+                mintedStables - amountBurntBob,
                 _MAX_PERCENTAGE_DEVIATION,
                 18
             );
         }
-        _assertApproxEqRelDecimalWithTolerance(
-            mintedStables - amountBurntBob,
-            totalStable2,
-            mintedStables - amountBurntBob,
-            _MAX_PERCENTAGE_DEVIATION,
-            18
-        );
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.7;
 
-import "oz/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "oz/token/ERC20/IERC20.sol";
+import "oz/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "oz/token/ERC20/utils/SafeERC20.sol";
 
 contract MockTokenPermit is ERC20Permit {

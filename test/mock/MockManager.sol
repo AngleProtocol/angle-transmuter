@@ -5,8 +5,8 @@ pragma solidity ^0.8.17;
 import "oz/token/ERC20/IERC20.sol";
 import "oz/token/ERC20/utils/SafeERC20.sol";
 
-import { LibOracle, AggregatorV3Interface } from "../../contracts/transmuter/libraries/LibOracle.sol";
 import { LibHelpers } from "../../contracts/transmuter/libraries/LibHelpers.sol";
+import { LibOracle, AggregatorV3Interface } from "../../contracts/transmuter/libraries/LibOracle.sol";
 
 import "../../contracts/utils/Constants.sol";
 import "../../contracts/utils/Errors.sol";
@@ -27,7 +27,7 @@ contract MockManager {
         managerConfig = _managerConfig;
     }
 
-    function transfer(address token, address to, uint256 amount, bool) external {
+    function transferTo(address token, address to, uint256 amount) external {
         bool found;
         for (uint256 i; i < subCollaterals.length; ++i) {
             if (token == address(subCollaterals[i])) {

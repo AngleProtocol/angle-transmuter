@@ -65,7 +65,7 @@ contract OracleTest is Fixture, FunctionUtils {
                                                          TESTS                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testOracleReadMintRevertStale(
+    function test_RevertWhen_OracleReadMintStale(
         uint256[3] memory latestOracleValue,
         uint32[3] memory newStalePeriods,
         uint256 elapseTimestamp,
@@ -85,7 +85,7 @@ contract OracleTest is Fixture, FunctionUtils {
         transmuter.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
     }
 
-    function testOracleReadBurnRevertStale(
+    function test_RevertWhen_OracleReadBurnStale(
         uint256[3] memory initialAmounts,
         uint256[3] memory latestOracleValue,
         uint32[3] memory newStalePeriods,
@@ -107,7 +107,7 @@ contract OracleTest is Fixture, FunctionUtils {
         transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
     }
 
-    function testOracleReadRedemptionRevertStale(
+    function test_RevertWhen_OracleReadRedemptionStale(
         uint256[3] memory initialAmounts,
         uint256[3] memory latestOracleValue,
         uint32[3] memory newStalePeriods,
@@ -133,7 +133,7 @@ contract OracleTest is Fixture, FunctionUtils {
                                                        GETORACLE                                                    
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testGetOracle(
+    function testFuzz_GetOracle(
         uint8[3] memory newChainlinkDecimals,
         uint8[3] memory newCircuitChainIsMultiplied,
         uint8[3] memory newQuoteType,
@@ -214,7 +214,7 @@ contract OracleTest is Fixture, FunctionUtils {
                                                     READREDEMPTION                                                  
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testOracleReadRedemptionSuccess(
+    function testFuzz_OracleReadRedemptionSuccess(
         uint8[3] memory newChainlinkDecimals,
         uint8[3] memory newCircuitChainIsMultiplied,
         uint8[3] memory newQuoteType,
@@ -250,7 +250,7 @@ contract OracleTest is Fixture, FunctionUtils {
                                                        READMINT                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testOracleReadMintSuccess(
+    function testFuzz_OracleReadMintSuccess(
         uint8[3] memory newChainlinkDecimals,
         uint8[3] memory newCircuitChainIsMultiplied,
         uint8[3] memory newQuoteType,
@@ -287,7 +287,7 @@ contract OracleTest is Fixture, FunctionUtils {
                                                        READBURN                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testOracleReadBurnSuccess(
+    function testFuzz_OracleReadBurnSuccess(
         uint8[3] memory newChainlinkDecimals,
         uint8[3] memory newCircuitChainIsMultiplied,
         uint8[3] memory newQuoteType,

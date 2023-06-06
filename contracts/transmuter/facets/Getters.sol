@@ -8,6 +8,7 @@ import { IGetters } from "interfaces/IGetters.sol";
 import { LibOracle } from "../libraries/LibOracle.sol";
 import { LibRedeemer } from "../libraries/LibRedeemer.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
+import { LibWhitelist } from "../libraries/LibWhitelist.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -93,5 +94,52 @@ contract Getters is IGetters {
         address collateral
     ) external view returns (OracleReadType readType, OracleTargetType targetType, bytes memory data) {
         return LibOracle.getOracle(collateral);
+    }
+
+    /// @inheritdoc IGetters
+    function isPaused(address collateral, ActionType action) external view returns (bool) {
+        if (action == ActionType.Mint || action == ActionType.Burn) {
+            Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
+            if (collatInfo.decimals == 0) revert NotCollateral();
+            if (action == ActionType.Mint) {
+                return collatInfo.isMintLive == 0;
+            } else {
+                return collatInfo.isBurnLive == 0;
+            }
+        } else {
+            TransmuterStorage storage ks = s.transmuterStorage();
+            return ks.isRedemptionLive == 0;
+        }
+    }
+
+    /// @inheritdoc IGetters
+    function isTrusted(address sender) external view returns (bool) {
+        return s.transmuterStorage().isTrusted[sender] == 1;
+    }
+
+    /// @inheritdoc IGetters
+    function isTrustedSeller(address sender) external view returns (bool) {
+        return s.transmuterStorage().isSellerTrusted[sender] == 1;
+    }
+
+    /// @inheritdoc IGetters
+    function isWhitelistedForType(WhitelistType whitelistType, address sender) external view returns (bool) {
+        return LibWhitelist.isWhitelistedForType(whitelistType, sender);
+    }
+
+    /// @inheritdoc IGetters
+    function isWhitelistedForCollateral(address collateral, address sender) external view returns (bool) {
+        Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
+        return (collatInfo.onlyWhitelisted == 0 || LibWhitelist.checkWhitelist(collatInfo.whitelistData, sender));
+    }
+
+    /// @inheritdoc IGetters
+    function isWhitelistedCollateral(address collateral) external view returns (bool) {
+        return s.transmuterStorage().collaterals[collateral].onlyWhitelisted == 1;
+    }
+
+    /// @inheritdoc IGetters
+    function getCollateralWhitelistData(address collateral) external view returns (bytes memory) {
+        return s.transmuterStorage().collaterals[collateral].whitelistData;
     }
 }

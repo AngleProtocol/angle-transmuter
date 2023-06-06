@@ -15,6 +15,7 @@ import { LibManager } from "../libraries/LibManager.sol";
 import { LibRedeemer } from "../libraries/LibRedeemer.sol";
 import { LibSetters } from "../libraries/LibSetters.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
+import { LibWhitelist } from "../libraries/LibWhitelist.sol";
 import { AccessControlModifiers } from "./AccessControlModifiers.sol";
 
 import "../../utils/Constants.sol";
@@ -31,23 +32,52 @@ contract Setters is AccessControlModifiers, ISetters {
     event ManagerDataSet(address indexed collateral, ManagerStorage managerData);
     event RedemptionCurveParamsSet(uint64[] xFee, int64[] yFee);
     event ReservesAdjusted(address indexed collateral, uint256 amount, bool addOrRemove);
-    event TrustedToggled(address indexed sender, uint256 trustedStatus, uint8 trustedType);
+    event TrustedToggled(address indexed sender, bool isTrusted, TrustedType trustedType);
+    event WhitelistStatusToggled(WhitelistType whitelistType, address indexed who, uint256 whitelistStatus);
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                  GUARDIAN FUNCTIONS                                                
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    /// @inheritdoc ISetters
+    function togglePause(address collateral, ActionType pausedType) external onlyGuardian {
+        LibSetters.togglePause(collateral, pausedType);
+    }
+
+    /// @inheritdoc ISetters
+    function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) external onlyGuardian {
+        LibSetters.setFees(collateral, xFee, yFee, mint);
+    }
+
+    /// @inheritdoc ISetters
+    function setRedemptionCurveParams(uint64[] memory xFee, int64[] memory yFee) external onlyGuardian {
+        TransmuterStorage storage ks = s.transmuterStorage();
+        LibSetters.checkFees(xFee, yFee, ActionType.Redeem);
+        ks.xRedemptionCurve = xFee;
+        ks.yRedemptionCurve = yFee;
+        emit RedemptionCurveParamsSet(xFee, yFee);
+    }
+
+    /// @inheritdoc ISetters
+    function toggleWhitelist(WhitelistType whitelistType, address who) external onlyGuardian {
+        TransmuterStorage storage ks = s.transmuterStorage();
+        uint256 whitelistStatus = 1 - ks.isWhitelistedForType[whitelistType][who];
+        ks.isWhitelistedForType[whitelistType][who] = whitelistStatus;
+        emit WhitelistStatusToggled(whitelistType, who, whitelistStatus);
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                  GOVERNOR FUNCTIONS                                                
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc ISetters
     /// @dev No check is made on the collateral that is redeemed: this function could typically be used by a
     /// governance during a manual rebalance of the reserves of the system
+    /// @dev `collateral` is different from `token` only in the case of a managed collateral
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external onlyGovernor {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        Collateral storage collatInfo = ks.collaterals[collateral];
-        bool isManaged = collatInfo.isManaged > 0;
-        ManagerStorage memory emptyManagerData;
-        LibHelpers.transferCollateralTo(
-            isManaged ? address(token) : collateral,
-            to,
-            amount,
-            false,
-            isManaged ? collatInfo.managerData : emptyManagerData
-        );
+        Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
+        if (collatInfo.isManaged > 0) LibManager.transferTo(address(token), to, amount, collatInfo.managerData);
+        else token.safeTransfer(to, amount);
     }
 
     /// @inheritdoc ISetters
@@ -88,22 +118,17 @@ contract Setters is AccessControlModifiers, ISetters {
     }
 
     /// @inheritdoc ISetters
-    function togglePause(address collateral, PauseType pausedType) external onlyGuardian {
-        LibSetters.togglePause(collateral, pausedType);
-    }
-
-    /// @inheritdoc ISetters
-    function toggleTrusted(address sender, uint8 trustedType) external onlyGovernor {
+    function toggleTrusted(address sender, TrustedType t) external onlyGovernor {
         TransmuterStorage storage ks = s.transmuterStorage();
         uint256 trustedStatus;
-        if (trustedType == 0) {
+        if (t == TrustedType.Updater) {
             trustedStatus = 1 - ks.isTrusted[sender];
             ks.isTrusted[sender] = trustedStatus;
         } else {
             trustedStatus = 1 - ks.isSellerTrusted[sender];
             ks.isSellerTrusted[sender] = trustedStatus;
         }
-        emit TrustedToggled(sender, trustedStatus, trustedType);
+        emit TrustedToggled(sender, trustedStatus == 1, t);
     }
 
     /// @inheritdoc ISetters
@@ -118,10 +143,10 @@ contract Setters is AccessControlModifiers, ISetters {
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         if (addOrRemove) {
-            collatInfo.normalizedStables += uint224(amount);
+            collatInfo.normalizedStables += uint216(amount);
             ks.normalizedStables += amount;
         } else {
-            collatInfo.normalizedStables -= uint224(amount);
+            collatInfo.normalizedStables -= uint216(amount);
             ks.normalizedStables -= amount;
         }
         emit ReservesAdjusted(collateral, amount, addOrRemove);
@@ -151,22 +176,17 @@ contract Setters is AccessControlModifiers, ISetters {
     }
 
     /// @inheritdoc ISetters
-    function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) external onlyGuardian {
-        LibSetters.setFees(collateral, xFee, yFee, mint);
-    }
-
-    /// @inheritdoc ISetters
-    function setRedemptionCurveParams(uint64[] memory xFee, int64[] memory yFee) external onlyGuardian {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        LibSetters.checkFees(xFee, yFee, 2);
-        ks.xRedemptionCurve = xFee;
-        ks.yRedemptionCurve = yFee;
-        emit RedemptionCurveParamsSet(xFee, yFee);
-    }
-
-    /// @inheritdoc ISetters
     function setOracle(address collateral, bytes memory oracleConfig) external onlyGovernor {
         LibSetters.setOracle(collateral, oracleConfig);
+    }
+
+    /// @inheritdoc ISetters
+    function setWhitelistStatus(
+        address collateral,
+        uint8 whitelistStatus,
+        bytes memory whitelistData
+    ) external onlyGovernor {
+        LibSetters.setWhitelistStatus(collateral, whitelistStatus, whitelistData);
     }
 
     /// @inheritdoc ISetters

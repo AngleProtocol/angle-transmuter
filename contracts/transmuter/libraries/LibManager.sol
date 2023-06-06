@@ -20,15 +20,10 @@ library LibManager {
     /// @notice Performs a transfer of `token` for a collateral that is managed to a `to` address
     /// @dev `token` may not be the actual collateral itself, as some collaterals have subcollaterals associated
     /// with it
-    function transferTo(
-        address token,
-        address to,
-        uint256 amount,
-        bool redeem,
-        ManagerStorage memory managerData
-    ) internal {
+    /// @dev Eventually pulls funds from strategies
+    function transferTo(address token, address to, uint256 amount, ManagerStorage memory managerData) internal {
         (ManagerType managerType, bytes memory data) = parseManagerData(managerData);
-        if (managerType == ManagerType.EXTERNAL) abi.decode(data, (IManager)).transfer(token, to, amount, redeem);
+        if (managerType == ManagerType.EXTERNAL) abi.decode(data, (IManager)).transferTo(token, to, amount);
     }
 
     /// @notice Performs a collateral transfer from `msg.sender` to an address depending on the type of

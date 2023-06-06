@@ -36,14 +36,14 @@ contract BasicInvariants is Calls {
     //     );
     // }
 
-    function invariantIssuedCoherent() public {
+    function invariant_IssuedCoherent() public {
         (uint256 issuedA, uint256 issued) = transmuter.getIssuedByCollateral(address(eurA));
         (uint256 issuedB, ) = transmuter.getIssuedByCollateral(address(eurB));
         (uint256 issuedY, ) = transmuter.getIssuedByCollateral(address(eurY));
         assertEq(issued, issuedA + issuedB + issuedY);
     }
 
-    function invariantSystemState() public view {
+    function invariant_SystemState() public view {
         systemState();
     }
 

@@ -21,10 +21,15 @@ enum ManagerType {
     EXTERNAL
 }
 
-enum PauseType {
+enum ActionType {
     Mint,
     Burn,
     Redeem
+}
+
+enum TrustedType {
+    Updater,
+    Seller
 }
 
 enum QuoteType {
@@ -51,6 +56,10 @@ enum OracleTargetType {
     CBETH,
     RETH,
     SFRXETH
+}
+
+enum WhitelistType {
+    BACKED
 }
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -86,21 +95,23 @@ struct ManagerStorage {
 
 struct Collateral {
     uint8 isManaged;                             // If the collateral is managed through external strategies
-    uint8 unpausedMint;                          // If minting from this asset is unpaused
-    uint8 unpausedBurn;                          // If burning to this asset is unpaused
+    uint8 isMintLive;                            // If minting from this asset is unpaused
+    uint8 isBurnLive;                            // If burning to this asset is unpaused
     uint8 decimals;                              // IERC20Metadata(collateral).decimals()
-    uint224 normalizedStables;                   // Normalized amount of stablecoins issued from this collateral
+    uint8 onlyWhitelisted;                       // If only whitelisted addresses can burn or redeem for this token
+    uint216 normalizedStables;                   // Normalized amount of stablecoins issued from this collateral
     uint64[] xFeeMint;                           // Increasing exposures in [0,BASE_9[
     int64[] yFeeMint;                            // Mint fees at the exposures specified in `xFeeMint`
     uint64[] xFeeBurn;                           // Decreasing exposures in ]0,BASE_9]
     int64[] yFeeBurn;                            // Burn fees at the exposures specified in `xFeeBurn`
     bytes oracleConfig;                          // Data about the oracle used for the collateral
+    bytes whitelistData;                         // For whitelisted collateral, data used to verify whitelists
     ManagerStorage managerData;                  // For managed collateral, data used to handle the strategies
 }
 
 struct TransmuterStorage {
     IAgToken agToken;                            // agToken handled by the system
-    uint8 pausedRedemption;                      // If redemption is paused
+    uint8 isRedemptionLive;                      // If redemption is unpaused
     uint128 normalizedStables;                   // Normalized amount of stablecoins issued by the system
     uint128 normalizer;                          // To reconcile `normalizedStables` values with the actual amount
     address[] collateralList;                    // List of collateral assets supported by the system
@@ -109,4 +120,6 @@ struct TransmuterStorage {
     mapping(address => Collateral) collaterals;  // Maps a collateral asset to its parameters
     mapping(address => uint256) isTrusted;       // If an address is trusted to update the normalizer value
     mapping(address => uint256) isSellerTrusted; // If an address is trusted to sell accruing reward tokens
+    mapping(WhitelistType => mapping(address => uint256)) isWhitelistedForType;
+                                                 // Whether an address is whitelisted for a specific whitelist type
 }

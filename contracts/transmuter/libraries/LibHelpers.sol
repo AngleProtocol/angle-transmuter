@@ -14,29 +14,6 @@ import "../Storage.sol";
 library LibHelpers {
     using SafeERC20 for IERC20;
 
-    /// @notice Performs a collateral transfer from the contract or its underlying managers to another address
-    function transferCollateralTo(
-        address token,
-        address to,
-        uint256 amount,
-        bool redeem,
-        ManagerStorage memory managerData
-    ) internal {
-        if (amount > 0) {
-            if (managerData.managerConfig.length != 0) LibManager.transferTo(token, to, amount, redeem, managerData);
-            else IERC20(token).safeTransfer(to, amount);
-        }
-    }
-
-    /// @notice Performs a collateral transfer to one of the contract of the Transmuter system depending on the
-    /// `managerData` associated to `token`
-    function transferCollateralFrom(address token, uint256 amount, ManagerStorage memory managerData) internal {
-        if (amount > 0) {
-            if (managerData.managerConfig.length != 0) LibManager.transferFrom(token, amount, managerData);
-            else IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-        }
-    }
-
     /// @notice Rebases the units of `amount` from `fromDecimals` to `toDecimals`
     function convertDecimalTo(uint256 amount, uint8 fromDecimals, uint8 toDecimals) internal pure returns (uint256) {
         if (fromDecimals > toDecimals) return amount / 10 ** (fromDecimals - toDecimals);

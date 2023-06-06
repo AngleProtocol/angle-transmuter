@@ -12,6 +12,7 @@ import { LibHelpers } from "./LibHelpers.sol";
 import { LibManager } from "./LibManager.sol";
 import { LibOracle } from "./LibOracle.sol";
 import { LibStorage as s } from "./LibStorage.sol";
+import { LibWhitelist } from "./LibWhitelist.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -32,6 +33,9 @@ struct LocalVariables {
 /// @title LibSwapper
 /// @author Angle Labs, Inc.
 library LibSwapper {
+    using SafeERC20 for IERC20;
+    using Math for uint256;
+
     // The `to` address is not indexed as there cannot be 4 indexed addresses in an event.
     event Swap(
         address indexed tokenIn,
@@ -41,55 +45,40 @@ library LibSwapper {
         address indexed from,
         address to
     );
-    using SafeERC20 for IERC20;
-    using Math for uint256;
 
     /// @notice Processes the internal metric updates and the transfers following mint or burn operations
     function swap(
-        Collateral memory collatInfo,
         uint256 amountIn,
         uint256 amountOut,
         address tokenIn,
         address tokenOut,
         address to,
-        uint256 deadline,
+        uint8 isManaged,
+        uint8 onlyWhitelisted,
         bool mint
     ) internal {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        if (block.timestamp > deadline) revert TooLate();
-        if (mint) {
-            uint128 changeAmount = uint128(amountOut.mulDiv(BASE_27, ks.normalizer, Math.Rounding.Up));
-            // The amount of stablecoins issued from a collateral are not stored as absolute variables, but
-            // as variables normalized by a `normalizer`
-            ks.collaterals[tokenIn].normalizedStables += uint224(changeAmount);
-            ks.normalizedStables += changeAmount;
-            {
-                ManagerStorage memory emptyManagerData;
-                LibHelpers.transferCollateralFrom(
-                    tokenIn,
-                    amountIn,
-                    collatInfo.isManaged > 0 ? collatInfo.managerData : emptyManagerData
-                );
-            }
-            IAgToken(tokenOut).mint(to, amountOut);
-        } else {
-            {
+        if (amountIn > 0 && amountOut > 0) {
+            TransmuterStorage storage ks = s.transmuterStorage();
+            if (mint) {
+                uint128 changeAmount = uint128(amountOut.mulDiv(BASE_27, ks.normalizer, Math.Rounding.Up));
+                // The amount of stablecoins issued from a collateral are not stored as absolute variables, but
+                // as variables normalized by a `normalizer`
+                ks.collaterals[tokenIn].normalizedStables += uint216(changeAmount);
+                ks.normalizedStables += changeAmount;
+                if (isManaged > 0) LibManager.transferFrom(tokenIn, amountIn, ks.collaterals[tokenIn].managerData);
+                else IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+                IAgToken(tokenOut).mint(to, amountOut);
+            } else {
+                if (onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(ks.collaterals[tokenOut].whitelistData, to))
+                    revert NotWhitelisted();
                 uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
                 // This will underflow when the system is trying to burn more stablecoins than what has been issued
                 // from this collateral
-                ks.collaterals[tokenOut].normalizedStables -= uint224(changeAmount);
+                ks.collaterals[tokenOut].normalizedStables -= uint216(changeAmount);
                 ks.normalizedStables -= changeAmount;
-            }
-            IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-            {
-                ManagerStorage memory emptyManagerData;
-                LibHelpers.transferCollateralTo(
-                    tokenOut,
-                    to,
-                    amountOut,
-                    false,
-                    collatInfo.isManaged > 0 ? collatInfo.managerData : emptyManagerData
-                );
+                IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
+                if (isManaged > 0) LibManager.transferTo(tokenOut, to, amountOut, ks.collaterals[tokenOut].managerData);
+                else IERC20(tokenOut).safeTransfer(to, amountOut);
             }
         }
         emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
@@ -164,7 +153,7 @@ library LibSwapper {
 
             uint256 normalizerMem = ks.normalizer;
             // Store the current amount of stablecoins issued from this collateral
-            collatInfo.normalizedStables = uint224((uint256(collatInfo.normalizedStables) * normalizerMem) / BASE_27);
+            collatInfo.normalizedStables = uint216((uint256(collatInfo.normalizedStables) * normalizerMem) / BASE_27);
             v.otherStablecoinSupply = (normalizerMem * normalizedStablesMem) / BASE_27 - collatInfo.normalizedStables;
         }
 
@@ -222,9 +211,6 @@ library LibSwapper {
                     (v.amountToNextBreakPoint + amountFromPrevBreakPoint));
                 // `currentFees` is the `g(0)` value from the whitepaper
                 currentFees = v.lowerFees + int256((slope * amountFromPrevBreakPoint) / BASE_36);
-
-                // Safeguard for the protocol not to issue free money if `quoteType == BurnExactOutput`
-                if (!v.isMint && currentFees == int256(BASE_9)) revert InvalidSwap();
             }
             {
                 // In the mint case, when `!v.isExact`: = `b_{i+1} * (1+(g_i(0)+f_{i+1})/2)`
@@ -307,8 +293,8 @@ library LibSwapper {
                     ++i;
                     // Update for the rest of the swaps the stablecoins issued from the asset
                     collatInfo.normalizedStables = v.isMint
-                        ? collatInfo.normalizedStables + uint224(v.amountToNextBreakPoint)
-                        : collatInfo.normalizedStables - uint224(v.amountToNextBreakPoint);
+                        ? collatInfo.normalizedStables + uint216(v.amountToNextBreakPoint)
+                        : collatInfo.normalizedStables - uint216(v.amountToNextBreakPoint);
                 }
             }
         }
@@ -418,11 +404,11 @@ library LibSwapper {
         if (tokenIn == _agToken) {
             collatInfo = ks.collaterals[tokenOut];
             mint = false;
-            if (collatInfo.unpausedMint == 0) revert Paused();
+            if (collatInfo.isBurnLive == 0) revert Paused();
         } else if (tokenOut == _agToken) {
             collatInfo = ks.collaterals[tokenIn];
             mint = true;
-            if (collatInfo.unpausedBurn == 0) revert Paused();
+            if (collatInfo.isMintLive == 0) revert Paused();
         } else revert InvalidTokens();
     }
 }

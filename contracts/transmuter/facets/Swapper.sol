@@ -17,17 +17,21 @@ import "../Storage.sol";
 
 /// @title Swapper
 /// @author Angle Labs, Inc.
+/// @dev In all the functions of this contract, one of `tokenIn` or `tokenOut` must be the stablecoin, and
+/// one of `tokenOut` or `tokenIn` must be an accepted collateral. Depending on the `tokenIn` or `tokenOut` given,
+/// the functions will either handle a mint or a burn operation
+/// @dev In case of a burn, they will also revert if the system does not have enough of `amountOut` for `tokenOut`.
+/// This balance must be available either directly on the contract or, when applicable, through the underlying
+/// strategies that manage the collateral
+/// @dev Functions here may be paused for some collateral assets (for either mint or burn), in which case they'll revert
+/// @dev In case of a burn again, the swap functions will revert if the call concerns a collateral that requires a
+/// whitelist but the `to` address does not have it. The quote functions will not revert in this case.
 contract Swapper is ISwapper {
     using SafeERC20 for IERC20;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                EXTERNAL ACTION FUNCTIONS                                            
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    /// The two functions below can be used for both mint and burn operations. In both cases, one of `tokenIn` or
-    /// `tokenOut` must be the stablecoin, and the other must be an accepted collateral: the functions revert otherwise.
-    /// They may be paused for some collateral assets (for either mint or burn), in which case they will revert.
-    /// An approval of `tokenIn` for this contract is also needed before interacting with it.
 
     /// @inheritdoc ISwapper
     /// @dev `msg.sender` must have approved this contract for at least `amountIn` for `tokenIn`
@@ -39,6 +43,7 @@ contract Swapper is ISwapper {
         address to,
         uint256 deadline
     ) external returns (uint256 amountOut) {
+        if (block.timestamp > deadline) revert TooLate();
         // Check whether this is a mint or a burn operation, and whether the collateral provided
         // is paused or not
         (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut);
@@ -48,7 +53,16 @@ contract Swapper is ISwapper {
             : LibSwapper.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
         if (amountOut < amountOutMin) revert TooSmallAmountOut();
         // Once the exact amounts are known, the system needs to update its internal metrics and process the transfers
-        LibSwapper.swap(collatInfo, amountIn, amountOut, tokenIn, tokenOut, to, deadline, mint);
+        LibSwapper.swap(
+            amountIn,
+            amountOut,
+            tokenIn,
+            tokenOut,
+            to,
+            collatInfo.isManaged,
+            collatInfo.onlyWhitelisted,
+            mint
+        );
     }
 
     /// @inheritdoc ISwapper
@@ -62,23 +76,27 @@ contract Swapper is ISwapper {
         address to,
         uint256 deadline
     ) external returns (uint256 amountIn) {
+        if (block.timestamp > deadline) revert TooLate();
         (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut);
         amountIn = mint
             ? LibSwapper.quoteMintExactOutput(collatInfo, amountOut)
             : LibSwapper.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         if (amountIn > amountInMax) revert TooBigAmountIn();
-        LibSwapper.swap(collatInfo, amountIn, amountOut, tokenIn, tokenOut, to, deadline, mint);
+        LibSwapper.swap(
+            amountIn,
+            amountOut,
+            tokenIn,
+            tokenOut,
+            to,
+            collatInfo.isManaged,
+            collatInfo.onlyWhitelisted,
+            mint
+        );
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                      VIEW HELPERS                                                   
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    /// The functions below revert if neither of `tokenIn` and `tokenOut` are the stablecoin, and if neither
-    /// of `tokenOut` and `tokenIn` are an accepted collateral.
-    /// In case of a burn, they will also revert if the system does not have enough of `amountOut` for `tokenOut`.
-    /// This balance must be available either directly on the contract or through the underlying strategies that manage
-    /// the collateral.
 
     /// @inheritdoc ISwapper
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256 amountOut) {

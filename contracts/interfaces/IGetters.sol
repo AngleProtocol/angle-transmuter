@@ -65,4 +65,25 @@ interface IGetters {
     function getOracle(
         address collateral
     ) external view returns (OracleReadType readType, OracleTargetType targetType, bytes memory data);
+
+    /// @notice Returns if the associated functionality is paused or not
+    function isPaused(address collateral, ActionType action) external view returns (bool);
+
+    /// @notice Returns if `sender` is trusted to update normalizers
+    function isTrusted(address sender) external view returns (bool);
+
+    /// @notice Returns if `sender` is trusted to update sell rewards
+    function isTrustedSeller(address sender) external view returns (bool);
+
+    /// @notice Checks whether `sender` is whitelisted for collaterals with type `whitelistType`
+    function isWhitelistedForType(WhitelistType whitelistType, address sender) external view returns (bool);
+
+    /// @notice Checks whether `sender` can deal with `collateral` during burns and redemptions
+    function isWhitelistedForCollateral(address collateral, address sender) external view returns (bool);
+
+    /// @notice Checks whether only whitelisted address can deal with `collateral` during burns and redemptions
+    function isWhitelistedCollateral(address collateral) external view returns (bool);
+
+    /// @notice Gets the data needed to deal with whitelists for `collateral`
+    function getCollateralWhitelistData(address collateral) external view returns (bytes memory);
 }
