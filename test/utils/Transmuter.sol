@@ -8,6 +8,7 @@ import { DiamondProxy } from "contracts/transmuter/DiamondProxy.sol";
 import "contracts/transmuter/Storage.sol";
 import { DiamondCut } from "contracts/transmuter/facets/DiamondCut.sol";
 import { DiamondLoupe } from "contracts/transmuter/facets/DiamondLoupe.sol";
+import { ERC1155Receiver } from "contracts/transmuter/facets/ERC1155Receiver.sol";
 import { Getters } from "contracts/transmuter/facets/Getters.sol";
 import { Redeemer } from "contracts/transmuter/facets/Redeemer.sol";
 import { RewardHandler } from "contracts/transmuter/facets/RewardHandler.sol";
@@ -47,6 +48,9 @@ abstract contract Transmuter is Helper {
 
         facetNames.push("Swapper");
         facetAddressList.push(address(new Swapper()));
+
+        facetNames.push("ERC1155Receiver");
+        facetAddressList.push(address(new ERC1155Receiver()));
 
         // Build appropriate payload
         uint256 n = facetNames.length;
