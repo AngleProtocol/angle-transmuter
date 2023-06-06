@@ -124,7 +124,7 @@ contract Getters is IGetters {
 
     /// @inheritdoc IGetters
     function isWhitelistedForType(WhitelistType whitelistType, address sender) external view returns (bool) {
-        return s.transmuterStorage().isWhitelistedForType[whitelistType][sender] == 1;
+        return LibWhitelist.isWhitelistedForType(whitelistType, sender);
     }
 
     /// @inheritdoc IGetters

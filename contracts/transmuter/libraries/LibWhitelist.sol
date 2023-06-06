@@ -13,6 +13,11 @@ library LibWhitelist {
     /// @notice Checks whether an address is whitelisted for a collateral with `whitelistData`
     function checkWhitelist(bytes memory whitelistData, address sender) internal view returns (bool) {
         (WhitelistType whitelistType, ) = parseWhitelistData(whitelistData);
+        return isWhitelistedForType(whitelistType, sender);
+    }
+
+    /// @notice Checks whether an address is whitelisted for the type `whitelistType`
+    function isWhitelistedForType(WhitelistType whitelistType, address sender) internal view returns (bool) {
         if (whitelistType == WhitelistType.BACKED) {
             if (s.transmuterStorage().isWhitelistedForType[whitelistType][sender] > 0) return true;
         }
