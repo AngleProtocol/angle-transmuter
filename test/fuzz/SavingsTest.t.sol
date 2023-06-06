@@ -57,7 +57,7 @@ contract SavingsTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function testInitialisation() public {
+    function test_Initialize() public {
         assertEq(address(_saving.accessControlManager()), address(accessControlManager));
         assertEq(_saving.asset(), address(agToken));
         assertEq(_saving.name(), _name);

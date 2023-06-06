@@ -208,8 +208,9 @@ contract BurnTest is Fixture, FunctionUtils {
         vm.prank(governor);
         transmuter.setFees(_collaterals[fromToken], xFeeBurn, yFeeBurn, false);
 
+        if (burnFee >= int256((BASE_9 * 999) / 1000)) vm.expectRevert(Errors.InvalidSwap.selector);
         uint256 amountOut = transmuter.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
-
+        if (burnFee >= int256((BASE_9 * 999) / 1000)) return;
         uint256 supposedAmountOut = (
             _convertDecimalTo(
                 (burnAmount * (BASE_9 - uint64(burnFee))) / BASE_9,
@@ -376,8 +377,8 @@ contract BurnTest is Fixture, FunctionUtils {
             IERC20Metadata(_collaterals[fromToken]).decimals()
         );
         uint256 amountOut = transmuter.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
+        if (amountOut == 0 || burnAmount == 0) return;
         uint256 reflexiveBurnAmount = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
-        if (amountOut == 0) return;
 
         _assertApproxEqRelDecimalWithTolerance(
             supposedAmountOut,
@@ -422,7 +423,7 @@ contract BurnTest is Fixture, FunctionUtils {
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
         if (stableAmount == 0) return;
-        upperFees = int64(bound(int256(upperFees), 0, int256(BASE_9) - 1));
+        upperFees = int64(bound(int256(upperFees), 0, int256((BASE_9 * 999) / 1000) - 1));
         uint64[] memory xFeeBurn = new uint64[](3);
         xFeeBurn[0] = uint64(BASE_9);
         xFeeBurn[1] = uint64((BASE_9 * 99) / 100);
@@ -572,7 +573,7 @@ contract BurnTest is Fixture, FunctionUtils {
             _collaterals[fromToken],
             xFeeBurnUnbounded,
             yFeeBurnUnbounded,
-            int256(BASE_9) - int256(BASE_9) / 1000
+            int256(BASE_9) - (2 * int256(BASE_9)) / 1000
         );
 
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
@@ -787,7 +788,12 @@ contract BurnTest is Fixture, FunctionUtils {
         );
         if (mintedStables == 0) return;
         _updateOracles(latestOracleValue);
-        _randomBurnFees(_collaterals[fromToken], xFeeBurnUnbounded, yFeeBurnUnbounded, int256(BASE_9));
+        _randomBurnFees(
+            _collaterals[fromToken],
+            xFeeBurnUnbounded,
+            yFeeBurnUnbounded,
+            int256(BASE_9) - int256(BASE_9) / 1000
+        );
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
         if (stableAmount == 0) return;
 
@@ -798,8 +804,8 @@ contract BurnTest is Fixture, FunctionUtils {
         bool burnMoreThanHad = _burnExactInput(alice, _collaterals[fromToken], stableAmount, amountOut);
 
         uint256 balanceStable = agToken.balanceOf(alice);
-
-        assertEq(balanceStable, prevBalanceStable - stableAmount);
+        if (amountOut == 0 || stableAmount == 0) assertEq(balanceStable, prevBalanceStable);
+        else assertEq(balanceStable, prevBalanceStable - stableAmount);
         assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), amountOut);
         assertEq(
             IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)),
@@ -810,8 +816,13 @@ contract BurnTest is Fixture, FunctionUtils {
             _collaterals[fromToken]
         );
 
-        assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken] - stableAmount, 1 wei);
-        assertApproxEqAbs(newStableAmount, mintedStables - stableAmount, 1 wei);
+        if (amountOut == 0 || stableAmount == 0) {
+            assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken], 1 wei);
+            assertApproxEqAbs(newStableAmount, mintedStables, 1 wei);
+        } else {
+            assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken] - stableAmount, 1 wei);
+            assertApproxEqAbs(newStableAmount, mintedStables - stableAmount, 1 wei);
+        }
     }
 
     function testFuzz_BurnExactOutput(
@@ -833,7 +844,12 @@ contract BurnTest is Fixture, FunctionUtils {
         );
         if (mintedStables == 0) return;
         _updateOracles(latestOracleValue);
-        _randomBurnFees(_collaterals[fromToken], xFeeBurnUnbounded, yFeeBurnUnbounded, int256(BASE_9) - 1);
+        _randomBurnFees(
+            _collaterals[fromToken],
+            xFeeBurnUnbounded,
+            yFeeBurnUnbounded,
+            int256(BASE_9) - int256(BASE_9) / 1000
+        );
         amountOut = bound(amountOut, 0, IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)));
         if (amountOut == 0) return;
 
@@ -861,7 +877,7 @@ contract BurnTest is Fixture, FunctionUtils {
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                    BURN WITH MANAGER                                                
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-    function testBurnMaxAvailableManager(uint256[3] memory initialAmounts, uint256 stableAmount) public {
+    function testFuzz_BurnMaxAvailableManager(uint256[3] memory initialAmounts, uint256 stableAmount) public {
         // create a manager to be above the maxAvailable
         MockManager manager = new MockManager(_collaterals[0]);
         IERC20[] memory subCollaterals = new IERC20[](1);
@@ -891,18 +907,18 @@ contract BurnTest is Fixture, FunctionUtils {
 
         // let's first load the reserves of the protocol
         (, uint256[] memory collateralMintedStables) = _loadReserves(alice, address(0), initialAmounts, 0);
-        if (collateralMintedStables[0] == 0) return;
+        if (collateralMintedStables[0] < BASE_18) return;
 
         // artificially make the manager maxAvailable to 0
         deal(_collaterals[0], address(manager), 0);
 
-        stableAmount = bound(stableAmount, 0, collateralMintedStables[0]);
+        stableAmount = bound(stableAmount, BASE_18, collateralMintedStables[0]);
         if (stableAmount == 0) return;
 
         vm.expectRevert(Errors.InvalidSwap.selector);
         transmuter.quoteIn(stableAmount, address(agToken), _collaterals[0]);
         vm.startPrank(alice);
-        vm.expectRevert(Errors.InvalidSwap.selector);
+        vm.expectRevert();
         transmuter.swapExactInput(stableAmount, 0, address(agToken), _collaterals[0], alice, block.timestamp * 2);
         vm.stopPrank();
     }

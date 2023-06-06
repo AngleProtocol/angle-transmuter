@@ -27,7 +27,7 @@ contract MockManager {
         managerConfig = _managerConfig;
     }
 
-    function transfer(address token, address to, uint256 amount, bool) external {
+    function transferTo(address token, address to, uint256 amount) external {
         bool found;
         for (uint256 i; i < subCollaterals.length; ++i) {
             if (token == address(subCollaterals[i])) {
