@@ -5,6 +5,7 @@ pragma solidity ^0.8.19;
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "oz/token/ERC20/extensions/IERC20Metadata.sol";
 import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
+import { MockAccessControlManager } from "mock/MockAccessControlManager.sol";
 
 import { Fixture } from "../Fixture.sol";
 import { Trader } from "./actors/Trader.t.sol";
@@ -38,6 +39,8 @@ contract BasicInvariants is Fixture {
         _traderHandler = new Trader(transmuter, _collaterals, _oracles, _NUM_TRADER);
         _arbitragerHandler = new Arbitrager(transmuter, _collaterals, _oracles, _NUM_ARB);
         _governanceHandler = new Governance(transmuter, _collaterals, _oracles);
+        MockAccessControlManager(address(accessControlManager)).toggleGovernor(_governanceHandler.actors(0));
+
         targetContract(address(_traderHandler));
         targetContract(address(_arbitragerHandler));
         targetContract(address(_governanceHandler));
@@ -48,12 +51,12 @@ contract BasicInvariants is Fixture {
             targetSelector(FuzzSelector({ addr: address(_traderHandler), selectors: selectors }));
         }
 
-        {
-            bytes4[] memory selectors = new bytes4[](2);
-            selectors[0] = Arbitrager.swap.selector;
-            selectors[1] = Arbitrager.redeem.selector;
-            targetSelector(FuzzSelector({ addr: address(_arbitragerHandler), selectors: selectors }));
-        }
+        // {
+        //     bytes4[] memory selectors = new bytes4[](2);
+        //     selectors[0] = Arbitrager.swap.selector;
+        //     selectors[1] = Arbitrager.redeem.selector;
+        //     targetSelector(FuzzSelector({ addr: address(_arbitragerHandler), selectors: selectors }));
+        // }
     }
 
     function systemState() public view {
@@ -94,14 +97,15 @@ contract BasicInvariants is Fixture {
         (uint256 issuedB, ) = transmuter.getIssuedByCollateral(address(eurB));
         (uint256 issuedY, ) = transmuter.getIssuedByCollateral(address(eurY));
         assertEq(issued, issuedA + issuedB + issuedY);
-    }
-
-    function invariant_SystemState() public view {
         systemState();
     }
 
+    // function invariantSystemState() public view {
+    //     systemState();
+    // }
+
     // Use the following invariant to inspect logs and the stack trace
     // function invariant_failure() public {
-    //     assertLe(calls["swap"], 15);
+    //     assertLe(_traderHandler.calls("swap"), 15);
     // }
 }

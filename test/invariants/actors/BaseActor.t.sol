@@ -7,12 +7,13 @@ import { IERC20Metadata } from "oz/token/ERC20/extensions/IERC20Metadata.sol";
 import { console } from "forge-std/console.sol";
 
 import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
+import { IAgToken } from "interfaces/IAgToken.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
+import { Test, stdMath, StdStorage, stdStorage } from "forge-std/Test.sol";
 import "contracts/utils/Constants.sol";
+import "contracts/utils/Errors.sol";
 
-import { Fixture } from "../../Fixture.sol";
-
-contract BaseActor is Fixture {
+contract BaseActor is Test {
     uint256 internal _maxAmountWithoutDecimals = 10 ** 15;
     // making this value smaller worsen rounding and make test harder to pass.
     // Trade off between bullet proof against all oracles and all interactions
@@ -25,6 +26,7 @@ contract BaseActor is Fixture {
     address[] public actors;
     address internal _currentActor;
 
+    IAgToken agToken;
     ITransmuter internal _transmuter;
     address[] internal _collaterals;
     AggregatorV3Interface[] internal _oracles;
@@ -54,6 +56,7 @@ contract BaseActor is Fixture {
             actors.push(actor);
         }
         _transmuter = transmuter;
+        agToken = IAgToken(transmuter.agToken());
         _collaterals = collaterals;
         _oracles = oracles;
         _maxTokenAmount.push(_maxAmountWithoutDecimals * 10 ** IERC20Metadata(_collaterals[0]).decimals());

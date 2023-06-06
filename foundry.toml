@@ -19,6 +19,7 @@ runs = 10000
 [invariant]
 runs = 10
 depth = 30
+fail_on_revert = true
 
 [rpc_endpoints]
 mainnet = "${ETH_NODE_URI_MAINNET}"

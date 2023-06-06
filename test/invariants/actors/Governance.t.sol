@@ -16,7 +16,7 @@ contract Governance is BaseActor, FunctionUtils {
     ) BaseActor(1, "Trader", transmuter, collaterals, oracles) {}
 
     // Random oracle change of at most 1%
-    function updateOracle(uint256 collatNumber, int256 change) public countCall("oracle") {
+    function updateOracle(uint256 collatNumber, int256 change) public useActor(0) countCall("oracle") {
         collatNumber = bound(collatNumber, 0, 2);
         change = bound(change, int256((99 * BASE_18) / 100), int256((101 * BASE_18) / 100)); // +/- 1%
 
@@ -25,7 +25,10 @@ contract Governance is BaseActor, FunctionUtils {
         MockChainlinkOracle(address(_oracles[collatNumber])).setLatestAnswer(answer);
     }
 
-    function updateRedemptionFees(uint64[10] memory xFee, int64[10] memory yFee) public countCall("feeRedeem") {
+    function updateRedemptionFees(
+        uint64[10] memory xFee,
+        int64[10] memory yFee
+    ) public useActor(0) countCall("feeRedeem") {
         (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) = _generateCurves(
             xFee,
             yFee,
@@ -34,20 +37,19 @@ contract Governance is BaseActor, FunctionUtils {
             0,
             int256(BASE_9)
         );
-        vm.prank(governor);
-        transmuter.setRedemptionCurveParams(xFeeRedeem, yFeeRedeem);
+        _transmuter.setRedemptionCurveParams(xFeeRedeem, yFeeRedeem);
     }
 
     function updateBurnFees(
         uint256 collatNumber,
         uint64[10] memory xFee,
         int64[10] memory yFee
-    ) public countCall("feeBurn") {
+    ) public useActor(0) countCall("feeBurn") {
         collatNumber = bound(collatNumber, 0, 2);
 
         int256 minBurnFee = int256(BASE_9);
         for (uint256 i; i < _collaterals.length; i++) {
-            (, int64[] memory yFeeMint) = transmuter.getCollateralMintFees(_collaterals[i]);
+            (, int64[] memory yFeeMint) = _transmuter.getCollateralMintFees(_collaterals[i]);
             if (yFeeMint[0] < minBurnFee) minBurnFee = yFeeMint[0];
         }
         (uint64[] memory xFeeBurn, int64[] memory yFeeBurn) = _generateCurves(
@@ -58,19 +60,18 @@ contract Governance is BaseActor, FunctionUtils {
             -minBurnFee,
             int256(MAX_BURN_FEE)
         );
-        vm.prank(governor);
-        transmuter.setFees(_collaterals[collatNumber], xFeeBurn, yFeeBurn, true);
+        _transmuter.setFees(_collaterals[collatNumber], xFeeBurn, yFeeBurn, true);
     }
 
     function updateMintFees(
         uint256 collatNumber,
         uint64[10] memory xFee,
         int64[10] memory yFee
-    ) public countCall("feeMint") {
+    ) public useActor(0) countCall("feeMint") {
         collatNumber = bound(collatNumber, 0, 2);
         int256 minMintFee = int256(BASE_9);
         for (uint256 i; i < _collaterals.length; i++) {
-            (, int64[] memory yFeeBurn) = transmuter.getCollateralBurnFees(_collaterals[i]);
+            (, int64[] memory yFeeBurn) = _transmuter.getCollateralBurnFees(_collaterals[i]);
             if (yFeeBurn[0] < minMintFee) minMintFee = yFeeBurn[0];
         }
         (uint64[] memory xFeeMint, int64[] memory yFeeMint) = _generateCurves(
@@ -81,7 +82,6 @@ contract Governance is BaseActor, FunctionUtils {
             -minMintFee,
             int256(BASE_12)
         );
-        vm.prank(governor);
-        transmuter.setFees(_collaterals[collatNumber], xFeeMint, yFeeMint, true);
+        _transmuter.setFees(_collaterals[collatNumber], xFeeMint, yFeeMint, true);
     }
 }

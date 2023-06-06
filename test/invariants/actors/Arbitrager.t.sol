@@ -27,6 +27,11 @@ contract Arbitrager is BaseActor {
 
         uint8 decimals = IERC20Metadata(collateral).decimals();
 
+        if (
+            (quoteType == QuoteType.BurnExactInput || quoteType == QuoteType.BurnExactOutput) &&
+            agToken.balanceOf(_currentActor) == 0
+        ) return (0, 0);
+
         amountIn;
         amountOut;
         address tokenIn;
@@ -40,28 +45,28 @@ contract Arbitrager is BaseActor {
             tokenIn = collateral;
             tokenOut = address(agToken);
             amountIn = amount * 10 ** decimals;
-            amountOut = transmuter.quoteIn(amountIn, tokenIn, tokenOut);
+            amountOut = _transmuter.quoteIn(amountIn, tokenIn, tokenOut);
         } else if (quoteType == QuoteType.BurnExactInput) {
             console.log("Burn - Input");
             tokenIn = address(agToken);
             tokenOut = collateral;
             amountIn = bound(amount * BASE_18, 1, agToken.balanceOf(_currentActor));
-            amountOut = transmuter.quoteIn(amountIn, tokenIn, tokenOut);
+            amountOut = _transmuter.quoteIn(amountIn, tokenIn, tokenOut);
         } else if (quoteType == QuoteType.MintExactOutput) {
             console.log("Mint - Output");
             tokenIn = collateral;
             tokenOut = address(agToken);
             amountOut = amount * BASE_18;
-            amountIn = transmuter.quoteOut(amountOut, tokenIn, tokenOut);
+            amountIn = _transmuter.quoteOut(amountOut, tokenIn, tokenOut);
         } else if (quoteType == QuoteType.BurnExactOutput) {
             console.log("Burn - Output");
             tokenIn = address(agToken);
             tokenOut = collateral;
             amountOut = amount * 10 ** decimals;
-            amountIn = transmuter.quoteOut(amountOut, tokenIn, tokenOut);
+            amountIn = _transmuter.quoteOut(amountOut, tokenIn, tokenOut);
             // we need to decrease the amountOut wanted
             uint256 actorBalance = agToken.balanceOf(_currentActor);
-            if (actorBalance < amountIn) amountOut = transmuter.quoteIn(actorBalance, tokenIn, tokenOut);
+            if (actorBalance < amountIn) amountOut = _transmuter.quoteIn(actorBalance, tokenIn, tokenOut);
         }
 
         console.log("Amount In: ", amountIn);
@@ -71,7 +76,7 @@ contract Arbitrager is BaseActor {
 
         // If burning we can't burn more than the reserves
         if (quoteType == QuoteType.BurnExactInput || quoteType == QuoteType.BurnExactOutput) {
-            if (amountOut > IERC20(tokenOut).balanceOf(address(transmuter))) {
+            if (amountOut > IERC20(tokenOut).balanceOf(address(_transmuter))) {
                 return (0, 0);
             }
         }
@@ -84,19 +89,24 @@ contract Arbitrager is BaseActor {
         }
 
         // Approval
-        hoax(_currentActor);
-        IERC20(tokenIn).approve(address(transmuter), amountIn);
+        IERC20(tokenIn).approve(address(_transmuter), amountIn);
 
         // Memory previous balances
         uint256 balanceAgToken = agToken.balanceOf(_currentActor);
         uint256 balanceCollateral = IERC20(collateral).balanceOf(_currentActor);
 
         // Swap
-        hoax(_currentActor);
         if (quoteType == QuoteType.MintExactInput || quoteType == QuoteType.BurnExactInput) {
-            transmuter.swapExactInput(amountIn, amountOut, tokenIn, tokenOut, _currentActor, block.timestamp + 1 hours);
+            _transmuter.swapExactInput(
+                amountIn,
+                amountOut,
+                tokenIn,
+                tokenOut,
+                _currentActor,
+                block.timestamp + 1 hours
+            );
         } else {
-            transmuter.swapExactOutput(
+            _transmuter.swapExactOutput(
                 amountOut,
                 amountIn,
                 tokenIn,
@@ -106,7 +116,7 @@ contract Arbitrager is BaseActor {
             );
         }
 
-        if (quoteType == QuoteType.MintExactInput || quoteType == QuoteType.BurnExactInput) {
+        if (quoteType == QuoteType.MintExactInput || quoteType == QuoteType.MintExactOutput) {
             assertEq(IERC20(collateral).balanceOf(_currentActor), balanceCollateral - amountIn);
             assertEq(agToken.balanceOf(_currentActor), balanceAgToken + amountOut);
         } else {
@@ -145,7 +155,7 @@ contract Arbitrager is BaseActor {
             // don't care about slippage
             uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
             address[] memory redeemTokens;
-            (redeemTokens, redeemAmounts) = transmuter.redeemWithForfeit(
+            (redeemTokens, redeemAmounts) = _transmuter.redeemWithForfeit(
                 amount,
                 _currentActor,
                 block.timestamp * 2,
