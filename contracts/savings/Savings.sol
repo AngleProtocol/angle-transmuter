@@ -1,61 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-/*
-                      *                                                  █                              
-                    *****                                               ▓▓▓                             
-                      *                                               ▓▓▓▓▓▓▓                         
-                                       *            ///.           ▓▓▓▓▓▓▓▓▓▓▓▓▓                       
-                                     *****        ////////            ▓▓▓▓▓▓▓                          
-                                       *       /////////////            ▓▓▓                             
-                         ▓▓                  //////////////////          █         ▓▓                   
-                       ▓▓  ▓▓             ///////////////////////                ▓▓   ▓▓                
-                     ▓▓       ▓▓        ////////////////////////////           ▓▓        ▓▓              
-                  ▓▓            ▓▓    /////////▓▓▓///////▓▓▓/////////       ▓▓             ▓▓            
-                ▓▓                ,////////////////////////////////////// ▓▓                 ▓▓         
-              ▓▓                 //////////////////////////////////////////                     ▓▓      
-            ▓▓                //////////////////////▓▓▓▓/////////////////////                          
-                           ,////////////////////////////////////////////////////                        
-                        .//////////////////////////////////////////////////////////                     
-                         .//////////////////////////██.,//////////////////////////█                     
-                           .//////////////////////████..,./////////////////////██                       
-                            ...////////////////███████.....,.////////////////███                        
-                              ,.,////////////████████ ........,///////////████                          
-                                .,.,//////█████████      ,.......///////████                            
-                                   ,..//████████           ........./████                               
-                                     ..,██████                .....,███                                 
-                                        .██                     ,.,█                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                   ▓▓            ▓▓▓▓▓▓▓▓▓▓       ▓▓▓▓▓▓▓▓▓▓        ▓▓               ▓▓▓▓▓▓▓▓▓▓          
-                 ▓▓▓▓▓▓          ▓▓▓    ▓▓▓       ▓▓▓               ▓▓               ▓▓   ▓▓▓▓         
-               ▓▓▓    ▓▓▓        ▓▓▓    ▓▓▓       ▓▓▓    ▓▓▓        ▓▓               ▓▓▓▓▓             
-              ▓▓▓        ▓▓      ▓▓▓    ▓▓▓       ▓▓▓▓▓▓▓▓▓▓        ▓▓▓▓▓▓▓▓▓▓       ▓▓▓▓▓▓▓▓▓▓          
-*/
-
 pragma solidity ^0.8.17;
 
-import "oz-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
-import "oz/interfaces/IERC20.sol";
-import "oz/token/ERC20/utils/SafeERC20.sol";
-
-import { IAgToken } from "interfaces/IAgToken.sol";
-
-import { AccessControl, IAccessControlManager } from "../utils/AccessControl.sol";
-
-import "../utils/Constants.sol";
-import "../utils/Errors.sol";
+import "./BaseSavings.sol";
 
 /// @title Savings
 /// @author Angle Labs, Inc.
-/// @notice Savings contract where users can deposit an `asset` and earn a yield on this asset determined
-/// by `rate`
-/// @dev This contract is functional if it has a mint right on `asset` and if it is trusted by the Transmuter contract
-/// @dev The implementation assumes that `asset` is safe to interact with, on which there cannot be reentrancy attacks
-/// @dev The ERC4626 interface does not allow users to specify a slippage protection parameter for the main entry points
-/// (like `deposit`, `mint`, `redeem` or `withdraw`). Even though there should be no specific sandwiching issue here,
-/// it is still recommended to interact with this contract through a router that can implement such a protection.
-contract Savings is ERC4626Upgradeable, AccessControl {
+/// @notice In this implementation, assets in the contract increase in value following a `rate` chosen by governance
+contract Savings is BaseSavings {
     using SafeERC20 for IERC20;
     using MathUpgradeable for uint256;
 

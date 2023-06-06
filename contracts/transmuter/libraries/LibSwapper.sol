@@ -68,21 +68,18 @@ library LibSwapper {
                 else IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
                 IAgToken(tokenOut).mint(to, amountOut);
             } else {
-                {
-                    uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
-                    // This will underflow when the system is trying to burn more stablecoins than what has been issued
-                    // from this collateral
-                    ks.collaterals[tokenOut].normalizedStables -= uint216(changeAmount);
-                    ks.normalizedStables -= changeAmount;
-                }
+                uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
+                // This will underflow when the system is trying to burn more stablecoins than what has been issued
+                // from this collateral
+                ks.collaterals[tokenOut].normalizedStables -= uint216(changeAmount);
+                ks.normalizedStables -= changeAmount;
                 IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-
                 if (isManaged > 0)
                     LibManager.withdrawAndTransferTo(tokenOut, to, amountOut, ks.collaterals[tokenOut].managerData);
                 else IERC20(tokenOut).safeTransfer(to, amountOut);
             }
-            emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
         }
+        emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
     }
 
     /// @notice Computes the `amountOut` of stablecoins to mint from `tokenIn` of a collateral with data `collatInfo`
@@ -212,9 +209,6 @@ library LibSwapper {
                     (v.amountToNextBreakPoint + amountFromPrevBreakPoint));
                 // `currentFees` is the `g(0)` value from the whitepaper
                 currentFees = v.lowerFees + int256((slope * amountFromPrevBreakPoint) / BASE_36);
-
-                // Safeguard for the protocol not to issue free money if `quoteType == BurnExactOutput`
-                if (!v.isMint && currentFees == int256(BASE_9)) revert InvalidSwap();
             }
             {
                 // In the mint case, when `!v.isExact`: = `b_{i+1} * (1+(g_i(0)+f_{i+1})/2)`

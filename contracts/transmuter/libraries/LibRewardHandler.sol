@@ -12,6 +12,8 @@ import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
 import "../Storage.sol";
 
+/// @title LibRewardHandler
+/// @author Angle Labs, Inc.
 library LibRewardHandler {
     using SafeERC20 for IERC20;
 

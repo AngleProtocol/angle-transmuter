@@ -106,11 +106,11 @@ library LibSetters {
         if (n != yFee.length || n == 0) revert InvalidParams();
         if (
             // Mint inflexion points should be in [0,BASE_9[
-            // We have post_fee * BASE_9 + yFeeMint = pre_fee * BASE_9
+            // We have: amountPostFee * (BASE_9 + yFeeMint) = amountPreFee * BASE_9
             // Hence we consider BASE_12 as the max value (100% fees) for yFeeMint
             (action == ActionType.Mint && (xFee[n - 1] >= BASE_9 || xFee[0] != 0 || yFee[n - 1] > int256(BASE_12))) ||
-            // Burn inflexion points should be in [0,BASE_9] but fees should be constant in the
-            // first segment [BASE_9, x_{n-1}[
+            // Burn inflexion points should be in [0,BASE_9] but fees should be constant in
+            // the first segment [BASE_9, x_{n-1}[
             (action == ActionType.Burn &&
                 (xFee[0] != BASE_9 || yFee[n - 1] > int256(BASE_9) || (n > 1 && (yFee[0] != yFee[1])))) ||
             // Redemption inflexion points should be in [0,BASE_9]
@@ -128,29 +128,25 @@ library LibSetters {
             ) revert InvalidParams();
         }
 
-        // If a fee is negative, we need to check that accounts atomically minting (from any collateral) and
-        // then burning cannot get more than their initial value
-        if (action == ActionType.Mint && yFee[0] < 0) {
+        // If a mint or burn feefee is negative, we need to check that accounts atomically minting
+        // (from any collateral) and then burning cannot get more than their initial value
+        if (yFee[0] < 0) {
             TransmuterStorage storage ks = s.transmuterStorage();
             address[] memory collateralListMem = ks.collateralList;
             uint256 length = collateralListMem.length;
-
-            // This can be mathematically expressed by `(1-min_c(burnFee_c))<=(1+mintFee[0])`
-            for (uint256 i; i < length; ++i) {
-                int64[] memory burnFees = ks.collaterals[collateralListMem[i]].yFeeBurn;
-                if (burnFees[0] + yFee[0] < 0) revert InvalidNegativeFees();
+            if (action == ActionType.Mint) {
+                // This can be mathematically expressed by `(1-min_c(burnFee_c))<=(1+mintFee[0])`
+                for (uint256 i; i < length; ++i) {
+                    int64[] memory burnFees = ks.collaterals[collateralListMem[i]].yFeeBurn;
+                    if (burnFees[0] + yFee[0] < 0) revert InvalidNegativeFees();
+                }
             }
-        }
-
-        if (action == ActionType.Burn && yFee[0] < 0) {
-            TransmuterStorage storage ks = s.transmuterStorage();
-            address[] memory collateralListMem = ks.collateralList;
-            uint256 length = collateralListMem.length;
-
-            // This can be mathematically expressed by `(1-burnFee[0])<=(1+min_c(mintFee_c))`
-            for (uint256 i; i < length; ++i) {
-                int64[] memory mintFees = ks.collaterals[collateralListMem[i]].yFeeMint;
-                if (yFee[0] + mintFees[0] < 0) revert InvalidNegativeFees();
+            if (action == ActionType.Burn) {
+                // This can be mathematically expressed by `(1-burnFee[0])<=(1+min_c(mintFee_c))`
+                for (uint256 i; i < length; ++i) {
+                    int64[] memory mintFees = ks.collaterals[collateralListMem[i]].yFeeMint;
+                    if (yFee[0] + mintFees[0] < 0) revert InvalidNegativeFees();
+                }
             }
         }
     }
