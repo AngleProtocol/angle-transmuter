@@ -626,7 +626,7 @@ contract BurnTest is Fixture, FunctionUtils {
             _collaterals[fromToken],
             xFeeBurnUnbounded,
             yFeeBurnUnbounded,
-            int256(BASE_9) - int256(BASE_9) / 1000
+            int256(BASE_9) - (2 * int256(BASE_9)) / 1000
         );
 
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
@@ -687,7 +687,7 @@ contract BurnTest is Fixture, FunctionUtils {
             // when fees are larger than 99.9% we don't ensure the independent path
             // It won't be independant anymore because the current fees and the mid fee
             // approximation won't be correct and could be trickable. by chosing one over the other
-            int256(BASE_9) - int256(BASE_9) / 1000
+            int256(BASE_9) - (2 * int256(BASE_9)) / 1000
         );
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
         if (stableAmount == 0) return;
@@ -735,7 +735,7 @@ contract BurnTest is Fixture, FunctionUtils {
             _collaterals[fromToken],
             xFeeBurnUnbounded,
             yFeeBurnUnbounded,
-            int256(BASE_9) - int256(BASE_9) / 1000
+            int256(BASE_9) - (2 * int256(BASE_9)) / 1000
         );
         amountOut = bound(amountOut, 0, IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)));
         if (amountOut == 0) return;
@@ -792,7 +792,7 @@ contract BurnTest is Fixture, FunctionUtils {
             _collaterals[fromToken],
             xFeeBurnUnbounded,
             yFeeBurnUnbounded,
-            int256(BASE_9) - int256(BASE_9) / 1000
+            int256(BASE_9) - (2 * int256(BASE_9)) / 1000
         );
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
         if (stableAmount == 0) return;
@@ -848,7 +848,7 @@ contract BurnTest is Fixture, FunctionUtils {
             _collaterals[fromToken],
             xFeeBurnUnbounded,
             yFeeBurnUnbounded,
-            int256(BASE_9) - int256(BASE_9) / 1000
+            int256(BASE_9) - (2 * int256(BASE_9)) / 1000
         );
         amountOut = bound(amountOut, 0, IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)));
         if (amountOut == 0) return;
