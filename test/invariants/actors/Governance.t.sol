@@ -84,4 +84,13 @@ contract Governance is BaseActor, FunctionUtils {
         );
         _transmuter.setFees(_collaterals[collatNumber], xFeeMint, yFeeMint, true);
     }
+
+    // function updateTimestamp(uint256 elapseTimestamp) public countCall("timestamp") {
+    //     elapseTimestamp = bound(elapseTimestamp, 0, 1 days);
+    //     skip(elapseTimestamp);
+    //     for (uint256 i; i < _oracles.length; i++) {
+    //         (, int256 value, , , ) = _oracles[i].latestRoundData();
+    //         MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(value);
+    //     }
+    // }
 }

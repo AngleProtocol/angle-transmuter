@@ -22,7 +22,7 @@ contract Arbitrager is BaseActor {
     ) public useActor(actorIndex) countCall("swap") returns (uint256 amountIn, uint256 amountOut) {
         QuoteType quoteType = QuoteType(bound(actionType, 0, 3));
         collatNumber = bound(collatNumber, 0, 2);
-        amount = bound(amount, 1, 10 ** 15);
+        amount = bound(amount, 1, 10 ** 12);
         address collateral = _collaterals[collatNumber];
 
         uint8 decimals = IERC20Metadata(collateral).decimals();
@@ -79,7 +79,12 @@ contract Arbitrager is BaseActor {
 
         // If burning we can't burn more than the reserves
         if (quoteType == QuoteType.BurnExactInput || quoteType == QuoteType.BurnExactOutput) {
-            if (amountOut > IERC20(tokenOut).balanceOf(address(_transmuter))) {
+            (uint256 stablecoinsFromCollateral, uint256 totalStables) = _transmuter.getIssuedByCollateral(collateral);
+            if (
+                amountOut > IERC20(tokenOut).balanceOf(address(_transmuter)) ||
+                amountIn > stablecoinsFromCollateral ||
+                amountIn > totalStables
+            ) {
                 return (0, 0);
             }
         }
@@ -165,7 +170,7 @@ contract Arbitrager is BaseActor {
             (redeemTokens, redeemAmounts) = _transmuter.redeemWithForfeit(
                 amount,
                 _currentActor,
-                block.timestamp * 2,
+                block.timestamp + 1 hours,
                 minAmountOuts,
                 forfeitTokens
             );

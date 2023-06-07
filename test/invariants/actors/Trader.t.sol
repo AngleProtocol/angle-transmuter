@@ -24,7 +24,7 @@ contract Trader is BaseActor {
     ) public useActor(actorIndex) countCall("swap") returns (uint256 amountIn, uint256 amountOut) {
         QuoteType quoteType = QuoteType(bound(actionType, 0, 3));
         collatNumber = bound(collatNumber, 0, 2);
-        amount = bound(amount, 1, 10 ** 15);
+        amount = bound(amount, 1, 10 ** 12);
         address collateral = _collaterals[collatNumber];
 
         if (

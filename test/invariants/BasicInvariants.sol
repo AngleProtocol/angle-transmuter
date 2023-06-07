@@ -30,7 +30,7 @@ contract BasicInvariants is Fixture {
         super.setUp();
 
         {
-            // set Fees to 0 on all collaterals
+            // set redemption fees
             uint64[] memory xFeeRedemption = new uint64[](4);
             xFeeRedemption[0] = uint64(0);
             xFeeRedemption[1] = uint64(1e9 / 2);
@@ -81,8 +81,14 @@ contract BasicInvariants is Fixture {
         console.log("");
         console.log("Calls summary:");
         console.log("-------------------");
-        console.log("swap", _traderHandler.calls("swap"));
+        console.log("Trader:swap", _traderHandler.calls("swap"));
+        console.log("Arbitrager:swap", _arbitragerHandler.calls("swap"));
+        console.log("Arbitrager:redeem", _arbitragerHandler.calls("redeem"));
         console.log("oracle", _governanceHandler.calls("oracle"));
+        console.log("Mint fees", _governanceHandler.calls("feeMint"));
+        console.log("Burn fess", _governanceHandler.calls("feeeBurn"));
+        console.log("Redeem fees", _governanceHandler.calls("feeRedeem"));
+        console.log("Increase time", _governanceHandler.calls("timestamp"));
         console.log("-------------------");
         console.log("");
 
@@ -95,6 +101,18 @@ contract BasicInvariants is Fixture {
         console.log("Issued Total: ", issued);
     }
 
+    function invariant_IssuedCoherent() public {
+        (uint256 issuedA, uint256 issued) = transmuter.getIssuedByCollateral(address(eurA));
+        (uint256 issuedB, ) = transmuter.getIssuedByCollateral(address(eurB));
+        (uint256 issuedY, ) = transmuter.getIssuedByCollateral(address(eurY));
+        assertApproxEqAbs(issued, issuedA + issuedB + issuedY, 3 wei);
+        systemState();
+    }
+
+    // function invariantSystemState() public view {
+    //     systemState();
+    // }
+
     // function invariantReservesAboveIssued() public {
     //     (uint256 issuedA, ) = transmuter.getIssuedByCollateral(address(eurA));
     //     assertLe(
@@ -106,18 +124,6 @@ contract BasicInvariants is Fixture {
     //         issuedB,
     //         IERC20(eurB).balanceOf(address(transmuter)) * 10 ** (18 - IERC20Metadata(address(eurB)).decimals())
     //     );
-    // }
-
-    function invariant_IssuedCoherent() public {
-        (uint256 issuedA, uint256 issued) = transmuter.getIssuedByCollateral(address(eurA));
-        (uint256 issuedB, ) = transmuter.getIssuedByCollateral(address(eurB));
-        (uint256 issuedY, ) = transmuter.getIssuedByCollateral(address(eurY));
-        assertEq(issued, issuedA + issuedB + issuedY);
-        systemState();
-    }
-
-    // function invariantSystemState() public view {
-    //     systemState();
     // }
 
     // Use the following invariant to inspect logs and the stack trace

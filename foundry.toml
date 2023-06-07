@@ -41,8 +41,8 @@ via_ir = false
 runs = 2000
 
 [profile.dev.invariant]
-runs = 10
-depth = 30
+runs = 1000
+depth = 50
 fail_on_revert = true
 
 [profile.ci]
