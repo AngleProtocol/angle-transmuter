@@ -639,7 +639,7 @@ contract Test_Setters_UpdateNormalizer is Fixture {
     }
 
     function test_RevertWhen_ZeroAmountNormalizedStables() public {
-        vm.expectRevert(Errors.ZeroAmount.selector);
+        vm.expectRevert(stdError.arithmeticError); // Should be an underflow
         hoax(governor);
         transmuter.updateNormalizer(1, true);
     }

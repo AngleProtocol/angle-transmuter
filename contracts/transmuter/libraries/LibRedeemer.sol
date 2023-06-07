@@ -186,7 +186,6 @@ library LibRedeemer {
         TransmuterStorage storage ks = s.transmuterStorage();
         uint256 _normalizer = ks.normalizer;
         uint256 _normalizedStables = ks.normalizedStables;
-        if (ks.normalizedStables == 0) revert ZeroAmount();
         // In case of an increase, the update formula used is the simplified version of the formula below:
         /*
             _normalizer * (BASE_27 + BASE_27 * amount / stablecoinsIssued) / BASE_27
