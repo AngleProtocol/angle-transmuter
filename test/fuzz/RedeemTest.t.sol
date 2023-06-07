@@ -6,8 +6,8 @@ import "oz/utils/Strings.sol";
 
 import { stdError } from "forge-std/Test.sol";
 
-import { IERC20Metadata } from "mock/MockTokenPermit.sol";
 import { MockManager } from "mock/MockManager.sol";
+import { IERC20Metadata } from "mock/MockTokenPermit.sol";
 
 import { ManagerStorage } from "contracts/transmuter/Storage.sol";
 import "contracts/transmuter/libraries/LibHelpers.sol";

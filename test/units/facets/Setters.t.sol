@@ -2,10 +2,15 @@
 
 pragma solidity ^0.8.17;
 
+import { stdError } from "forge-std/Test.sol";
+import { console } from "forge-std/console.sol";
+
+import "mock/MockManager.sol";
+
 import "contracts/transmuter/Storage.sol";
 import { Test } from "contracts/transmuter/configs/Test.sol";
-import { Setters } from "contracts/transmuter/facets/Setters.sol";
 import { DiamondCut } from "contracts/transmuter/facets/DiamondCut.sol";
+import { Setters } from "contracts/transmuter/facets/Setters.sol";
 import { LibSetters } from "contracts/transmuter/libraries/LibSetters.sol";
 import "contracts/utils/Constants.sol";
 import "contracts/utils/Errors.sol" as Errors;
@@ -461,6 +466,8 @@ contract Test_Setters_SetRedemptionCurveParams is Fixture {
 }
 
 contract Test_Setters_RecoverERC20 is Fixture {
+    event Transfer(address from, address to, uint256 value);
+
     function test_RevertWhen_NonGovernor() public {
         vm.expectRevert(Errors.NotGovernor.selector);
         transmuter.recoverERC20(address(agToken), agToken, alice, 1 ether);
@@ -474,7 +481,50 @@ contract Test_Setters_RecoverERC20 is Fixture {
         transmuter.recoverERC20(address(agToken), agToken, alice, 1 ether);
     }
 
-    // TODO Tests with manager
+    function test_RevertWhen_ZeroAmount() public {
+        vm.expectRevert(Errors.ZeroAmount.selector);
+
+        hoax(governor);
+        transmuter.recoverERC20(address(agToken), agToken, alice, 0);
+    }
+
+    function test_Success() public {
+        deal(address(eurA), address(transmuter), 1 ether);
+
+        hoax(governor);
+        transmuter.recoverERC20(address(eurA), eurA, alice, 1 ether);
+
+        assertEq(eurA.balanceOf(alice), 1 ether);
+    }
+
+    function test_SuccessWithManager() public {
+        MockManager manager = new MockManager(address(eurA));
+        IERC20[] memory subCollaterals = new IERC20[](2);
+        subCollaterals[0] = eurA;
+        subCollaterals[1] = eurB;
+        ManagerStorage memory data = ManagerStorage({
+            subCollaterals: subCollaterals,
+            config: abi.encode(ManagerType.EXTERNAL, abi.encode(manager))
+        });
+        manager.setSubCollaterals(data.subCollaterals, data.config);
+
+        hoax(governor);
+        transmuter.setCollateralManager(address(eurA), data);
+
+        deal(address(eurA), address(manager), 1 ether);
+
+        hoax(governor);
+        transmuter.recoverERC20(address(eurA), eurA, alice, 1 ether);
+
+        assertEq(eurA.balanceOf(alice), 1 ether);
+
+        deal(address(eurB), address(manager), 1 ether);
+
+        hoax(governor);
+        transmuter.recoverERC20(address(eurA), eurB, alice, 1 ether);
+
+        assertEq(eurB.balanceOf(alice), 1 ether);
+    }
 }
 
 contract Test_Setters_SetAccessControlManager is Fixture {
@@ -557,4 +607,517 @@ contract Test_Setters_ToggleTrusted is Fixture {
     }
 }
 
-contract Test_Setters_SetCollateralManager is Fixture {}
+contract Test_Setters_SetWhitelistStatus is Fixture {
+    function test_RevertWhen_NonGovernor() public {
+        vm.expectRevert(Errors.NotGovernor.selector);
+        transmuter.toggleTrusted(alice, TrustedType.Seller);
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        hoax(alice);
+        transmuter.toggleTrusted(alice, TrustedType.Seller);
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        hoax(guardian);
+        transmuter.toggleTrusted(alice, TrustedType.Seller);
+    }
+}
+
+contract Test_Setters_UpdateNormalizer is Fixture {
+    event NormalizerUpdated(uint256 newNormalizerValue);
+
+    function test_RevertWhen_NotTrusted() public {
+        vm.expectRevert(Errors.NotTrusted.selector);
+        transmuter.updateNormalizer(1 ether, true);
+
+        vm.expectRevert(Errors.NotTrusted.selector);
+        hoax(alice);
+        transmuter.updateNormalizer(1 ether, true);
+
+        vm.expectRevert(Errors.NotTrusted.selector);
+        hoax(guardian);
+        transmuter.updateNormalizer(1 ether, true);
+    }
+
+    function test_RevertWhen_ZeroAmountNormalizedStables() public {
+        vm.expectRevert(stdError.arithmeticError); // Should be an underflow
+        hoax(governor);
+        transmuter.updateNormalizer(1, true);
+    }
+
+    function test_RevertWhen_InvalidUpdate() public {
+        _mintExactOutput(alice, address(eurA), 1 ether, 1 ether);
+        _mintExactOutput(alice, address(eurB), 1 ether, 1 ether);
+
+        vm.expectRevert(stdError.arithmeticError); // Should be an underflow
+        hoax(governor);
+        transmuter.updateNormalizer(4 ether, false);
+    }
+
+    function test_UpdateByGovernor() public {
+        _mintExactOutput(alice, address(eurA), 1 ether, 1 ether);
+
+        vm.expectEmit(address(transmuter));
+        emit NormalizerUpdated(2 * BASE_27);
+
+        hoax(governor);
+        transmuter.updateNormalizer(1 ether, true);
+
+        (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) = transmuter.getIssuedByCollateral(
+            address(eurA)
+        );
+        assertEq(stablecoinsFromCollateral, 2 ether);
+        assertEq(stablecoinsIssued, 2 ether);
+
+        uint256 normalizer = uint256(vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1))) >>
+            128;
+        uint256 normalizedStables = (uint256(
+            vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1))
+        ) << 128) >> 128;
+        assertEq(normalizer, 2 * BASE_27);
+        assertEq(normalizedStables, 1 ether);
+    }
+
+    function test_UpdateByWhitelisted() public {
+        _mintExactOutput(alice, address(eurA), 1 ether, 1 ether);
+        _mintExactOutput(alice, address(eurB), 1 ether, 1 ether);
+
+        hoax(governor);
+        transmuter.toggleTrusted(alice, TrustedType.Updater);
+
+        vm.expectEmit(address(transmuter));
+        emit NormalizerUpdated(2 * BASE_27);
+
+        hoax(alice);
+        // Increase of 2 with 2 in the system -> x2
+        transmuter.updateNormalizer(2 ether, true);
+
+        (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) = transmuter.getIssuedByCollateral(
+            address(eurA)
+        );
+        assertEq(stablecoinsFromCollateral, 2 ether);
+        assertEq(stablecoinsIssued, 4 ether);
+        (stablecoinsFromCollateral, stablecoinsIssued) = transmuter.getIssuedByCollateral(address(eurB));
+        assertEq(stablecoinsFromCollateral, 2 ether);
+        assertEq(stablecoinsIssued, 4 ether);
+
+        uint256 normalizer = uint256(vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1))) >>
+            128;
+        uint256 normalizedStables = (uint256(
+            vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1))
+        ) << 128) >> 128;
+        assertEq(normalizer, 2 * BASE_27); // 2x increase via the function call
+        assertEq(normalizedStables, 2 ether);
+    }
+
+    function test_Decrease() public {
+        _mintExactOutput(alice, address(eurA), 1 ether, 1 ether);
+        _mintExactOutput(alice, address(eurB), 1 ether, 1 ether);
+
+        vm.expectEmit(address(transmuter));
+        emit NormalizerUpdated(BASE_27 / 2);
+
+        hoax(governor);
+        // Decrease of 1 with 2 in the system -> /2
+        transmuter.updateNormalizer(1 ether, false);
+
+        (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) = transmuter.getIssuedByCollateral(
+            address(eurA)
+        );
+        assertEq(stablecoinsFromCollateral, 1 ether / 2);
+        assertEq(stablecoinsIssued, 1 ether);
+        (stablecoinsFromCollateral, stablecoinsIssued) = transmuter.getIssuedByCollateral(address(eurB));
+        assertEq(stablecoinsFromCollateral, 1 ether / 2);
+        assertEq(stablecoinsIssued, 1 ether);
+
+        uint256 normalizer = uint256(vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1))) >>
+            128;
+        uint256 normalizedStables = (uint256(
+            vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1))
+        ) << 128) >> 128;
+        assertEq(normalizer, BASE_27 / 2);
+        assertEq(normalizedStables, 2 ether);
+    }
+
+    function test_LargeIncrease() public {
+        _mintExactOutput(alice, address(eurA), 1 ether, 1 ether);
+        _mintExactOutput(alice, address(eurB), 1 ether, 1 ether);
+        // normalizer -> 1e27, normalizedStables -> 2e18
+
+        hoax(governor);
+        transmuter.updateNormalizer(2 * (BASE_27 - 1 ether), true);
+        // normalizer should do 1e27 -> 1e27 + 1e36 - 1e27 = 1e36
+
+        (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) = transmuter.getIssuedByCollateral(
+            address(eurA)
+        );
+        assertEq(stablecoinsFromCollateral, BASE_27); // 1e27 stable backed by eurA
+        assertEq(stablecoinsIssued, 2 * BASE_27);
+        (stablecoinsFromCollateral, stablecoinsIssued) = transmuter.getIssuedByCollateral(address(eurB));
+        assertEq(stablecoinsFromCollateral, BASE_27); // 1e27 stable backed by eurB
+        assertEq(stablecoinsIssued, 2 * BASE_27);
+
+        uint256 normalizer = uint256(vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1))) >>
+            128;
+        uint256 normalizedStables = (uint256(
+            vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1))
+        ) << 128) >> 128;
+        assertEq(normalizer, BASE_27); // RENORMALIZED
+        assertEq(normalizedStables, 2 * BASE_27);
+    }
+}
+
+contract Test_Setters_SetCollateralManager is Fixture {
+    event CollateralManagerSet(address indexed collateral, ManagerStorage managerData);
+
+    function test_RevertWhen_NotGovernor() public {
+        ManagerStorage memory data = ManagerStorage(new IERC20[](0), abi.encode(ManagerType.EXTERNAL, address(0)));
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        transmuter.setCollateralManager(address(eurA), data);
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        hoax(alice);
+        transmuter.setCollateralManager(address(eurA), data);
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        hoax(guardian);
+        transmuter.setCollateralManager(address(eurA), data);
+    }
+
+    function test_RevertWhen_NotCollateral() public {
+        ManagerStorage memory data = ManagerStorage(new IERC20[](0), abi.encode(ManagerType.EXTERNAL, address(0)));
+
+        vm.expectRevert(Errors.NotCollateral.selector);
+        hoax(governor);
+        transmuter.setCollateralManager(address(this), data);
+    }
+
+    function test_RevertWhen_InvalidParams() public {
+        MockManager manager = new MockManager(address(eurA)); // Deploy a mock manager for eurA
+        IERC20[] memory subCollaterals = new IERC20[](1);
+        subCollaterals[0] = eurB;
+        ManagerStorage memory data = ManagerStorage({
+            subCollaterals: subCollaterals,
+            config: abi.encode(ManagerType.EXTERNAL, abi.encode(manager))
+        });
+
+        vm.expectRevert(Errors.InvalidParams.selector);
+        hoax(governor);
+        transmuter.setCollateralManager(address(eurA), data);
+    }
+
+    function test_AddManager() public {
+        MockManager manager = new MockManager(address(eurA)); // Deploy a mock manager for eurA
+        IERC20[] memory subCollaterals = new IERC20[](1);
+        subCollaterals[0] = eurA;
+        ManagerStorage memory data = ManagerStorage({
+            subCollaterals: subCollaterals,
+            config: abi.encode(ManagerType.EXTERNAL, abi.encode(address(manager)))
+        });
+
+        (bool isManaged, IERC20[] memory fetchedSubCollaterals, bytes memory config) = transmuter.getManagerData(
+            address(eurA)
+        );
+        assertEq(isManaged, false);
+        assertEq(fetchedSubCollaterals.length, 0);
+        assertEq(config.length, 0);
+
+        vm.expectEmit(address(transmuter));
+        emit CollateralManagerSet(address(eurA), data);
+
+        hoax(governor);
+        transmuter.setCollateralManager(address(eurA), data);
+
+        // Refetch storage to check the update
+        (isManaged, fetchedSubCollaterals, config) = transmuter.getManagerData(address(eurA));
+        (ManagerType managerType, bytes memory aux) = abi.decode(config, (ManagerType, bytes));
+        address fetched = abi.decode(aux, (address));
+
+        assertEq(isManaged, true);
+        assertEq(fetchedSubCollaterals.length, 1);
+        assertEq(address(fetchedSubCollaterals[0]), address(eurA));
+        assertEq(fetched, address(manager));
+    }
+
+    function test_RemoveManager() public {
+        MockManager manager = new MockManager(address(eurA)); // Deploy a mock manager for eurA
+        IERC20[] memory subCollaterals = new IERC20[](1);
+        subCollaterals[0] = eurA;
+        ManagerStorage memory data = ManagerStorage({
+            subCollaterals: subCollaterals,
+            config: abi.encode(ManagerType.EXTERNAL, abi.encode(manager))
+        });
+
+        hoax(governor);
+        transmuter.setCollateralManager(address(eurA), data);
+
+        data = ManagerStorage({ subCollaterals: new IERC20[](0), config: "" });
+        hoax(governor);
+        transmuter.setCollateralManager(address(eurA), data);
+
+        (bool isManaged, IERC20[] memory fetchedSubCollaterals, bytes memory config) = transmuter.getManagerData(
+            address(eurA)
+        );
+        assertEq(isManaged, false);
+        assertEq(fetchedSubCollaterals.length, 0);
+        assertEq(config.length, 0);
+    }
+}
+
+contract Test_Setters_ChangeAllowance is Fixture {
+    event Approval(address owner, address spender, uint256 value);
+
+    function test_RevertWhen_NotGovernor() public {
+        vm.expectRevert(Errors.NotGovernor.selector);
+        transmuter.changeAllowance(eurA, alice, 1 ether);
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        hoax(alice);
+        transmuter.changeAllowance(eurA, alice, 1 ether);
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        hoax(guardian);
+        transmuter.changeAllowance(eurA, alice, 1 ether);
+    }
+
+    function test_SafeIncreaseFrom0() public {
+        hoax(governor);
+        transmuter.changeAllowance(eurA, alice, 1 ether);
+
+        vm.expectEmit(address(eurA));
+        emit Approval(address(transmuter), alice, 1 ether);
+
+        assertEq(eurA.allowance(address(transmuter), alice), 1 ether);
+    }
+
+    function test_SafeIncreaseFromNon0() public {
+        hoax(governor);
+        transmuter.changeAllowance(eurA, alice, 1 ether);
+
+        hoax(governor);
+        transmuter.changeAllowance(eurA, alice, 2 ether);
+
+        vm.expectEmit(address(eurA));
+        emit Approval(address(transmuter), alice, 2 ether);
+
+        assertEq(eurA.allowance(address(transmuter), alice), 2 ether);
+    }
+
+    function test_SafeDecrease() public {
+        hoax(governor);
+        transmuter.changeAllowance(eurA, alice, 1 ether);
+
+        vm.expectEmit(address(eurA));
+        emit Approval(address(transmuter), alice, 0);
+
+        hoax(governor);
+        transmuter.changeAllowance(eurA, alice, 0);
+
+        assertEq(eurA.allowance(address(transmuter), alice), 0);
+    }
+}
+
+contract Test_Setters_AddCollateral is Fixture {
+    event CollateralAdded(address indexed collateral);
+
+    function test_RevertWhen_NonGovernor() public {
+        vm.expectRevert(Errors.NotGovernor.selector);
+        transmuter.addCollateral(address(eurA));
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        hoax(alice);
+        transmuter.addCollateral(address(eurA));
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        hoax(guardian);
+        transmuter.addCollateral(address(eurA));
+    }
+
+    function test_RevertWhen_AlreadyAdded() public {
+        vm.expectRevert(Errors.AlreadyAdded.selector);
+        hoax(governor);
+        transmuter.addCollateral(address(eurA));
+    }
+
+    function test_Success() public {
+        uint256 length = transmuter.getCollateralList().length;
+
+        vm.expectEmit(address(transmuter));
+        emit CollateralAdded(address(agToken));
+
+        hoax(governor);
+        transmuter.addCollateral(address(agToken));
+
+        address[] memory list = transmuter.getCollateralList();
+        assertEq(list.length, length + 1);
+        assertEq(address(agToken), list[list.length - 1]);
+        assertEq(transmuter.getCollateralDecimals(address(agToken)), agToken.decimals());
+    }
+}
+
+contract Test_Setters_AdjustNormalizedStablecoins is Fixture {
+    event ReservesAdjusted(address indexed collateral, uint256 amount, bool increase);
+
+    function test_RevertWhen_NonGovernor() public {
+        vm.expectRevert(Errors.NotGovernor.selector);
+        transmuter.adjustStablecoins(address(eurA), 1 ether, true);
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        hoax(alice);
+        transmuter.adjustStablecoins(address(eurA), 1 ether, true);
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        hoax(guardian);
+        transmuter.adjustStablecoins(address(eurA), 1 ether, true);
+    }
+
+    function test_RevertWhen_NotCollateral() public {
+        vm.expectRevert(Errors.NotCollateral.selector);
+        hoax(governor);
+        transmuter.adjustStablecoins(address(this), 1 ether, true);
+    }
+
+    function test_Decrease() public {
+        _mintExactOutput(alice, address(eurA), 1 ether, 1 ether);
+        _mintExactOutput(alice, address(eurB), 1 ether, 1 ether);
+
+        vm.expectEmit(address(transmuter));
+        emit ReservesAdjusted(address(eurA), 1 ether / 2, false);
+
+        hoax(governor);
+        transmuter.adjustStablecoins(address(eurA), 1 ether / 2, false);
+
+        (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) = transmuter.getIssuedByCollateral(
+            address(eurA)
+        );
+        assertEq(stablecoinsFromCollateral, 1 ether / 2);
+        assertEq(stablecoinsIssued, 3 ether / 2);
+
+        uint256 normalizer = uint256(vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1))) >>
+            128;
+        uint256 normalizedStables = (uint256(
+            vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1))
+        ) << 128) >> 128;
+        assertEq(normalizer, BASE_27);
+        assertEq(normalizedStables, 3 ether / 2);
+    }
+
+    function test_Increase() public {
+        _mintExactOutput(alice, address(eurA), 1 ether, 1 ether);
+        _mintExactOutput(alice, address(eurB), 1 ether, 1 ether);
+
+        vm.expectEmit(address(transmuter));
+        emit ReservesAdjusted(address(eurA), 1 ether / 2, true);
+
+        hoax(governor);
+        transmuter.adjustStablecoins(address(eurA), 1 ether / 2, true);
+
+        (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) = transmuter.getIssuedByCollateral(
+            address(eurA)
+        );
+        assertEq(stablecoinsFromCollateral, 3 ether / 2);
+        assertEq(stablecoinsIssued, 5 ether / 2);
+
+        uint256 normalizer = uint256(vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1))) >>
+            128;
+        uint256 normalizedStables = (uint256(
+            vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1))
+        ) << 128) >> 128;
+        assertEq(normalizer, BASE_27);
+        assertEq(normalizedStables, 5 ether / 2);
+    }
+}
+
+contract Test_Setters_RevokeCollateral is Fixture {
+    event CollateralRevoked(address indexed collateral);
+
+    function test_RevertWhen_NonGovernor() public {
+        vm.expectRevert(Errors.NotGovernor.selector);
+        transmuter.adjustStablecoins(address(eurA), 1 ether, true);
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        hoax(alice);
+        transmuter.adjustStablecoins(address(eurA), 1 ether, true);
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        hoax(guardian);
+        transmuter.adjustStablecoins(address(eurA), 1 ether, true);
+    }
+
+    function test_RevertWhen_NotCollateral() public {
+        vm.expectRevert(Errors.NotCollateral.selector);
+        hoax(governor);
+        transmuter.adjustStablecoins(address(this), 1 ether, true);
+    }
+
+    function test_RevertWhen_StillBacked() public {
+        _mintExactOutput(alice, address(eurA), 1 ether, 1 ether);
+
+        vm.expectRevert(Errors.NotCollateral.selector);
+        hoax(governor);
+        transmuter.adjustStablecoins(address(this), 1 ether, true);
+    }
+
+    function test_Success() public {
+        address[] memory prevlist = transmuter.getCollateralList();
+
+        vm.expectEmit(address(transmuter));
+        emit CollateralRevoked(address(eurA));
+
+        hoax(governor);
+        transmuter.revokeCollateral(address(eurA));
+
+        address[] memory list = transmuter.getCollateralList();
+        assertEq(list.length, prevlist.length - 1);
+
+        for (uint256 i = 0; i < list.length; i++) {
+            assertNotEq(address(list[i]), address(eurA));
+        }
+
+        assertEq(0, transmuter.getCollateralDecimals(address(eurA)));
+
+        (uint64[] memory xFeeMint, int64[] memory yFeeMint) = transmuter.getCollateralMintFees(address(eurA));
+        assertEq(0, xFeeMint.length);
+        assertEq(0, yFeeMint.length);
+
+        (uint64[] memory xFeeBurn, int64[] memory yFeeBurn) = transmuter.getCollateralMintFees(address(eurA));
+        assertEq(0, xFeeBurn.length);
+        assertEq(0, yFeeBurn.length);
+    }
+
+    function test_SuccessWithManager() public {
+        MockManager manager = new MockManager(address(eurA));
+        IERC20[] memory subCollaterals = new IERC20[](2);
+        subCollaterals[0] = eurA;
+        subCollaterals[1] = eurB;
+        ManagerStorage memory data = ManagerStorage({
+            subCollaterals: subCollaterals,
+            config: abi.encode(ManagerType.EXTERNAL, abi.encode(manager))
+        });
+        manager.setSubCollaterals(data.subCollaterals, data.config);
+
+        hoax(governor);
+        transmuter.setCollateralManager(address(eurA), data);
+
+        deal(address(eurA), address(manager), 1 ether);
+
+        address[] memory prevlist = transmuter.getCollateralList();
+
+        vm.expectEmit(address(transmuter));
+        emit CollateralRevoked(address(eurA));
+
+        hoax(governor);
+        transmuter.revokeCollateral(address(eurA));
+
+        address[] memory list = transmuter.getCollateralList();
+        assertEq(list.length, prevlist.length - 1);
+
+        for (uint256 i = 0; i < list.length; i++) {
+            assertNotEq(address(list[i]), address(eurA));
+        }
+
+        assertEq(0, transmuter.getCollateralDecimals(address(eurA)));
+        assertEq(0, eurA.balanceOf(address(manager)));
+        assertEq(1 ether, eurA.balanceOf(address(transmuter)));
+    }
+}

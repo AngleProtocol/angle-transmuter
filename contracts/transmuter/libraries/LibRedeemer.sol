@@ -24,7 +24,6 @@ library LibRedeemer {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
-    event NormalizerUpdated(uint256 newNormalizerValue);
     event Redeemed(
         uint256 amount,
         address[] tokens,
@@ -33,6 +32,7 @@ library LibRedeemer {
         address indexed from,
         address indexed to
     );
+    event NormalizerUpdated(uint256 newNormalizerValue);
 
     /// @notice Internal function of the `redeem` function in the `Redeemer` contract
     function redeem(
@@ -188,26 +188,33 @@ library LibRedeemer {
         uint256 _normalizedStables = ks.normalizedStables;
         // In case of an increase, the update formula used is the simplified version of the formula below:
         /*
-             _normalizer * (BASE_27 + BASE_27 * amount / stablecoinsIssued) / BASE_27 = 
-                _normalizer + (_normalizer * BASE_27 * amount * (BASE_27 / (_normalizedStables * normalizer))) / BASE_27
-            */
-        // `_normalizedStables` can never be left to 0
-        if (increase) newNormalizerValue = _normalizer + (amount * BASE_27) / _normalizedStables;
-        else newNormalizerValue = _normalizer - (amount * BASE_27) / _normalizedStables;
+            _normalizer * (BASE_27 + BASE_27 * amount / stablecoinsIssued) / BASE_27
+             = _normalizer + (_normalizer * BASE_27 * amount * (BASE_27 / (_normalizedStables * normalizer))) / BASE_27
+             = _normalizer + BASE_27 * amount / _normalizedStables
+        */
+        if (increase) {
+            newNormalizerValue = _normalizer + (amount * BASE_27) / _normalizedStables;
+        } else {
+            newNormalizerValue = _normalizer - (amount * BASE_27) / _normalizedStables;
+        }
         // If the `normalizer` gets too small or too big, it must be renormalized to later avoid the propagation of
-        // rounding errors, as well as overflows. In this rare case, the function has to iterate through all the
+        // rounding errors, as well as overflows. In this case, the function has to iterate through all the
         // supported collateral assets
         if (newNormalizerValue <= BASE_18 || newNormalizerValue >= BASE_36) {
             address[] memory collateralListMem = ks.collateralList;
             uint256 collateralListLength = collateralListMem.length;
             // For each asset, we store the actual amount of stablecoins issued based on the newNormalizerValue
             // (and not a normalized value)
+            // To preserve the invariant sum(collateralNewNormalizedStables) = normalizedStables
+            uint256 newNormalizedStables = 0;
             for (uint256 i; i < collateralListLength; ++i) {
-                ks.collaterals[collateralListMem[i]].normalizedStables = uint216(
+                uint216 newCollateralNormalizedStable = uint216(
                     (ks.collaterals[collateralListMem[i]].normalizedStables * newNormalizerValue) / BASE_27
                 );
+                newNormalizedStables += newCollateralNormalizedStable;
+                ks.collaterals[collateralListMem[i]].normalizedStables = newCollateralNormalizedStable;
             }
-            ks.normalizedStables = uint128((_normalizedStables * newNormalizerValue) / BASE_27);
+            ks.normalizedStables = uint128(newNormalizedStables); // TODO Safe cast
             newNormalizerValue = BASE_27;
         }
         ks.normalizer = uint128(newNormalizerValue);

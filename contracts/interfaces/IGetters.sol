@@ -23,6 +23,9 @@ interface IGetters {
     /// @notice Returns the list of collateral assets supported by the system
     function getCollateralList() external view returns (address[] memory);
 
+    /// @notice Returns the decimals of a given `collateral`
+    function getCollateralDecimals(address collateral) external view returns (uint8);
+
     /// @notice Returns the `xFee` and `yFee` arrays from which fees are computed when coming to mint
     /// with `collateral`
     function getCollateralMintFees(address collateral) external view returns (uint64[] memory, int64[] memory);
@@ -38,11 +41,19 @@ interface IGetters {
     /// @notice Returns the collateral ratio of Transmuter in base `10**9` and the total amount of stablecoins issued
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 stablecoinsIssued);
 
+    /// @notice Returns the total amount of stablecoins issued through Transmuter
+    function getTotalIssued(address collateral) external view returns (uint256 stablecoinsIssued);
+
     /// @notice Returns the amount of stablecoins issued from `collateral` and the total amount of stablecoins issued
     /// through Transmuter
     function getIssuedByCollateral(
         address collateral
     ) external view returns (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued);
+
+    /// @notice Returns if a collateral is "managed" and the associated manager configuration
+    function getManagerData(
+        address collateral
+    ) external view returns (bool isManaged, IERC20[] memory subCollaterals, bytes memory config);
 
     /// @notice Returns the oracle values associated to `collateral`
     /// @return mint Oracle value that will be used for `collateral` for a mint transaction
