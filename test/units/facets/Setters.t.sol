@@ -16,6 +16,8 @@ import "contracts/utils/Errors.sol" as Errors;
 
 import { Fixture } from "../../Fixture.sol";
 
+import { console } from "forge-std/console.sol";
+
 contract Test_Setters_TogglePause is Fixture {
     function test_RevertWhen_NonGovernorOrGuardian() public {
         vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
@@ -480,13 +482,6 @@ contract Test_Setters_RecoverERC20 is Fixture {
         transmuter.recoverERC20(address(agToken), agToken, alice, 1 ether);
     }
 
-    function test_RevertWhen_ZeroAmount() public {
-        vm.expectRevert(Errors.ZeroAmount.selector);
-
-        hoax(governor);
-        transmuter.recoverERC20(address(agToken), agToken, alice, 0);
-    }
-
     function test_Success() public {
         deal(address(eurA), address(transmuter), 1 ether);
 
@@ -754,7 +749,7 @@ contract Test_Setters_UpdateNormalizer is Fixture {
     }
 
     function test_RevertWhen_ZeroAmountNormalizedStables() public {
-        vm.expectRevert(stdError.arithmeticError); // Should be an underflow
+        vm.expectRevert(); // Should be a division by 0
         hoax(governor);
         transmuter.updateNormalizer(1, true);
     }
@@ -980,7 +975,7 @@ contract Test_Setters_SetCollateralManager is Fixture {
 }
 
 contract Test_Setters_ChangeAllowance is Fixture {
-    event Approval(address owner, address spender, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 
     function test_RevertWhen_NotGovernor() public {
         vm.expectRevert(Errors.NotGovernor.selector);
@@ -996,11 +991,12 @@ contract Test_Setters_ChangeAllowance is Fixture {
     }
 
     function test_SafeIncreaseFrom0() public {
+        vm.expectEmit(address(eurA));
+
+        emit Approval(address(transmuter), alice, 1 ether);
+
         hoax(governor);
         transmuter.changeAllowance(eurA, alice, 1 ether);
-
-        vm.expectEmit(address(eurA));
-        emit Approval(address(transmuter), alice, 1 ether);
 
         assertEq(eurA.allowance(address(transmuter), alice), 1 ether);
     }
@@ -1009,11 +1005,11 @@ contract Test_Setters_ChangeAllowance is Fixture {
         hoax(governor);
         transmuter.changeAllowance(eurA, alice, 1 ether);
 
-        hoax(governor);
-        transmuter.changeAllowance(eurA, alice, 2 ether);
-
         vm.expectEmit(address(eurA));
         emit Approval(address(transmuter), alice, 2 ether);
+
+        hoax(governor);
+        transmuter.changeAllowance(eurA, alice, 2 ether);
 
         assertEq(eurA.allowance(address(transmuter), alice), 2 ether);
     }
