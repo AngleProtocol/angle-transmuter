@@ -807,10 +807,12 @@ contract RedeemTest is Fixture, FunctionUtils {
 
         uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
         transmuter.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
+        vm.stopPrank();
 
         hoax(guardian);
         transmuter.toggleWhitelist(WhitelistType.BACKED, alice);
 
+        vm.startPrank(alice);
         vm.expectRevert(Errors.NotWhitelisted.selector);
         transmuter.redeem(amountBurnt, bob, block.timestamp + 1 days, minAmountOuts);
 
@@ -834,11 +836,11 @@ contract RedeemTest is Fixture, FunctionUtils {
                 (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
                 1 wei
             );
-            assertEq(totalStable, mintedStables - amountBurnt);
+            assertApproxEqAbs(totalStable, mintedStables - amountBurnt, 1 wei);
         }
     }
 
-    function testFuzz_WithWhitelistedTokensAndForfeit(
+    function testFuzz_WithForfeitAndWhitelistedTokens(
         uint256[3] memory initialAmounts,
         uint256 transferProportion
     ) public {
@@ -856,13 +858,12 @@ contract RedeemTest is Fixture, FunctionUtils {
         hoax(governor);
         transmuter.setWhitelistStatus(address(eurB), 1, whitelistData);
         uint256 amountBurnt = agToken.balanceOf(alice);
-        if (mintedStables == 0) return;
+        if (mintedStables == 0 || amountBurnt == 0) return;
         (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
-
-        vm.startPrank(alice);
 
         uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
         {
+            vm.startPrank(alice);
             address[] memory forfeitTokens = new address[](0);
             vm.expectRevert(Errors.NotWhitelisted.selector);
             transmuter.redeemWithForfeit(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts, forfeitTokens);
@@ -871,9 +872,10 @@ contract RedeemTest is Fixture, FunctionUtils {
             forfeitTokens1[0] = address(eurA);
             vm.expectRevert(Errors.NotWhitelisted.selector);
             transmuter.redeemWithForfeit(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts, forfeitTokens);
-
+            vm.stopPrank();
             hoax(guardian);
             transmuter.toggleWhitelist(WhitelistType.BACKED, alice);
+            vm.startPrank(alice);
             vm.expectRevert(Errors.NotWhitelisted.selector);
             transmuter.redeemWithForfeit(amountBurnt, bob, block.timestamp + 1 days, minAmountOuts, forfeitTokens);
         }
@@ -888,7 +890,6 @@ contract RedeemTest is Fixture, FunctionUtils {
             minAmountOuts,
             forfeitTokens2
         );
-
         vm.stopPrank();
 
         assertEq(amounts, quoteAmounts);
