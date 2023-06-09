@@ -3,7 +3,6 @@
 pragma solidity ^0.8.17;
 
 import { stdError } from "forge-std/Test.sol";
-import { console } from "forge-std/console.sol";
 
 import "mock/MockManager.sol";
 

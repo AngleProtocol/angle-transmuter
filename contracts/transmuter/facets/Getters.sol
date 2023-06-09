@@ -86,7 +86,7 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
-    function getTotalIssued(address collateral) external view returns (uint256) {
+    function getTotalIssued() external view returns (uint256) {
         TransmuterStorage storage ks = s.transmuterStorage();
         return (ks.normalizedStables * ks.normalizer) / BASE_27;
     }

@@ -42,7 +42,7 @@ interface IGetters {
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 stablecoinsIssued);
 
     /// @notice Returns the total amount of stablecoins issued through Transmuter
-    function getTotalIssued(address collateral) external view returns (uint256 stablecoinsIssued);
+    function getTotalIssued() external view returns (uint256 stablecoinsIssued);
 
     /// @notice Returns the amount of stablecoins issued from `collateral` and the total amount of stablecoins issued
     /// through Transmuter
