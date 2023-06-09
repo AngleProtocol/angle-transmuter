@@ -33,6 +33,9 @@ contract Swapper is ISwapper {
                                                EXTERNAL ACTION FUNCTIONS                                            
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
+    // For the two functions below, a value of `0` for the `deadline` parameters means that there will be no timestamp
+    // check for when the swap is actually executed.
+
     /// @inheritdoc ISwapper
     /// @dev `msg.sender` must have approved this contract for at least `amountIn` for `tokenIn`
     function swapExactInput(
@@ -43,16 +46,11 @@ contract Swapper is ISwapper {
         address to,
         uint256 deadline
     ) external returns (uint256 amountOut) {
-        if (block.timestamp > deadline) revert TooLate();
-        // Check whether this is a mint or a burn operation, and whether the collateral provided
-        // is paused or not
-        (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut);
-        // Get the `amountOut`
+        (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, deadline);
         amountOut = mint
             ? LibSwapper.quoteMintExactInput(collatInfo, amountIn)
             : LibSwapper.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
         if (amountOut < amountOutMin) revert TooSmallAmountOut();
-        // Once the exact amounts are known, the system needs to update its internal metrics and process the transfers
         LibSwapper.swap(
             amountIn,
             amountOut,
@@ -76,8 +74,7 @@ contract Swapper is ISwapper {
         address to,
         uint256 deadline
     ) external returns (uint256 amountIn) {
-        if (block.timestamp > deadline) revert TooLate();
-        (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut);
+        (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, deadline);
         amountIn = mint
             ? LibSwapper.quoteMintExactOutput(collatInfo, amountOut)
             : LibSwapper.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
@@ -100,7 +97,7 @@ contract Swapper is ISwapper {
 
     /// @inheritdoc ISwapper
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256 amountOut) {
-        (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut);
+        (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, 0);
         if (mint) return LibSwapper.quoteMintExactInput(collatInfo, amountIn);
         else {
             amountOut = LibSwapper.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
@@ -110,7 +107,7 @@ contract Swapper is ISwapper {
 
     /// @inheritdoc ISwapper
     function quoteOut(uint256 amountOut, address tokenIn, address tokenOut) external view returns (uint256 amountIn) {
-        (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut);
+        (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, 0);
         if (mint) return LibSwapper.quoteMintExactOutput(collatInfo, amountOut);
         else {
             LibSwapper.checkAmounts(collatInfo, amountOut);

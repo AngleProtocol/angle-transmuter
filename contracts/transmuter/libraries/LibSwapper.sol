@@ -392,13 +392,16 @@ library LibSwapper {
             revert InvalidSwap();
     }
 
-    /// @notice Checks whether a swap from `tokenIn` to `tokenOut` is a mint or a burn
+    /// @notice Checks whether a swap from `tokenIn` to `tokenOut` is a mint or a burn, whether the
+    /// collateral provided is paused or not and in case of whether the swap is not occuring too late
     /// @dev The function reverts if the `tokenIn` and `tokenOut` given do not correspond to the stablecoin
     /// and to an accepted collateral asset of the system
     function getMintBurn(
         address tokenIn,
-        address tokenOut
+        address tokenOut,
+        uint256 deadline
     ) internal view returns (bool mint, Collateral memory collatInfo) {
+        if (deadline != 0 && block.timestamp > deadline) revert TooLate();
         TransmuterStorage storage ks = s.transmuterStorage();
         address _agToken = address(ks.agToken);
         if (tokenIn == _agToken) {

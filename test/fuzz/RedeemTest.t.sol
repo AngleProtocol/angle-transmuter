@@ -9,8 +9,9 @@ import { stdError } from "forge-std/Test.sol";
 import { MockManager } from "mock/MockManager.sol";
 import { IERC20Metadata } from "mock/MockTokenPermit.sol";
 
-import { ManagerStorage } from "contracts/transmuter/Storage.sol";
+import { ManagerStorage, WhitelistType } from "contracts/transmuter/Storage.sol";
 import "contracts/transmuter/libraries/LibHelpers.sol";
+import "contracts/utils/Errors.sol" as Errors;
 
 import "../Fixture.sol";
 import "../utils/FunctionUtils.sol";
@@ -778,6 +779,132 @@ contract RedeemTest is Fixture, FunctionUtils {
                 _MAX_PERCENTAGE_DEVIATION,
                 18
             );
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                               REDEEM WITH WHITELISTING                                             
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testFuzz_WithWhitelistedToken(uint256[3] memory initialAmounts, uint256 transferProportion) public {
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
+
+        _sweepBalances(alice, _collaterals);
+
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
+
+        vm.startPrank(alice);
+        uint256 amountBurnt = agToken.balanceOf(alice);
+        if (mintedStables == 0 || amountBurnt == 0) return;
+        (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
+        vm.expectRevert(Errors.NotWhitelisted.selector);
+
+        uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
+        transmuter.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
+
+        hoax(guardian);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, alice);
+
+        vm.expectRevert(Errors.NotWhitelisted.selector);
+        transmuter.redeem(amountBurnt, bob, block.timestamp + 1 days, minAmountOuts);
+
+        (address[] memory tokens, uint256[] memory amounts) = transmuter.redeem(
+            amountBurnt,
+            alice,
+            block.timestamp + 1 days,
+            minAmountOuts
+        );
+        vm.stopPrank();
+
+        assertEq(amounts, quoteAmounts);
+        _assertSizes(tokens, amounts);
+        _assertTransfers(alice, _collaterals, amounts);
+
+        // Testing implicitly the ks.normalizer and ks.normalizedStables
+        for (uint256 i; i < _collaterals.length; ++i) {
+            (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(_collaterals[i]);
+            assertApproxEqAbs(
+                stableIssuedByCollateral,
+                (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
+                1 wei
+            );
+            assertEq(totalStable, mintedStables - amountBurnt);
+        }
+    }
+
+    function testFuzz_WithWhitelistedTokensAndForfeit(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion
+    ) public {
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
+
+        _sweepBalances(alice, _collaterals);
+
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurB), 1, whitelistData);
+        uint256 amountBurnt = agToken.balanceOf(alice);
+        if (mintedStables == 0) return;
+        (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
+
+        vm.startPrank(alice);
+
+        uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
+        {
+            address[] memory forfeitTokens = new address[](0);
+            vm.expectRevert(Errors.NotWhitelisted.selector);
+            transmuter.redeemWithForfeit(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts, forfeitTokens);
+
+            address[] memory forfeitTokens1 = new address[](1);
+            forfeitTokens1[0] = address(eurA);
+            vm.expectRevert(Errors.NotWhitelisted.selector);
+            transmuter.redeemWithForfeit(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts, forfeitTokens);
+
+            hoax(guardian);
+            transmuter.toggleWhitelist(WhitelistType.BACKED, alice);
+            vm.expectRevert(Errors.NotWhitelisted.selector);
+            transmuter.redeemWithForfeit(amountBurnt, bob, block.timestamp + 1 days, minAmountOuts, forfeitTokens);
+        }
+
+        address[] memory forfeitTokens2 = new address[](2);
+        forfeitTokens2[0] = address(eurA);
+        forfeitTokens2[1] = address(eurB);
+        (address[] memory tokens, uint256[] memory amounts) = transmuter.redeemWithForfeit(
+            amountBurnt,
+            bob,
+            block.timestamp + 1 days,
+            minAmountOuts,
+            forfeitTokens2
+        );
+
+        vm.stopPrank();
+
+        assertEq(amounts, quoteAmounts);
+        _assertSizes(tokens, amounts);
+        assertEq(IERC20(address(eurA)).balanceOf(bob), 0);
+        assertEq(IERC20(address(eurB)).balanceOf(bob), 0);
+        assertEq(IERC20(address(eurY)).balanceOf(bob), amounts[2]);
+
+        for (uint256 i; i < _collaterals.length; ++i) {
+            (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(_collaterals[i]);
+            assertApproxEqAbs(
+                stableIssuedByCollateral,
+                (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
+                1 wei
+            );
+            assertEq(totalStable, mintedStables - amountBurnt);
         }
     }
 
