@@ -18,7 +18,7 @@ import { CollateralSetup, Test } from "contracts/transmuter/configs/Test.sol";
 import "contracts/utils/Constants.sol";
 import "contracts/utils/Errors.sol";
 
-import { Transmuter } from "./utils/Transmuter.sol";
+import { ITransmuter, Transmuter } from "./utils/Transmuter.sol";
 
 import { console } from "forge-std/console.sol";
 

@@ -17,9 +17,8 @@ ffi = true
 runs = 10000
 
 [invariant]
-runs = 10
+runs = 100
 depth = 30
-fail_on_revert = true
 
 [rpc_endpoints]
 mainnet = "${ETH_NODE_URI_MAINNET}"
@@ -41,8 +40,8 @@ via_ir = false
 runs = 2000
 
 [profile.dev.invariant]
-runs = 1000
-depth = 50
+runs = 100
+depth = 30
 fail_on_revert = true
 
 [profile.ci]

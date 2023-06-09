@@ -80,8 +80,8 @@ contract Getters is IGetters {
         TransmuterStorage storage ks = s.transmuterStorage();
         uint256 _normalizer = ks.normalizer;
         return (
-            (uint256(ks.collaterals[collateral].normalizedStables) * uint256(_normalizer)) / BASE_27,
-            (uint256(ks.normalizedStables) * uint256(_normalizer)) / BASE_27
+            (uint256(ks.collaterals[collateral].normalizedStables) * _normalizer) / BASE_27,
+            (uint256(ks.normalizedStables) * _normalizer) / BASE_27
         );
     }
 

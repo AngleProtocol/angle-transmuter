@@ -6,16 +6,20 @@ import { BaseActor, ITransmuter, AggregatorV3Interface, IERC20, IERC20Metadata }
 import { MockChainlinkOracle } from "mock/MockChainlinkOracle.sol";
 import "../../utils/FunctionUtils.sol";
 
-import { console } from "forge-std/console.sol";
-
 contract Governance is BaseActor, FunctionUtils {
+    uint64 public collateralRatio;
+    uint64 public collateralRatioSplit;
+
     constructor(
         ITransmuter transmuter,
+        ITransmuter transmuterSplit,
         address[] memory collaterals,
         AggregatorV3Interface[] memory oracles
-    ) BaseActor(1, "Trader", transmuter, collaterals, oracles) {}
+    ) BaseActor(1, "Trader", transmuter, transmuterSplit, collaterals, oracles) {}
 
     // Random oracle change of at most 1%
+    // Only this function can decrease the collateral ratio, so when triggered update
+    // the collat ratio
     function updateOracle(uint256 collatNumber, int256 change) public useActor(0) countCall("oracle") {
         collatNumber = bound(collatNumber, 0, 2);
         change = bound(change, int256((99 * BASE_18) / 100), int256((101 * BASE_18) / 100)); // +/- 1%
@@ -23,6 +27,12 @@ contract Governance is BaseActor, FunctionUtils {
         (, int256 answer, , , ) = _oracles[collatNumber].latestRoundData();
         answer = (answer * change) / int256(BASE_18);
         MockChainlinkOracle(address(_oracles[collatNumber])).setLatestAnswer(answer);
+        (collateralRatio, ) = _transmuter.getCollateralRatio();
+        (collateralRatioSplit, ) = _transmuterSplit.getCollateralRatio();
+        // if collateral ratio is max -can only happen if stablecoin supply is null -
+        // then it can only decrease, so set it to 0
+        if (collateralRatio == type(uint64).max) collateralRatio = 0;
+        if (collateralRatioSplit == type(uint64).max) collateralRatioSplit = 0;
     }
 
     function updateRedemptionFees(
@@ -38,6 +48,7 @@ contract Governance is BaseActor, FunctionUtils {
             int256(BASE_9)
         );
         _transmuter.setRedemptionCurveParams(xFeeRedeem, yFeeRedeem);
+        _transmuterSplit.setRedemptionCurveParams(xFeeRedeem, yFeeRedeem);
     }
 
     function updateBurnFees(
@@ -61,6 +72,7 @@ contract Governance is BaseActor, FunctionUtils {
             int256(MAX_BURN_FEE) - 1
         );
         _transmuter.setFees(_collaterals[collatNumber], xFeeBurn, yFeeBurn, false);
+        _transmuterSplit.setFees(_collaterals[collatNumber], xFeeBurn, yFeeBurn, false);
     }
 
     function updateMintFees(
@@ -83,6 +95,7 @@ contract Governance is BaseActor, FunctionUtils {
             int256(BASE_12) - 1
         );
         _transmuter.setFees(_collaterals[collatNumber], xFeeMint, yFeeMint, true);
+        _transmuterSplit.setFees(_collaterals[collatNumber], xFeeMint, yFeeMint, true);
     }
 
     // function updateTimestamp(uint256 elapseTimestamp) public countCall("timestamp") {
@@ -93,4 +106,16 @@ contract Governance is BaseActor, FunctionUtils {
     //         MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(value);
     //     }
     // }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                         UTILS                                                      
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function updateCollateralRatio(uint64 newCollateralRatio) public {
+        collateralRatioSplit = newCollateralRatio;
+    }
+
+    function updateSplitCollateralRatio(uint64 newCollateralRatio) public {
+        collateralRatioSplit = newCollateralRatio;
+    }
 }

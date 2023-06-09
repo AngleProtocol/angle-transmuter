@@ -13,6 +13,17 @@ import { Test, stdMath, StdStorage, stdStorage } from "forge-std/Test.sol";
 import "contracts/utils/Constants.sol";
 import "contracts/utils/Errors.sol";
 
+struct TestStorage {
+    address tokenIn;
+    address tokenOut;
+    uint256 amountIn;
+    uint256 amountOut;
+    uint256 amountInSplit1;
+    uint256 amountOutSplit1;
+    uint256 amountInSplit2;
+    uint256 amountOutSplit2;
+}
+
 contract BaseActor is Test {
     uint256 internal _maxAmountWithoutDecimals = 10 ** 15;
     // making this value smaller worsen rounding and make test harder to pass.
@@ -24,10 +35,12 @@ contract BaseActor is Test {
 
     mapping(bytes32 => uint256) public calls;
     address[] public actors;
+    uint256 public nbrActor;
     address internal _currentActor;
 
     IAgToken agToken;
     ITransmuter internal _transmuter;
+    ITransmuter internal _transmuterSplit;
     address[] internal _collaterals;
     AggregatorV3Interface[] internal _oracles;
     uint256[] internal _maxTokenAmount;
@@ -45,17 +58,20 @@ contract BaseActor is Test {
     }
 
     constructor(
-        uint256 nbrActor,
+        uint256 _nbrActor,
         string memory actorType,
         ITransmuter transmuter,
+        ITransmuter transmuterSplit,
         address[] memory collaterals,
         AggregatorV3Interface[] memory oracles
     ) {
-        for (uint256 i; i < nbrActor; ++i) {
+        for (uint256 i; i < _nbrActor; ++i) {
             address actor = address(uint160(uint256(keccak256(abi.encodePacked("actor", actorType, i)))));
             actors.push(actor);
         }
+        nbrActor = _nbrActor;
         _transmuter = transmuter;
+        _transmuterSplit = transmuterSplit;
         agToken = IAgToken(transmuter.agToken());
         _collaterals = collaterals;
         _oracles = oracles;
