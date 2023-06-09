@@ -44,6 +44,7 @@ library LibSetters {
     /// @notice Internal version of `setWhitelistStatus`
     function setWhitelistStatus(address collateral, uint8 whitelistStatus, bytes memory whitelistData) internal {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
+        if (collatInfo.decimals == 0) revert NotCollateral();
         if (whitelistStatus == 1) {
             // Sanity check
             LibWhitelist.parseWhitelistData(whitelistData);

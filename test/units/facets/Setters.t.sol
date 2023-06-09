@@ -608,16 +608,132 @@ contract Test_Setters_ToggleTrusted is Fixture {
 
 contract Test_Setters_SetWhitelistStatus is Fixture {
     function test_RevertWhen_NonGovernor() public {
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
         vm.expectRevert(Errors.NotGovernor.selector);
-        transmuter.toggleTrusted(alice, TrustedType.Seller);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
 
         vm.expectRevert(Errors.NotGovernor.selector);
         hoax(alice);
-        transmuter.toggleTrusted(alice, TrustedType.Seller);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
 
         vm.expectRevert(Errors.NotGovernor.selector);
         hoax(guardian);
-        transmuter.toggleTrusted(alice, TrustedType.Seller);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
+    }
+
+    function test_RevertWhen_NotCollateral() public {
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        vm.expectRevert(Errors.NotCollateral.selector);
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(this), 1, whitelistData);
+    }
+
+    function test_RevertWhen_InvalidWhitelistData() public {
+        bytes memory whitelistData = abi.encode(3, 4);
+        vm.expectRevert();
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(this), 1, whitelistData);
+    }
+
+    function test_SetPositiveStatus() public {
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        bytes memory emptyData;
+        assert(!transmuter.isWhitelistedCollateral(address(eurA)));
+        assertEq(transmuter.getCollateralWhitelistData(address(eurA)), emptyData);
+
+        vm.expectEmit(address(transmuter));
+        emit LibSetters.CollateralWhitelistStatusUpdated(address(eurA), whitelistData, 1);
+
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
+
+        assert(transmuter.isWhitelistedCollateral(address(eurA)));
+        assertEq(transmuter.getCollateralWhitelistData(address(eurA)), whitelistData);
+    }
+
+    function test_SetNegativeStatus() public {
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        bytes memory emptyData;
+        assert(!transmuter.isWhitelistedCollateral(address(eurA)));
+        assertEq(transmuter.getCollateralWhitelistData(address(eurA)), emptyData);
+
+        vm.expectEmit(address(transmuter));
+        emit LibSetters.CollateralWhitelistStatusUpdated(address(eurA), whitelistData, 1);
+
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
+
+        assert(transmuter.isWhitelistedCollateral(address(eurA)));
+        assertEq(transmuter.getCollateralWhitelistData(address(eurA)), whitelistData);
+
+        bytes memory whitelistData2 = abi.encode(WhitelistType.BACKED, abi.encode(address(alice)));
+        vm.expectEmit(address(transmuter));
+        emit LibSetters.CollateralWhitelistStatusUpdated(address(eurA), whitelistData2, 0);
+
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurA), 0, whitelistData2);
+
+        assert(!transmuter.isWhitelistedCollateral(address(eurA)));
+        assertEq(transmuter.getCollateralWhitelistData(address(eurA)), whitelistData);
+    }
+}
+
+contract Test_Setters_ToggleWhitelist is Fixture {
+    event WhitelistStatusToggled(WhitelistType whitelistType, address indexed who, uint256 whitelistStatus);
+
+    function test_RevertWhen_NonGuardian() public {
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, address(alice));
+
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        hoax(alice);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, address(alice));
+    }
+
+    function test_WhitelistSet() public {
+        vm.expectEmit(address(transmuter));
+        emit WhitelistStatusToggled(WhitelistType.BACKED, address(alice), 1);
+        hoax(guardian);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, address(alice));
+
+        assert(transmuter.isWhitelistedForType(WhitelistType.BACKED, address(alice)));
+    }
+
+    function test_WhitelistUnset() public {
+        vm.expectEmit(address(transmuter));
+        emit WhitelistStatusToggled(WhitelistType.BACKED, address(alice), 1);
+        hoax(guardian);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, address(alice));
+
+        assert(transmuter.isWhitelistedForType(WhitelistType.BACKED, address(alice)));
+
+        vm.expectEmit(address(transmuter));
+        emit WhitelistStatusToggled(WhitelistType.BACKED, address(alice), 0);
+        hoax(guardian);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, address(alice));
+
+        assert(!transmuter.isWhitelistedForType(WhitelistType.BACKED, address(alice)));
+    }
+
+    function test_WhitelistSetOnCollateral() public {
+        assert(transmuter.isWhitelistedForCollateral(address(eurA), address(alice)));
+        vm.expectEmit(address(transmuter));
+        emit WhitelistStatusToggled(WhitelistType.BACKED, address(alice), 1);
+        hoax(guardian);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, address(alice));
+
+        assert(transmuter.isWhitelistedForType(WhitelistType.BACKED, address(alice)));
+        assert(transmuter.isWhitelistedForCollateral(address(eurA), address(alice)));
+
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
+
+        assert(transmuter.isWhitelistedForCollateral(address(eurA), address(alice)));
+
+        hoax(guardian);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, address(alice));
+        assert(!transmuter.isWhitelistedForCollateral(address(eurA), address(alice)));
     }
 }
 
@@ -829,7 +945,7 @@ contract Test_Setters_SetCollateralManager is Fixture {
 
         // Refetch storage to check the update
         (isManaged, fetchedSubCollaterals, config) = transmuter.getManagerData(address(eurA));
-        (ManagerType managerType, bytes memory aux) = abi.decode(config, (ManagerType, bytes));
+        (, bytes memory aux) = abi.decode(config, (ManagerType, bytes));
         address fetched = abi.decode(aux, (address));
 
         assertEq(isManaged, true);
