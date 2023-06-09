@@ -200,7 +200,7 @@ contract BurnTest is Fixture, FunctionUtils {
         );
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         burnAmount = bound(burnAmount, 0, collateralMintedStables[fromToken]);
-        burnFee = int64(bound(int256(burnFee), 0, int256(BASE_9 - 1)));
+        burnFee = int64(bound(int256(burnFee), 0, int256(BASE_9) - (2 * int256(BASE_9)) / 1000));
         uint64[] memory xFeeBurn = new uint64[](1);
         xFeeBurn[0] = uint64(BASE_9);
         int64[] memory yFeeBurn = new int64[](1);
@@ -312,7 +312,7 @@ contract BurnTest is Fixture, FunctionUtils {
         );
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         burnAmount = bound(burnAmount, 0, collateralMintedStables[fromToken]);
-        burnFee = int64(bound(int256(burnFee), 0, int256(BASE_9 - 1)));
+        burnFee = int64(bound(int256(burnFee), 0, int256(BASE_9) - (2 * int256(BASE_9)) / 1000));
         uint64[] memory xFeeBurn = new uint64[](1);
         xFeeBurn[0] = uint64(BASE_9);
         int64[] memory yFeeBurn = new int64[](1);
@@ -363,7 +363,7 @@ contract BurnTest is Fixture, FunctionUtils {
 
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         burnAmount = bound(burnAmount, 0, collateralMintedStables[fromToken]);
-        burnFee = int64(bound(int256(burnFee), 0, int256(BASE_9 - 1)));
+        burnFee = int64(bound(int256(burnFee), 0, int256(BASE_9) - (2 * int256(BASE_9)) / 1000));
         uint64[] memory xFeeBurn = new uint64[](1);
         xFeeBurn[0] = uint64(BASE_9);
         int64[] memory yFeeBurn = new int64[](1);

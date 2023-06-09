@@ -16,8 +16,6 @@ import "contracts/utils/Errors.sol" as Errors;
 
 import { Fixture } from "../../Fixture.sol";
 
-import { console } from "forge-std/console.sol";
-
 contract Test_Setters_TogglePause is Fixture {
     function test_RevertWhen_NonGovernorOrGuardian() public {
         vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
