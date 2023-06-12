@@ -97,11 +97,7 @@ contract Setters is AccessControlModifiers, ISetters {
             // Sanity check on the manager data that is passed
             LibManager.parseManagerConfig(managerData.config);
             collatInfo.isManaged = 1;
-        } else {
-            ManagerStorage memory emptyManagerData;
-            managerData = emptyManagerData;
-            collatInfo.isManaged = 0;
-        }
+        } else collatInfo.isManaged = 0;
         collatInfo.managerData = managerData;
         emit CollateralManagerSet(collateral, managerData);
     }
@@ -143,13 +139,13 @@ contract Setters is AccessControlModifiers, ISetters {
         TransmuterStorage storage ks = s.transmuterStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
-        uint256 normalizedAmount = (amount * BASE_27) / ks.normalizer;
+        uint128 normalizedAmount = uint128((amount * BASE_27) / ks.normalizer);
         if (increase) {
             collatInfo.normalizedStables += uint216(normalizedAmount);
-            ks.normalizedStables += uint128(normalizedAmount);
+            ks.normalizedStables += normalizedAmount;
         } else {
             collatInfo.normalizedStables -= uint216(normalizedAmount);
-            ks.normalizedStables -= uint128(normalizedAmount);
+            ks.normalizedStables -= normalizedAmount;
         }
         emit ReservesAdjusted(collateral, amount, increase);
     }

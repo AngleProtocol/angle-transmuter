@@ -127,8 +127,7 @@ contract Getters is IGetters {
                 return collatInfo.isBurnLive == 0;
             }
         } else {
-            TransmuterStorage storage ks = s.transmuterStorage();
-            return ks.isRedemptionLive == 0;
+            return s.transmuterStorage().isRedemptionLive == 0;
         }
     }
 

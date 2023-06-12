@@ -27,6 +27,7 @@ struct LocalVariables {
     int256 lowerFees;
     int256 upperFees;
     uint256 amountToNextBreakPoint;
+    uint256 stablecoinsIssued;
     uint256 otherStablecoinSupply;
 }
 
@@ -53,9 +54,8 @@ library LibSwapper {
         address tokenIn,
         address tokenOut,
         address to,
-        uint8 isManaged,
-        uint8 onlyWhitelisted,
-        bool mint
+        bool mint,
+        Collateral storage collatInfo
     ) internal {
         if (amountIn > 0 && amountOut > 0) {
             TransmuterStorage storage ks = s.transmuterStorage();
@@ -63,21 +63,21 @@ library LibSwapper {
                 uint128 changeAmount = uint128(amountOut.mulDiv(BASE_27, ks.normalizer, Math.Rounding.Up));
                 // The amount of stablecoins issued from a collateral are not stored as absolute variables, but
                 // as variables normalized by a `normalizer`
-                ks.collaterals[tokenIn].normalizedStables += uint216(changeAmount);
+                collatInfo.normalizedStables += uint216(changeAmount);
                 ks.normalizedStables += changeAmount;
-                if (isManaged > 0) LibManager.transferFrom(tokenIn, amountIn, ks.collaterals[tokenIn].managerData);
+                if (collatInfo.isManaged > 0) LibManager.transferFrom(tokenIn, amountIn, collatInfo.managerData);
                 else IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
                 IAgToken(tokenOut).mint(to, amountOut);
             } else {
-                if (onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(ks.collaterals[tokenOut].whitelistData, to))
+                if (collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, to))
                     revert NotWhitelisted();
                 uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
                 // This will underflow when the system is trying to burn more stablecoins than what has been issued
                 // from this collateral
-                ks.collaterals[tokenOut].normalizedStables -= uint216(changeAmount);
+                collatInfo.normalizedStables -= uint216(changeAmount);
                 ks.normalizedStables -= changeAmount;
                 IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-                if (isManaged > 0) LibManager.transferTo(tokenOut, to, amountOut, ks.collaterals[tokenOut].managerData);
+                if (collatInfo.isManaged > 0) LibManager.transferTo(tokenOut, to, amountOut, collatInfo.managerData);
                 else IERC20(tokenOut).safeTransfer(to, amountOut);
             }
         }
@@ -86,7 +86,7 @@ library LibSwapper {
 
     /// @notice Computes the `amountOut` of stablecoins to mint from `tokenIn` of a collateral with data `collatInfo`
     function quoteMintExactInput(
-        Collateral memory collatInfo,
+        Collateral storage collatInfo,
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
         uint256 oracleValue = LibOracle.readMint(collatInfo.oracleConfig);
@@ -96,7 +96,7 @@ library LibSwapper {
 
     /// @notice Computes the `amountIn` of collateral to get during a mint of `amountOut` of stablecoins
     function quoteMintExactOutput(
-        Collateral memory collatInfo,
+        Collateral storage collatInfo,
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
         uint256 oracleValue = LibOracle.readMint(collatInfo.oracleConfig);
@@ -107,7 +107,7 @@ library LibSwapper {
     /// @notice Computes the `amountIn` of stablecoins to burn to release `amountOut` of `collateral`
     function quoteBurnExactOutput(
         address collateral,
-        Collateral memory collatInfo,
+        Collateral storage collatInfo,
         uint256 amountOut
     ) internal view returns (uint256 amountIn) {
         (uint256 ratio, uint256 oracleValue) = getBurnOracle(collateral, collatInfo.oracleConfig);
@@ -118,7 +118,7 @@ library LibSwapper {
     /// @notice Computes the `amountOut` of `collateral` to give during a burn operation of `amountIn` of stablecoins
     function quoteBurnExactInput(
         address collateral,
-        Collateral memory collatInfo,
+        Collateral storage collatInfo,
         uint256 amountIn
     ) internal view returns (uint256 amountOut) {
         (uint256 ratio, uint256 oracleValue) = getBurnOracle(collateral, collatInfo.oracleConfig);
@@ -130,19 +130,18 @@ library LibSwapper {
     /// @dev This function leverages the mathematical computations of the appendix of the Transmuter whitepaper
     /// @dev Cost of the function is linear in the length of the `xFeeMint` or `xFeeBurn` array
     function quoteFees(
-        Collateral memory collatInfo,
+        Collateral storage collatInfo,
         QuoteType quoteType,
         uint256 amountStable
     ) internal view returns (uint256) {
         LocalVariables memory v;
-        TransmuterStorage storage ks = s.transmuterStorage();
-
         v.isMint = _isMint(quoteType);
         v.isExact = _isExact(quoteType);
         uint256 n = v.isMint ? collatInfo.xFeeMint.length : collatInfo.xFeeBurn.length;
 
         uint256 currentExposure;
         {
+            TransmuterStorage storage ks = s.transmuterStorage();
             uint256 normalizedStablesMem = ks.normalizedStables;
             // Handling the initialisation and constant fees
             if (normalizedStablesMem == 0 || n == 1)
@@ -153,8 +152,8 @@ library LibSwapper {
 
             uint256 normalizerMem = ks.normalizer;
             // Store the current amount of stablecoins issued from this collateral
-            collatInfo.normalizedStables = uint216((uint256(collatInfo.normalizedStables) * normalizerMem) / BASE_27);
-            v.otherStablecoinSupply = (normalizerMem * normalizedStablesMem) / BASE_27 - collatInfo.normalizedStables;
+            v.stablecoinsIssued = uint216((uint256(collatInfo.normalizedStables) * normalizerMem) / BASE_27);
+            v.otherStablecoinSupply = (normalizerMem * normalizedStablesMem) / BASE_27 - v.stablecoinsIssued;
         }
 
         uint256 amount;
@@ -177,7 +176,7 @@ library LibSwapper {
                 v.amountToNextBreakPoint =
                     (v.otherStablecoinSupply * v.upperExposure) /
                     (BASE_9 - v.upperExposure) -
-                    collatInfo.normalizedStables;
+                    v.stablecoinsIssued;
             } else {
                 // The exposures in the burn case are decreasing
                 v.lowerExposure = collatInfo.xFeeBurn[i];
@@ -186,7 +185,7 @@ library LibSwapper {
                 v.upperFees = collatInfo.yFeeBurn[i + 1];
                 // The `b_{i+1}` value in the burn case is the opposite value of the mint case
                 v.amountToNextBreakPoint =
-                    collatInfo.normalizedStables -
+                    v.stablecoinsIssued -
                     (v.otherStablecoinSupply * v.upperExposure) /
                     (BASE_9 - v.upperExposure);
             }
@@ -199,12 +198,8 @@ library LibSwapper {
             else {
                 // This is the opposite of the `b_i` value from the whitepaper.
                 uint256 amountFromPrevBreakPoint = v.isMint
-                    ? collatInfo.normalizedStables -
-                        (v.otherStablecoinSupply * v.lowerExposure) /
-                        (BASE_9 - v.lowerExposure)
-                    : (v.otherStablecoinSupply * v.lowerExposure) /
-                        (BASE_9 - v.lowerExposure) -
-                        collatInfo.normalizedStables;
+                    ? v.stablecoinsIssued - (v.otherStablecoinSupply * v.lowerExposure) / (BASE_9 - v.lowerExposure)
+                    : (v.otherStablecoinSupply * v.lowerExposure) / (BASE_9 - v.lowerExposure) - v.stablecoinsIssued;
 
                 // `slope` is in base 18
                 uint256 slope = ((uint256(v.upperFees - v.lowerFees) * BASE_36) /
@@ -292,9 +287,9 @@ library LibSwapper {
                     currentExposure = v.upperExposure * BASE_9;
                     ++i;
                     // Update for the rest of the swaps the stablecoins issued from the asset
-                    collatInfo.normalizedStables = v.isMint
-                        ? collatInfo.normalizedStables + uint216(v.amountToNextBreakPoint)
-                        : collatInfo.normalizedStables - uint216(v.amountToNextBreakPoint);
+                    v.stablecoinsIssued = v.isMint
+                        ? v.stablecoinsIssued + uint216(v.amountToNextBreakPoint)
+                        : v.stablecoinsIssued - uint216(v.amountToNextBreakPoint);
                 }
             }
         }
@@ -386,7 +381,7 @@ library LibSwapper {
 
     /// @notice Checks whether a managed collateral asset still has enough collateral available to process
     /// a transfer
-    function checkAmounts(Collateral memory collatInfo, uint256 amountOut) internal view {
+    function checkAmounts(Collateral storage collatInfo, uint256 amountOut) internal view {
         // Checking if enough is available for collateral assets that involve manager addresses
         if (collatInfo.isManaged > 0 && LibManager.maxAvailable(collatInfo.managerData) < amountOut)
             revert InvalidSwap();
@@ -400,7 +395,7 @@ library LibSwapper {
         address tokenIn,
         address tokenOut,
         uint256 deadline
-    ) internal view returns (bool mint, Collateral memory collatInfo) {
+    ) internal view returns (bool mint, Collateral storage collatInfo) {
         if (deadline != 0 && block.timestamp > deadline) revert TooLate();
         TransmuterStorage storage ks = s.transmuterStorage();
         address _agToken = address(ks.agToken);
