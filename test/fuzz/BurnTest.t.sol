@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { stdError } from "forge-std/Test.sol";
-import { ManagerStorage, ManagerType } from "contracts/transmuter/Storage.sol";
+import { ManagerStorage, ManagerType, WhitelistType } from "contracts/transmuter/Storage.sol";
 
 import "contracts/utils/Errors.sol" as Errors;
 
@@ -200,7 +200,7 @@ contract BurnTest is Fixture, FunctionUtils {
         );
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         burnAmount = bound(burnAmount, 0, collateralMintedStables[fromToken]);
-        burnFee = int64(bound(int256(burnFee), 0, int256(BASE_9 - 1)));
+        burnFee = int64(bound(int256(burnFee), 0, int256(BASE_9) - (2 * int256(BASE_9)) / 1000));
         uint64[] memory xFeeBurn = new uint64[](1);
         xFeeBurn[0] = uint64(BASE_9);
         int64[] memory yFeeBurn = new int64[](1);
@@ -312,7 +312,7 @@ contract BurnTest is Fixture, FunctionUtils {
         );
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         burnAmount = bound(burnAmount, 0, collateralMintedStables[fromToken]);
-        burnFee = int64(bound(int256(burnFee), 0, int256(BASE_9 - 1)));
+        burnFee = int64(bound(int256(burnFee), 0, int256(BASE_9) - (2 * int256(BASE_9)) / 1000));
         uint64[] memory xFeeBurn = new uint64[](1);
         xFeeBurn[0] = uint64(BASE_9);
         int64[] memory yFeeBurn = new int64[](1);
@@ -363,7 +363,7 @@ contract BurnTest is Fixture, FunctionUtils {
 
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         burnAmount = bound(burnAmount, 0, collateralMintedStables[fromToken]);
-        burnFee = int64(bound(int256(burnFee), 0, int256(BASE_9 - 1)));
+        burnFee = int64(bound(int256(burnFee), 0, int256(BASE_9) - (2 * int256(BASE_9)) / 1000));
         uint64[] memory xFeeBurn = new uint64[](1);
         xFeeBurn[0] = uint64(BASE_9);
         int64[] memory yFeeBurn = new int64[](1);
@@ -924,6 +924,175 @@ contract BurnTest is Fixture, FunctionUtils {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                  BURN WITH WHITELIST                                               
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testFuzz_RevertWhen_Whitelist(
+        uint256[3] memory initialAmounts,
+        uint256[3] memory latestOracleValue,
+        uint256 stableAmount,
+        uint256 fromToken
+    ) public {
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            alice,
+            address(0),
+            initialAmounts,
+            0
+        );
+        if (mintedStables == 0) return;
+        _updateOracles(latestOracleValue);
+
+        stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
+        uint256 burnAmount = IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)) / 2;
+
+        uint256 amountOut = transmuter.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
+        uint256 amountIn = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
+
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        hoax(governor);
+        transmuter.setWhitelistStatus(_collaterals[fromToken], 1, whitelistData);
+
+        assertEq(amountOut, transmuter.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]));
+        assertEq(amountIn, transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]));
+
+        if (stableAmount == 0 || amountIn == 0 || amountOut == 0 || burnAmount == 0) return;
+
+        vm.expectRevert(Errors.NotWhitelisted.selector);
+        transmuter.swapExactInput(stableAmount, 0, address(agToken), _collaterals[fromToken], address(alice), 0);
+
+        vm.expectRevert(Errors.NotWhitelisted.selector);
+        transmuter.swapExactOutput(
+            burnAmount,
+            type(uint256).max,
+            address(agToken),
+            _collaterals[fromToken],
+            address(alice),
+            0
+        );
+    }
+
+    function testFuzz_BurnExactInputAndWhitelist(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint256[3] memory latestOracleValue,
+        uint64[10] memory xFeeBurnUnbounded,
+        int64[10] memory yFeeBurnUnbounded,
+        uint256 stableAmount,
+        uint256 fromToken
+    ) public {
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            alice,
+            address(0),
+            initialAmounts,
+            transferProportion
+        );
+        if (mintedStables == 0) return;
+        _updateOracles(latestOracleValue);
+        _randomBurnFees(
+            _collaterals[fromToken],
+            xFeeBurnUnbounded,
+            yFeeBurnUnbounded,
+            int256(BASE_9) - (2 * int256(BASE_9)) / 1000
+        );
+        stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
+        if (stableAmount == 0) return;
+
+        uint256 prevBalanceStable = agToken.balanceOf(alice);
+        uint256 prevTransmuterCollat = IERC20(_collaterals[fromToken]).balanceOf(address(transmuter));
+
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        hoax(governor);
+        transmuter.setWhitelistStatus(_collaterals[fromToken], 1, whitelistData);
+
+        hoax(guardian);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, alice);
+
+        uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
+        bool burnMoreThanHad = _burnExactInput(alice, _collaterals[fromToken], stableAmount, amountOut);
+
+        uint256 balanceStable = agToken.balanceOf(alice);
+        if (amountOut == 0 || stableAmount == 0) assertEq(balanceStable, prevBalanceStable);
+        else assertEq(balanceStable, prevBalanceStable - stableAmount);
+        assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), amountOut);
+        assertEq(
+            IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)),
+            burnMoreThanHad ? 0 : prevTransmuterCollat - amountOut
+        );
+
+        (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(
+            _collaterals[fromToken]
+        );
+
+        if (amountOut == 0 || stableAmount == 0) {
+            assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken], 1 wei);
+            assertApproxEqAbs(newStableAmount, mintedStables, 1 wei);
+        } else {
+            assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken] - stableAmount, 1 wei);
+            assertApproxEqAbs(newStableAmount, mintedStables - stableAmount, 1 wei);
+        }
+    }
+
+    function testFuzz_BurnExactOutputAndWhitelist(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint256[3] memory latestOracleValue,
+        uint64[10] memory xFeeBurnUnbounded,
+        int64[10] memory yFeeBurnUnbounded,
+        uint256 amountOut,
+        uint256 fromToken
+    ) public {
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            alice,
+            address(0),
+            initialAmounts,
+            transferProportion
+        );
+        if (mintedStables == 0) return;
+        _updateOracles(latestOracleValue);
+        _randomBurnFees(
+            _collaterals[fromToken],
+            xFeeBurnUnbounded,
+            yFeeBurnUnbounded,
+            int256(BASE_9) - (2 * int256(BASE_9)) / 1000
+        );
+        amountOut = bound(amountOut, 0, IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)));
+        if (amountOut == 0) return;
+
+        uint256 prevBalanceStable = agToken.balanceOf(alice);
+
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        hoax(governor);
+        transmuter.setWhitelistStatus(_collaterals[fromToken], 1, whitelistData);
+
+        hoax(guardian);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, alice);
+
+        uint256 stableAmount = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
+        bool notReverted = _burnExactOutput(alice, _collaterals[fromToken], amountOut, stableAmount);
+        if (notReverted) return;
+
+        uint256 balanceStable = agToken.balanceOf(alice);
+        uint256 prevTransmuterCollat = IERC20(_collaterals[fromToken]).balanceOf(address(transmuter));
+
+        assertEq(balanceStable, prevBalanceStable - stableAmount);
+        assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), amountOut);
+        assertEq(IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)), prevTransmuterCollat - amountOut);
+
+        (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(
+            _collaterals[fromToken]
+        );
+
+        assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken] - stableAmount, 1 wei);
+        assertApproxEqAbs(newStableAmount, mintedStables - stableAmount, 1 wei);
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                          UTILS                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
@@ -1097,14 +1266,7 @@ contract BurnTest is Fixture, FunctionUtils {
             burnMoreThanHad = true;
         }
         vm.startPrank(owner);
-        transmuter.swapExactInput(
-            amountStable,
-            estimatedAmountOut,
-            address(agToken),
-            tokenOut,
-            owner,
-            block.timestamp * 2
-        );
+        transmuter.swapExactInput(amountStable, estimatedAmountOut, address(agToken), tokenOut, owner, 0);
         vm.stopPrank();
     }
 

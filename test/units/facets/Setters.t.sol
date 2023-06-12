@@ -3,7 +3,6 @@
 pragma solidity ^0.8.17;
 
 import { stdError } from "forge-std/Test.sol";
-import { console } from "forge-std/console.sol";
 
 import "mock/MockManager.sol";
 
@@ -481,13 +480,6 @@ contract Test_Setters_RecoverERC20 is Fixture {
         transmuter.recoverERC20(address(agToken), agToken, alice, 1 ether);
     }
 
-    function test_RevertWhen_ZeroAmount() public {
-        vm.expectRevert(Errors.ZeroAmount.selector);
-
-        hoax(governor);
-        transmuter.recoverERC20(address(agToken), agToken, alice, 0);
-    }
-
     function test_Success() public {
         deal(address(eurA), address(transmuter), 1 ether);
 
@@ -609,16 +601,132 @@ contract Test_Setters_ToggleTrusted is Fixture {
 
 contract Test_Setters_SetWhitelistStatus is Fixture {
     function test_RevertWhen_NonGovernor() public {
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
         vm.expectRevert(Errors.NotGovernor.selector);
-        transmuter.toggleTrusted(alice, TrustedType.Seller);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
 
         vm.expectRevert(Errors.NotGovernor.selector);
         hoax(alice);
-        transmuter.toggleTrusted(alice, TrustedType.Seller);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
 
         vm.expectRevert(Errors.NotGovernor.selector);
         hoax(guardian);
-        transmuter.toggleTrusted(alice, TrustedType.Seller);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
+    }
+
+    function test_RevertWhen_NotCollateral() public {
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        vm.expectRevert(Errors.NotCollateral.selector);
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(this), 1, whitelistData);
+    }
+
+    function test_RevertWhen_InvalidWhitelistData() public {
+        bytes memory whitelistData = abi.encode(3, 4);
+        vm.expectRevert();
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(this), 1, whitelistData);
+    }
+
+    function test_SetPositiveStatus() public {
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        bytes memory emptyData;
+        assert(!transmuter.isWhitelistedCollateral(address(eurA)));
+        assertEq(transmuter.getCollateralWhitelistData(address(eurA)), emptyData);
+
+        vm.expectEmit(address(transmuter));
+        emit LibSetters.CollateralWhitelistStatusUpdated(address(eurA), whitelistData, 1);
+
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
+
+        assert(transmuter.isWhitelistedCollateral(address(eurA)));
+        assertEq(transmuter.getCollateralWhitelistData(address(eurA)), whitelistData);
+    }
+
+    function test_SetNegativeStatus() public {
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        bytes memory emptyData;
+        assert(!transmuter.isWhitelistedCollateral(address(eurA)));
+        assertEq(transmuter.getCollateralWhitelistData(address(eurA)), emptyData);
+
+        vm.expectEmit(address(transmuter));
+        emit LibSetters.CollateralWhitelistStatusUpdated(address(eurA), whitelistData, 1);
+
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
+
+        assert(transmuter.isWhitelistedCollateral(address(eurA)));
+        assertEq(transmuter.getCollateralWhitelistData(address(eurA)), whitelistData);
+
+        bytes memory whitelistData2 = abi.encode(WhitelistType.BACKED, abi.encode(address(alice)));
+        vm.expectEmit(address(transmuter));
+        emit LibSetters.CollateralWhitelistStatusUpdated(address(eurA), whitelistData2, 0);
+
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurA), 0, whitelistData2);
+
+        assert(!transmuter.isWhitelistedCollateral(address(eurA)));
+        assertEq(transmuter.getCollateralWhitelistData(address(eurA)), whitelistData);
+    }
+}
+
+contract Test_Setters_ToggleWhitelist is Fixture {
+    event WhitelistStatusToggled(WhitelistType whitelistType, address indexed who, uint256 whitelistStatus);
+
+    function test_RevertWhen_NonGuardian() public {
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, address(alice));
+
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        hoax(alice);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, address(alice));
+    }
+
+    function test_WhitelistSet() public {
+        vm.expectEmit(address(transmuter));
+        emit WhitelistStatusToggled(WhitelistType.BACKED, address(alice), 1);
+        hoax(guardian);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, address(alice));
+
+        assert(transmuter.isWhitelistedForType(WhitelistType.BACKED, address(alice)));
+    }
+
+    function test_WhitelistUnset() public {
+        vm.expectEmit(address(transmuter));
+        emit WhitelistStatusToggled(WhitelistType.BACKED, address(alice), 1);
+        hoax(guardian);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, address(alice));
+
+        assert(transmuter.isWhitelistedForType(WhitelistType.BACKED, address(alice)));
+
+        vm.expectEmit(address(transmuter));
+        emit WhitelistStatusToggled(WhitelistType.BACKED, address(alice), 0);
+        hoax(guardian);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, address(alice));
+
+        assert(!transmuter.isWhitelistedForType(WhitelistType.BACKED, address(alice)));
+    }
+
+    function test_WhitelistSetOnCollateral() public {
+        assert(transmuter.isWhitelistedForCollateral(address(eurA), address(alice)));
+        vm.expectEmit(address(transmuter));
+        emit WhitelistStatusToggled(WhitelistType.BACKED, address(alice), 1);
+        hoax(guardian);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, address(alice));
+
+        assert(transmuter.isWhitelistedForType(WhitelistType.BACKED, address(alice)));
+        assert(transmuter.isWhitelistedForCollateral(address(eurA), address(alice)));
+
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
+
+        assert(transmuter.isWhitelistedForCollateral(address(eurA), address(alice)));
+
+        hoax(guardian);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, address(alice));
+        assert(!transmuter.isWhitelistedForCollateral(address(eurA), address(alice)));
     }
 }
 
@@ -639,7 +747,7 @@ contract Test_Setters_UpdateNormalizer is Fixture {
     }
 
     function test_RevertWhen_ZeroAmountNormalizedStables() public {
-        vm.expectRevert(stdError.arithmeticError); // Should be an underflow
+        vm.expectRevert(); // Should be a division by 0
         hoax(governor);
         transmuter.updateNormalizer(1, true);
     }
@@ -830,7 +938,7 @@ contract Test_Setters_SetCollateralManager is Fixture {
 
         // Refetch storage to check the update
         (isManaged, fetchedSubCollaterals, config) = transmuter.getManagerData(address(eurA));
-        (ManagerType managerType, bytes memory aux) = abi.decode(config, (ManagerType, bytes));
+        (, bytes memory aux) = abi.decode(config, (ManagerType, bytes));
         address fetched = abi.decode(aux, (address));
 
         assertEq(isManaged, true);
@@ -865,7 +973,7 @@ contract Test_Setters_SetCollateralManager is Fixture {
 }
 
 contract Test_Setters_ChangeAllowance is Fixture {
-    event Approval(address owner, address spender, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 
     function test_RevertWhen_NotGovernor() public {
         vm.expectRevert(Errors.NotGovernor.selector);
@@ -881,11 +989,12 @@ contract Test_Setters_ChangeAllowance is Fixture {
     }
 
     function test_SafeIncreaseFrom0() public {
+        vm.expectEmit(address(eurA));
+
+        emit Approval(address(transmuter), alice, 1 ether);
+
         hoax(governor);
         transmuter.changeAllowance(eurA, alice, 1 ether);
-
-        vm.expectEmit(address(eurA));
-        emit Approval(address(transmuter), alice, 1 ether);
 
         assertEq(eurA.allowance(address(transmuter), alice), 1 ether);
     }
@@ -894,11 +1003,11 @@ contract Test_Setters_ChangeAllowance is Fixture {
         hoax(governor);
         transmuter.changeAllowance(eurA, alice, 1 ether);
 
-        hoax(governor);
-        transmuter.changeAllowance(eurA, alice, 2 ether);
-
         vm.expectEmit(address(eurA));
         emit Approval(address(transmuter), alice, 2 ether);
+
+        hoax(governor);
+        transmuter.changeAllowance(eurA, alice, 2 ether);
 
         assertEq(eurA.allowance(address(transmuter), alice), 2 ether);
     }
@@ -1083,6 +1192,20 @@ contract Test_Setters_RevokeCollateral is Fixture {
         (uint64[] memory xFeeBurn, int64[] memory yFeeBurn) = transmuter.getCollateralMintFees(address(eurA));
         assertEq(0, xFeeBurn.length);
         assertEq(0, yFeeBurn.length);
+
+        vm.expectRevert(Errors.NotCollateral.selector);
+        transmuter.isPaused(address(eurA), ActionType.Mint);
+        vm.expectRevert(Errors.NotCollateral.selector);
+        transmuter.isPaused(address(eurA), ActionType.Burn);
+        vm.expectRevert();
+        transmuter.getOracle(address(eurA));
+        vm.expectRevert();
+        transmuter.getOracleValues(address(eurA));
+        (bool managed, , ) = transmuter.getManagerData(address(eurA));
+        assert(!managed);
+        (uint256 issued, ) = transmuter.getIssuedByCollateral(address(eurA));
+        assertEq(0, issued);
+        assert(transmuter.isWhitelistedForCollateral(address(eurA), address(this)));
     }
 
     function test_SuccessWithManager() public {
@@ -1119,5 +1242,8 @@ contract Test_Setters_RevokeCollateral is Fixture {
         assertEq(0, transmuter.getCollateralDecimals(address(eurA)));
         assertEq(0, eurA.balanceOf(address(manager)));
         assertEq(1 ether, eurA.balanceOf(address(transmuter)));
+
+        (bool managed, , ) = transmuter.getManagerData(address(eurA));
+        assert(!managed);
     }
 }

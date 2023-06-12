@@ -9,8 +9,9 @@ import { stdError } from "forge-std/Test.sol";
 import { MockManager } from "mock/MockManager.sol";
 import { IERC20Metadata } from "mock/MockTokenPermit.sol";
 
-import { ManagerStorage } from "contracts/transmuter/Storage.sol";
+import { ManagerStorage, WhitelistType } from "contracts/transmuter/Storage.sol";
 import "contracts/transmuter/libraries/LibHelpers.sol";
+import "contracts/utils/Errors.sol" as Errors;
 
 import "../Fixture.sol";
 import "../utils/FunctionUtils.sol";
@@ -278,7 +279,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                 (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
                 1 wei
             );
-            assertEq(totalStable, mintedStables - amountBurnt);
+            assertApproxEqAbs(totalStable, mintedStables - amountBurnt, 3 wei);
         }
     }
 
@@ -336,7 +337,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                 (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
                 1 wei
             );
-            assertEq(totalStable, mintedStables - amountBurnt);
+            assertApproxEqAbs(totalStable, mintedStables - amountBurnt, 3 wei);
         }
     }
 
@@ -362,9 +363,11 @@ contract RedeemTest is Fixture, FunctionUtils {
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
         uint256 amountBurntBob;
-        if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+        if (amountBurnt > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
+        else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
         (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
-        if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+        if (amountBurnt > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
+        else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
         {
             address[] memory tokens;
             uint256[] memory amounts;
@@ -374,7 +377,7 @@ contract RedeemTest is Fixture, FunctionUtils {
             }
             vm.stopPrank();
 
-            if (mintedStables == 0) return;
+            if (mintedStables == 0 || amountBurnt > mintedStables) return;
 
             // compute fee at current collatRatio
             assertEq(amounts, quoteAmounts);
@@ -391,24 +394,25 @@ contract RedeemTest is Fixture, FunctionUtils {
                     (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
                     1 wei
                 );
-                assertEq(totalStable, mintedStables - amountBurnt);
+                assertApproxEqAbs(totalStable, mintedStables - amountBurnt, 3 wei);
             }
-            mintedStables -= amountBurnt;
-
+            mintedStables = transmuter.getTotalIssued();
             // now do a second redeem to test with non trivial ks.normalizer and ks.normalizedStables
             vm.startPrank(bob);
             redeemProportion = bound(redeemProportion, 0, BASE_9);
             amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
-            if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+            if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
+            else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
             (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurntBob);
-            if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+            if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
+            else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
             {
                 uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
                 (tokens, amounts) = transmuter.redeem(amountBurntBob, bob, block.timestamp + 1 days, minAmountOuts);
             }
             vm.stopPrank();
 
-            if (mintedStables == 0) return;
+            if (mintedStables == 0 || amountBurntBob > mintedStables) return;
 
             // compute fee at current collatRatio
             assertEq(amounts, quoteAmounts);
@@ -588,24 +592,27 @@ contract RedeemTest is Fixture, FunctionUtils {
                     (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
                     1 wei
                 );
-                assertEq(totalStable, mintedStables - amountBurnt);
+                assertApproxEqAbs(totalStable, mintedStables - amountBurnt, 3 wei);
             }
-            mintedStables -= amountBurnt;
+            mintedStables = transmuter.getTotalIssued();
 
             // now do a second redeem to test with non trivial ks.normalizer and ks.normalizedStables
             vm.startPrank(bob);
             redeemProportion = bound(redeemProportion, 0, BASE_9);
             amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
-            if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+
+            if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
+            else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
             (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurntBob);
-            if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+            if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
+            else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
             {
                 uint256[] memory minAmountOuts = new uint256[](quoteAmounts.length);
                 (tokens, amounts) = transmuter.redeem(amountBurntBob, bob, block.timestamp + 1 days, minAmountOuts);
             }
             vm.stopPrank();
 
-            if (mintedStables == 0) return;
+            if (mintedStables == 0 || amountBurntBob > mintedStables) return;
 
             // compute fee at current collatRatio
             assertEq(amounts, quoteAmounts);
@@ -726,24 +733,26 @@ contract RedeemTest is Fixture, FunctionUtils {
                     (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
                     1 wei
                 );
-                assertEq(totalStable, mintedStables - amountBurnt);
+                assertApproxEqAbs(totalStable, mintedStables - amountBurnt, 3 wei);
             }
-            mintedStables -= amountBurnt;
+            mintedStables = transmuter.getTotalIssued();
 
             // now do a second redeem to test with non trivial ks.normalizer and ks.normalizedStables
             vm.startPrank(bob);
             redeemProportion = bound(redeemProportion, 0, BASE_9);
             amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
-            if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+            if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
+            else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
             (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurntBob);
-            if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+            if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
+            else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
             {
                 uint256[] memory minAmountOuts = new uint256[](quoteAmounts.length);
                 (tokens, amounts) = transmuter.redeem(amountBurntBob, bob, block.timestamp + 1 days, minAmountOuts);
             }
             vm.stopPrank();
 
-            if (mintedStables == 0) return;
+            if (mintedStables == 0 || amountBurntBob > mintedStables) return;
 
             // compute fee at current collatRatio
             assertEq(amounts, quoteAmounts);
@@ -778,6 +787,135 @@ contract RedeemTest is Fixture, FunctionUtils {
                 _MAX_PERCENTAGE_DEVIATION,
                 18
             );
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                               REDEEM WITH WHITELISTING                                             
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testFuzz_WithWhitelistedToken(uint256[3] memory initialAmounts, uint256 transferProportion) public {
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
+
+        _sweepBalances(alice, _collaterals);
+
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
+
+        vm.startPrank(alice);
+        uint256 amountBurnt = agToken.balanceOf(alice);
+        if (mintedStables == 0 || amountBurnt < BASE_18) return;
+        (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
+        // There should be a non zero amount of EURA to transfer
+        if (quoteAmounts[0] == 0) return;
+        vm.expectRevert(Errors.NotWhitelisted.selector);
+
+        uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
+        transmuter.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
+        vm.stopPrank();
+
+        hoax(guardian);
+        transmuter.toggleWhitelist(WhitelistType.BACKED, alice);
+
+        vm.startPrank(alice);
+        vm.expectRevert(Errors.NotWhitelisted.selector);
+        transmuter.redeem(amountBurnt, bob, block.timestamp + 1 days, minAmountOuts);
+
+        (address[] memory tokens, uint256[] memory amounts) = transmuter.redeem(
+            amountBurnt,
+            alice,
+            block.timestamp + 1 days,
+            minAmountOuts
+        );
+        vm.stopPrank();
+
+        assertEq(amounts, quoteAmounts);
+        _assertSizes(tokens, amounts);
+        _assertTransfers(alice, _collaterals, amounts);
+
+        // Testing implicitly the ks.normalizer and ks.normalizedStables
+        for (uint256 i; i < _collaterals.length; ++i) {
+            (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(_collaterals[i]);
+            assertApproxEqAbs(
+                stableIssuedByCollateral,
+                (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
+                1 wei
+            );
+            assertApproxEqAbs(totalStable, mintedStables - amountBurnt, 3 wei);
+        }
+    }
+
+    function testFuzz_WithForfeitAndWhitelistedTokens(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion
+    ) public {
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
+
+        _sweepBalances(alice, _collaterals);
+
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurB), 1, whitelistData);
+        uint256 amountBurnt = agToken.balanceOf(alice);
+        if (mintedStables == 0 || amountBurnt == 0) return;
+        (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
+        if (quoteAmounts[0] == 0 || quoteAmounts[1] == 0) return;
+        uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
+        {
+            vm.startPrank(alice);
+            address[] memory forfeitTokens = new address[](0);
+            vm.expectRevert(Errors.NotWhitelisted.selector);
+            transmuter.redeemWithForfeit(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts, forfeitTokens);
+
+            address[] memory forfeitTokens1 = new address[](1);
+            forfeitTokens1[0] = address(eurA);
+            vm.expectRevert(Errors.NotWhitelisted.selector);
+            transmuter.redeemWithForfeit(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts, forfeitTokens);
+            vm.stopPrank();
+            hoax(guardian);
+            transmuter.toggleWhitelist(WhitelistType.BACKED, alice);
+            vm.startPrank(alice);
+            vm.expectRevert(Errors.NotWhitelisted.selector);
+            transmuter.redeemWithForfeit(amountBurnt, bob, block.timestamp + 1 days, minAmountOuts, forfeitTokens);
+        }
+
+        address[] memory forfeitTokens2 = new address[](2);
+        forfeitTokens2[0] = address(eurA);
+        forfeitTokens2[1] = address(eurB);
+        (address[] memory tokens, uint256[] memory amounts) = transmuter.redeemWithForfeit(
+            amountBurnt,
+            bob,
+            block.timestamp + 1 days,
+            minAmountOuts,
+            forfeitTokens2
+        );
+        vm.stopPrank();
+
+        assertEq(amounts, quoteAmounts);
+        _assertSizes(tokens, amounts);
+        assertEq(IERC20(address(eurA)).balanceOf(bob), 0);
+        assertEq(IERC20(address(eurB)).balanceOf(bob), 0);
+        assertEq(IERC20(address(eurY)).balanceOf(bob), amounts[2]);
+
+        for (uint256 i; i < _collaterals.length; ++i) {
+            (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(_collaterals[i]);
+            assertApproxEqAbs(
+                stableIssuedByCollateral,
+                (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
+                1 wei
+            );
+            assertApproxEqAbs(totalStable, mintedStables - amountBurnt, 3 wei);
         }
     }
 

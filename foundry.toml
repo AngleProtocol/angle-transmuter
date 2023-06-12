@@ -37,7 +37,7 @@ via_ir = false
 
 
 [profile.dev.fuzz]
-runs = 1
+runs = 2000
 
 [profile.dev.invariant]
 runs = 1

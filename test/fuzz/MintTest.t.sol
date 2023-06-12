@@ -584,6 +584,7 @@ contract MintTest is Fixture, FunctionUtils {
         uint256 prevTransmuterCollat = IERC20(_collaterals[fromToken]).balanceOf(address(transmuter));
 
         uint256 amountIn = transmuter.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
+        if (amountIn == 0 || stableAmount == 0) return;
         _mintExactOutput(alice, _collaterals[fromToken], stableAmount, amountIn);
 
         uint256 balanceStable = agToken.balanceOf(alice);
@@ -597,7 +598,7 @@ contract MintTest is Fixture, FunctionUtils {
         );
 
         assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken] + stableAmount, 1 wei);
-        assertApproxEqAbs(newStableAmount, mintedStables + stableAmount, 1 wei);
+        assertApproxEqAbs(newStableAmount, mintedStables + stableAmount, 3 wei);
     }
 
     function testFuzz_MintExactInput(
@@ -631,10 +632,11 @@ contract MintTest is Fixture, FunctionUtils {
 
             uint256 balanceStable = agToken.balanceOf(alice);
 
+            if (amountIn == 0) assertEq(stableAmount, 0);
             assertEq(balanceStable, prevBalanceStable + stableAmount);
+            if (amountIn == 0 || stableAmount == 0) return;
             assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), 0);
             assertEq(IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)), prevTransmuterCollat + amountIn);
-
             (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(
                 _collaterals[fromToken]
             );

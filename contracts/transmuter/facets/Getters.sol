@@ -80,15 +80,15 @@ contract Getters is IGetters {
         TransmuterStorage storage ks = s.transmuterStorage();
         uint256 _normalizer = ks.normalizer;
         return (
-            (ks.collaterals[collateral].normalizedStables * _normalizer) / BASE_27,
-            (ks.normalizedStables * _normalizer) / BASE_27
+            (uint256(ks.collaterals[collateral].normalizedStables) * uint256(_normalizer)) / BASE_27,
+            (uint256(ks.normalizedStables) * uint256(_normalizer)) / BASE_27
         );
     }
 
     /// @inheritdoc IGetters
-    function getTotalIssued(address collateral) external view returns (uint256) {
+    function getTotalIssued() external view returns (uint256) {
         TransmuterStorage storage ks = s.transmuterStorage();
-        return (ks.normalizedStables * ks.normalizer) / BASE_27;
+        return (uint256(ks.normalizedStables) * uint256(ks.normalizer)) / BASE_27;
     }
 
     /// @inheritdoc IGetters

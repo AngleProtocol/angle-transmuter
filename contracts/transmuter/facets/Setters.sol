@@ -143,14 +143,13 @@ contract Setters is AccessControlModifiers, ISetters {
         TransmuterStorage storage ks = s.transmuterStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
+        uint256 normalizedAmount = (amount * BASE_27) / ks.normalizer;
         if (increase) {
-            uint256 normalizedAmount = (amount * BASE_27) / ks.normalizer;
-            collatInfo.normalizedStables += uint216(normalizedAmount); // TODO SafeCast
-            ks.normalizedStables += amount;
+            collatInfo.normalizedStables += uint216(normalizedAmount);
+            ks.normalizedStables += uint128(normalizedAmount);
         } else {
-            uint256 normalizedAmount = (amount * BASE_27) / ks.normalizer;
-            collatInfo.normalizedStables -= uint216(amount);
-            ks.normalizedStables -= amount;
+            collatInfo.normalizedStables -= uint216(normalizedAmount);
+            ks.normalizedStables -= uint128(normalizedAmount);
         }
         emit ReservesAdjusted(collateral, amount, increase);
     }
@@ -167,7 +166,7 @@ contract Setters is AccessControlModifiers, ISetters {
         uint8 isManaged = collatInfo.isManaged;
         // If the collateral is managed through strategies, pulling all available funds from there
         if (isManaged > 0) LibManager.pullAll(collatInfo.managerData.config);
-        delete ks.collaterals[collateral]; // TODO ensure deletion
+        delete ks.collaterals[collateral];
         address[] memory collateralListMem = ks.collateralList;
         uint256 length = collateralListMem.length;
         for (uint256 i; i < length - 1; ++i) {
