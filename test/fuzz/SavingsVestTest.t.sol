@@ -584,8 +584,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
                     );
 
                     {
-                        (uint64 newCollatRatio, ) = transmuter.getCollateralRatio();
-                        uint256 newStablecoinsIssued = transmuter.getTotalIssued();
+                        (uint64 newCollatRatio, uint256 newStablecoinsIssued) = transmuter.getCollateralRatio();
                         // Otherwise the approximation of the needed burn can be too inacurate
                         // collatRatio will stay lower though as getCollateralRatio is always rounding up
                         // leading to a smaller amount being burnt in the `accrue` function
@@ -748,8 +747,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
 
         // check collateral ratio first
         uint256 stablecoinsIssued;
-        (collatRatio, ) = transmuter.getCollateralRatio();
-        stablecoinsIssued = transmuter.getTotalIssued();
+        (collatRatio, stablecoinsIssued) = transmuter.getCollateralRatio();
         if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
         else assertEq(collatRatio, type(uint64).max);
         assertEq(stablecoinsIssued, mintedStables);
