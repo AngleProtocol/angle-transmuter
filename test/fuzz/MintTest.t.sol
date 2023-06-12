@@ -631,10 +631,11 @@ contract MintTest is Fixture, FunctionUtils {
 
             uint256 balanceStable = agToken.balanceOf(alice);
 
+            if (amountIn == 0) assertEq(stableAmount, 0);
             assertEq(balanceStable, prevBalanceStable + stableAmount);
+            if (amountIn == 0 || stableAmount == 0) return;
             assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), 0);
             assertEq(IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)), prevTransmuterCollat + amountIn);
-
             (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(
                 _collaterals[fromToken]
             );
