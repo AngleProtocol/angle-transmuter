@@ -2,9 +2,10 @@
 
 pragma solidity ^0.8.19;
 
-import "oz/utils/math/Math.sol";
-import "oz/token/ERC20/IERC20.sol";
-import "oz/token/ERC20/utils/SafeERC20.sol";
+import { Math } from "oz/utils/math/Math.sol";
+import { SafeCast } from "oz/utils/math/SafeCast.sol";
+import { IERC20 } from "oz/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 
 import { IAgToken } from "interfaces/IAgToken.sol";
 
@@ -35,6 +36,7 @@ struct LocalVariables {
 /// @author Angle Labs, Inc.
 library LibSwapper {
     using SafeERC20 for IERC20;
+    using SafeCast for uint256;
     using Math for uint256;
 
     // The `to` address is not indexed as there cannot be 4 indexed addresses in an event.
@@ -60,7 +62,7 @@ library LibSwapper {
         if (amountIn > 0 && amountOut > 0) {
             TransmuterStorage storage ks = s.transmuterStorage();
             if (mint) {
-                uint128 changeAmount = uint128(amountOut.mulDiv(BASE_27, ks.normalizer, Math.Rounding.Up));
+                uint128 changeAmount = (amountOut.mulDiv(BASE_27, ks.normalizer, Math.Rounding.Up)).toUint128();
                 // The amount of stablecoins issued from a collateral are not stored as absolute variables, but
                 // as variables normalized by a `normalizer`
                 collatInfo.normalizedStables += uint216(changeAmount);
@@ -71,7 +73,7 @@ library LibSwapper {
             } else {
                 if (collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, to))
                     revert NotWhitelisted();
-                uint128 changeAmount = uint128((amountIn * BASE_27) / ks.normalizer);
+                uint128 changeAmount = ((amountIn * BASE_27) / ks.normalizer).toUint128();
                 // This will underflow when the system is trying to burn more stablecoins than what has been issued
                 // from this collateral
                 collatInfo.normalizedStables -= uint216(changeAmount);
@@ -152,7 +154,7 @@ library LibSwapper {
 
             uint256 normalizerMem = ks.normalizer;
             // Store the current amount of stablecoins issued from this collateral
-            v.stablecoinsIssued = uint216((uint256(collatInfo.normalizedStables) * normalizerMem) / BASE_27);
+            v.stablecoinsIssued = (uint256(collatInfo.normalizedStables) * normalizerMem) / BASE_27;
             v.otherStablecoinSupply = (normalizerMem * normalizedStablesMem) / BASE_27 - v.stablecoinsIssued;
         }
 
@@ -288,8 +290,8 @@ library LibSwapper {
                     ++i;
                     // Update for the rest of the swaps the stablecoins issued from the asset
                     v.stablecoinsIssued = v.isMint
-                        ? v.stablecoinsIssued + uint216(v.amountToNextBreakPoint)
-                        : v.stablecoinsIssued - uint216(v.amountToNextBreakPoint);
+                        ? v.stablecoinsIssued + v.amountToNextBreakPoint
+                        : v.stablecoinsIssued - v.amountToNextBreakPoint;
                 }
             }
         }

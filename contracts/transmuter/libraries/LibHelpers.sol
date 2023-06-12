@@ -2,8 +2,9 @@
 
 pragma solidity ^0.8.19;
 
-import "oz/token/ERC20/utils/SafeERC20.sol";
-import "oz/utils/math/Math.sol";
+import { IERC20 } from "oz/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
+import { Math } from "oz/utils/math/Math.sol";
 
 import { LibManager } from "../libraries/LibManager.sol";
 

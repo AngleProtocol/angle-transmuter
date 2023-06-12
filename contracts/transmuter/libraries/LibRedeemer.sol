@@ -2,9 +2,10 @@
 
 pragma solidity ^0.8.19;
 
-import "oz/token/ERC20/IERC20.sol";
-import "oz/token/ERC20/utils/SafeERC20.sol";
-import "oz/utils/math/Math.sol";
+import { SafeCast } from "oz/utils/math/SafeCast.sol";
+import { IERC20 } from "oz/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
+import { Math } from "oz/utils/math/Math.sol";
 
 import { IAgToken } from "interfaces/IAgToken.sol";
 
@@ -23,6 +24,7 @@ import "../Storage.sol";
 library LibRedeemer {
     using SafeERC20 for IERC20;
     using Math for uint256;
+    using SafeCast for uint256;
 
     event Redeemed(
         uint256 amount,
@@ -207,18 +209,17 @@ library LibRedeemer {
             // For each asset, we store the actual amount of stablecoins issued based on the `newNormalizerValue`
             // (and not a normalized value)
             // We ensure to preserve the invariant `sum(collateralNewNormalizedStables) = normalizedStables`
-            uint256 newNormalizedStables = 0;
+            uint128 newNormalizedStables = 0;
             for (uint256 i; i < collateralListLength; ++i) {
-                uint216 newCollateralNormalizedStable = uint216(
-                    (ks.collaterals[collateralListMem[i]].normalizedStables * newNormalizerValue) / BASE_27
-                );
+                uint128 newCollateralNormalizedStable = ((ks.collaterals[collateralListMem[i]].normalizedStables *
+                    newNormalizerValue) / BASE_27).toUint128();
                 newNormalizedStables += newCollateralNormalizedStable;
-                ks.collaterals[collateralListMem[i]].normalizedStables = newCollateralNormalizedStable;
+                ks.collaterals[collateralListMem[i]].normalizedStables = uint216(newCollateralNormalizedStable);
             }
-            ks.normalizedStables = uint128(newNormalizedStables);
+            ks.normalizedStables = newNormalizedStables;
             newNormalizerValue = BASE_27;
         }
-        ks.normalizer = uint128(newNormalizerValue);
+        ks.normalizer = newNormalizerValue.toUint128();
         emit NormalizerUpdated(newNormalizerValue);
     }
 }
