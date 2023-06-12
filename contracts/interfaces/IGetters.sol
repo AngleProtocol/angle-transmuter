@@ -38,7 +38,8 @@ interface IGetters {
     /// ratio when users come to redeem
     function getRedemptionFees() external view returns (uint64[] memory, int64[] memory);
 
-    /// @notice Returns the collateral ratio of Transmuter in base `10**9` and the total amount of stablecoins issued
+    /// @notice Returns the collateral ratio of Transmuter in base `10**9` and a rounded version of the total amount
+    /// of stablecoins issued
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 stablecoinsIssued);
 
     /// @notice Returns the total amount of stablecoins issued through Transmuter
