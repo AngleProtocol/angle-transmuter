@@ -1192,6 +1192,20 @@ contract Test_Setters_RevokeCollateral is Fixture {
         (uint64[] memory xFeeBurn, int64[] memory yFeeBurn) = transmuter.getCollateralMintFees(address(eurA));
         assertEq(0, xFeeBurn.length);
         assertEq(0, yFeeBurn.length);
+
+        vm.expectRevert(Errors.NotCollateral.selector);
+        transmuter.isPaused(address(eurA), ActionType.Mint);
+        vm.expectRevert(Errors.NotCollateral.selector);
+        transmuter.isPaused(address(eurA), ActionType.Burn);
+        vm.expectRevert();
+        transmuter.getOracle(address(eurA));
+        vm.expectRevert();
+        transmuter.getOracleValues(address(eurA));
+        (bool managed, , ) = transmuter.getManagerData(address(eurA));
+        assert(!managed);
+        (uint256 issued, ) = transmuter.getIssuedByCollateral(address(eurA));
+        assertEq(0, issued);
+        assert(transmuter.isWhitelistedForCollateral(address(eurA), address(this)));
     }
 
     function test_SuccessWithManager() public {
@@ -1228,5 +1242,8 @@ contract Test_Setters_RevokeCollateral is Fixture {
         assertEq(0, transmuter.getCollateralDecimals(address(eurA)));
         assertEq(0, eurA.balanceOf(address(manager)));
         assertEq(1 ether, eurA.balanceOf(address(transmuter)));
+
+        (bool managed, , ) = transmuter.getManagerData(address(eurA));
+        assert(!managed);
     }
 }

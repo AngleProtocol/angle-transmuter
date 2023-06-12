@@ -166,7 +166,7 @@ contract Setters is AccessControlModifiers, ISetters {
         uint8 isManaged = collatInfo.isManaged;
         // If the collateral is managed through strategies, pulling all available funds from there
         if (isManaged > 0) LibManager.pullAll(collatInfo.managerData.config);
-        delete ks.collaterals[collateral]; // TODO ensure deletion
+        delete ks.collaterals[collateral];
         address[] memory collateralListMem = ks.collateralList;
         uint256 length = collateralListMem.length;
         for (uint256 i; i < length - 1; ++i) {
