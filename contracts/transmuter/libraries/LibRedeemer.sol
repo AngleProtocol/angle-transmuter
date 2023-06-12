@@ -147,7 +147,7 @@ library LibRedeemer {
         {
             uint256 countCollat;
             for (uint256 i; i < collateralListLength; ++i) {
-                Collateral memory collateral = ks.collaterals[collateralList[i]];
+                Collateral storage collateral = ks.collaterals[collateralList[i]];
                 uint256 collateralBalance;
                 if (collateral.isManaged > 0) {
                     // If a collateral is managed, the balances of the sub-collaterals cannot be directly obtained by
