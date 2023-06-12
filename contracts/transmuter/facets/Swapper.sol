@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
@@ -78,7 +78,7 @@ contract Swapper is ISwapper {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     // If these functions return a null `amountOut` or `amountIn` value, then calling one of the swap functions above
-    //  at the exact same block will not do anything.
+    // at the exact same block will not do anything.
 
     /// @inheritdoc ISwapper
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256 amountOut) {

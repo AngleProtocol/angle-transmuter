@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import "oz/utils/math/Math.sol";
@@ -584,7 +584,8 @@ contract SavingsVestTest is Fixture, FunctionUtils {
                     );
 
                     {
-                        (uint64 newCollatRatio, uint256 newStablecoinsIssued) = transmuter.getCollateralRatio();
+                        (uint64 newCollatRatio, ) = transmuter.getCollateralRatio();
+                        uint256 newStablecoinsIssued = transmuter.getTotalIssued();
                         // Otherwise the approximation of the needed burn can be too inacurate
                         // collatRatio will stay lower though as getCollateralRatio is always rounding up
                         // leading to a smaller amount being burnt in the `accrue` function
@@ -747,7 +748,8 @@ contract SavingsVestTest is Fixture, FunctionUtils {
 
         // check collateral ratio first
         uint256 stablecoinsIssued;
-        (collatRatio, stablecoinsIssued) = transmuter.getCollateralRatio();
+        (collatRatio, ) = transmuter.getCollateralRatio();
+        stablecoinsIssued = transmuter.getTotalIssued();
         if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
         else assertEq(collatRatio, type(uint64).max);
         assertEq(stablecoinsIssued, mintedStables);
