@@ -28,8 +28,8 @@ library LibManager {
 
     /// @notice Performs a collateral transfer from `msg.sender` to an address depending on the type of
     /// manager considered
-    function transferFrom(address token, uint256 amount, ManagerStorage memory managerData) internal {
-        (ManagerType managerType, bytes memory data) = parseManagerConfig(managerData.config);
+    function transferFrom(address token, uint256 amount, bytes memory config) internal {
+        (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
         if (managerType == ManagerType.EXTERNAL)
             IERC20(token).safeTransferFrom(msg.sender, address(abi.decode(data, (IManager))), amount);
     }

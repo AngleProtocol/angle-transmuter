@@ -65,7 +65,7 @@ library LibSwapper {
                 // as variables normalized by a `normalizer`
                 collatInfo.normalizedStables += uint216(changeAmount);
                 ks.normalizedStables += changeAmount;
-                if (collatInfo.isManaged > 0) LibManager.transferFrom(tokenIn, amountIn, collatInfo.managerData);
+                if (collatInfo.isManaged > 0) LibManager.transferFrom(tokenIn, amountIn, collatInfo.managerData.config);
                 else IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
                 IAgToken(tokenOut).mint(to, amountOut);
             } else {
