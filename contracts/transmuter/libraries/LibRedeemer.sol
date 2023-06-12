@@ -72,7 +72,7 @@ library LibRedeemer {
     }
 
     /// @dev This function reverts if `stablecoinsIssued==0`, which is expected behavior as there is nothing to redeem
-    /// anyway in this case
+    /// anyway in this case, or if the `amountBurnt` is greater than `stablecoinsIssued`
     function quoteRedemptionCurve(
         uint256 amountBurnt
     )
@@ -84,6 +84,7 @@ library LibRedeemer {
         uint64 collatRatio;
         uint256 stablecoinsIssued;
         (collatRatio, stablecoinsIssued, tokens, balances, subCollateralsTracker) = getCollateralRatio();
+        if (amountBurnt > stablecoinsIssued) revert TooBigAmountIn();
         int64[] memory yRedemptionCurveMem = ks.yRedemptionCurve;
         uint64 penaltyFactor;
         // If the protocol is under-collateralized, a penalty factor is applied to the returned amount of each asset
@@ -203,9 +204,9 @@ library LibRedeemer {
         if (newNormalizerValue <= BASE_18 || newNormalizerValue >= BASE_36) {
             address[] memory collateralListMem = ks.collateralList;
             uint256 collateralListLength = collateralListMem.length;
-            // For each asset, we store the actual amount of stablecoins issued based on the newNormalizerValue
+            // For each asset, we store the actual amount of stablecoins issued based on the `newNormalizerValue`
             // (and not a normalized value)
-            // To preserve the invariant sum(collateralNewNormalizedStables) = normalizedStables
+            // We ensure to preserve the invariant `sum(collateralNewNormalizedStables) = normalizedStables`
             uint256 newNormalizedStables = 0;
             for (uint256 i; i < collateralListLength; ++i) {
                 uint216 newCollateralNormalizedStable = uint216(
@@ -214,7 +215,7 @@ library LibRedeemer {
                 newNormalizedStables += newCollateralNormalizedStable;
                 ks.collaterals[collateralListMem[i]].normalizedStables = newCollateralNormalizedStable;
             }
-            ks.normalizedStables = uint128(newNormalizedStables); // TODO Safe cast
+            ks.normalizedStables = uint128(newNormalizedStables);
             newNormalizerValue = BASE_27;
         }
         ks.normalizer = uint128(newNormalizerValue);
