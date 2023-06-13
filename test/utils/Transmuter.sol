@@ -63,6 +63,28 @@ abstract contract Transmuter is Helper {
         transmuter = ITransmuter(address(new DiamondProxy(cut, _init, _calldata)));
     }
 
+    // @dev Deploys diamond and connects facets
+    function deployReplicaTransmuter(
+        address _init,
+        bytes memory _calldata
+    ) public virtual returns (ITransmuter _transmuter) {
+        // Build appropriate payload
+        uint256 n = facetNames.length;
+        FacetCut[] memory cut = new FacetCut[](n);
+        for (uint256 i = 0; i < n; ++i) {
+            cut[i] = FacetCut({
+                facetAddress: facetAddressList[i],
+                action: FacetCutAction.Add,
+                functionSelectors: generateSelectors(facetNames[i])
+            });
+        }
+
+        // Deploy diamond
+        _transmuter = ITransmuter(address(new DiamondProxy(cut, _init, _calldata)));
+
+        return _transmuter;
+    }
+
     // @dev Helper to deploy a given Facet
     function deployFacet(address facet, string memory name) public {
         bytes4[] memory fromGenSelectors = generateSelectors(name);

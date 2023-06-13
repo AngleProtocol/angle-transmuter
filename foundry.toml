@@ -17,7 +17,7 @@ ffi = true
 runs = 10000
 
 [invariant]
-runs = 10
+runs = 1000
 depth = 30
 
 [rpc_endpoints]
@@ -40,8 +40,9 @@ via_ir = false
 runs = 2000
 
 [profile.dev.invariant]
-runs = 1
-depth = 1
+runs = 5000
+depth = 50
+fail_on_revert = false
 
 [profile.ci]
 src = 'test'

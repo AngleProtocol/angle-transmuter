@@ -1212,7 +1212,14 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint64[10] memory xFeeRedeemUnbounded,
         int64[10] memory yFeeRedeemUnbounded
     ) internal returns (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) {
-        (xFeeRedeem, yFeeRedeem) = _generateCurves(xFeeRedeemUnbounded, yFeeRedeemUnbounded, true, false, 0, 0);
+        (xFeeRedeem, yFeeRedeem) = _generateCurves(
+            xFeeRedeemUnbounded,
+            yFeeRedeemUnbounded,
+            true,
+            false,
+            0,
+            int256(BASE_9)
+        );
         vm.prank(governor);
         transmuter.setRedemptionCurveParams(xFeeRedeem, yFeeRedeem);
     }

@@ -18,7 +18,7 @@ import { CollateralSetup, Test } from "contracts/transmuter/configs/Test.sol";
 import "contracts/utils/Constants.sol";
 import "contracts/utils/Errors.sol";
 
-import { Transmuter } from "./utils/Transmuter.sol";
+import { ITransmuter, Transmuter } from "./utils/Transmuter.sol";
 
 import { console } from "forge-std/console.sol";
 
@@ -94,6 +94,12 @@ contract Fixture is Transmuter {
                 CollateralSetup(address(eurY), address(oracleY))
             )
         );
+
+        vm.label(address(agToken), "AgToken");
+        vm.label(address(transmuter), "Transmuter");
+        vm.label(address(eurA), "eurA");
+        vm.label(address(eurB), "eurB");
+        vm.label(address(eurY), "eurY");
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
