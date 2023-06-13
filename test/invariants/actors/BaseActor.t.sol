@@ -25,6 +25,7 @@ struct TestStorage {
 }
 
 contract BaseActor is Test {
+    address public constant sweeper = address(uint160(uint256(keccak256(abi.encodePacked("sweeper")))));
     uint256 internal _maxAmountWithoutDecimals = 10 ** 15;
     // making this value smaller worsen rounding and make test harder to pass.
     // Trade off between bullet proof against all oracles and all interactions

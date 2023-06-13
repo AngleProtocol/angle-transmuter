@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.17;
 
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "oz/token/ERC20/extensions/IERC20Metadata.sol";
@@ -10,8 +10,8 @@ import { MockAccessControlManager } from "mock/MockAccessControlManager.sol";
 
 import "contracts/utils/Constants.sol";
 import { CollateralSetup, Fixture, ITransmuter, Test } from "../Fixture.sol";
-import { Trader } from "./actors/Trader.t.sol";
-import { Arbitrager } from "./actors/Arbitrager.t.sol";
+import { TraderWithSplit } from "./actors/TraderWithSplit.t.sol";
+import { ArbitragerWithSplit } from "./actors/ArbitragerWithSplit.t.sol";
 import { Governance } from "./actors/Governance.t.sol";
 
 //solhint-disable
@@ -23,8 +23,8 @@ contract BasicInvariants is Fixture {
 
     ITransmuter transmuterSplit;
 
-    Trader internal _traderHandler;
-    Arbitrager internal _arbitragerHandler;
+    TraderWithSplit internal _traderHandler;
+    ArbitragerWithSplit internal _arbitragerHandler;
     Governance internal _governanceHandler;
 
     address[] internal _collaterals;
@@ -76,8 +76,8 @@ contract BasicInvariants is Fixture {
         _oracles.push(oracleB);
         _oracles.push(oracleY);
 
-        _traderHandler = new Trader(transmuter, transmuterSplit, _collaterals, _oracles, _NUM_TRADER);
-        _arbitragerHandler = new Arbitrager(transmuter, transmuterSplit, _collaterals, _oracles, _NUM_ARB);
+        _traderHandler = new TraderWithSplit(transmuter, transmuterSplit, _collaterals, _oracles, _NUM_TRADER);
+        _arbitragerHandler = new ArbitragerWithSplit(transmuter, transmuterSplit, _collaterals, _oracles, _NUM_ARB);
         _governanceHandler = new Governance(transmuter, transmuterSplit, _collaterals, _oracles);
         MockAccessControlManager(address(accessControlManager)).toggleGovernor(_governanceHandler.actors(0));
 
@@ -94,14 +94,14 @@ contract BasicInvariants is Fixture {
 
         {
             bytes4[] memory selectors = new bytes4[](1);
-            selectors[0] = Trader.swap.selector;
+            selectors[0] = TraderWithSplit.swap.selector;
             targetSelector(FuzzSelector({ addr: address(_traderHandler), selectors: selectors }));
         }
 
         {
             bytes4[] memory selectors = new bytes4[](2);
-            selectors[0] = Arbitrager.swap.selector;
-            selectors[1] = Arbitrager.redeem.selector;
+            selectors[0] = ArbitragerWithSplit.swap.selector;
+            selectors[1] = ArbitragerWithSplit.redeem.selector;
             targetSelector(FuzzSelector({ addr: address(_arbitragerHandler), selectors: selectors }));
         }
 
@@ -141,18 +141,11 @@ contract BasicInvariants is Fixture {
         console.log("Issued Total: ", issued);
     }
 
-    function invariant_IssuedCoherent() public {
-        (uint256 issuedA, uint256 issued) = transmuter.getIssuedByCollateral(address(eurA));
-        (uint256 issuedB, ) = transmuter.getIssuedByCollateral(address(eurB));
-        (uint256 issuedY, ) = transmuter.getIssuedByCollateral(address(eurY));
-        assertApproxEqAbs(issued, issuedA + issuedB + issuedY, 3 wei);
-    }
-
     function invariant_Supply() public {
         uint256 stablecoinIssued = transmuter.getTotalIssued();
         uint256 stablecoinIssuedSplit = transmuterSplit.getTotalIssued();
 
-        uint256 balance;
+        uint256 balance = agToken.balanceOf(sweeper);
         for (uint256 i = 0; i < _traderHandler.nbrActor(); i++) balance += agToken.balanceOf(_traderHandler.actors(i));
         for (uint256 i = 0; i < _arbitragerHandler.nbrActor(); i++)
             balance += agToken.balanceOf(_arbitragerHandler.actors(i));
@@ -182,36 +175,35 @@ contract BasicInvariants is Fixture {
         _governanceHandler.updateCollateralRatio(collateralRatio);
     }
 
-    function invariant_MintReflexivity() public {
+    function invariant_PathIndependenceTotalSupply() public {
         uint256 stablecoinIssued = transmuter.getTotalIssued();
-        // TODO need better randomness
-        uint256 stableAmount = stablecoinIssued > BASE_18 ? stablecoinIssued / 10 : BASE_18;
+        uint256 stablecoinIssuedSplit = transmuterSplit.getTotalIssued();
+        assertApproxEqRelDecimal(stablecoinIssued, stablecoinIssuedSplit, _MAX_PERCENTAGE_DEVIATION * 100, 18);
+    }
+
+    function invariant_PathIndependenceSubSupply() public {
         for (uint256 i; i < _collaterals.length; i++) {
-            uint256 amountIn = transmuter.quoteOut(stableAmount, _collaterals[i], address(agToken));
-            uint256 reflexiveStableAmount = transmuter.quoteIn(amountIn, _collaterals[i], address(agToken));
-            // If amountIn is small then do not check, as in the extreme case amountIn is null and
-            // then reflexiveStableAmount is too
-            if (amountIn < 10 ** (_decimals[i] - 2) || reflexiveStableAmount == 0) continue;
-            assertApproxEqRelDecimal(stableAmount, reflexiveStableAmount, _MAX_PERCENTAGE_DEVIATION * 100, 18);
+            (uint256 issuedPerCollat, ) = transmuter.getIssuedByCollateral(_collaterals[i]);
+            (uint256 issuedPerCollatSplit, ) = transmuterSplit.getIssuedByCollateral(_collaterals[i]);
+            assertApproxEqRelDecimal(issuedPerCollat, issuedPerCollatSplit, _MAX_PERCENTAGE_DEVIATION * 100, 18);
         }
     }
 
-    function invariant_BurnReflexivity() public {
-        uint256 stablecoinIssued = transmuter.getTotalIssued();
-        // TODO need better randomness
-        uint256 stableAmount = stablecoinIssued / 10;
-        if (stableAmount < BASE_18) return;
+    function invariant_PathIndependenceBalanceCollaterals() public {
         for (uint256 i; i < _collaterals.length; i++) {
-            uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[i]);
-            uint256 reflexiveStableAmount = transmuter.quoteOut(amountOut, address(agToken), _collaterals[i]);
-            // If amountOut is small then do not check, as in the extreme case amountIn is null and
-            // then reflexiveStableAmount is too
-            if (amountOut < 10 ** (_decimals[i] - 2) || reflexiveStableAmount == 0) continue;
-            assertApproxEqRelDecimal(stableAmount, reflexiveStableAmount, _MAX_PERCENTAGE_DEVIATION * 500, 18);
+            uint256 balance = IERC20(_collaterals[i]).balanceOf(address(transmuter));
+            uint256 balanceSplit = IERC20(_collaterals[i]).balanceOf(address(transmuterSplit));
+            assertApproxEqRelDecimal(balance, balanceSplit, _MAX_PERCENTAGE_DEVIATION * 100, 18);
         }
     }
 
-    // function invariantSystemState() public view {
-    //     systemState();
-    // }
+    function invariant_PathIndependenceCollateralRatio() public {
+        (uint256 collateralRatio, ) = transmuter.getCollateralRatio();
+        (uint256 collateralRatioSplit, ) = transmuterSplit.getCollateralRatio();
+        assertApproxEqRelDecimal(collateralRatio, collateralRatioSplit, _MAX_PERCENTAGE_DEVIATION * 100, 18);
+    }
+
+    function invariantSystemState() public view {
+        systemState();
+    }
 }

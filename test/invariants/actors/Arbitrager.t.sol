@@ -19,13 +19,11 @@ contract Arbitrager is BaseActor {
         uint256 collatNumber,
         uint256 actionType,
         uint256 amount,
-        uint256 splitProportion,
         uint256 actorIndex
-    ) public useActor(actorIndex) countCall("swap") returns (uint256 amountIn, uint256 amountOut) {
+    ) public useActor(actorIndex) countCall("swap") returns (uint256, uint256) {
         QuoteType quoteType = QuoteType(bound(actionType, 0, 3));
         collatNumber = bound(collatNumber, 0, 2);
         amount = bound(amount, 1, 10 ** 12);
-        splitProportion = bound(splitProportion, 1, BASE_9);
         address collateral = _collaterals[collatNumber];
 
         if (
@@ -62,9 +60,9 @@ contract Arbitrager is BaseActor {
             testS.tokenOut = collateral;
             testS.amountOut = amount * 10 ** IERC20Metadata(collateral).decimals();
             testS.amountIn = _transmuter.quoteOut(testS.amountOut, testS.tokenIn, testS.tokenOut);
-            // we need to decrease the amountOut wanted
             uint256 actorBalance = agToken.balanceOf(_currentActor);
-            if (actorBalance < amountIn) {
+            // we need to decrease the amountOut wanted
+            if (actorBalance < testS.amountIn) {
                 testS.amountIn = actorBalance;
                 testS.amountOut = _transmuter.quoteIn(actorBalance, testS.tokenIn, testS.tokenOut);
             }
@@ -89,12 +87,12 @@ contract Arbitrager is BaseActor {
 
         if (quoteType == QuoteType.MintExactInput || quoteType == QuoteType.MintExactOutput) {
             // Deal tokens to _currentActor if needed
-            if (IERC20(testS.tokenIn).balanceOf(_currentActor) < 2 * testS.amountIn) {
-                deal(testS.tokenIn, _currentActor, 2 * testS.amountIn);
+            if (IERC20(testS.tokenIn).balanceOf(_currentActor) < testS.amountIn) {
+                deal(testS.tokenIn, _currentActor, testS.amountIn);
             }
         }
 
-        // Approval
+        // Approval only usefull for QuoteType.MintExactInput and QuoteType.MintExactOutput
         IERC20(testS.tokenIn).approve(address(_transmuter), testS.amountIn);
         IERC20(testS.tokenIn).approve(address(_transmuterSplit), testS.amountIn);
 
@@ -113,30 +111,6 @@ contract Arbitrager is BaseActor {
                 _currentActor,
                 block.timestamp + 1 hours
             );
-            // // replicate on the other transmuter but wplit the orders
-            // {
-            //     testS.amountInSplit1 = (testS.amountIn * splitProportion) / BASE_9;
-            //     testS.amountOutSplit1 = _transmuterSplit.quoteIn(testS.amountInSplit1, testS.tokenIn, testS.tokenOut);
-            //     _transmuterSplit.swapExactInput(
-            //         testS.amountInSplit1,
-            //         testS.amountOutSplit1,
-            //         testS.tokenIn,
-            //         testS.tokenOut,
-            //         _currentActor,
-            //         block.timestamp + 1 hours
-            //     );
-
-            //     testS.amountInSplit2 = testS.amountIn - testS.amountInSplit1;
-            //     testS.amountOutSplit2 = _transmuterSplit.quoteIn(testS.amountInSplit2, testS.tokenIn, testS.tokenOut);
-            //     _transmuterSplit.swapExactInput(
-            //         testS.amountInSplit2,
-            //         testS.amountOutSplit2,
-            //         testS.tokenIn,
-            //         testS.tokenOut,
-            //         _currentActor,
-            //         block.timestamp + 1 hours
-            //     );
-            // }
         } else {
             _transmuter.swapExactOutput(
                 testS.amountOut,
@@ -146,30 +120,6 @@ contract Arbitrager is BaseActor {
                 _currentActor,
                 block.timestamp + 1 hours
             );
-            // // replicate on the other transmuter but wplit the orders
-            // {
-            //     testS.amountOutSplit1 = (testS.amountOut * splitProportion) / BASE_9;
-            //     testS.amountInSplit1 = _transmuterSplit.quoteOut(testS.amountOutSplit1, testS.tokenIn, testS.tokenOut);
-            //     _transmuterSplit.swapExactOutput(
-            //         testS.amountOutSplit1,
-            //         testS.amountInSplit1,
-            //         testS.tokenIn,
-            //         testS.tokenOut,
-            //         _currentActor,
-            //         block.timestamp + 1 hours
-            //     );
-
-            //     testS.amountOutSplit2 = testS.amountOut - testS.amountOutSplit1;
-            //     testS.amountInSplit2 = _transmuterSplit.quoteOut(testS.amountOutSplit2, testS.tokenIn, testS.tokenOut);
-            //     _transmuterSplit.swapExactOutput(
-            //         testS.amountOutSplit2,
-            //         testS.amountInSplit2,
-            //         testS.tokenIn,
-            //         testS.tokenOut,
-            //         _currentActor,
-            //         block.timestamp + 1 hours
-            //     );
-            // }
         }
 
         if (quoteType == QuoteType.MintExactInput || quoteType == QuoteType.MintExactOutput) {
@@ -186,6 +136,8 @@ contract Arbitrager is BaseActor {
             (uint64 collateralRatio, ) = _transmuter.getCollateralRatio();
             assertGe(collateralRatio, prevCollateralRatio);
         }
+
+        return (testS.amountIn, testS.amountOut);
     }
 
     function redeem(
@@ -198,48 +150,50 @@ contract Arbitrager is BaseActor {
         if (amount == 0) return;
 
         address[] memory forfeitTokens;
+        uint256 count;
+        for (uint256 i; i < isForfeitTokens.length; ++i) if (isForfeitTokens[i]) count++;
+        forfeitTokens = new address[](count);
+        count = 0;
+        for (uint256 i; i < isForfeitTokens.length; ++i)
+            if (isForfeitTokens[i]) {
+                forfeitTokens[count] = _collaterals[i];
+                count++;
+            }
+
+        // Redeem on the true transmuter
         {
-            uint256 count;
-            for (uint256 i; i < isForfeitTokens.length; ++i) if (isForfeitTokens[i]) count++;
-            forfeitTokens = new address[](count);
-            count = 0;
-            for (uint256 i; i < isForfeitTokens.length; ++i)
-                if (isForfeitTokens[i]) {
-                    forfeitTokens[count] = _collaterals[i];
-                    count++;
-                }
-        }
+            uint256[] memory balanceTokens = new uint256[](_collaterals.length);
+            for (uint256 i; i < balanceTokens.length; ++i)
+                balanceTokens[i] = IERC20(_collaterals[i]).balanceOf(_currentActor);
 
-        uint256[] memory balanceTokens = new uint256[](_collaterals.length);
-        for (uint256 i; i < balanceTokens.length; ++i)
-            balanceTokens[i] = IERC20(_collaterals[i]).balanceOf(_currentActor);
+            console.log("");
+            console.log("========= Redeem =========");
 
-        console.log("");
-        console.log("========= Redeem =========");
+            (uint64 prevCollateralRatio, ) = _transmuter.getCollateralRatio();
+            uint256[] memory redeemAmounts;
+            {
+                // don't care about slippage
+                uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
+                address[] memory redeemTokens;
+                (redeemTokens, redeemAmounts) = _transmuter.redeemWithForfeit(
+                    amount,
+                    _currentActor,
+                    block.timestamp + 1 hours,
+                    minAmountOuts,
+                    forfeitTokens
+                );
+            }
 
-        (uint64 prevCollateralRatio, ) = _transmuter.getCollateralRatio();
-        uint256[] memory redeemAmounts;
-        {
-            // don't care about slippage
-            uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
-            address[] memory redeemTokens;
-            (redeemTokens, redeemAmounts) = _transmuter.redeemWithForfeit(
-                amount,
-                _currentActor,
-                block.timestamp + 1 hours,
-                minAmountOuts,
-                forfeitTokens
-            );
-        }
-
-        // if it is a burn it should always increase the collateral ratio
-        (uint64 collateralRatio, ) = _transmuter.getCollateralRatio();
-        assertGe(collateralRatio, prevCollateralRatio);
-        assertEq(agToken.balanceOf(_currentActor), balanceAgToken - amount);
-        for (uint256 i; i < balanceTokens.length; ++i) {
-            if (!isForfeitTokens[i])
-                assertEq(IERC20(_collaterals[i]).balanceOf(_currentActor), balanceTokens[i] + redeemAmounts[i]);
-            else assertEq(IERC20(_collaterals[i]).balanceOf(_currentActor), balanceTokens[i]);
+            // if it is a burn it should always increase the collateral ratio
+            (uint64 collateralRatio, ) = _transmuter.getCollateralRatio();
+            assertGe(collateralRatio, prevCollateralRatio);
+            assertEq(agToken.balanceOf(_currentActor), balanceAgToken - amount);
+            balanceAgToken -= amount;
+            for (uint256 i; i < balanceTokens.length; ++i) {
+                if (!isForfeitTokens[i])
+                    assertEq(IERC20(_collaterals[i]).balanceOf(_currentActor), balanceTokens[i] + redeemAmounts[i]);
+                else assertEq(IERC20(_collaterals[i]).balanceOf(_currentActor), balanceTokens[i]);
+            }
         }
     }
 }

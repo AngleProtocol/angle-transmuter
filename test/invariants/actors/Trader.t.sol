@@ -20,14 +20,11 @@ contract Trader is BaseActor {
         uint256 collatNumber,
         uint256 actionType,
         uint256 amount,
-        uint256 splitProportion,
-        uint256 actorIndex,
-        uint256 recipientIndex
-    ) public useActor(actorIndex) countCall("swap") returns (uint256 amountIn, uint256 amountOut) {
+        uint256 actorIndex
+    ) public useActor(actorIndex) countCall("swap") returns (uint256, uint256) {
         QuoteType quoteType = QuoteType(bound(actionType, 0, 3));
         collatNumber = bound(collatNumber, 0, 2);
         amount = bound(amount, 1, 10 ** 12);
-        splitProportion = bound(splitProportion, 1, BASE_9);
         address collateral = _collaterals[collatNumber];
 
         if (
@@ -64,9 +61,9 @@ contract Trader is BaseActor {
             testS.tokenOut = collateral;
             testS.amountOut = amount * 10 ** IERC20Metadata(collateral).decimals();
             testS.amountIn = _transmuter.quoteOut(testS.amountOut, testS.tokenIn, testS.tokenOut);
-            // we need to decrease the amountOut wanted
             uint256 actorBalance = agToken.balanceOf(_currentActor);
-            if (actorBalance < amountIn) {
+            // we need to decrease the amountOut wanted
+            if (actorBalance < testS.amountIn) {
                 testS.amountIn = actorBalance;
                 testS.amountOut = _transmuter.quoteIn(actorBalance, testS.tokenIn, testS.tokenOut);
             }
@@ -91,12 +88,12 @@ contract Trader is BaseActor {
 
         if (quoteType == QuoteType.MintExactInput || quoteType == QuoteType.MintExactOutput) {
             // Deal tokens to _currentActor if needed
-            if (IERC20(testS.tokenIn).balanceOf(_currentActor) < 2 * testS.amountIn) {
-                deal(testS.tokenIn, _currentActor, 2 * testS.amountIn);
+            if (IERC20(testS.tokenIn).balanceOf(_currentActor) < testS.amountIn) {
+                deal(testS.tokenIn, _currentActor, testS.amountIn);
             }
         }
 
-        // Approval
+        // Approval only usefull for QuoteType.MintExactInput and QuoteType.MintExactOutput
         IERC20(testS.tokenIn).approve(address(_transmuter), testS.amountIn);
         IERC20(testS.tokenIn).approve(address(_transmuterSplit), testS.amountIn);
 
@@ -115,31 +112,6 @@ contract Trader is BaseActor {
                 _currentActor,
                 block.timestamp + 1 hours
             );
-            // replicate on the other transmuter but split the orders
-            {
-                testS.amountInSplit1 = (testS.amountIn * splitProportion) / BASE_9;
-                testS.amountOutSplit1 = _transmuterSplit.quoteIn(testS.amountInSplit1, testS.tokenIn, testS.tokenOut);
-                _transmuterSplit.swapExactInput(
-                    testS.amountInSplit1,
-                    testS.amountOutSplit1,
-                    testS.tokenIn,
-                    testS.tokenOut,
-                    _currentActor,
-                    block.timestamp + 1 hours
-                );
-
-                testS.amountInSplit2 = testS.amountIn - testS.amountInSplit1;
-                testS.amountOutSplit2 = _transmuterSplit.quoteIn(testS.amountInSplit2, testS.tokenIn, testS.tokenOut);
-                _transmuterSplit.swapExactInput(
-                    testS.amountInSplit2,
-                    testS.amountOutSplit2,
-                    testS.tokenIn,
-                    testS.tokenOut,
-                    _currentActor,
-                    block.timestamp + 1 hours
-                );
-                assertApproxEqAbs(testS.amountOut, testS.amountOutSplit1 + testS.amountOutSplit2, 1 wei);
-            }
         } else {
             _transmuter.swapExactOutput(
                 testS.amountOut,
@@ -149,31 +121,6 @@ contract Trader is BaseActor {
                 _currentActor,
                 block.timestamp + 1 hours
             );
-            // replicate on the other transmuter but wplit the orders
-            {
-                testS.amountOutSplit1 = (testS.amountOut * splitProportion) / BASE_9;
-                testS.amountInSplit1 = _transmuterSplit.quoteOut(testS.amountOutSplit1, testS.tokenIn, testS.tokenOut);
-                _transmuterSplit.swapExactOutput(
-                    testS.amountOutSplit1,
-                    testS.amountInSplit1,
-                    testS.tokenIn,
-                    testS.tokenOut,
-                    _currentActor,
-                    block.timestamp + 1 hours
-                );
-
-                testS.amountOutSplit2 = testS.amountOut - testS.amountOutSplit1;
-                testS.amountInSplit2 = _transmuterSplit.quoteOut(testS.amountOutSplit2, testS.tokenIn, testS.tokenOut);
-                _transmuterSplit.swapExactOutput(
-                    testS.amountOutSplit2,
-                    testS.amountInSplit2,
-                    testS.tokenIn,
-                    testS.tokenOut,
-                    _currentActor,
-                    block.timestamp + 1 hours
-                );
-                assertApproxEqAbs(testS.amountIn, testS.amountInSplit1 + testS.amountInSplit2, 1 wei);
-            }
         }
 
         if (quoteType == QuoteType.MintExactInput || quoteType == QuoteType.MintExactOutput) {
@@ -190,5 +137,7 @@ contract Trader is BaseActor {
             (uint64 collateralRatio, ) = _transmuter.getCollateralRatio();
             assertGe(collateralRatio, prevCollateralRatio);
         }
+
+        return (testS.amountIn, testS.amountOut);
     }
 }
