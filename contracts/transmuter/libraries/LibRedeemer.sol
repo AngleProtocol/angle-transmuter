@@ -211,8 +211,9 @@ library LibRedeemer {
             // We ensure to preserve the invariant `sum(collateralNewNormalizedStables) = normalizedStables`
             uint128 newNormalizedStables = 0;
             for (uint256 i; i < collateralListLength; ++i) {
-                uint128 newCollateralNormalizedStable = ((ks.collaterals[collateralListMem[i]].normalizedStables *
-                    newNormalizerValue) / BASE_27).toUint128();
+                uint128 newCollateralNormalizedStable = ((uint256(
+                    ks.collaterals[collateralListMem[i]].normalizedStables
+                ) * newNormalizerValue) / BASE_27).toUint128();
                 newNormalizedStables += newCollateralNormalizedStable;
                 ks.collaterals[collateralListMem[i]].normalizedStables = uint216(newCollateralNormalizedStable);
             }
