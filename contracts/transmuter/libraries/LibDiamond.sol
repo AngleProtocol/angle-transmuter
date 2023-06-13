@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "interfaces/IDiamondCut.sol";
-
 import { LibStorage as s } from "./LibStorage.sol";
 
 import "../../utils/Errors.sol";

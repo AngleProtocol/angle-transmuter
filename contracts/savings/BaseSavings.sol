@@ -33,7 +33,7 @@
               ▓▓▓        ▓▓      ▓▓▓    ▓▓▓       ▓▓▓▓▓▓▓▓▓▓        ▓▓▓▓▓▓▓▓▓▓       ▓▓▓▓▓▓▓▓▓▓          
 */
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 import "oz-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import "oz/interfaces/IERC20.sol";

@@ -6,7 +6,7 @@
     "coverage": "yarn foundry:coverage && yarn lcov:clean && yarn lcov:generate-html",
     "compile": "FOUNDRY_PROFILE=dev forge build --optimize --optimizer-runs 1000",
     "deploy": "forge script --broadcast --verify -vvvv",
-    "gas": "forge test --gas-report",
+    "gas": "FOUNDRY_PROFILE=ci forge test --gas-report",
     "run": "docker run -it --rm -v $(pwd):/app -w /app ghcr.io/foundry-rs/foundry sh",
     "run:ci": "FOUNDRY_PROFILE=ci forge test -vvv",
     "test": "FOUNDRY_PROFILE=dev forge test -vvv",

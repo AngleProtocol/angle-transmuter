@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
@@ -46,21 +46,12 @@ contract Swapper is ISwapper {
         address to,
         uint256 deadline
     ) external returns (uint256 amountOut) {
-        (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, deadline);
+        (bool mint, Collateral storage collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, deadline);
         amountOut = mint
             ? LibSwapper.quoteMintExactInput(collatInfo, amountIn)
             : LibSwapper.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
         if (amountOut < amountOutMin) revert TooSmallAmountOut();
-        LibSwapper.swap(
-            amountIn,
-            amountOut,
-            tokenIn,
-            tokenOut,
-            to,
-            collatInfo.isManaged,
-            collatInfo.onlyWhitelisted,
-            mint
-        );
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo);
     }
 
     /// @inheritdoc ISwapper
@@ -74,21 +65,12 @@ contract Swapper is ISwapper {
         address to,
         uint256 deadline
     ) external returns (uint256 amountIn) {
-        (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, deadline);
+        (bool mint, Collateral storage collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, deadline);
         amountIn = mint
             ? LibSwapper.quoteMintExactOutput(collatInfo, amountOut)
             : LibSwapper.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         if (amountIn > amountInMax) revert TooBigAmountIn();
-        LibSwapper.swap(
-            amountIn,
-            amountOut,
-            tokenIn,
-            tokenOut,
-            to,
-            collatInfo.isManaged,
-            collatInfo.onlyWhitelisted,
-            mint
-        );
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -96,11 +78,11 @@ contract Swapper is ISwapper {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     // If these functions return a null `amountOut` or `amountIn` value, then calling one of the swap functions above
-    //  at the exact same block will not do anything.
+    // at the exact same block will not do anything.
 
     /// @inheritdoc ISwapper
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256 amountOut) {
-        (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, 0);
+        (bool mint, Collateral storage collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, 0);
         if (mint) return LibSwapper.quoteMintExactInput(collatInfo, amountIn);
         else {
             amountOut = LibSwapper.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
@@ -110,7 +92,7 @@ contract Swapper is ISwapper {
 
     /// @inheritdoc ISwapper
     function quoteOut(uint256 amountOut, address tokenIn, address tokenOut) external view returns (uint256 amountIn) {
-        (bool mint, Collateral memory collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, 0);
+        (bool mint, Collateral storage collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, 0);
         if (mint) return LibSwapper.quoteMintExactOutput(collatInfo, amountOut);
         else {
             LibSwapper.checkAmounts(collatInfo, amountOut);

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
+import { SafeCast } from "oz/utils/math/SafeCast.sol";
 import { IERC20 } from "oz/interfaces/IERC20.sol";
 import { IERC20Metadata } from "oz/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
@@ -26,6 +27,7 @@ import "../Storage.sol";
 /// @author Angle Labs, Inc.
 contract Setters is AccessControlModifiers, ISetters {
     using SafeERC20 for IERC20;
+    using SafeCast for uint256;
 
     event CollateralManagerSet(address indexed collateral, ManagerStorage managerData);
     event CollateralRevoked(address indexed collateral);
@@ -97,11 +99,7 @@ contract Setters is AccessControlModifiers, ISetters {
             // Sanity check on the manager data that is passed
             LibManager.parseManagerConfig(managerData.config);
             collatInfo.isManaged = 1;
-        } else {
-            ManagerStorage memory emptyManagerData;
-            managerData = emptyManagerData;
-            collatInfo.isManaged = 0;
-        }
+        } else collatInfo.isManaged = 0;
         collatInfo.managerData = managerData;
         emit CollateralManagerSet(collateral, managerData);
     }
@@ -143,13 +141,13 @@ contract Setters is AccessControlModifiers, ISetters {
         TransmuterStorage storage ks = s.transmuterStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
-        uint256 normalizedAmount = (amount * BASE_27) / ks.normalizer;
+        uint128 normalizedAmount = ((amount * BASE_27) / ks.normalizer).toUint128();
         if (increase) {
             collatInfo.normalizedStables += uint216(normalizedAmount);
-            ks.normalizedStables += uint128(normalizedAmount);
+            ks.normalizedStables += normalizedAmount;
         } else {
             collatInfo.normalizedStables -= uint216(normalizedAmount);
-            ks.normalizedStables -= uint128(normalizedAmount);
+            ks.normalizedStables -= normalizedAmount;
         }
         emit ReservesAdjusted(collateral, amount, increase);
     }

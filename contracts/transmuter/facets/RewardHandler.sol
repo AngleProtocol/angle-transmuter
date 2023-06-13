@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 import { IRewardHandler } from "interfaces/IRewardHandler.sol";
 
@@ -16,6 +16,3 @@ contract RewardHandler is IRewardHandler {
         return LibRewardHandler.sellRewards(minAmountOut, payload);
     }
 }
-
-
-

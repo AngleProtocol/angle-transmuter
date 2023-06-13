@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 import "oz/proxy/ERC1967/ERC1967Proxy.sol";
 import "oz/access/Ownable.sol";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { ITransmuterOracle, MockExternalOracle } from "../mock/MockExternalOracle.sol";

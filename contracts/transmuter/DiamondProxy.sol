@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: CC0-1.0
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 import { LibDiamond } from "./libraries/LibDiamond.sol";
 import { LibStorage as s } from "./libraries/LibStorage.sol";

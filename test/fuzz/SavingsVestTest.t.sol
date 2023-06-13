@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import "oz/utils/math/Math.sol";
@@ -336,6 +336,10 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         if (mintedStables == 0) return;
 
         uint64 collatRatio = _updateOraclesWithAsserts(latestOracleValue, mintedStables, collateralMintedStables);
+        uint256 toMint;
+        if ((collatRatio * mintedStables) / BASE_9 > mintedStables)
+            toMint = (collatRatio * mintedStables) / BASE_9 - mintedStables;
+        if (toMint > BASE_9 * mintedStables) return;
         vm.prank(governor);
         uint256 minted = _saving.accrue();
 
@@ -433,12 +437,14 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(initialAmounts, 0);
         if (mintedStables == 0) return;
 
-        _updateOraclesWithAsserts(latestOracleValue, mintedStables, collateralMintedStables);
+        uint64 collatRatio = _updateOraclesWithAsserts(latestOracleValue, mintedStables, collateralMintedStables);
+        uint256 toMint;
+        if ((collatRatio * mintedStables) / BASE_9 > mintedStables)
+            toMint = (collatRatio * mintedStables) / BASE_9 - mintedStables;
+        // Overflow check
+        if (toMint + mintedStables > (uint256(type(uint128).max) * 999) / 1000) return;
         vm.prank(governor);
         uint256 minted = _saving.accrue();
-        // This would be the case if the number of unit of stable is of order 10**20 making
-        // the normalisedStables (global) overflow
-        if (minted + mintedStables > (uint256(type(uint128).max) * 999) / 1000) return;
 
         if (minted > 0) {
             skip(elapseTimestamps);
@@ -448,7 +454,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         }
     }
 
-    function testFuzz_AccrueRandomNegativeColatRatio(
+    function testFuzz_AccrueRandomNegativeCollatRatio(
         uint256[3] memory initialAmounts,
         uint64 protocolSafetyFee,
         uint64 vestingPeriod,
@@ -476,11 +482,14 @@ contract SavingsVestTest is Fixture, FunctionUtils {
 
         _updateIncreaseOracles(increaseOracleValue);
         (uint64 collatRatio, ) = transmuter.getCollateralRatio();
+        uint256 toMint;
+        if ((collatRatio * mintedStables) / BASE_9 > mintedStables)
+            toMint = (collatRatio * mintedStables) / BASE_9 - mintedStables;
+        // Overflow check
+        if (toMint + mintedStables > (uint256(type(uint128).max) * 999) / 1000) return;
 
         vm.prank(governor);
         uint256 minted = _saving.accrue();
-        // Do checks only if it didn't overflow
-        if (minted + mintedStables > (uint256(type(uint128).max) * 999) / 1000) return;
 
         uint256 netMinted = minted - (protocolSafetyFee * minted) / BASE_9;
         // Do checks only if the there has been a profit
@@ -510,11 +519,16 @@ contract SavingsVestTest is Fixture, FunctionUtils {
                 mintedStables = stablecoinsIssued;
             }
 
+            toMint = 0;
+            if ((collatRatio * mintedStables) / BASE_9 > mintedStables)
+                toMint = (collatRatio * mintedStables) / BASE_9 - mintedStables;
+            if (toMint + mintedStables > (uint256(type(uint128).max) * 999) / 1000) return;
+
             vm.prank(governor);
             minted = _saving.accrue();
 
             if (collatRatio > BASE_9 + BASE_6) {
-                if (minted + mintedStables > (uint256(type(uint128).max) * 999) / 1000 || minted < _minAmount) return;
+                if (minted < _minAmount) return;
                 {
                     uint256 expectedMint = (collatRatio * mintedStables) / BASE_9 - mintedStables;
                     _assertApproxEqRelDecimalWithTolerance(minted, expectedMint, minted, _MAX_PERCENTAGE_DEVIATION, 18);

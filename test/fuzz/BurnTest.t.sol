@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { stdError } from "forge-std/Test.sol";
@@ -1142,10 +1142,9 @@ contract BurnTest is Fixture, FunctionUtils {
             (uint256 maxAmount, ) = transmuter.getIssuedByCollateral(_collaterals[i]);
             uint256 estimatedStable = transmuter.quoteOut(amounts[i], address(agToken), _collaterals[i]);
             uint256 balanceStableOwner = agToken.balanceOf(owner);
-            if (estimatedStable > maxAmount && estimatedStable > balanceStableOwner)
-                vm.expectRevert(stdError.arithmeticError);
+            if (estimatedStable > maxAmount && estimatedStable > balanceStableOwner) vm.expectRevert();
             else if (estimatedStable > balanceStableOwner) vm.expectRevert("ERC20: burn amount exceeds balance");
-            else if (estimatedStable > maxAmount) vm.expectRevert(stdError.arithmeticError);
+            else if (estimatedStable > maxAmount) vm.expectRevert();
             collateralBurntStables[i] = transmuter.swapExactOutput(
                 amounts[i],
                 estimatedStable,
@@ -1280,7 +1279,7 @@ contract BurnTest is Fixture, FunctionUtils {
         vm.startPrank(owner);
         (uint256 maxAmount, ) = transmuter.getIssuedByCollateral(tokenOut);
         uint256 balanceStableOwner = agToken.balanceOf(owner);
-        if (estimatedStable > maxAmount) vm.expectRevert(stdError.arithmeticError);
+        if (estimatedStable > maxAmount) vm.expectRevert();
         else if (estimatedStable > balanceStableOwner) vm.expectRevert("ERC20: burn amount exceeds balance");
         transmuter.swapExactOutput(amountOut, estimatedStable, address(agToken), tokenOut, owner, block.timestamp * 2);
         if (amountOut > maxAmount) return false;

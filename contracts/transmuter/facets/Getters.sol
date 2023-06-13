@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { IGetters } from "interfaces/IGetters.sol";
@@ -127,8 +127,7 @@ contract Getters is IGetters {
                 return collatInfo.isBurnLive == 0;
             }
         } else {
-            TransmuterStorage storage ks = s.transmuterStorage();
-            return ks.isRedemptionLive == 0;
+            return s.transmuterStorage().isRedemptionLive == 0;
         }
     }
 

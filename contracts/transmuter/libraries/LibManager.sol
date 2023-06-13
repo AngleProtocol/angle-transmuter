@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
-import "oz/token/ERC20/IERC20.sol";
-import "oz/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "oz/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 
 import { IManager } from "interfaces/IManager.sol";
 
@@ -28,8 +28,8 @@ library LibManager {
 
     /// @notice Performs a collateral transfer from `msg.sender` to an address depending on the type of
     /// manager considered
-    function transferFrom(address token, uint256 amount, ManagerStorage memory managerData) internal {
-        (ManagerType managerType, bytes memory data) = parseManagerConfig(managerData.config);
+    function transferFrom(address token, uint256 amount, bytes memory config) internal {
+        (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
         if (managerType == ManagerType.EXTERNAL)
             IERC20(token).safeTransferFrom(msg.sender, address(abi.decode(data, (IManager))), amount);
     }
