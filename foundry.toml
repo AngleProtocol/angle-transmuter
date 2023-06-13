@@ -17,7 +17,7 @@ ffi = true
 runs = 10000
 
 [invariant]
-runs = 100
+runs = 1000
 depth = 30
 
 [rpc_endpoints]

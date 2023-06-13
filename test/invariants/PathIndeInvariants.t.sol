@@ -17,7 +17,7 @@ import { Governance } from "./actors/Governance.t.sol";
 //solhint-disable
 import { console } from "forge-std/console.sol";
 
-contract BasicInvariants is Fixture {
+contract PathIndeInvariants is Fixture {
     uint256 internal constant _NUM_TRADER = 2;
     uint256 internal constant _NUM_ARB = 2;
 

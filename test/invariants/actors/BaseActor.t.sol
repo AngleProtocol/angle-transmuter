@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "oz/token/ERC20/extensions/IERC20Metadata.sol";
 //solhint-disable
-import { console } from "forge-std/console.sol";
 
 import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
