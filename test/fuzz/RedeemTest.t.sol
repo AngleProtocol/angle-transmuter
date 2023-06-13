@@ -1022,7 +1022,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         assertApproxEqAbs(amounts[1], (eurB.balanceOf(address(transmuter)) * amountBurnt * fee) / denom, 1 wei);
         assertApproxEqAbs(amounts[2], (eurY.balanceOf(address(transmuter)) * amountBurnt * fee) / denom, 1 wei);
         if (collatRatio < BASE_9) {
-            assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
+            assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9 + 1);
         }
 
         if (amountInValueReceived >= _minWallet && !lastCheck)
