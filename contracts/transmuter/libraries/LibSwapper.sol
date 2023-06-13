@@ -93,8 +93,8 @@ library LibSwapper {
                     LibManager.transferTo(tokenOut, to, amountOut, collatInfo.managerData.config);
                 else IERC20(tokenOut).safeTransfer(to, amountOut);
             }
+            emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
         }
-        emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
     }
 
     /// @notice Computes the `amountOut` of stablecoins to mint from `tokenIn` of a collateral with data `collatInfo`
