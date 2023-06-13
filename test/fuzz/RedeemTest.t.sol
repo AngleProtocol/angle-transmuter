@@ -145,7 +145,7 @@ contract RedeemTest is Fixture, FunctionUtils {
             if (mintedStables == 0) return;
 
             _assertSizes(tokens, amounts);
-            _assertQuoteAmounts(uint64(BASE_9), mintedStables, amountBurnt, uint64(BASE_9), amounts);
+            _assertQuoteAmounts(collatRatio, mintedStables, amountBurnt, uint64(BASE_9), amounts);
         }
     }
 
@@ -984,11 +984,31 @@ contract RedeemTest is Fixture, FunctionUtils {
     ) internal {
         // we should also receive  in value min(collatRatio*amountBurnt,amountBurnt)
         uint256 amountInValueReceived;
-        for (uint256 i; i < _oracles.length; ++i) {
-            (, int256 value, , , ) = _oracles[i].latestRoundData();
-            uint8 decimals = IERC20Metadata(_collaterals[i]).decimals();
-            amountInValueReceived += (uint256(value) * _convertDecimalTo(amounts[i], decimals, 18)) / BASE_8;
+        bool lastCheck;
+        {
+            uint256 maxValue;
+            uint256 minValue;
+            uint256 maxOracle;
+            uint256 minOracle;
+            for (uint256 i; i < _oracles.length; ++i) {
+                (, int256 value, , , ) = _oracles[i].latestRoundData();
+                uint8 decimals = IERC20Metadata(_collaterals[i]).decimals();
+                if (uint256(value) > maxOracle) maxOracle = uint256(value);
+                if (amounts[i] > maxValue) maxValue = amounts[i] / decimals;
+                if (amounts[i] < minValue || minValue == 0) minValue = amounts[i] / decimals;
+                if (minOracle == 0 || uint256(value) < minOracle) minOracle = uint256(value);
+                if (uint256(value) > BASE_18 || amounts[i] < 10 ** 4) lastCheck = true;
+                amountInValueReceived += (uint256(value) * _convertDecimalTo(amounts[i], decimals, 18));
+            }
+            // Otherwise there can be rounding errors that make the last check not precise at all
+            if (
+                maxValue > minValue * 10 ** 14 ||
+                maxOracle > minOracle * 10 ** 14 ||
+                minOracle < 10 ** 5 ||
+                maxOracle > 10 ** 13
+            ) lastCheck = true;
         }
+        amountInValueReceived = amountInValueReceived / BASE_8;
 
         uint256 denom = (mintedStables * BASE_9);
         uint256 valueCheck = (collatRatio * amountBurnt * fee) / BASE_18;
@@ -1004,16 +1024,9 @@ contract RedeemTest is Fixture, FunctionUtils {
         if (collatRatio < BASE_9) {
             assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
         }
-        // TODO make the one below pass: it is not bulletproof yet (work in many cases but not all)
-        // We accept that small amount tx get out with uncapped loss (compare to what they should get with
-        // infinite precision), but larger one should have a loss smaller than 0.1%
-        // if (amountInValueReceived >= _minWallet)
-        //     assertApproxEqRelDecimal(
-        //         amountInValueReceived,
-        //         valueCheck,
-        //         _MAX_PERCENTAGE_DEVIATION,
-        //         18
-        //     );
+
+        if (amountInValueReceived >= _minWallet && !lastCheck)
+            assertApproxEqRelDecimal(amountInValueReceived, valueCheck, _MAX_PERCENTAGE_DEVIATION, 18);
     }
 
     function _assertQuoteAmountsWithManager(
@@ -1026,8 +1039,13 @@ contract RedeemTest is Fixture, FunctionUtils {
     ) internal {
         // we should also receive  in value `min(collatRatio*amountBurnt,amountBurnt)`
         uint256 amountInValueReceived;
+        bool lastCheck;
         {
             uint256 count;
+            uint256 maxValue;
+            uint256 minValue;
+            uint256 maxOracle;
+            uint256 minOracle;
             for (uint256 i; i < _collaterals.length; ++i) {
                 {
                     (, int256 value, , , ) = _oracles[i].latestRoundData();
@@ -1035,6 +1053,11 @@ contract RedeemTest is Fixture, FunctionUtils {
                     amountInValueReceived +=
                         (uint256(value) * _convertDecimalTo(amounts[count++], decimals, 18)) /
                         BASE_8;
+                    if (uint256(value) > maxOracle) maxOracle = uint256(value);
+                    if (amounts[i] > maxValue) maxValue = amounts[i] / decimals;
+                    if (amounts[i] < minValue || minValue == 0) minValue = amounts[i] / decimals;
+                    if (minOracle == 0 || uint256(value) < minOracle) minOracle = uint256(value);
+                    if (uint256(value) > BASE_18 || amounts[i] < 10 ** 4) lastCheck = true;
                 }
                 IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
                 AggregatorV3Interface[] memory listOracles = _subCollaterals[_collaterals[i]].oracles;
@@ -1045,8 +1068,19 @@ contract RedeemTest is Fixture, FunctionUtils {
                     amountInValueReceived +=
                         (uint256(value) * _convertDecimalTo(amounts[count++], decimals, 18)) /
                         BASE_8;
+                    if (uint256(value) > maxOracle) maxOracle = uint256(value);
+                    if (amounts[i] > maxValue) maxValue = amounts[i] / decimals;
+                    if (amounts[i] < minValue || minValue == 0) minValue = amounts[i] / decimals;
+                    if (minOracle == 0 || uint256(value) < minOracle) minOracle = uint256(value);
+                    if (uint256(value) > BASE_18 || amounts[i] < 10 ** 4) lastCheck = true;
                 }
             }
+            if (
+                maxValue > minValue * 10 ** 14 ||
+                maxOracle > minOracle * 10 ** 14 ||
+                minOracle < 10 ** 5 ||
+                maxOracle > 10 ** 13
+            ) lastCheck = true;
         }
 
         uint256 count2;
@@ -1064,28 +1098,14 @@ contract RedeemTest is Fixture, FunctionUtils {
                 assertEq(amounts[count2++], expect);
             }
         }
-        if (collatRatio < BASE_9) assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
-        if (!collatRatioAboveLimit) assertLe(amountInValueReceived, amountBurnt);
-        if (amountInValueReceived >= _minWallet) {
-            // TODO make the ones below pass: it is not bulletproof yet, works in many cases but not all.
-            // We accept that small amount tx get out with uncapped loss (compare to what they should get with
-            // infinite precision), but larger one should have a loss smaller than 0.1%
-            if (collatRatio < BASE_9) {
-                //     assertApproxEqRelDecimal(
-                //         amountInValueReceived,
-                //         (collatRatio * amountBurnt * fee) / BASE_18,
-                //         _MAX_PERCENTAGE_DEVIATION,
-                //         18
-                //     );
-            } else {
-                //     assertApproxEqRelDecimal(
-                //         amountInValueReceived,
-                //         (amountBurnt * fee) / BASE_9,
-                //         _MAX_PERCENTAGE_DEVIATION,
-                //         18
-                //     );
-            }
+        uint256 valueCheck = (amountBurnt * fee) / BASE_9;
+        if (collatRatio < BASE_9) {
+            assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
+            valueCheck = (collatRatio * amountBurnt * fee) / BASE_18;
         }
+        if (!collatRatioAboveLimit) assertLe(amountInValueReceived, amountBurnt);
+        if (amountInValueReceived >= _minWallet && !lastCheck)
+            assertApproxEqRelDecimal(amountInValueReceived, valueCheck, _MAX_PERCENTAGE_DEVIATION, 18);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
