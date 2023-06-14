@@ -7,9 +7,11 @@ import { IPermit2, PermitTransferFrom, SignatureTransferDetails, TokenPermission
 
 import { stdError } from "forge-std/Test.sol";
 
+import "mock/MockManager.sol";
 import { IERC20Metadata } from "mock/MockTokenPermit.sol";
 import { Permit2, SignatureVerification } from "mock/Permit2.sol";
 
+import "contracts/transmuter/Storage.sol";
 import "contracts/utils/Errors.sol" as Errors;
 
 import "../Fixture.sol";
@@ -218,6 +220,7 @@ contract Permit2Test is Fixture, FunctionUtils {
 
         assertEq(agToken.balanceOf(alice), BASE_27 / (BASE_9 + BASE_9 / 99));
         assertEq(eurA.balanceOf(alice), 0);
+        assertEq(eurA.balanceOf(address(transmuter)), BASE_6);
     }
 
     function test_SwapExactOutputWithPermit() public {
@@ -250,6 +253,97 @@ contract Permit2Test is Fixture, FunctionUtils {
         assertEq(agToken.balanceOf(alice), BASE_18);
         assertEq(eurA.balanceOf(alice), amountInMax - amountIn);
         assertEq(eurA.balanceOf(address(transmuter)), amountIn);
+    }
+
+    function test_SwapExactInputWithPermitAndManager() public {
+        // Set manager
+        MockManager manager = new MockManager(address(eurA));
+        IERC20[] memory subCollaterals = new IERC20[](2);
+        subCollaterals[0] = eurA;
+        subCollaterals[1] = eurB;
+        ManagerStorage memory data = ManagerStorage({
+            subCollaterals: subCollaterals,
+            config: abi.encode(ManagerType.EXTERNAL, abi.encode(manager))
+        });
+        manager.setSubCollaterals(data.subCollaterals, data.config);
+
+        hoax(governor);
+        transmuter.setCollateralManager(address(eurA), data);
+
+        // Test
+        deal(address(eurA), alice, BASE_6);
+        uint256 amountIn = BASE_6;
+        uint256 nonce = 0;
+        uint256 deadline = block.timestamp + 1 hours;
+
+        PermitTransferFrom memory permit = PermitTransferFrom({
+            permitted: TokenPermissions({ token: address(eurA), amount: amountIn }),
+            nonce: nonce,
+            deadline: deadline
+        });
+        bytes memory sig = getPermitTransferSignature(permit, 1, DOMAIN_SEPARATOR, address(transmuter));
+
+        startHoax(alice);
+        transmuter.swapExactInputWithPermit(
+            BASE_6,
+            0,
+            address(eurA),
+            address(agToken),
+            alice,
+            deadline,
+            abi.encode(nonce, sig)
+        );
+
+        assertEq(agToken.balanceOf(alice), BASE_27 / (BASE_9 + BASE_9 / 99));
+        assertEq(eurA.balanceOf(alice), 0);
+        assertEq(eurA.balanceOf(address(manager)), BASE_6);
+    }
+
+    function test_SwapExactOutputWithPermitAndManager() public {
+        // Set manager
+        MockManager manager = new MockManager(address(eurA));
+        IERC20[] memory subCollaterals = new IERC20[](2);
+        subCollaterals[0] = eurA;
+        subCollaterals[1] = eurB;
+        ManagerStorage memory data = ManagerStorage({
+            subCollaterals: subCollaterals,
+            config: abi.encode(ManagerType.EXTERNAL, abi.encode(manager))
+        });
+        manager.setSubCollaterals(data.subCollaterals, data.config);
+
+        hoax(governor);
+        transmuter.setCollateralManager(address(eurA), data);
+
+        // Test
+        uint256 amountOut = BASE_18;
+        uint256 amountInMax = (3 * BASE_6) / 2;
+        uint256 amountIn = (3 * BASE_6) / 2 - 489899;
+        uint256 nonce = 0;
+        uint256 deadline = block.timestamp + 1 hours;
+
+        deal(address(eurA), alice, amountInMax);
+
+        PermitTransferFrom memory permit = PermitTransferFrom({
+            permitted: TokenPermissions({ token: address(eurA), amount: amountInMax }),
+            nonce: nonce,
+            deadline: deadline
+        });
+        bytes memory sig = getPermitTransferSignature(permit, 1, DOMAIN_SEPARATOR, address(transmuter));
+
+        startHoax(alice);
+        transmuter.swapExactOutputWithPermit(
+            amountOut,
+            amountInMax,
+            address(eurA),
+            address(agToken),
+            alice,
+            deadline,
+            abi.encode(nonce, sig)
+        );
+
+        assertEq(agToken.balanceOf(alice), BASE_18);
+        assertEq(eurA.balanceOf(alice), amountInMax - amountIn);
+        assertEq(eurA.balanceOf(address(manager)), amountIn);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
