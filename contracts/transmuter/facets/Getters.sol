@@ -7,6 +7,7 @@ import { IGetters } from "interfaces/IGetters.sol";
 
 import { LibOracle } from "../libraries/LibOracle.sol";
 import { LibRedeemer } from "../libraries/LibRedeemer.sol";
+import { LibSwapper } from "../libraries/LibSwapper.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibWhitelist } from "../libraries/LibWhitelist.sol";
 
@@ -16,6 +17,7 @@ import "../Storage.sol";
 
 /// @title Getters
 /// @author Angle Labs, Inc.
+/// @dev There may be duplicates in the info provided by the getters defined here
 contract Getters is IGetters {
     /// @inheritdoc IGetters
     function isValidSelector(bytes4 selector) external view returns (bool) {
@@ -35,6 +37,11 @@ contract Getters is IGetters {
     /// @inheritdoc IGetters
     function getCollateralList() external view returns (address[] memory) {
         return s.transmuterStorage().collateralList;
+    }
+
+    /// @inheritdoc IGetters
+    function getCollateralInfo(address collateral) external view returns (Collateral memory) {
+        return s.transmuterStorage().collaterals[collateral];
     }
 
     /// @inheritdoc IGetters
@@ -101,12 +108,15 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
+    /// @dev This function is not optimized for gas consumption as for instance the `burn` value for collateral
+    /// is computed twice: once in `readBurn` and once in `getBurnOracle`
     function getOracleValues(
         address collateral
-    ) external view returns (uint256 mint, uint256 burn, uint256 ratio, uint256 redemption) {
+    ) external view returns (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) {
         bytes memory oracleConfig = s.transmuterStorage().collaterals[collateral].oracleConfig;
         (burn, ratio) = LibOracle.readBurn(oracleConfig);
-        return (LibOracle.readMint(oracleConfig), burn, ratio, LibOracle.readRedemption(oracleConfig));
+        (minRatio, ) = LibSwapper.getBurnOracle(collateral, oracleConfig);
+        return (LibOracle.readMint(oracleConfig), burn, ratio, minRatio, LibOracle.readRedemption(oracleConfig));
     }
 
     /// @inheritdoc IGetters

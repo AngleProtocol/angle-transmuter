@@ -34,10 +34,13 @@ goerli = { key = "${GOERLI_ETHERSCAN_API_KEY}" }
 optimizer = false
 src = 'test'
 via_ir = false
+gas_reports = ["*"]
+runs = 2000
 
 
 [profile.dev.fuzz]
 runs = 2000
+gas_reports = ["*"]
 
 [profile.dev.invariant]
 runs = 5000

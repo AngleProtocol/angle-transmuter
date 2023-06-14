@@ -228,7 +228,7 @@ contract OracleTest is Fixture, FunctionUtils {
         _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
 
         for (uint i; i < _collaterals.length; i++) {
-            (, , , uint256 redemption) = transmuter.getOracleValues(address(_collaterals[i]));
+            (, , , , uint256 redemption) = transmuter.getOracleValues(address(_collaterals[i]));
             uint256 oracleRedemption;
             uint256 targetPrice = newTargetType[i] == 0 ? BASE_18 : latestExchangeRateStakeETH[newTargetType[i] - 1];
             uint256 quoteAmount = newQuoteType[i] == 0 ? BASE_18 : targetPrice;
@@ -264,7 +264,7 @@ contract OracleTest is Fixture, FunctionUtils {
         _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
 
         for (uint i; i < _collaterals.length; i++) {
-            (uint256 mint, , , ) = transmuter.getOracleValues(address(_collaterals[i]));
+            (uint256 mint, , , , ) = transmuter.getOracleValues(address(_collaterals[i]));
             uint256 oracleMint;
             uint256 targetPrice = newTargetType[i] == 0 ? BASE_18 : latestExchangeRateStakeETH[newTargetType[i] - 1];
             uint256 quoteAmount = newQuoteType[i] == 0 ? BASE_18 : targetPrice;
@@ -300,27 +300,45 @@ contract OracleTest is Fixture, FunctionUtils {
         _updateOracleValues(latestOracleValue);
         _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
 
+        uint256 minDeviation;
+        uint256 minRatio;
         for (uint i; i < _collaterals.length; i++) {
-            (, uint256 burn, uint256 deviation, ) = transmuter.getOracleValues(address(_collaterals[i]));
+            uint256 burn;
+            uint256 deviation;
+            (, burn, deviation, minRatio, ) = transmuter.getOracleValues(address(_collaterals[i]));
+            if (i == 0) minDeviation = deviation;
+            if (deviation < minDeviation) minDeviation = deviation;
             uint256 oracleBurn;
-            uint256 oracleDeviation = BASE_18;
             uint256 targetPrice = newTargetType[i] == 0 ? BASE_18 : latestExchangeRateStakeETH[newTargetType[i] - 1];
-            uint256 quoteAmount = newQuoteType[i] == 0 ? BASE_18 : targetPrice;
             if (newReadType[i] == 2) oracleBurn = targetPrice;
             else if (newReadType[i] == 0) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
-                oracleBurn = newCircuitChainIsMultiplied[i] == 1
-                    ? (quoteAmount * uint256(value)) / 10 ** (newChainlinkDecimals[i])
-                    : (quoteAmount * 10 ** (newChainlinkDecimals[i])) / uint256(value);
+                if (newQuoteType[i] == 0) {
+                    if (newCircuitChainIsMultiplied[i] == 1) {
+                        oracleBurn = (BASE_18 * uint256(value)) / 10 ** (newChainlinkDecimals[i]);
+                    } else {
+                        oracleBurn = (BASE_18 * 10 ** (newChainlinkDecimals[i])) / uint256(value);
+                    }
+                } else {
+                    if (newCircuitChainIsMultiplied[i] == 1) {
+                        oracleBurn = (targetPrice * uint256(value)) / 10 ** (newChainlinkDecimals[i]);
+                    } else {
+                        oracleBurn = (targetPrice * 10 ** (newChainlinkDecimals[i])) / uint256(value);
+                    }
+                }
             } else {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 oracleBurn = uint256(value) * 1e12;
-                oracleDeviation = 1e18;
             }
-            if (newReadType[i] != 1 && targetPrice > oracleBurn) oracleDeviation = (oracleBurn * BASE_18) / targetPrice;
+            {
+                uint256 oracleDeviation = BASE_18;
+                if (newReadType[i] != 1 && targetPrice > oracleBurn)
+                    oracleDeviation = (oracleBurn * BASE_18) / targetPrice;
+                assertEq(deviation, oracleDeviation);
+            }
             assertEq(burn, oracleBurn);
-            assertEq(deviation, oracleDeviation);
         }
+        assertEq(minDeviation, minRatio);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

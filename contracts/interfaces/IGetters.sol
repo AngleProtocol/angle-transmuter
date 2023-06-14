@@ -23,6 +23,9 @@ interface IGetters {
     /// @notice Returns the list of collateral assets supported by the system
     function getCollateralList() external view returns (address[] memory);
 
+    /// @notice Returns all the info in storage associated to a `collateral`
+    function getCollateralInfo(address collateral) external view returns (Collateral memory);
+
     /// @notice Returns the decimals of a given `collateral`
     function getCollateralDecimals(address collateral) external view returns (uint8);
 
@@ -57,16 +60,19 @@ interface IGetters {
     ) external view returns (bool isManaged, IERC20[] memory subCollaterals, bytes memory config);
 
     /// @notice Returns the oracle values associated to `collateral`
-    /// @return mint Oracle value that will be used for `collateral` for a mint transaction
+    /// @return mint Oracle value to be used for a mint transaction with `collateral`
     /// @return burn Oracle value that will be used for `collateral` for a burn transaction. This value
-    /// is computed using the oracle values of all the other `collateral` assets of the system.
-    /// @return ratio Ratio, in base `10**18` between the oracle value of the `collateral` its target price.
+    /// is then used along with oracle values for all other collateral assets to get a global burn value for the oracle
+    /// @return ratio Ratio, in base `10**18` between the oracle value of the `collateral` and its target price.
     /// This value is 10**18 if the oracle is greater than the collateral price
+    /// @return minRatio Minimum ratio across all collateral assets between a collateral burn price and its target
+    /// price. This value is independent of `collateral` and is used to normalize the burn oracle value for burn
+    /// transactions.
     /// @return redemption Oracle value that would be used to price `collateral` when computing the collateral ratio
     /// during a redemption
     function getOracleValues(
         address collateral
-    ) external view returns (uint256 mint, uint256 burn, uint256 ratio, uint256 redemption);
+    ) external view returns (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption);
 
     /// @notice Returns the data used to compute oracle values for `collateral`
     /// @return readType Type of oracle (Chainlink, external smart contract, ...)
