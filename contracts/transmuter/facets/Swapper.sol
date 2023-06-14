@@ -6,6 +6,7 @@ import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 
 import { ISwapper } from "interfaces/ISwapper.sol";
+import { IPermit2, PermitTransferFrom, SignatureTransferDetails, TokenPermissions } from "interfaces/external/permit2/IPermit2.sol";
 
 import { LibHelpers } from "../libraries/LibHelpers.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
@@ -45,13 +46,39 @@ contract Swapper is ISwapper {
         address tokenOut,
         address to,
         uint256 deadline
-    ) external returns (uint256 amountOut) {
+    ) external returns (uint256) {
+        return swapExactInputWithPermit(amountIn, amountOutMin, tokenIn, tokenOut, to, deadline, "");
+    }
+
+    function swapExactInputWithPermit(
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address tokenIn,
+        address tokenOut,
+        address to,
+        uint256 deadline,
+        bytes memory permitData
+    ) public returns (uint256 amountOut) {
+        if (permitData.length > 0) {
+            (uint256 nonce, bytes memory signature) = abi.decode(permitData, (uint256, bytes));
+            permitData = abi.encodeWithSelector(
+                IPermit2.permitTransferFrom.selector,
+                PermitTransferFrom({
+                    permitted: TokenPermissions({ token: tokenIn, amount: amountIn }),
+                    nonce: nonce,
+                    deadline: deadline
+                }),
+                SignatureTransferDetails({ to: address(this), requestedAmount: amountIn }),
+                msg.sender,
+                signature
+            );
+        }
         (bool mint, Collateral storage collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, deadline);
         amountOut = mint
             ? LibSwapper.quoteMintExactInput(collatInfo, amountIn)
             : LibSwapper.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
         if (amountOut < amountOutMin) revert TooSmallAmountOut();
-        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo);
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo, permitData);
     }
 
     /// @inheritdoc ISwapper
@@ -64,13 +91,39 @@ contract Swapper is ISwapper {
         address tokenOut,
         address to,
         uint256 deadline
-    ) external returns (uint256 amountIn) {
+    ) external returns (uint256) {
+        return swapExactOutputWithPermit(amountOut, amountInMax, tokenIn, tokenOut, to, deadline, "");
+    }
+
+    function swapExactOutputWithPermit(
+        uint256 amountOut,
+        uint256 amountInMax,
+        address tokenIn,
+        address tokenOut,
+        address to,
+        uint256 deadline,
+        bytes memory permitData
+    ) public returns (uint256 amountIn) {
+        if (permitData.length > 0) {
+            (uint256 nonce, bytes memory signature) = abi.decode(permitData, (uint256, bytes));
+            permitData = abi.encodeWithSelector(
+                IPermit2.permitTransferFrom.selector,
+                PermitTransferFrom({
+                    permitted: TokenPermissions({ token: tokenIn, amount: amountInMax }),
+                    nonce: nonce,
+                    deadline: deadline
+                }),
+                SignatureTransferDetails({ to: address(this), requestedAmount: amountIn }),
+                msg.sender,
+                signature
+            );
+        }
         (bool mint, Collateral storage collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, deadline);
         amountIn = mint
             ? LibSwapper.quoteMintExactOutput(collatInfo, amountOut)
             : LibSwapper.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         if (amountIn > amountInMax) revert TooBigAmountIn();
-        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo);
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo, permitData);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

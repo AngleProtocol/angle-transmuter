@@ -23,6 +23,17 @@ interface ISwapper {
         uint256 deadline
     ) external returns (uint256 amountOut);
 
+    /// @notice Same as `swapExactInput`, but using Permit2 signatures for `tokenIn`
+    function swapExactInputWithPermit(
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address tokenIn,
+        address tokenOut,
+        address to,
+        uint256 deadline,
+        bytes calldata permitData
+    ) external returns (uint256 amountOut);
+
     /// @notice Swaps (that is to say mints or burns) an amount of `tokenIn` for an exact amount of `tokenOut`
     /// @param amountOut Amount of `tokenOut` to obtain from the swap
     /// @param amountInMax Maximum amount of `tokenIn` to bring in order to get `amountOut` of `tokenOut`
@@ -38,6 +49,17 @@ interface ISwapper {
         address tokenOut,
         address to,
         uint256 deadline
+    ) external returns (uint256 amountIn);
+
+    /// @notice Same as `swapExactOutput`, but using Permit2 signatures for `tokenIn`
+    function swapExactOutputWithPermit(
+        uint256 amountOut,
+        uint256 amountInMax,
+        address tokenIn,
+        address tokenOut,
+        address to,
+        uint256 deadline,
+        bytes calldata permitData
     ) external returns (uint256 amountIn);
 
     /// @notice Simulates what a call to `swapExactInput` with `amountIn` of `tokenIn` for `tokenOut` would give.

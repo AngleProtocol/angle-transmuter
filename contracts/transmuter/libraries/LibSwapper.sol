@@ -2,12 +2,14 @@
 
 pragma solidity ^0.8.19;
 
-import { Math } from "oz/utils/math/Math.sol";
-import { SafeCast } from "oz/utils/math/SafeCast.sol";
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
+import { Address } from "oz/utils/Address.sol";
+import { Math } from "oz/utils/math/Math.sol";
+import { SafeCast } from "oz/utils/math/SafeCast.sol";
 
 import { IAgToken } from "interfaces/IAgToken.sol";
+import { IPermit2, PermitTransferFrom, SignatureTransferDetails, TokenPermissions } from "interfaces/external/permit2/IPermit2.sol";
 
 import { LibHelpers } from "./LibHelpers.sol";
 import { LibManager } from "./LibManager.sol";
@@ -37,6 +39,7 @@ struct LocalVariables {
 library LibSwapper {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
+    using Address for address;
     using Math for uint256;
 
     // The `to` address is not indexed as there cannot be 4 indexed addresses in an event.
@@ -57,7 +60,8 @@ library LibSwapper {
         address tokenOut,
         address to,
         bool mint,
-        Collateral storage collatInfo
+        Collateral storage collatInfo,
+        bytes memory permitData
     ) internal {
         if (amountIn > 0 && amountOut > 0) {
             TransmuterStorage storage ks = s.transmuterStorage();
@@ -68,7 +72,11 @@ library LibSwapper {
                 collatInfo.normalizedStables += uint216(changeAmount);
                 ks.normalizedStables += changeAmount;
                 if (collatInfo.isManaged > 0) LibManager.transferFrom(tokenIn, amountIn, collatInfo.managerData.config);
-                else IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+                else {
+                    if (permitData.length > 0) {
+                        PERMIT_2.functionCall(permitData);
+                    } else IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+                }
                 IAgToken(tokenOut).mint(to, amountOut);
             } else {
                 if (collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, to))
