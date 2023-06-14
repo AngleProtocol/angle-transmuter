@@ -10,7 +10,3 @@
 	path = lib/prb-math
 	url = https://github.com/PaulRBerg/prb-math
 	ignore = dirty
-[submodule "lib/permit2"]
-	path = lib/permit2
-	url = https://github.com/Uniswap/permit2
-	ignore = dirty
