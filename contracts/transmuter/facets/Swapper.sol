@@ -36,9 +36,10 @@ contract Swapper is ISwapper {
 
     // For the two functions below, a value of `0` for the `deadline` parameters means that there will be no timestamp
     // check for when the swap is actually executed.
+    // There is no need to approve the contract before calling the following functions for a burn.
 
     /// @inheritdoc ISwapper
-    /// @dev `msg.sender` must have approved this contract for at least `amountIn` for `tokenIn`
+    /// @dev `msg.sender` must have approved this contract for at least `amountIn` for `tokenIn` for mint transactions
     function swapExactInput(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -80,7 +81,8 @@ contract Swapper is ISwapper {
 
     /// @inheritdoc ISwapper
     /// @dev `msg.sender` must have approved this contract for an amount bigger than what `amountIn` will
-    /// be before calling this function. Approving the contract for `tokenIn` with `amountInMax` will always be enough.
+    /// be before calling this function for a mint. Approving the contract for `tokenIn` with `amountInMax`
+    /// will always be enough in this case
     function swapExactOutput(
         uint256 amountOut,
         uint256 amountInMax,

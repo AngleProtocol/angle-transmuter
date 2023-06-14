@@ -37,7 +37,6 @@ via_ir = false
 gas_reports = ["*"]
 runs = 2000
 
-
 [profile.dev.fuzz]
 runs = 2000
 gas_reports = ["*"]
