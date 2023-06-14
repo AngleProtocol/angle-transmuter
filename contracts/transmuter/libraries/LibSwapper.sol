@@ -87,7 +87,8 @@ library LibSwapper {
                 collatInfo.normalizedStables -= uint216(changeAmount);
                 ks.normalizedStables -= changeAmount;
                 IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-                if (collatInfo.isManaged > 0) LibManager.transferTo(tokenOut, to, amountOut, collatInfo.managerData);
+                if (collatInfo.isManaged > 0)
+                    LibManager.transferTo(tokenOut, to, amountOut, collatInfo.managerData.config);
                 else IERC20(tokenOut).safeTransfer(to, amountOut);
             }
         }
@@ -393,7 +394,7 @@ library LibSwapper {
     /// a transfer
     function checkAmounts(Collateral storage collatInfo, uint256 amountOut) internal view {
         // Checking if enough is available for collateral assets that involve manager addresses
-        if (collatInfo.isManaged > 0 && LibManager.maxAvailable(collatInfo.managerData) < amountOut)
+        if (collatInfo.isManaged > 0 && LibManager.maxAvailable(collatInfo.managerData.config) < amountOut)
             revert InvalidSwap();
     }
 

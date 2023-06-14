@@ -65,7 +65,7 @@ library LibRedeemer {
                 if (collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, to))
                     revert NotWhitelisted();
                 if (collatInfo.isManaged > 0) {
-                    LibManager.transferTo(tokens[i], to, amounts[i], collatInfo.managerData);
+                    LibManager.transferTo(tokens[i], to, amounts[i], collatInfo.managerData.config);
                 } else IERC20(tokens[i]).safeTransfer(to, amounts[i]);
             }
             if (subCollateralsTracker[indexCollateral] - 1 <= i) ++indexCollateral;
@@ -156,7 +156,7 @@ library LibRedeemer {
                     // calling `balanceOf` of the sub-collaterals.
                     // Managed assets must support ways to value their sub-collaterals in a non manipulable way
                     (uint256[] memory subCollateralsBalances, uint256 subCollateralsValue) = LibManager
-                        .getUnderlyingBalances(collateral.managerData);
+                        .getUnderlyingBalances(collateral.managerData.config);
                     // `subCollateralsBalances` length is not cached here to avoid stack too deep
                     for (uint256 k; k < subCollateralsBalances.length; ++k) {
                         tokens[countCollat + k] = address(collateral.managerData.subCollaterals[k]);

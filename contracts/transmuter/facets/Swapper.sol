@@ -11,6 +11,7 @@ import { IPermit2, PermitTransferFrom, SignatureTransferDetails, TokenPermission
 import { LibHelpers } from "../libraries/LibHelpers.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibSwapper } from "../libraries/LibSwapper.sol";
+import { LibManager } from "../libraries/LibManager.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -59,22 +60,28 @@ contract Swapper is ISwapper {
         uint256 deadline,
         bytes memory permitData
     ) public returns (uint256 amountOut) {
+        (bool mint, Collateral storage collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, deadline);
+        // Building the permit2 payload here to avoid a stack too deep
         if (permitData.length > 0) {
-            // Building the payload here to avoid a stack too deep
-            (uint256 nonce, bytes memory signature) = abi.decode(permitData, (uint256, bytes));
+            Permit2Details memory details;
+            if (collatInfo.isManaged > 0) {
+                details.to = LibManager.transferRecipient(collatInfo.managerData.config);
+            } else {
+                details.to = address(this);
+            }
+            (details.nonce, details.signature) = abi.decode(permitData, (uint256, bytes));
             permitData = abi.encodeWithSelector(
                 IPermit2.permitTransferFrom.selector,
                 PermitTransferFrom({
                     permitted: TokenPermissions({ token: tokenIn, amount: amountIn }),
-                    nonce: nonce,
+                    nonce: details.nonce,
                     deadline: deadline
                 }),
-                SignatureTransferDetails({ to: address(this), requestedAmount: amountIn }),
+                SignatureTransferDetails({ to: details.to, requestedAmount: amountIn }),
                 msg.sender,
-                signature
+                details.signature
             );
         }
-        (bool mint, Collateral storage collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, deadline);
         amountOut = mint
             ? LibSwapper.quoteMintExactInput(collatInfo, amountIn)
             : LibSwapper.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
@@ -111,18 +118,23 @@ contract Swapper is ISwapper {
             : LibSwapper.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         if (amountIn > amountInMax) revert TooBigAmountIn();
         if (permitData.length > 0) {
-            // Building the payload here to avoid a stack too deep
-            (uint256 nonce, bytes memory signature) = abi.decode(permitData, (uint256, bytes));
+            Permit2Details memory details;
+            if (collatInfo.isManaged > 0) {
+                details.to = LibManager.transferRecipient(collatInfo.managerData.config);
+            } else {
+                details.to = address(this);
+            }
+            (details.nonce, details.signature) = abi.decode(permitData, (uint256, bytes));
             permitData = abi.encodeWithSelector(
                 IPermit2.permitTransferFrom.selector,
                 PermitTransferFrom({
                     permitted: TokenPermissions({ token: tokenIn, amount: amountInMax }),
-                    nonce: nonce,
+                    nonce: details.nonce,
                     deadline: deadline
                 }),
-                SignatureTransferDetails({ to: address(this), requestedAmount: amountIn }),
+                SignatureTransferDetails({ to: details.to, requestedAmount: amountIn }),
                 msg.sender,
-                signature
+                details.signature
             );
         }
         LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo, permitData);
