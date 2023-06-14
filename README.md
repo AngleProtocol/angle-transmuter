@@ -171,8 +171,8 @@ yarn foundry:gas
 ```bash
 pip3 install slither-analyzer
 pip3 install solc-select
-solc-select install 0.8.17
-solc-select use 0.8.17
+solc-select install 0.8.19
+solc-select use 0.8.19
 slither .
 ```
 
