@@ -60,6 +60,7 @@ contract Swapper is ISwapper {
         bytes memory permitData
     ) public returns (uint256 amountOut) {
         if (permitData.length > 0) {
+            // Building the payload here to avoid a stack too deep
             (uint256 nonce, bytes memory signature) = abi.decode(permitData, (uint256, bytes));
             permitData = abi.encodeWithSelector(
                 IPermit2.permitTransferFrom.selector,
@@ -104,7 +105,13 @@ contract Swapper is ISwapper {
         uint256 deadline,
         bytes memory permitData
     ) public returns (uint256 amountIn) {
+        (bool mint, Collateral storage collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, deadline);
+        amountIn = mint
+            ? LibSwapper.quoteMintExactOutput(collatInfo, amountOut)
+            : LibSwapper.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
+        if (amountIn > amountInMax) revert TooBigAmountIn();
         if (permitData.length > 0) {
+            // Building the payload here to avoid a stack too deep
             (uint256 nonce, bytes memory signature) = abi.decode(permitData, (uint256, bytes));
             permitData = abi.encodeWithSelector(
                 IPermit2.permitTransferFrom.selector,
@@ -118,11 +125,6 @@ contract Swapper is ISwapper {
                 signature
             );
         }
-        (bool mint, Collateral storage collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, deadline);
-        amountIn = mint
-            ? LibSwapper.quoteMintExactOutput(collatInfo, amountOut)
-            : LibSwapper.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
-        if (amountIn > amountInMax) revert TooBigAmountIn();
         LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo, permitData);
     }
 

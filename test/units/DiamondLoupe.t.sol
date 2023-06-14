@@ -9,7 +9,7 @@ import { Test } from "contracts/transmuter/configs/Test.sol";
 import { DiamondCut } from "contracts/transmuter/facets/DiamondCut.sol";
 import "contracts/utils/Constants.sol";
 
-import { Fixture } from "../../Fixture.sol";
+import { Fixture } from "../Fixture.sol";
 
 contract Test_DiamondLoupe is Fixture {
     address pureFacet = address(new MockPureFacet());

@@ -44,13 +44,19 @@ contract Fixture is Transmuter {
     address public constant guardian = 0x0C2553e4B9dFA9f83b1A6D3EAB96c4bAaB42d430;
     address public constant angle = 0x31429d1856aD1377A8A0079410B297e1a9e214c2;
 
-    address public constant alice = address(uint160(uint256(keccak256(abi.encodePacked("alice")))));
-    address public constant bob = address(uint160(uint256(keccak256(abi.encodePacked("bob")))));
-    address public constant charlie = address(uint160(uint256(keccak256(abi.encodePacked("charlie")))));
-    address public constant dylan = address(uint160(uint256(keccak256(abi.encodePacked("dylan")))));
-    address public constant sweeper = address(uint160(uint256(keccak256(abi.encodePacked("sweeper")))));
+    address public alice;
+    address public bob;
+    address public charlie;
+    address public dylan;
+    address public sweeper;
 
     function setUp() public virtual {
+        alice = vm.addr(1);
+        bob = vm.addr(2);
+        charlie = vm.addr(3);
+        dylan = vm.addr(4);
+        sweeper = vm.addr(5);
+
         vm.label(governor, "Governor");
         vm.label(guardian, "Guardian");
         vm.label(angle, "ANGLE");

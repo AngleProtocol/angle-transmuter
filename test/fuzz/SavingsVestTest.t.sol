@@ -26,7 +26,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
     uint256 internal constant _minOracleValue = 10 ** 3; // 10**(-5)
     uint256 internal constant _maxElapseTime = 20 days;
     uint256 internal constant _nbrActor = 10;
-    address internal constant _surplusManager = dylan;
+    address internal _surplusManager; // dylan
     SavingsVest internal _saving;
     SavingsVest internal _savingImplementation;
     string internal _name;
@@ -38,6 +38,8 @@ contract SavingsVestTest is Fixture, FunctionUtils {
     uint256[] internal _maxTokenAmount;
 
     function setUp() public override {
+        _surplusManager = dylan;
+
         super.setUp();
 
         // set Fees to 0 on all collaterals
