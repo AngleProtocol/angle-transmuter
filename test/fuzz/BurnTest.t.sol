@@ -521,6 +521,13 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
         if (amountOut == 0) return;
         uint256 reflexiveAmountStable = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
+        // TODO Anyone know how we could do without this double reflexivity?
+        // The problem to compare reflexiveAmountStable and amountOut is: suppose there are very high fees
+        // at the end segment BASE_9-1
+        // Suppose also that when burning M stablecoins, M-N are used up until xFeeBurn[2] yielding C collateral
+        // Then the remaining N yield EPS<<0 collateral --> total collateral C+EPS but with precision error
+        // (collateral being with 6 decimals) --> I end up with C
+        // Now quote C collateral to burn --> M-N
         uint256 reflexiveAmountOut = transmuter.quoteIn(
             reflexiveAmountStable,
             address(agToken),

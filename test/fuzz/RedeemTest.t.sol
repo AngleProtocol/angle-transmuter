@@ -994,8 +994,8 @@ contract RedeemTest is Fixture, FunctionUtils {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 uint8 decimals = IERC20Metadata(_collaterals[i]).decimals();
                 if (uint256(value) > maxOracle) maxOracle = uint256(value);
-                if (amounts[i] > maxValue) maxValue = amounts[i] / decimals;
-                if (amounts[i] < minValue || minValue == 0) minValue = amounts[i] / decimals;
+                if (amounts[i] > maxValue) maxValue = amounts[i] / 10 ** decimals;
+                if (amounts[i] < minValue || minValue == 0) minValue = amounts[i] / 10 ** decimals;
                 if (minOracle == 0 || uint256(value) < minOracle) minOracle = uint256(value);
                 if (uint256(value) > BASE_18 || amounts[i] < 10 ** 4) lastCheck = true;
                 amountInValueReceived += (uint256(value) * _convertDecimalTo(amounts[i], decimals, 18));
@@ -1054,8 +1054,8 @@ contract RedeemTest is Fixture, FunctionUtils {
                         (uint256(value) * _convertDecimalTo(amounts[count++], decimals, 18)) /
                         BASE_8;
                     if (uint256(value) > maxOracle) maxOracle = uint256(value);
-                    if (amounts[i] > maxValue) maxValue = amounts[i] / decimals;
-                    if (amounts[i] < minValue || minValue == 0) minValue = amounts[i] / decimals;
+                    if (amounts[i] > maxValue) maxValue = amounts[i] / 10 ** decimals;
+                    if (amounts[i] < minValue || minValue == 0) minValue = amounts[i] / 10 ** decimals;
                     if (minOracle == 0 || uint256(value) < minOracle) minOracle = uint256(value);
                     if (uint256(value) > BASE_18 || amounts[i] < 10 ** 4) lastCheck = true;
                 }
@@ -1069,8 +1069,8 @@ contract RedeemTest is Fixture, FunctionUtils {
                         (uint256(value) * _convertDecimalTo(amounts[count++], decimals, 18)) /
                         BASE_8;
                     if (uint256(value) > maxOracle) maxOracle = uint256(value);
-                    if (amounts[i] > maxValue) maxValue = amounts[i] / decimals;
-                    if (amounts[i] < minValue || minValue == 0) minValue = amounts[i] / decimals;
+                    if (amounts[i] > maxValue) maxValue = amounts[i] / 10 ** decimals;
+                    if (amounts[i] < minValue || minValue == 0) minValue = amounts[i] / 10 ** decimals;
                     if (minOracle == 0 || uint256(value) < minOracle) minOracle = uint256(value);
                     if (uint256(value) > BASE_18 || amounts[i] < 10 ** 4) lastCheck = true;
                 }
