@@ -22,7 +22,7 @@ The Transmuter system relies on a [diamond proxy pattern](https://eips.ethereum.
 - the [`Getters`](./contracts/transmuter/facets/Swapper.sol) facet with external getters for UIs and contracts built on top of `Transmuter`
 - the [`Setters`](./contracts/transmuter/facets/Setters.sol) facet protocols' governance can use to update system parameters.
 
-The storage parameters of the system are defined in the [`Storage`](./contracts/transmuter/Storage.sol).
+The storage parameters of the system are defined in the [`Storage`](./contracts/transmuter/Storage.sol) file.
 
 The Transmuter system can come with optional [ERC4626](https://eips.ethereum.org/EIPS/eip-4626) [savings contracts](./contracts/savings/) which can be used to distribute a yield to the holders of the stablecoin issued through Transmuter.
 
@@ -171,10 +171,16 @@ yarn foundry:gas
 ```bash
 pip3 install slither-analyzer
 pip3 install solc-select
-solc-select install 0.8.17
-solc-select use 0.8.17
+solc-select install 0.8.19
+solc-select use 0.8.19
 slither .
 ```
+
+---
+
+## Contributing
+
+If you're interested in contributing, please see our [contributions guidelines](./CONTRIBUTING.md).
 
 ---
 
@@ -186,4 +192,9 @@ For any question or feedback you can send an email to [contact@angle.money](mail
 
 ## Licensing
 
-The primary license for this repository is the Business Source License 1.1 (`BUSL-1.1`). See [`LICENSE`](./LICENSE).
+The primary license for this repository is the Business Source License 1.1 (`BUSL-1.1`). See [`LICENSE`](./LICENSE). Minus the following exceptions:
+
+- [Interfaces](contracts/interfaces/) have a General Public License
+- [Some libraries](contracts/transmuter/libraries/LibHelpers.sol) have a General Public License
+
+Each of these files states their license type.
