@@ -180,7 +180,7 @@ slither .
 
 ## Contributing
 
-If you're interested in contributing, please see our contributions guidelines.
+If you're interested in contributing, please see our [contributions guidelines](./CONTRIBUTING.md).
 
 ---
 
