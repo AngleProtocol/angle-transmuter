@@ -158,7 +158,8 @@ contract ArbitragerWithSplit is BaseActor {
                 testS.amountOutSplit1 = (testS.amountOut * splitProportion) / BASE_9;
                 testS.amountInSplit1 = _transmuterSplit.quoteOut(testS.amountOutSplit1, testS.tokenIn, testS.tokenOut);
                 {
-                    // We can be missing either stablecoins or amountIn in the case of BurnExactOutput and MintExactOutput respectiveley
+                    // We can be missing either stablecoins or amountIn in the case of BurnExactOutput
+                    // and MintExactOutput respectively
                     // Making revert the tx due to rounding errors. We increase balances have non reverting txs
                     uint256 actorBalance = agToken.balanceOf(_currentActor);
                     if (quoteType == QuoteType.BurnExactOutput && actorBalance < testS.amountInSplit1) {

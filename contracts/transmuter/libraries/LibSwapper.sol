@@ -414,28 +414,28 @@ library LibSwapper {
         address _agToken = address(ks.agToken);
         if (tokenIn == _agToken) {
             collatInfo = ks.collaterals[tokenOut];
-            mint = false;
             if (collatInfo.isBurnLive == 0) revert Paused();
+            mint = false;
         } else if (tokenOut == _agToken) {
             collatInfo = ks.collaterals[tokenIn];
-            mint = true;
             if (collatInfo.isMintLive == 0) revert Paused();
+            mint = true;
         } else revert InvalidTokens();
     }
 
-    /// @notice Checks whether `tokenIn`is a valid unpaused collateral and the deadline
+    /// @notice Checks whether `tokenIn` is a valid unpaused collateral and the deadline
     function getMint(
         address tokenIn,
         uint256 deadline
-    ) internal view returns (address agToken, Collateral storage collatInfo) {
+    ) internal view returns (address tokenOut, Collateral storage collatInfo) {
         if (deadline != 0 && block.timestamp > deadline) revert TooLate();
         TransmuterStorage storage ks = s.transmuterStorage();
-        agToken = address(ks.agToken);
         collatInfo = ks.collaterals[tokenIn];
         if (collatInfo.isMintLive == 0) revert Paused();
+        tokenOut = address(ks.agToken);
     }
 
-    /// @notice Build a permit2 `permitTransferFrom` payload for a `tokenIn` transfer
+    /// @notice Builds a permit2 `permitTransferFrom` payload for a `tokenIn` transfer
     /// @dev The transfer should be from `msg.sender` to this contract or a manager
     function buildPermitTransferPayload(
         uint256 amount,
@@ -446,11 +446,8 @@ library LibSwapper {
         Collateral storage collatInfo
     ) internal view returns (bytes memory payload) {
         Permit2Details memory details;
-        if (collatInfo.isManaged > 0) {
-            details.to = LibManager.transferRecipient(collatInfo.managerData.config);
-        } else {
-            details.to = address(this);
-        }
+        if (collatInfo.isManaged > 0) details.to = LibManager.transferRecipient(collatInfo.managerData.config);
+        else details.to = address(this);
         (details.nonce, details.signature) = abi.decode(permitData, (uint256, bytes));
         payload = abi.encodeWithSelector(
             IPermit2.permitTransferFrom.selector,

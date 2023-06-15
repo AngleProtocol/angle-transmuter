@@ -42,8 +42,8 @@ runs = 2000
 gas_reports = ["*"]
 
 [profile.dev.invariant]
-runs = 5000
-depth = 50
+runs = 10
+depth = 30
 fail_on_revert = false
 
 [profile.ci]

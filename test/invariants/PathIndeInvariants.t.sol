@@ -146,9 +146,10 @@ contract PathIndeInvariants is Fixture {
         uint256 stablecoinIssuedSplit = transmuterSplit.getTotalIssued();
 
         uint256 balance = agToken.balanceOf(sweeper);
-        for (uint256 i = 0; i < _traderHandler.nbrActor(); i++) balance += agToken.balanceOf(_traderHandler.actors(i));
-        for (uint256 i = 0; i < _arbitragerHandler.nbrActor(); i++)
-            balance += agToken.balanceOf(_arbitragerHandler.actors(i));
+        uint256 traderActors = _traderHandler.nbrActor();
+        uint256 arbitrageActors = _arbitragerHandler.nbrActor();
+        for (uint256 i = 0; i < traderActors; i++) balance += agToken.balanceOf(_traderHandler.actors(i));
+        for (uint256 i = 0; i < arbitrageActors; i++) balance += agToken.balanceOf(_arbitragerHandler.actors(i));
 
         assertApproxEqAbs(stablecoinIssued + stablecoinIssuedSplit, balance, BASE_12);
     }

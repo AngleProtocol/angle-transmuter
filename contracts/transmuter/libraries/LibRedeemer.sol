@@ -92,9 +92,7 @@ library LibRedeemer {
         // If the protocol is under-collateralized, a penalty factor is applied to the returned amount of each asset
         if (collatRatio < BASE_9) {
             uint64[] memory xRedemptionCurveMem = ks.xRedemptionCurve;
-            penaltyFactor = uint64(
-                LibHelpers.piecewiseLinear(collatRatio, true, xRedemptionCurveMem, yRedemptionCurveMem)
-            );
+            penaltyFactor = uint64(LibHelpers.piecewiseLinear(collatRatio, xRedemptionCurveMem, yRedemptionCurveMem));
         }
 
         uint256 balancesLength = balances.length;

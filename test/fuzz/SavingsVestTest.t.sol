@@ -38,9 +38,8 @@ contract SavingsVestTest is Fixture, FunctionUtils {
     uint256[] internal _maxTokenAmount;
 
     function setUp() public override {
-        _surplusManager = dylan;
-
         super.setUp();
+        _surplusManager = dylan;
 
         // set Fees to 0 on all collaterals
         uint64[] memory xFeeMint = new uint64[](1);
