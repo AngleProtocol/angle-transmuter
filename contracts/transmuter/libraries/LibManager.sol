@@ -18,10 +18,10 @@ library LibManager {
     using SafeERC20 for IERC20;
 
     /// @notice Checks to which address managed funds must be transferred
-    function transferRecipient(bytes memory config) internal view returns (address) {
+    function transferRecipient(bytes memory config) internal view returns (address recipient) {
         (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
+        recipient = address(this);
         if (managerType == ManagerType.EXTERNAL) return abi.decode(data, (address));
-        return address(this);
     }
 
     /// @notice Performs a transfer of `token` for a collateral that is managed to a `to` address

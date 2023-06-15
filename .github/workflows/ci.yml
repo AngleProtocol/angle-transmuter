@@ -1,4 +1,4 @@
-name: CI
+name: Transmuter CI
 
 on:
   push:

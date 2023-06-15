@@ -427,6 +427,16 @@ contract SavingsVestTest is Fixture, FunctionUtils {
             assertEq(_saving.totalAssets(), _initDeposit + _firstDeposit + minted - shareProtocol);
             assertEq(agToken.balanceOf(address(_saving)), _initDeposit + _firstDeposit + minted - shareProtocol);
             assertEq(agToken.balanceOf(_surplusManager), shareProtocol);
+            // Testing estimatedAPR
+            bytes32 what2 = "VP";
+            vm.prank(guardian);
+            _saving.setParams(what2, 86400);
+            assertEq(
+                _saving.estimatedAPR(),
+                ((minted - shareProtocol) * 3600 * 24 * 365 * BASE_18) / (_saving.totalAssets() * 86400)
+            );
+            vm.prank(guardian);
+            _saving.setParams(what2, 0);
 
             // check that kheops accounting was updated
             {

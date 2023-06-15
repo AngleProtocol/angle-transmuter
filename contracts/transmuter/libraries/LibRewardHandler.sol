@@ -22,7 +22,7 @@ library LibRewardHandler {
     /// @notice Internal version of the `sellRewards` function
     function sellRewards(uint256 minAmountOut, bytes memory payload) internal returns (uint256 amountOut) {
         TransmuterStorage storage ks = s.transmuterStorage();
-        if (!LibDiamond.isGovernor(msg.sender) && ks.isSellerTrusted[msg.sender] == 0) revert NotTrusted();
+        if (!LibDiamond.isGovernorOrGuardian(msg.sender) && ks.isSellerTrusted[msg.sender] == 0) revert NotTrusted();
 
         address[] memory list = ks.collateralList;
         uint256 listLength = list.length;
