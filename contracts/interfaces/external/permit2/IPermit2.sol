@@ -32,13 +32,6 @@ struct SignatureTransferDetails {
 /// @notice Handles ERC20 token transfers through signature based actions
 /// @dev Requires user's token approval on the Permit2 contract
 interface IPermit2 {
-    /// @notice A map from token owner address and a caller specified word index to a bitmap. Used to set bits in the bitmap to prevent against signature replay protection
-    /// @dev Uses unordered nonces so that permit messages do not need to be spent in a certain order
-    /// @dev The mapping is indexed first by the token owner, then by an index specified in the nonce
-    /// @dev It returns a uint256 bitmap
-    /// @dev The index, or wordPosition is capped at type(uint248).max
-    function nonceBitmap(address, uint256) external view returns (uint256);
-
     /// @notice Transfers a token using a signed permit message
     /// @dev Reverts if the requested amount is greater than the permitted signed amount
     /// @param permit The permit data signed over by the owner

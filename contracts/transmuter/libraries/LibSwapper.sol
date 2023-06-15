@@ -9,7 +9,8 @@ import { Math } from "oz/utils/math/Math.sol";
 import { SafeCast } from "oz/utils/math/SafeCast.sol";
 
 import { IAgToken } from "interfaces/IAgToken.sol";
-import { IPermit2, PermitTransferFrom, SignatureTransferDetails, TokenPermissions } from "interfaces/external/permit2/IPermit2.sol";
+import { IPermit2, PermitTransferFrom } from "interfaces/external/permit2/IPermit2.sol";
+import { SignatureTransferDetails, TokenPermissions } from "interfaces/external/permit2/IPermit2.sol";
 
 import { LibHelpers } from "./LibHelpers.sol";
 import { LibManager } from "./LibManager.sol";
