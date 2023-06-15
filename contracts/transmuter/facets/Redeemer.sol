@@ -32,8 +32,7 @@ contract Redeemer is IRedeemer {
         uint256 deadline,
         uint256[] memory minAmountOuts
     ) external returns (address[] memory tokens, uint256[] memory amounts) {
-        address[] memory forfeitTokens;
-        return LibRedeemer.redeem(amount, receiver, deadline, minAmountOuts, forfeitTokens);
+        return LibRedeemer.redeem(amount, receiver, deadline, minAmountOuts, new address[](0));
     }
 
     /// @inheritdoc IRedeemer

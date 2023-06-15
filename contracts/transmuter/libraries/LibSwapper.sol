@@ -2,12 +2,15 @@
 
 pragma solidity ^0.8.19;
 
-import { Math } from "oz/utils/math/Math.sol";
-import { SafeCast } from "oz/utils/math/SafeCast.sol";
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
+import { Address } from "oz/utils/Address.sol";
+import { Math } from "oz/utils/math/Math.sol";
+import { SafeCast } from "oz/utils/math/SafeCast.sol";
 
 import { IAgToken } from "interfaces/IAgToken.sol";
+import { IPermit2, PermitTransferFrom } from "interfaces/external/permit2/IPermit2.sol";
+import { SignatureTransferDetails, TokenPermissions } from "interfaces/external/permit2/IPermit2.sol";
 
 import { LibHelpers } from "./LibHelpers.sol";
 import { LibManager } from "./LibManager.sol";
@@ -37,6 +40,7 @@ struct LocalVariables {
 library LibSwapper {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
+    using Address for address;
     using Math for uint256;
 
     // The `to` address is not indexed as there cannot be 4 indexed addresses in an event.
@@ -57,7 +61,8 @@ library LibSwapper {
         address tokenOut,
         address to,
         bool mint,
-        Collateral storage collatInfo
+        Collateral storage collatInfo,
+        bytes memory permitData
     ) internal {
         if (amountIn > 0 && amountOut > 0) {
             TransmuterStorage storage ks = s.transmuterStorage();
@@ -67,8 +72,13 @@ library LibSwapper {
                 // as variables normalized by a `normalizer`
                 collatInfo.normalizedStables += uint216(changeAmount);
                 ks.normalizedStables += changeAmount;
-                if (collatInfo.isManaged > 0) LibManager.transferFrom(tokenIn, amountIn, collatInfo.managerData.config);
-                else IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+                if (permitData.length > 0) {
+                    PERMIT_2.functionCall(permitData);
+                } else if (collatInfo.isManaged > 0)
+                    LibManager.transferFrom(tokenIn, amountIn, collatInfo.managerData.config);
+                else {
+                    IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+                }
                 IAgToken(tokenOut).mint(to, amountOut);
             } else {
                 if (collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, to))
@@ -79,7 +89,8 @@ library LibSwapper {
                 collatInfo.normalizedStables -= uint216(changeAmount);
                 ks.normalizedStables -= changeAmount;
                 IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-                if (collatInfo.isManaged > 0) LibManager.transferTo(tokenOut, to, amountOut, collatInfo.managerData);
+                if (collatInfo.isManaged > 0)
+                    LibManager.transferTo(tokenOut, to, amountOut, collatInfo.managerData.config);
                 else IERC20(tokenOut).safeTransfer(to, amountOut);
             }
         }
@@ -385,7 +396,7 @@ library LibSwapper {
     /// a transfer
     function checkAmounts(Collateral storage collatInfo, uint256 amountOut) internal view {
         // Checking if enough is available for collateral assets that involve manager addresses
-        if (collatInfo.isManaged > 0 && LibManager.maxAvailable(collatInfo.managerData) < amountOut)
+        if (collatInfo.isManaged > 0 && LibManager.maxAvailable(collatInfo.managerData.config) < amountOut)
             revert InvalidSwap();
     }
 
@@ -410,5 +421,47 @@ library LibSwapper {
             mint = true;
             if (collatInfo.isMintLive == 0) revert Paused();
         } else revert InvalidTokens();
+    }
+
+    /// @notice Checks whether `tokenIn`is a valid unpaused collateral and the deadline
+    function getMint(
+        address tokenIn,
+        uint256 deadline
+    ) internal view returns (address agToken, Collateral storage collatInfo) {
+        if (deadline != 0 && block.timestamp > deadline) revert TooLate();
+        TransmuterStorage storage ks = s.transmuterStorage();
+        agToken = address(ks.agToken);
+        collatInfo = ks.collaterals[tokenIn];
+        if (collatInfo.isMintLive == 0) revert Paused();
+    }
+
+    /// @notice Build a permit2 `permitTransferFrom` payload for a `tokenIn` transfer
+    /// @dev The transfer should be from `msg.sender` to this contract or a manager
+    function buildPermitTransferPayload(
+        uint256 amount,
+        uint256 approvedAmount,
+        address tokenIn,
+        uint256 deadline,
+        bytes memory permitData,
+        Collateral storage collatInfo
+    ) internal view returns (bytes memory payload) {
+        Permit2Details memory details;
+        if (collatInfo.isManaged > 0) {
+            details.to = LibManager.transferRecipient(collatInfo.managerData.config);
+        } else {
+            details.to = address(this);
+        }
+        (details.nonce, details.signature) = abi.decode(permitData, (uint256, bytes));
+        payload = abi.encodeWithSelector(
+            IPermit2.permitTransferFrom.selector,
+            PermitTransferFrom({
+                permitted: TokenPermissions({ token: tokenIn, amount: approvedAmount }),
+                nonce: details.nonce,
+                deadline: deadline
+            }),
+            SignatureTransferDetails({ to: details.to, requestedAmount: amount }),
+            msg.sender,
+            details.signature
+        );
     }
 }

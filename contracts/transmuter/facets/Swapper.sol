@@ -10,6 +10,7 @@ import { ISwapper } from "interfaces/ISwapper.sol";
 import { LibHelpers } from "../libraries/LibHelpers.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibSwapper } from "../libraries/LibSwapper.sol";
+import { LibManager } from "../libraries/LibManager.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -51,7 +52,30 @@ contract Swapper is ISwapper {
             ? LibSwapper.quoteMintExactInput(collatInfo, amountIn)
             : LibSwapper.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
         if (amountOut < amountOutMin) revert TooSmallAmountOut();
-        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo);
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo, "");
+    }
+
+    /// @inheritdoc ISwapper
+    function swapExactInputWithPermit(
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address tokenIn,
+        address to,
+        uint256 deadline,
+        bytes memory permitData
+    ) external returns (uint256 amountOut) {
+        (address tokenOut, Collateral storage collatInfo) = LibSwapper.getMint(tokenIn, deadline);
+        permitData = LibSwapper.buildPermitTransferPayload(
+            amountIn,
+            amountIn,
+            tokenIn,
+            deadline,
+            permitData,
+            collatInfo
+        );
+        amountOut = LibSwapper.quoteMintExactInput(collatInfo, amountIn);
+        if (amountOut < amountOutMin) revert TooSmallAmountOut();
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, true, collatInfo, permitData);
     }
 
     /// @inheritdoc ISwapper
@@ -70,7 +94,30 @@ contract Swapper is ISwapper {
             ? LibSwapper.quoteMintExactOutput(collatInfo, amountOut)
             : LibSwapper.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         if (amountIn > amountInMax) revert TooBigAmountIn();
-        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo);
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo, "");
+    }
+
+    /// @inheritdoc ISwapper
+    function swapExactOutputWithPermit(
+        uint256 amountOut,
+        uint256 amountInMax,
+        address tokenIn,
+        address to,
+        uint256 deadline,
+        bytes memory permitData
+    ) public returns (uint256 amountIn) {
+        (address tokenOut, Collateral storage collatInfo) = LibSwapper.getMint(tokenIn, deadline);
+        amountIn = LibSwapper.quoteMintExactOutput(collatInfo, amountOut);
+        if (amountIn > amountInMax) revert TooBigAmountIn();
+        permitData = LibSwapper.buildPermitTransferPayload(
+            amountIn,
+            amountInMax,
+            tokenIn,
+            deadline,
+            permitData,
+            collatInfo
+        );
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, true, collatInfo, permitData);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

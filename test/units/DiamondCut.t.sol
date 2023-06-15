@@ -11,7 +11,7 @@ import { LibDiamond } from "contracts/transmuter/libraries/LibDiamond.sol";
 import "contracts/utils/Constants.sol";
 import "contracts/utils/Errors.sol" as Errors;
 
-import { Fixture } from "../../Fixture.sol";
+import { Fixture } from "../Fixture.sol";
 
 struct FacetCutAux {
     address facetAddress;

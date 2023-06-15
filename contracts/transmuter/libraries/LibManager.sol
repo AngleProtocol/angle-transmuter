@@ -17,12 +17,19 @@ import "../Storage.sol";
 library LibManager {
     using SafeERC20 for IERC20;
 
+    /// @notice Checks to which address managed funds must be transferred
+    function transferRecipient(bytes memory config) internal view returns (address) {
+        (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
+        if (managerType == ManagerType.EXTERNAL) return abi.decode(data, (address));
+        return address(this);
+    }
+
     /// @notice Performs a transfer of `token` for a collateral that is managed to a `to` address
     /// @dev `token` may not be the actual collateral itself, as some collaterals have subcollaterals associated
     /// with it
     /// @dev Eventually pulls funds from strategies
-    function transferTo(address token, address to, uint256 amount, ManagerStorage memory managerData) internal {
-        (ManagerType managerType, bytes memory data) = parseManagerConfig(managerData.config);
+    function transferTo(address token, address to, uint256 amount, bytes memory config) internal {
+        (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
         if (managerType == ManagerType.EXTERNAL) abi.decode(data, (IManager)).transferTo(token, to, amount);
     }
 
@@ -46,16 +53,16 @@ library LibManager {
     /// @return totalValue The value of the `subCollaterals` (excluding the collateral used within Transmuter)
     /// @dev `subCollaterals` must always have as first token (index 0) the collateral itself
     function getUnderlyingBalances(
-        ManagerStorage memory managerData
+        bytes memory config
     ) internal view returns (uint256[] memory balances, uint256 totalValue) {
-        (ManagerType managerType, bytes memory data) = parseManagerConfig(managerData.config);
+        (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
         if (managerType == ManagerType.EXTERNAL) return abi.decode(data, (IManager)).getUnderlyingBalances();
     }
 
     /// @notice Returns available underlying tokens, for instance if liquidity is fully used and
     /// not withdrawable the function will return 0
-    function maxAvailable(ManagerStorage memory managerData) internal view returns (uint256 available) {
-        (ManagerType managerType, bytes memory data) = parseManagerConfig(managerData.config);
+    function maxAvailable(bytes memory config) internal view returns (uint256 available) {
+        (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
         if (managerType == ManagerType.EXTERNAL) return abi.decode(data, (IManager)).maxAvailable();
     }
 

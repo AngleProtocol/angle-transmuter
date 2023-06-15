@@ -78,7 +78,7 @@ contract Setters is AccessControlModifiers, ISetters {
     /// @dev `collateral` is different from `token` only in the case of a managed collateral
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external onlyGovernor {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
-        if (collatInfo.isManaged > 0) LibManager.transferTo(address(token), to, amount, collatInfo.managerData);
+        if (collatInfo.isManaged > 0) LibManager.transferTo(address(token), to, amount, collatInfo.managerData.config);
         else token.safeTransfer(to, amount);
     }
 

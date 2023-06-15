@@ -14,7 +14,7 @@ import { LibSetters } from "contracts/transmuter/libraries/LibSetters.sol";
 import "contracts/utils/Constants.sol";
 import "contracts/utils/Errors.sol" as Errors;
 
-import { Fixture } from "../../Fixture.sol";
+import { Fixture } from "../Fixture.sol";
 
 contract Test_Setters_TogglePause is Fixture {
     function test_RevertWhen_NonGovernorOrGuardian() public {

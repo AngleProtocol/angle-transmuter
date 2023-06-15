@@ -10,7 +10,7 @@
     "run": "docker run -it --rm -v $(pwd):/app -w /app ghcr.io/foundry-rs/foundry sh",
     "run:ci": "FOUNDRY_PROFILE=ci forge test -vvv",
     "test": "FOUNDRY_PROFILE=dev forge test -vvv",
-    "lcov:clean": "lcov --remove lcov.info -o lcov.info 'test/**/**'",
+    "lcov:clean": "lcov --remove lcov.info -o lcov.info 'test/**/**' 'test/**' 'contracts/transmuter/configs/**' 'contracts/utils/**'",
     "lcov:generate-html": "genhtml lcov.info --output=coverage",
     "size": "forge build --sizes",
     "lint": "yarn lint:sol",
