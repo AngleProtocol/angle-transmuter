@@ -57,7 +57,7 @@ contract SavingsTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function test_Initialize() public {
+    function test_Initialization() public {
         assertEq(address(_saving.accessControlManager()), address(accessControlManager));
         assertEq(_saving.asset(), address(agToken));
         assertEq(_saving.name(), _name);
@@ -67,6 +67,60 @@ contract SavingsTest is Fixture, FunctionUtils {
         assertEq(agToken.balanceOf(address(_saving)), _initDeposit);
         assertEq(_saving.balanceOf(address(governor)), 0);
         assertEq(_saving.balanceOf(address(_saving)), _initDeposit);
+    }
+
+    function test_Initialize() public {
+        // To have the test written at least once somewhere
+        assert(accessControlManager.isGovernor(governor));
+        assert(accessControlManager.isGovernorOrGuardian(guardian));
+        assert(accessControlManager.isGovernorOrGuardian(governor));
+        bytes memory data;
+        Savings savingsContract = Savings(deployUpgradeable(address(_savingImplementation), data));
+        Savings savingsContract2 = Savings(deployUpgradeable(address(_savingImplementation), data));
+
+        vm.startPrank(governor);
+        agToken.addMinter(address(savingsContract));
+        deal(address(agToken), governor, _initDeposit * 10);
+        agToken.approve(address(savingsContract), _initDeposit);
+        agToken.approve(address(savingsContract2), _initDeposit);
+
+        savingsContract.initialize(
+            accessControlManager,
+            IERC20MetadataUpgradeable(address(agToken)),
+            _name,
+            _symbol,
+            BASE_18 / _initDeposit
+        );
+
+        vm.expectRevert();
+        savingsContract.initialize(
+            accessControlManager,
+            IERC20MetadataUpgradeable(address(agToken)),
+            _name,
+            _symbol,
+            BASE_18 / _initDeposit
+        );
+
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        savingsContract2.initialize(
+            IAccessControlManager(address(0)),
+            IERC20MetadataUpgradeable(address(agToken)),
+            _name,
+            _symbol,
+            BASE_18 / _initDeposit
+        );
+
+        vm.stopPrank();
+
+        assertEq(address(savingsContract.accessControlManager()), address(accessControlManager));
+        assertEq(savingsContract.asset(), address(agToken));
+        assertEq(savingsContract.name(), _name);
+        assertEq(savingsContract.symbol(), _symbol);
+        assertEq(savingsContract.totalAssets(), _initDeposit);
+        assertEq(savingsContract.totalSupply(), _initDeposit);
+        assertEq(agToken.balanceOf(address(savingsContract)), _initDeposit);
+        assertEq(savingsContract.balanceOf(address(governor)), 0);
+        assertEq(savingsContract.balanceOf(address(savingsContract)), _initDeposit);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
