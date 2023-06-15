@@ -33,6 +33,6 @@ interface IManager {
 
     /// @notice Manages `amount` new funds (in base collateral)
     /// @dev MUST revert if the manager cannot accept these funds
-    /// @dev MYST have received the funds beforehand
+    /// @dev MUST have received the funds beforehand
     function invest(uint256 amount) external;
 }
