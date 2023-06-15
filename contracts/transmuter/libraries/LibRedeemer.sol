@@ -47,13 +47,12 @@ library LibRedeemer {
         TransmuterStorage storage ks = s.transmuterStorage();
         if (ks.isRedemptionLive == 0) revert Paused();
         if (block.timestamp > deadline) revert TooLate();
+        uint256 proportion = quoteProportion(amount);
         // Updating the normalizer enables to simultaneously and proportionally reduce the amount
         // of stablecoins issued from each collateral without having to loop through each of them
         updateNormalizer(amount, false);
 
         IAgToken(ks.agToken).burnSelf(amount, msg.sender);
-
-        uint256 proportion = quoteProportion(amount);
 
         address[] memory collateralListMem = ks.collateralList;
         uint256 collateralListLength = collateralListMem.length;
