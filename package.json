@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "coverage": "forge coverage && yarn lcov:clean && yarn lcov:generate-html",
+    "coverage": "FOUNDRY_PROFILE=dev forge coverage && yarn lcov:clean && yarn lcov:generate-html",
     "compile": "FOUNDRY_PROFILE=dev forge build --optimize --optimizer-runs 1000",
     "deploy": "forge script --broadcast --verify -vvvv",
     "gas": "yarn test --gas-report",
