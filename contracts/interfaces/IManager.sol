@@ -4,7 +4,6 @@ pragma solidity >=0.5.0;
 
 /// @title IManager
 /// @author Angle Labs, Inc.
-/// @dev Inspired from ERC4626, although there is only one holder so heavily simplified
 interface IManager {
     /// @notice Returns the value of collateral managed by the Manager, in agToken
     /// @dev MUST NOT revert
@@ -29,9 +28,11 @@ interface IManager {
     /// @notice Sends `amount` of base collateral to the `to` address
     /// @dev Called when `agToken` are burned
     //  @dev MUST revert if there isn't enough available funds
+    /// @dev MUST be callable only by the transmuter
     function release(address to, uint256 amount) external;
 
     /// @notice Manages `amount` new funds (in base collateral)
     /// @dev MUST revert if the manager cannot accept these funds
+    /// @dev MYST have received the funds beforehand
     function invest(uint256 amount) external;
 }
