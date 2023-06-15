@@ -7,6 +7,7 @@
     "compile": "FOUNDRY_PROFILE=dev forge build --optimize --optimizer-runs 1000",
     "deploy": "forge script --broadcast --verify -vvvv",
     "gas": "yarn test --gas-report",
+    "deploy:fork": "forge script --fork-url fork --broadcast",
     "run": "docker run -it --rm -v $(pwd):/app -w /app ghcr.io/foundry-rs/foundry sh",
     "run:ci": "FOUNDRY_PROFILE=ci forge test -vvv --gas-report",
     "test": "FOUNDRY_PROFILE=dev forge test -vvv",
