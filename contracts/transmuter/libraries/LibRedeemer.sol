@@ -75,11 +75,18 @@ library LibRedeemer {
                     ++index;
                 }
             } else {
-                uint256 balance = IERC20(collateralListMem[i]).balanceOf(address(this));
-                tokens[index] = collateralListMem[i];
-                amounts[index] = (balance * proportion) / BASE_18;
-                IERC20(collateralListMem[i]).safeTransfer(to, amounts[index]);
-                ++index;
+                if (LibHelpers.checkList(tokens[i], forfeitTokens) < 0) {
+                    uint256 balance = IERC20(collateralListMem[i]).balanceOf(address(this));
+                    tokens[index] = collateralListMem[i];
+                    amounts[index] = (balance * proportion) / BASE_18;
+                    if (amounts[i] > 0) {
+                        if (
+                            collateral.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collateral.whitelistData, to)
+                        ) revert NotWhitelisted();
+                        IERC20(collateralListMem[i]).safeTransfer(to, amounts[index]);
+                    }
+                    ++index;
+                }
             }
         }
         ++index; // index is now the length of the `tokens` and `amounts` arrays
@@ -131,7 +138,6 @@ library LibRedeemer {
         address[] memory collateralList = ks.collateralList;
         uint256 collateralListLength = collateralList.length;
 
-        uint256 countCollat;
         for (uint256 i; i < collateralListLength; ++i) {
             Collateral storage collateral = ks.collaterals[collateralList[i]];
             uint256 collateralBalance;

@@ -18,12 +18,12 @@ interface IManager {
         address to,
         uint256 proportion,
         address[] memory forfeitTokens
-    ) external returns (address[] memory tokens, uint256[] memory balances);
+    ) external returns (address[] memory tokens, uint256[] memory amounts);
 
-    /// @notice Returns
+    /// @notice Returns amounts that would be sent when releasing `proportion` of this manager's holdings
     /// @dev MUST be called with `proportion` in BASE_18
     /// @dev MUST return arrays of same size < 5
-    function quoteRedeem(uint256 proportion) external view returns (address[] memory tokens, uint256[] memory balances);
+    function quoteRedeem(uint256 proportion) external view returns (address[] memory tokens, uint256[] memory amounts);
 
     /// @notice Sends `amount` of base collateral to the `to` address
     /// @dev Called when `agToken` are burned
