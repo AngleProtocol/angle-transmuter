@@ -21,19 +21,21 @@ library LibManager {
     function transferRecipient(bytes memory config) internal view returns (address) {
         (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
         if (managerType == ManagerType.EXTERNAL) return abi.decode(data, (address));
-        return address(this);
+        revert();
     }
 
     /// @notice Invests new funds into the collateral manager
     function invest(uint256 amount, bytes memory config) internal {
         (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
         if (managerType == ManagerType.EXTERNAL) abi.decode(data, (IManager)).invest(amount);
+        revert();
     }
 
     /// @notice Sends `amount` of base collateral to the `to` address
     function release(address to, uint256 amount, bytes memory config) internal {
         (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
         if (managerType == ManagerType.EXTERNAL) abi.decode(data, (IManager)).release(to, amount);
+        revert();
     }
 
     /// @notice Redeem a proportion of managed funds
@@ -46,7 +48,7 @@ library LibManager {
         (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
         if (managerType == ManagerType.EXTERNAL)
             return abi.decode(data, (IManager)).redeem(to, proportion, forfeitTokens);
-        return (new address[](0), new uint256[](0));
+        revert();
     }
 
     /// @notice Redeem a proportion of managed funds
@@ -56,14 +58,14 @@ library LibManager {
     ) internal view returns (address[] memory, uint256[] memory) {
         (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
         if (managerType == ManagerType.EXTERNAL) return abi.decode(data, (IManager)).quoteRedeem(proportion);
-        return (new address[](0), new uint256[](0));
+        revert();
     }
 
     /// @notice Returns the total assets managed by the Manager, in the corresponding collateral
     function totalAssets(bytes memory config) internal view returns (uint256) {
         (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
         if (managerType == ManagerType.EXTERNAL) return abi.decode(data, (IManager)).totalAssets();
-        return 0;
+        revert();
     }
 
     /// @notice Decodes the `managerData` associated to a collateral

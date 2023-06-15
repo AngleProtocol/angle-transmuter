@@ -99,7 +99,7 @@ library LibRedeemer {
     /// anyway in this case, or if the `amountBurnt` is greater than `stablecoinsIssued`
     function quoteProportion(uint256 amountBurnt) internal view returns (uint256 proportion) {
         TransmuterStorage storage ks = s.transmuterStorage();
-        (uint64 collatRatio, uint64 stablecoinsIssued) = getCollateralRatio();
+        (uint64 collatRatio, uint256 stablecoinsIssued) = getCollateralRatio();
         if (amountBurnt > stablecoinsIssued) revert TooBigAmountIn();
         int64[] memory yRedemptionCurveMem = ks.yRedemptionCurve;
         uint64 penaltyFactor;
