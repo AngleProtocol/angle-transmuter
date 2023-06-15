@@ -50,15 +50,7 @@ contract Permit2Test is Fixture, FunctionUtils {
 
         vm.expectRevert(SignatureVerification.InvalidSigner.selector);
         startHoax(alice);
-        transmuter.swapExactInputWithPermit(
-            BASE_6,
-            0,
-            address(eurA),
-            address(agToken),
-            alice,
-            deadline,
-            abi.encode(nonce, sig)
-        );
+        transmuter.swapExactInputWithPermit(BASE_6, 0, address(eurA), alice, deadline, abi.encode(nonce, sig));
     }
 
     function test_RevertWhen_SwapExactInputWithPermit_InvalidSender() public {
@@ -76,15 +68,7 @@ contract Permit2Test is Fixture, FunctionUtils {
 
         vm.expectRevert(SignatureVerification.InvalidSigner.selector);
         startHoax(bob);
-        transmuter.swapExactInputWithPermit(
-            BASE_6,
-            0,
-            address(eurA),
-            address(agToken),
-            alice,
-            deadline,
-            abi.encode(nonce, sig)
-        );
+        transmuter.swapExactInputWithPermit(BASE_6, 0, address(eurA), alice, deadline, abi.encode(nonce, sig));
     }
 
     function test_RevertWhen_SwapExactInputWithPermit_InvalidDeadline() public {
@@ -102,15 +86,7 @@ contract Permit2Test is Fixture, FunctionUtils {
 
         vm.expectRevert(SignatureVerification.InvalidSigner.selector);
         startHoax(bob);
-        transmuter.swapExactInputWithPermit(
-            BASE_6,
-            0,
-            address(eurA),
-            address(agToken),
-            alice,
-            deadline,
-            abi.encode(nonce, sig)
-        );
+        transmuter.swapExactInputWithPermit(BASE_6, 0, address(eurA), alice, deadline, abi.encode(nonce, sig));
     }
 
     function test_RevertWhen_SwapExactInputWithPermit_InvalidNonce() public {
@@ -128,20 +104,11 @@ contract Permit2Test is Fixture, FunctionUtils {
 
         vm.expectRevert(SignatureVerification.InvalidSigner.selector);
         startHoax(bob);
-        transmuter.swapExactInputWithPermit(
-            BASE_6,
-            0,
-            address(eurA),
-            address(agToken),
-            alice,
-            deadline,
-            abi.encode(nonce + 1, sig)
-        );
+        transmuter.swapExactInputWithPermit(BASE_6, 0, address(eurA), alice, deadline, abi.encode(nonce + 1, sig));
     }
 
     function test_RevertWhen_SwapExactInputWithPermit_InvalidAmount() public {
         deal(address(eurA), alice, BASE_6);
-        uint256 amountIn = BASE_6;
         uint256 nonce = 0;
         uint256 deadline = block.timestamp + 1 hours;
 
@@ -154,15 +121,7 @@ contract Permit2Test is Fixture, FunctionUtils {
 
         vm.expectRevert(SignatureVerification.InvalidSigner.selector);
         startHoax(bob);
-        transmuter.swapExactInputWithPermit(
-            BASE_6,
-            0,
-            address(eurA),
-            address(agToken),
-            alice,
-            deadline,
-            abi.encode(nonce, sig)
-        );
+        transmuter.swapExactInputWithPermit(BASE_6, 0, address(eurA), alice, deadline, abi.encode(nonce, sig));
     }
 
     function test_RevertWhen_SwapExactOutputWithPermit_InvalidAmount() public {
@@ -187,7 +146,6 @@ contract Permit2Test is Fixture, FunctionUtils {
             amountOut,
             amountInMax,
             address(eurA),
-            address(agToken),
             alice,
             deadline,
             abi.encode(nonce, sig)
@@ -208,15 +166,7 @@ contract Permit2Test is Fixture, FunctionUtils {
         bytes memory sig = getPermitTransferSignature(permit, 1, DOMAIN_SEPARATOR, address(transmuter));
 
         startHoax(alice);
-        transmuter.swapExactInputWithPermit(
-            BASE_6,
-            0,
-            address(eurA),
-            address(agToken),
-            alice,
-            deadline,
-            abi.encode(nonce, sig)
-        );
+        transmuter.swapExactInputWithPermit(BASE_6, 0, address(eurA), alice, deadline, abi.encode(nonce, sig));
 
         assertEq(agToken.balanceOf(alice), BASE_27 / (BASE_9 + BASE_9 / 99));
         assertEq(eurA.balanceOf(alice), 0);
@@ -244,7 +194,6 @@ contract Permit2Test is Fixture, FunctionUtils {
             amountOut,
             amountInMax,
             address(eurA),
-            address(agToken),
             alice,
             deadline,
             abi.encode(nonce, sig)
@@ -284,15 +233,7 @@ contract Permit2Test is Fixture, FunctionUtils {
         bytes memory sig = getPermitTransferSignature(permit, 1, DOMAIN_SEPARATOR, address(transmuter));
 
         startHoax(alice);
-        transmuter.swapExactInputWithPermit(
-            BASE_6,
-            0,
-            address(eurA),
-            address(agToken),
-            alice,
-            deadline,
-            abi.encode(nonce, sig)
-        );
+        transmuter.swapExactInputWithPermit(BASE_6, 0, address(eurA), alice, deadline, abi.encode(nonce, sig));
 
         assertEq(agToken.balanceOf(alice), BASE_27 / (BASE_9 + BASE_9 / 99));
         assertEq(eurA.balanceOf(alice), 0);
@@ -335,7 +276,6 @@ contract Permit2Test is Fixture, FunctionUtils {
             amountOut,
             amountInMax,
             address(eurA),
-            address(agToken),
             alice,
             deadline,
             abi.encode(nonce, sig)
@@ -363,7 +303,7 @@ contract Permit2Test is Fixture, FunctionUtils {
         uint256 privateKey,
         bytes32 domainSeparator,
         address to
-    ) internal returns (bytes memory sig) {
+    ) internal pure returns (bytes memory sig) {
         bytes32 tokenPermissions = keccak256(abi.encode(_TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
         bytes32 msgHash = keccak256(
             abi.encodePacked(

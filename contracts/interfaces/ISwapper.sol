@@ -24,11 +24,11 @@ interface ISwapper {
     ) external returns (uint256 amountOut);
 
     /// @notice Same as `swapExactInput`, but using Permit2 signatures for `tokenIn`
+    /// @dev Can only be used to mint, hence `tokenOut` is not needed
     function swapExactInputWithPermit(
         uint256 amountIn,
         uint256 amountOutMin,
         address tokenIn,
-        address tokenOut,
         address to,
         uint256 deadline,
         bytes calldata permitData
@@ -52,11 +52,11 @@ interface ISwapper {
     ) external returns (uint256 amountIn);
 
     /// @notice Same as `swapExactOutput`, but using Permit2 signatures for `tokenIn`
+    /// @dev Can only be used to mint, hence `tokenOut` is not needed
     function swapExactOutputWithPermit(
         uint256 amountOut,
         uint256 amountInMax,
         address tokenIn,
-        address tokenOut,
         address to,
         uint256 deadline,
         bytes calldata permitData

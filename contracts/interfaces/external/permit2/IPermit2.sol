@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity >=0.5.0;
 
 /// @notice The token and amount details for a transfer signed in the permit transfer signature
 struct TokenPermissions {

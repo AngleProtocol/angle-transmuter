@@ -6,7 +6,6 @@ import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 
 import { ISwapper } from "interfaces/ISwapper.sol";
-import { IPermit2, PermitTransferFrom, SignatureTransferDetails, TokenPermissions } from "interfaces/external/permit2/IPermit2.sol";
 
 import { LibHelpers } from "../libraries/LibHelpers.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
@@ -47,46 +46,36 @@ contract Swapper is ISwapper {
         address tokenOut,
         address to,
         uint256 deadline
-    ) external returns (uint256) {
-        return swapExactInputWithPermit(amountIn, amountOutMin, tokenIn, tokenOut, to, deadline, "");
-    }
-
-    function swapExactInputWithPermit(
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address tokenIn,
-        address tokenOut,
-        address to,
-        uint256 deadline,
-        bytes memory permitData
-    ) public returns (uint256 amountOut) {
+    ) external returns (uint256 amountOut) {
         (bool mint, Collateral storage collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, deadline);
-        // Building the permit2 payload here to avoid a stack too deep
-        if (permitData.length > 0) {
-            Permit2Details memory details;
-            if (collatInfo.isManaged > 0) {
-                details.to = LibManager.transferRecipient(collatInfo.managerData.config);
-            } else {
-                details.to = address(this);
-            }
-            (details.nonce, details.signature) = abi.decode(permitData, (uint256, bytes));
-            permitData = abi.encodeWithSelector(
-                IPermit2.permitTransferFrom.selector,
-                PermitTransferFrom({
-                    permitted: TokenPermissions({ token: tokenIn, amount: amountIn }),
-                    nonce: details.nonce,
-                    deadline: deadline
-                }),
-                SignatureTransferDetails({ to: details.to, requestedAmount: amountIn }),
-                msg.sender,
-                details.signature
-            );
-        }
         amountOut = mint
             ? LibSwapper.quoteMintExactInput(collatInfo, amountIn)
             : LibSwapper.quoteBurnExactInput(tokenOut, collatInfo, amountIn);
         if (amountOut < amountOutMin) revert TooSmallAmountOut();
-        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo, permitData);
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo, "");
+    }
+
+    /// @inheritdoc ISwapper
+    function swapExactInputWithPermit(
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address tokenIn,
+        address to,
+        uint256 deadline,
+        bytes memory permitData
+    ) external returns (uint256 amountOut) {
+        (address tokenOut, Collateral storage collatInfo) = LibSwapper.getMint(tokenIn, deadline);
+        permitData = LibSwapper.buildPermitTransferPayload(
+            amountIn,
+            amountIn,
+            tokenIn,
+            deadline,
+            permitData,
+            collatInfo
+        );
+        amountOut = LibSwapper.quoteMintExactInput(collatInfo, amountIn);
+        if (amountOut < amountOutMin) revert TooSmallAmountOut();
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, true, collatInfo, permitData);
     }
 
     /// @inheritdoc ISwapper
@@ -99,45 +88,36 @@ contract Swapper is ISwapper {
         address tokenOut,
         address to,
         uint256 deadline
-    ) external returns (uint256) {
-        return swapExactOutputWithPermit(amountOut, amountInMax, tokenIn, tokenOut, to, deadline, "");
-    }
-
-    function swapExactOutputWithPermit(
-        uint256 amountOut,
-        uint256 amountInMax,
-        address tokenIn,
-        address tokenOut,
-        address to,
-        uint256 deadline,
-        bytes memory permitData
-    ) public returns (uint256 amountIn) {
+    ) external returns (uint256 amountIn) {
         (bool mint, Collateral storage collatInfo) = LibSwapper.getMintBurn(tokenIn, tokenOut, deadline);
         amountIn = mint
             ? LibSwapper.quoteMintExactOutput(collatInfo, amountOut)
             : LibSwapper.quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         if (amountIn > amountInMax) revert TooBigAmountIn();
-        if (permitData.length > 0) {
-            Permit2Details memory details;
-            if (collatInfo.isManaged > 0) {
-                details.to = LibManager.transferRecipient(collatInfo.managerData.config);
-            } else {
-                details.to = address(this);
-            }
-            (details.nonce, details.signature) = abi.decode(permitData, (uint256, bytes));
-            permitData = abi.encodeWithSelector(
-                IPermit2.permitTransferFrom.selector,
-                PermitTransferFrom({
-                    permitted: TokenPermissions({ token: tokenIn, amount: amountInMax }),
-                    nonce: details.nonce,
-                    deadline: deadline
-                }),
-                SignatureTransferDetails({ to: details.to, requestedAmount: amountIn }),
-                msg.sender,
-                details.signature
-            );
-        }
-        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo, permitData);
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, mint, collatInfo, "");
+    }
+
+    /// @inheritdoc ISwapper
+    function swapExactOutputWithPermit(
+        uint256 amountOut,
+        uint256 amountInMax,
+        address tokenIn,
+        address to,
+        uint256 deadline,
+        bytes memory permitData
+    ) public returns (uint256 amountIn) {
+        (address tokenOut, Collateral storage collatInfo) = LibSwapper.getMint(tokenIn, deadline);
+        amountIn = LibSwapper.quoteMintExactOutput(collatInfo, amountOut);
+        if (amountIn > amountInMax) revert TooBigAmountIn();
+        permitData = LibSwapper.buildPermitTransferPayload(
+            amountIn,
+            amountInMax,
+            tokenIn,
+            deadline,
+            permitData,
+            collatInfo
+        );
+        LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, true, collatInfo, permitData);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

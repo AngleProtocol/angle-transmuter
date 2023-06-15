@@ -421,4 +421,46 @@ library LibSwapper {
             if (collatInfo.isMintLive == 0) revert Paused();
         } else revert InvalidTokens();
     }
+
+    /// @notice Checks whether `tokenIn`is a valid unpaused collateral and the deadline
+    function getMint(
+        address tokenIn,
+        uint256 deadline
+    ) internal view returns (address agToken, Collateral storage collatInfo) {
+        if (deadline != 0 && block.timestamp > deadline) revert TooLate();
+        TransmuterStorage storage ks = s.transmuterStorage();
+        agToken = address(ks.agToken);
+        collatInfo = ks.collaterals[tokenIn];
+        if (collatInfo.isMintLive == 0) revert Paused();
+    }
+
+    /// @notice Build a permit2 `permitTransferFrom` payload for a `tokenIn` transfer
+    /// @dev The transfer should be from `msg.sender` to this contract or a manager
+    function buildPermitTransferPayload(
+        uint256 amount,
+        uint256 approvedAmount,
+        address tokenIn,
+        uint256 deadline,
+        bytes memory permitData,
+        Collateral storage collatInfo
+    ) internal view returns (bytes memory payload) {
+        Permit2Details memory details;
+        if (collatInfo.isManaged > 0) {
+            details.to = LibManager.transferRecipient(collatInfo.managerData.config);
+        } else {
+            details.to = address(this);
+        }
+        (details.nonce, details.signature) = abi.decode(permitData, (uint256, bytes));
+        payload = abi.encodeWithSelector(
+            IPermit2.permitTransferFrom.selector,
+            PermitTransferFrom({
+                permitted: TokenPermissions({ token: tokenIn, amount: approvedAmount }),
+                nonce: details.nonce,
+                deadline: deadline
+            }),
+            SignatureTransferDetails({ to: details.to, requestedAmount: amount }),
+            msg.sender,
+            details.signature
+        );
+    }
 }
