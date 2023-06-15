@@ -31,6 +31,7 @@ interface IRedeemer {
     /// @notice Simulate the exact output that a redemption of `amount` of stablecoins would give at a given block
     /// @return tokens List of tokens that would be given
     /// @return amounts Amount that would be obtained for each token in the `tokens` array
+    /// @dev There may be duplicate token entries in `tokens`, in which case `amounts` should be summed for each
     function quoteRedemptionCurve(
         uint256 amount
     ) external view returns (address[] memory tokens, uint256[] memory amounts);

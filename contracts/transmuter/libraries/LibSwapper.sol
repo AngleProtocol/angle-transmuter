@@ -74,10 +74,11 @@ library LibSwapper {
                 ks.normalizedStables += changeAmount;
                 if (permitData.length > 0) {
                     PERMIT_2.functionCall(permitData);
-                } else if (collatInfo.isManaged > 0)
-                    LibManager.transferFrom(tokenIn, amountIn, collatInfo.managerData.config);
-                else {
+                } else {
                     IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+                }
+                if (collatInfo.isManaged > 0) {
+                    LibManager.invest(amountIn, collatInfo.managerData.config);
                 }
                 IAgToken(tokenOut).mint(to, amountOut);
             } else {
@@ -89,8 +90,7 @@ library LibSwapper {
                 collatInfo.normalizedStables -= uint216(changeAmount);
                 ks.normalizedStables -= changeAmount;
                 IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
-                if (collatInfo.isManaged > 0)
-                    LibManager.transferTo(tokenOut, to, amountOut, collatInfo.managerData.config);
+                if (collatInfo.isManaged > 0) LibManager.release(to, amountOut, collatInfo.managerData.config);
                 else IERC20(tokenOut).safeTransfer(to, amountOut);
             }
         }
@@ -390,14 +390,6 @@ library LibSwapper {
             } else (oracleValue, ratioObserved) = LibOracle.readBurn(oracleConfig);
             if (ratioObserved < minRatio) minRatio = ratioObserved;
         }
-    }
-
-    /// @notice Checks whether a managed collateral asset still has enough collateral available to process
-    /// a transfer
-    function checkAmounts(Collateral storage collatInfo, uint256 amountOut) internal view {
-        // Checking if enough is available for collateral assets that involve manager addresses
-        if (collatInfo.isManaged > 0 && LibManager.maxAvailable(collatInfo.managerData.config) < amountOut)
-            revert InvalidSwap();
     }
 
     /// @notice Checks whether a swap from `tokenIn` to `tokenOut` is a mint or a burn, whether the

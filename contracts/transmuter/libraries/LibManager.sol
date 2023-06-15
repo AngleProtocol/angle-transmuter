@@ -24,46 +24,46 @@ library LibManager {
         return address(this);
     }
 
-    /// @notice Performs a transfer of `token` for a collateral that is managed to a `to` address
-    /// @dev `token` may not be the actual collateral itself, as some collaterals have subcollaterals associated
-    /// with it
-    /// @dev Eventually pulls funds from strategies
-    function transferTo(address token, address to, uint256 amount, bytes memory config) internal {
+    /// @notice Invests new funds into the collateral manager
+    function invest(uint256 amount, bytes memory config) internal {
         (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
-        if (managerType == ManagerType.EXTERNAL) abi.decode(data, (IManager)).transferTo(token, to, amount);
+        if (managerType == ManagerType.EXTERNAL) abi.decode(data, (IManager)).invest(amount);
     }
 
-    /// @notice Performs a collateral transfer from `msg.sender` to an address depending on the type of
-    /// manager considered
-    function transferFrom(address token, uint256 amount, bytes memory config) internal {
+    /// @notice Sends `amount` of base collateral to the `to` address
+    function release(address to, uint256 amount, bytes memory config) internal {
+        (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
+        if (managerType == ManagerType.EXTERNAL) abi.decode(data, (IManager)).release(to, amount);
+    }
+
+    /// @notice Redeem a proportion of managed funds
+    function redeem(
+        address to,
+        uint256 proportion,
+        address[] memory forfeitTokens,
+        bytes memory config
+    ) internal returns (address[] memory, uint256[] memory) {
         (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
         if (managerType == ManagerType.EXTERNAL)
-            IERC20(token).safeTransferFrom(msg.sender, address(abi.decode(data, (IManager))), amount);
+            return abi.decode(data, (IManager)).redeem(to, proportion, forfeitTokens);
+        return (new address[](0), new uint256[](0));
     }
 
-    /// @notice Tries to remove all funds from the strategies associated to `managerData`
-    function pullAll(bytes memory config) internal {
-        (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
-        if (managerType == ManagerType.EXTERNAL) abi.decode(data, (IManager)).pullAll();
-    }
-
-    /// @notice Gets the balances of all the tokens controlled through `managerData`
-    /// @return balances An array of size `subCollaterals` with current balances of all subCollaterals
-    /// including the one corresponding to the `managerData` given
-    /// @return totalValue The value of the `subCollaterals` (excluding the collateral used within Transmuter)
-    /// @dev `subCollaterals` must always have as first token (index 0) the collateral itself
-    function getUnderlyingBalances(
+    /// @notice Redeem a proportion of managed funds
+    function quoteRedeem(
+        uint256 proportion,
         bytes memory config
-    ) internal view returns (uint256[] memory balances, uint256 totalValue) {
+    ) internal view returns (address[] memory, uint256[] memory) {
         (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
-        if (managerType == ManagerType.EXTERNAL) return abi.decode(data, (IManager)).getUnderlyingBalances();
+        if (managerType == ManagerType.EXTERNAL) return abi.decode(data, (IManager)).quoteRedeem(proportion);
+        return (new address[](0), new uint256[](0));
     }
 
-    /// @notice Returns available underlying tokens, for instance if liquidity is fully used and
-    /// not withdrawable the function will return 0
-    function maxAvailable(bytes memory config) internal view returns (uint256 available) {
+    /// @notice Returns the total assets managed by the Manager, in the corresponding collateral
+    function totalAssets(bytes memory config) internal view returns (uint256) {
         (ManagerType managerType, bytes memory data) = parseManagerConfig(config);
-        if (managerType == ManagerType.EXTERNAL) return abi.decode(data, (IManager)).maxAvailable();
+        if (managerType == ManagerType.EXTERNAL) return abi.decode(data, (IManager)).totalAssets();
+        return 0;
     }
 
     /// @notice Decodes the `managerData` associated to a collateral

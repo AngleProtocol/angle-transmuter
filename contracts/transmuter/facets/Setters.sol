@@ -75,11 +75,8 @@ contract Setters is AccessControlModifiers, ISetters {
     /// @inheritdoc ISetters
     /// @dev No check is made on the collateral that is redeemed: this function could typically be used by a
     /// governance during a manual rebalance of the reserves of the system
-    /// @dev `collateral` is different from `token` only in the case of a managed collateral
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external onlyGovernor {
-        Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
-        if (collatInfo.isManaged > 0) LibManager.transferTo(address(token), to, amount, collatInfo.managerData.config);
-        else token.safeTransfer(to, amount);
+        token.safeTransfer(to, amount);
     }
 
     /// @inheritdoc ISetters
@@ -92,7 +89,7 @@ contract Setters is AccessControlModifiers, ISetters {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         uint8 isManaged = collatInfo.isManaged;
-        if (isManaged > 0) LibManager.pullAll(collatInfo.managerData.config);
+        if (isManaged > 0) LibManager.redeem(address(this), BASE_18, new address[](0), collatInfo.managerData.config);
         if (managerData.config.length != 0) {
             // The first subCollateral given should be the actual collateral asset
             if (address(managerData.subCollaterals[0]) != collateral) revert InvalidParams();
@@ -163,7 +160,7 @@ contract Setters is AccessControlModifiers, ISetters {
         if (collatInfo.decimals == 0 || collatInfo.normalizedStables > 0) revert NotCollateral();
         uint8 isManaged = collatInfo.isManaged;
         // If the collateral is managed through strategies, pulling all available funds from there
-        if (isManaged > 0) LibManager.pullAll(collatInfo.managerData.config);
+        if (isManaged > 0) LibManager.redeem(address(this), BASE_18, new address[](0), collatInfo.managerData.config);
         delete ks.collaterals[collateral];
         address[] memory collateralListMem = ks.collateralList;
         uint256 length = collateralListMem.length;

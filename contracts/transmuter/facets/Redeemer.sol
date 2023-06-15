@@ -6,7 +6,9 @@ import { IRedeemer } from "interfaces/IRedeemer.sol";
 
 import { LibRedeemer } from "../libraries/LibRedeemer.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
+import { LibManager } from "../libraries/LibManager.sol";
 
+import "../../utils/Constants.sol";
 import "../Storage.sol";
 
 /// @title Redeemer
@@ -52,6 +54,38 @@ contract Redeemer is IRedeemer {
     function quoteRedemptionCurve(
         uint256 amount
     ) external view returns (address[] memory tokens, uint256[] memory amounts) {
-        (tokens, amounts, ) = LibRedeemer.quoteRedemptionCurve(amount);
+        uint256 proportion = LibRedeemer.quoteProportion(amount);
+
+        TransmuterStorage storage ks = s.transmuterStorage();
+        address[] memory collateralListMem = ks.collateralList;
+        uint256 collateralListLength = collateralListMem.length;
+        tokens = new address[](5 * collateralListLength);
+        amounts = new uint256[](5 * collateralListLength);
+        uint256 index = 0;
+        for (uint256 i; i < collateralListLength; ++i) {
+            Collateral storage collateral = ks.collaterals[collateralListMem[i]];
+            if (collateral.isManaged > 0) {
+                (address[] memory managerTokens, uint256[] memory managerBalances) = LibManager.quoteRedeem(
+                    proportion,
+                    collateral.managerData.config
+                );
+                uint256 managerTokenLength = managerTokens.length;
+                for (uint256 j; j < managerTokenLength; ++j) {
+                    tokens[index] = managerTokens[j];
+                    amounts[index] = managerBalances[j];
+                    ++index;
+                }
+            } else {
+                uint256 balance = IERC20(collateralListMem[i]).balanceOf(address(this));
+                tokens[index] = collateralListMem[i];
+                amounts[index] = (balance * proportion) / BASE_18;
+                ++index;
+            }
+        }
+        ++index; // index is now the length of the `tokens` and `amounts` arrays
+        assembly {
+            mstore(tokens, index)
+            mstore(amounts, index)
+        }
     }
 }

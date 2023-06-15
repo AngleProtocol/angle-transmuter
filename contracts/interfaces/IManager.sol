@@ -4,20 +4,34 @@ pragma solidity >=0.5.0;
 
 /// @title IManager
 /// @author Angle Labs, Inc.
+/// @dev Inspired from ERC4626, although there is only one holder so heavily simplified
 interface IManager {
-    /// @notice Transfers `amount` of `token` to the `to` address, and eventually pulls funds from strategies
-    /// to achieve this
-    function transferTo(address token, address to, uint256 amount) external;
+    /// @notice Returns the value of collateral managed by the Manager, in agToken
+    /// @dev MUST NOT revert
+    function totalAssets() external view returns (uint256);
 
-    /// @notice Removes all funds from the manager and sends them back to the Transmuter contract
-    function pullAll() external;
+    /// @notice Sends a proportion of managed assets to the `to` address
+    /// @dev MUST revert if unsuccessful
+    /// @dev MUST be callable only by the transmuter
+    /// @dev MUST be called with `proportion` in BASE_18
+    /// @dev MUST return exactly the amount transferred to `to`
+    function redeem(
+        address to,
+        uint256 proportion,
+        address[] memory forfeitTokens
+    ) external returns (address[] memory tokens, uint256[] memory balances);
 
-    /// @notice Gets the balances of all the tokens controlled be the manager contract
-    /// @return balances An array of size `subCollaterals` with current balances for all subCollaterals
-    /// @return totalValue Cumulated value of all the subCollaterals excluding the one that is actually
-    /// used within the Transmuter system
-    function getUnderlyingBalances() external view returns (uint256[] memory balances, uint256 totalValue);
+    /// @notice Returns
+    /// @dev MUST be called with `proportion` in BASE_18
+    /// @dev MUST return arrays of same size < 5
+    function quoteRedeem(uint256 proportion) external view returns (address[] memory tokens, uint256[] memory balances);
 
-    /// @notice Gives the maximum amount of collateral immediately available for a transfer
-    function maxAvailable() external view returns (uint256);
+    /// @notice Sends `amount` of base collateral to the `to` address
+    /// @dev Called when `agToken` are burned
+    //  @dev MUST revert if there isn't enough available funds
+    function release(address to, uint256 amount) external;
+
+    /// @notice Manages `amount` new funds (in base collateral)
+    /// @dev MUST revert if the manager cannot accept these funds
+    function invest(uint256 amount) external;
 }

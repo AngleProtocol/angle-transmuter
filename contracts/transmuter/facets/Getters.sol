@@ -70,7 +70,7 @@ contract Getters is IGetters {
 
     /// @inheritdoc IGetters
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 stablecoinsIssued) {
-        (collatRatio, stablecoinsIssued, , , ) = LibRedeemer.getCollateralRatio();
+        (collatRatio, stablecoinsIssued) = LibRedeemer.getCollateralRatio();
     }
 
     /// @inheritdoc IGetters
