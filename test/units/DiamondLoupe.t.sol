@@ -17,7 +17,7 @@ contract Test_DiamondLoupe is Fixture {
     function test_Facets() public {
         Facet[] memory facets = transmuter.facets();
 
-        // DiamondCut, DiamondLoupe, Getters, Redeemer, RewardHandler, Setters, Swapper
+        // DiamondCut, DiamondLoupe, Getters, Redeemer, RewardHandler, SettersGovernor, SettersGuardian , Swapper
         for (uint256 i; i < facetNames.length; ++i) {
             assertEq(facets[i].facetAddress, address(facetAddressList[i])); // Check address
 

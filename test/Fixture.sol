@@ -55,7 +55,7 @@ contract Fixture is Transmuter {
         bob = vm.addr(2);
         charlie = vm.addr(3);
         dylan = vm.addr(4);
-        sweeper = vm.addr(5);
+        sweeper = address(uint160(uint256(keccak256(abi.encodePacked("sweeper")))));
 
         vm.label(governor, "Governor");
         vm.label(guardian, "Guardian");
@@ -64,6 +64,7 @@ contract Fixture is Transmuter {
         vm.label(bob, "Bob");
         vm.label(charlie, "Charlie");
         vm.label(dylan, "Dylan");
+        vm.label(sweeper, "Sweeper");
 
         // Access Control
         accessControlManager = IAccessControlManager(address(new MockAccessControlManager()));

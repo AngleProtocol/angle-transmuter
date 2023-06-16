@@ -11,7 +11,8 @@ import { DiamondLoupe } from "contracts/transmuter/facets/DiamondLoupe.sol";
 import { Getters } from "contracts/transmuter/facets/Getters.sol";
 import { Redeemer } from "contracts/transmuter/facets/Redeemer.sol";
 import { RewardHandler } from "contracts/transmuter/facets/RewardHandler.sol";
-import { Setters } from "contracts/transmuter/facets/Setters.sol";
+import { SettersGovernor } from "contracts/transmuter/facets/SettersGovernor.sol";
+import { SettersGuardian } from "contracts/transmuter/facets/SettersGuardian.sol";
 import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import "contracts/utils/Errors.sol";
 
@@ -42,8 +43,11 @@ abstract contract Transmuter is Helper {
         facetNames.push("RewardHandler");
         facetAddressList.push(address(new RewardHandler()));
 
-        facetNames.push("Setters");
-        facetAddressList.push(address(new Setters()));
+        facetNames.push("SettersGovernor");
+        facetAddressList.push(address(new SettersGovernor()));
+
+        facetNames.push("SettersGuardian");
+        facetAddressList.push(address(new SettersGuardian()));
 
         facetNames.push("Swapper");
         facetAddressList.push(address(new Swapper()));

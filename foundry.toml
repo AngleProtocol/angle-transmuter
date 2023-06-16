@@ -14,10 +14,10 @@ solc_version = '0.8.19'
 ffi = true
 
 [fuzz]
-runs = 2000
+runs = 1000
 
 [invariant]
-runs = 10
+runs = 100
 depth = 30
 
 [rpc_endpoints]

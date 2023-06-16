@@ -6,18 +6,9 @@ import { IERC20 } from "oz/interfaces/IERC20.sol";
 
 import "../transmuter/Storage.sol";
 
-/// @title ISetters
+/// @title ISettersGovernor
 /// @author Angle Labs, Inc.
-interface ISetters {
-    /// @notice Changes the pause status for mint or burn transactions for `collateral`
-    function togglePause(address collateral, ActionType action) external;
-
-    /// @notice Sets the mint or burn fees for `collateral`
-    function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) external;
-
-    /// @notice Sets the parameters for the redemption curve
-    function setRedemptionCurveParams(uint64[] memory xFee, int64[] memory yFee) external;
-
+interface ISettersGovernor {
     /// @notice Recovers `amount` of `token` from the Transmuter contract
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external;
 
@@ -32,9 +23,6 @@ interface ISetters {
 
     /// @notice Changes the trusted status for `sender` when for selling rewards or updating the normalizer
     function toggleTrusted(address sender, TrustedType t) external;
-
-    /// @notice Changes the whitelist status for a collateral with `whitelistType` for an address `who`
-    function toggleWhitelist(WhitelistType whitelistType, address who) external;
 
     /// @notice Changes whether a `collateral` can only be handled during burns and redemptions by whitelisted addresses
     /// and sets the data used to read into the whitelist
@@ -55,4 +43,20 @@ interface ISetters {
 
     /// @notice Updates the normalizer variable by `amount`
     function updateNormalizer(uint256 amount, bool increase) external returns (uint256);
+}
+
+/// @title ISettersGovernor
+/// @author Angle Labs, Inc.
+interface ISettersGuardian {
+    /// @notice Changes the pause status for mint or burn transactions for `collateral`
+    function togglePause(address collateral, ActionType action) external;
+
+    /// @notice Sets the mint or burn fees for `collateral`
+    function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) external;
+
+    /// @notice Sets the parameters for the redemption curve
+    function setRedemptionCurveParams(uint64[] memory xFee, int64[] memory yFee) external;
+
+    /// @notice Changes the whitelist status for a collateral with `whitelistType` for an address `who`
+    function toggleWhitelist(WhitelistType whitelistType, address who) external;
 }
