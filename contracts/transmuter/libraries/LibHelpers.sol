@@ -10,8 +10,6 @@ import { LibManager } from "../libraries/LibManager.sol";
 
 import "../Storage.sol";
 
-import { console } from "forge-std/console.sol";
-
 /// @title LibHelpers
 /// @author Angle Labs, Inc.
 library LibHelpers {
