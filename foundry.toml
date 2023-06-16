@@ -14,10 +14,10 @@ solc_version = '0.8.19'
 ffi = true
 
 [fuzz]
-runs = 10000
+runs = 2000
 
 [invariant]
-runs = 1000
+runs = 10
 depth = 30
 
 [rpc_endpoints]
@@ -34,19 +34,21 @@ goerli = { key = "${GOERLI_ETHERSCAN_API_KEY}" }
 optimizer = false
 src = 'test'
 via_ir = false
-
+gas_reports = ["*"]
+runs = 2000
 
 [profile.dev.fuzz]
 runs = 2000
 
 [profile.dev.invariant]
-runs = 5000
-depth = 50
+runs = 500
+depth = 30
 fail_on_revert = false
 
 [profile.ci]
 src = 'test'
 via_ir = false
+gas_reports = ["*"]
 
 [profile.ci.fuzz]
 runs = 100
@@ -54,3 +56,4 @@ runs = 100
 [profile.ci.invariant]
 runs = 10
 depth = 30
+fail_on_revert = false

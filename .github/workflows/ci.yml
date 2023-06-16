@@ -1,4 +1,4 @@
-name: CI
+name: Transmuter CI
 
 on:
   push:
@@ -13,6 +13,7 @@ on:
         options:
           - all
           - foundry-tests
+          - build-via-ir
   pull_request:
     types:
       - ready_for_review
@@ -26,6 +27,7 @@ defaults:
 
 jobs:
   run-linters:
+    name: Run Linters
     if: github.ref == 'refs/heads/main' || github.event.review.state == 'approved' || github.event.action == 'ready_for_review' || github.event.action == 'review_requested'
     runs-on: ubuntu-latest
     steps:
@@ -44,7 +46,33 @@ jobs:
       - name: Run lint
         run: yarn lint
 
+  build-via-ir:
+    name: Compilation (via IR)
+    if: github.ref == 'refs/heads/main' || github.event.inputs.workflow_to_run == 'all' || github.event.inputs.workflow_to_run == 'build-via-ir' || github.event.review.state == 'approved' || github.event.action == 'ready_for_review' || github.event.action == 'review_requested'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 18
+      - uses: actions/cache@v2
+        with:
+          path: node_modules
+          key: yarn-${{ hashFiles('yarn.lock') }}
+          restore-keys: yarn-
+      - run: yarn install --frozen-lockfile
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Build contracts via IR
+        run: yarn test --via-ir
+
   foundry-tests:
+    name: Fuzz, Unit and Invariant Tests
     if: github.ref == 'refs/heads/main' || github.event.inputs.workflow_to_run == 'all' || github.event.inputs.workflow_to_run == 'foundry-tests' || github.event.review.state == 'approved' || github.event.action == 'ready_for_review' || github.event.action == 'review_requested'
     runs-on: ubuntu-latest
     steps:
@@ -66,25 +94,12 @@ jobs:
           version: nightly
 
       - name: Run Foundry tests
-        run: yarn run:ci
-        env:
-          ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
-          ETH_NODE_URI_POLYGON: ${{ secrets.ETH_NODE_URI_POLYGON }}
-          ETH_NODE_URI_GOERLI: ${{ secrets.ETH_NODE_URI_GOERLI }}
+        run: set -o pipefail && yarn run:ci | tee ethereum.gasreport.ansi
 
       - name: Compare gas reports
         uses: Rubilmax/foundry-gas-diff@v3.14
-        with:
-          summaryQuantile: 0.9 # only display the 10% most significant gas diffs in the summary (defaults to 20%)
-          sortCriteria: avg,max # sort diff rows by criteria
-          sortOrders: desc,asc # and directions
-          ignore: test-foundry/**/* # filter out gas reports from specific paths (test/ is included by default)
         id: gas_diff
-
-      - name: Add gas diff to sticky comment
-        if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
-        uses: marocchino/sticky-pull-request-comment@v2
         with:
-          # delete the comment in case changes no longer impact gas costs
-          delete: ${{ !steps.gas_diff.outputs.markdown }}
-          message: ${{ steps.gas_diff.outputs.markdown }}
+          match: contracts/transmuter/DiamondProxy.sol
+          report: ethereum.gasreport.ansi
+

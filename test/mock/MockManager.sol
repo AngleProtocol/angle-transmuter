@@ -61,6 +61,9 @@ contract MockManager {
     /// @return balances An array of size `subCollaterals` with current balances
     /// @return totalValue The sum of the balances corrected by an oracle
     function getUnderlyingBalances() external view returns (uint256[] memory balances, uint256 totalValue) {
+        uint256 nbrCollaterals = subCollaterals.length;
+        balances = new uint256[](nbrCollaterals);
+        if (nbrCollaterals == 0) return (balances, totalValue);
         (
             uint8[] memory tokenDecimals,
             AggregatorV3Interface[] memory oracles,
@@ -68,8 +71,7 @@ contract MockManager {
             uint8[] memory oracleIsMultiplied,
             uint8[] memory chainlinkDecimals
         ) = abi.decode(config, (uint8[], AggregatorV3Interface[], uint32[], uint8[], uint8[]));
-        uint256 nbrCollaterals = subCollaterals.length;
-        balances = new uint256[](nbrCollaterals);
+
         for (uint256 i = 0; i < nbrCollaterals; ++i) {
             balances[i] = subCollaterals[i].balanceOf(address(this));
             if (i > 0) {

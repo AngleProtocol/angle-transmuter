@@ -67,9 +67,9 @@ enum WhitelistType {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
 struct Permit2Details {
-    address to;                                 // Address that will receive the funds
-    uint256 nonce;                              // Nonce of the transaction
-    bytes signature;                            // Permit singature of the user
+    address to;                                  // Address that will receive the funds
+    uint256 nonce;                               // Nonce of the transaction
+    bytes signature;                             // Permit signature of the user
 }       
 
 struct FacetCut {

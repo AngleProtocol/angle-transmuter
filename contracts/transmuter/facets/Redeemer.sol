@@ -26,6 +26,7 @@ contract Redeemer is IRedeemer {
     /// by calling the `quoteRedemptionCurve` function
     /// @dev Tokens requiring a whitelist must be forfeited if the redemption is to an address that is not in the
     /// whitelist, otherwise this function reverts
+    /// @dev No approval is needed before calling this function
     function redeem(
         uint256 amount,
         address receiver,

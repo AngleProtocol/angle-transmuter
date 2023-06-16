@@ -232,7 +232,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertSizes(tokens, amounts);
         uint64 fee;
         if (collatRatio >= BASE_9) fee = uint64(yFeeRedeem[yFeeRedeem.length - 1]);
-        else fee = uint64(LibHelpers.piecewiseLinear(collatRatio, true, xFeeRedeem, yFeeRedeem));
+        else fee = uint64(LibHelpers.piecewiseLinear(collatRatio, xFeeRedeem, yFeeRedeem));
         _assertQuoteAmounts(collatRatio, mintedStables, amountBurnt, fee, amounts);
     }
 
@@ -511,7 +511,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertSizesWithManager(tokens, amounts);
         uint64 fee;
         if (collatRatio >= BASE_9) fee = uint64(yFeeRedeem[yFeeRedeem.length - 1]);
-        else fee = uint64(LibHelpers.piecewiseLinear(collatRatio, true, xFeeRedeem, yFeeRedeem));
+        else fee = uint64(LibHelpers.piecewiseLinear(collatRatio, xFeeRedeem, yFeeRedeem));
         _assertQuoteAmountsWithManager(collatRatio, collatRatioAboveLimit, mintedStables, amountBurnt, fee, amounts);
     }
 

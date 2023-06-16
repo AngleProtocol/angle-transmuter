@@ -33,9 +33,9 @@ library LibHelpers {
     }
 
     /// @notice Searches a sorted `array` and returns the first index that contains a value strictly greater
-    /// (or lower if increasingArray is false)  to `element`
-    /// @dev If no such index exists (i.e. all values in the array are strictly less/greater than `element`),
-    /// the array length is returned
+    /// (or lower if increasingArray is false) to `element` minus 1
+    /// @dev If no such index exists (i.e. all values in the array are strictly lesser/greater than `element`),
+    /// either array length minus 1, or 0 are returned
     /// @dev The time complexity of the search is O(log n).
     /// @dev Inspired from OpenZeppelin Contracts v4.4.1:
     /// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Arrays.sol
@@ -76,26 +76,13 @@ library LibHelpers {
 
     /// @notice Evaluates for `x` a piecewise linear function defined with the breaking points in the arrays
     /// `xArray` and `yArray`
-    /// @dev The values in the `xArray` may be increasing or decreasing based on the value of `increasingArray`
-    function piecewiseLinear(
-        uint64 x,
-        bool increasingArray,
-        uint64[] memory xArray,
-        int64[] memory yArray
-    ) internal pure returns (int64) {
-        uint256 indexLowerBound = findLowerBound(increasingArray, xArray, 1, x);
-
+    /// @dev The values in the `xArray` must be increasing
+    function piecewiseLinear(uint64 x, uint64[] memory xArray, int64[] memory yArray) internal pure returns (int64) {
+        uint256 indexLowerBound = findLowerBound(true, xArray, 1, x);
         if (indexLowerBound == xArray.length - 1) return yArray[xArray.length - 1];
-        if (increasingArray) {
-            return
-                yArray[indexLowerBound] +
-                ((yArray[indexLowerBound + 1] - yArray[indexLowerBound]) * int64(x - xArray[indexLowerBound])) /
-                int64(xArray[indexLowerBound + 1] - xArray[indexLowerBound]);
-        } else {
-            return
-                yArray[indexLowerBound] +
-                ((yArray[indexLowerBound + 1] - yArray[indexLowerBound]) * int64(xArray[indexLowerBound] - x)) /
-                int64(xArray[indexLowerBound] - xArray[indexLowerBound + 1]);
-        }
+        return
+            yArray[indexLowerBound] +
+            ((yArray[indexLowerBound + 1] - yArray[indexLowerBound]) * int64(x - xArray[indexLowerBound])) /
+            int64(xArray[indexLowerBound + 1] - xArray[indexLowerBound]);
     }
 }

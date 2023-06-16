@@ -27,6 +27,7 @@ import "../Storage.sol";
 /// @dev Functions here may be paused for some collateral assets (for either mint or burn), in which case they'll revert
 /// @dev In case of a burn again, the swap functions will revert if the call concerns a collateral that requires a
 /// whitelist but the `to` address does not have it. The quote functions will not revert in this case.
+/// @dev Calling one of the swap functions in a burn case does not require any prior token approval
 contract Swapper is ISwapper {
     using SafeERC20 for IERC20;
 
@@ -34,11 +35,11 @@ contract Swapper is ISwapper {
                                                EXTERNAL ACTION FUNCTIONS                                            
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    // For the two functions below, a value of `0` for the `deadline` parameters means that there will be no timestamp
+    // For the four functions below, a value of `0` for the `deadline` parameters means that there will be no timestamp
     // check for when the swap is actually executed.
 
     /// @inheritdoc ISwapper
-    /// @dev `msg.sender` must have approved this contract for at least `amountIn` for `tokenIn`
+    /// @dev `msg.sender` must have approved this contract for at least `amountIn` for `tokenIn` for mint transactions
     function swapExactInput(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -65,6 +66,8 @@ contract Swapper is ISwapper {
         bytes memory permitData
     ) external returns (uint256 amountOut) {
         (address tokenOut, Collateral storage collatInfo) = LibSwapper.getMint(tokenIn, deadline);
+        amountOut = LibSwapper.quoteMintExactInput(collatInfo, amountIn);
+        if (amountOut < amountOutMin) revert TooSmallAmountOut();
         permitData = LibSwapper.buildPermitTransferPayload(
             amountIn,
             amountIn,
@@ -73,14 +76,13 @@ contract Swapper is ISwapper {
             permitData,
             collatInfo
         );
-        amountOut = LibSwapper.quoteMintExactInput(collatInfo, amountIn);
-        if (amountOut < amountOutMin) revert TooSmallAmountOut();
         LibSwapper.swap(amountIn, amountOut, tokenIn, tokenOut, to, true, collatInfo, permitData);
     }
 
     /// @inheritdoc ISwapper
     /// @dev `msg.sender` must have approved this contract for an amount bigger than what `amountIn` will
-    /// be before calling this function. Approving the contract for `tokenIn` with `amountInMax` will always be enough.
+    /// be before calling this function for a mint. Approving the contract for `tokenIn` with `amountInMax`
+    /// will always be enough in this case
     function swapExactOutput(
         uint256 amountOut,
         uint256 amountInMax,

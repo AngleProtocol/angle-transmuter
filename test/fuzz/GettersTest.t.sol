@@ -9,6 +9,8 @@ import "../utils/FunctionUtils.sol";
 import "contracts/utils/Errors.sol";
 import { stdError } from "forge-std/Test.sol";
 
+import { Collateral } from "contracts/transmuter/Storage.sol";
+
 contract GettersTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
 
@@ -79,6 +81,27 @@ contract GettersTest is Fixture, FunctionUtils {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                   GETCOLLATERALINFO                                                
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testFuzz_GetCollateralInfo(
+        uint256 fromToken,
+        uint64[10] memory xFeeMintUnbounded,
+        int64[10] memory yFeeMintUnbounded
+    ) public {
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        _setBurnFeesForNegativeMintFees();
+        (uint64[] memory xFeeMint, int64[] memory yFeeMint) = _randomMintFees(
+            _collaterals[fromToken],
+            xFeeMintUnbounded,
+            yFeeMintUnbounded
+        );
+        Collateral memory collat = transmuter.getCollateralInfo(_collaterals[fromToken]);
+        _assertArrayUint64(xFeeMint, collat.xFeeMint);
+        _assertArrayInt64(yFeeMint, collat.yFeeMint);
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                  GETCOLLATERALMINTFEES                                              
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
@@ -128,7 +151,7 @@ contract GettersTest is Fixture, FunctionUtils {
                                                    GETREDEMPTIONFEES                                                
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testFuzz_GetCollateralRedemptionFees(
+    function testFuzz_GetRedemptionFees(
         uint64[10] memory xFeeRedemptionUnbounded,
         int64[10] memory yFeeRedemptionUnbounded
     ) public {

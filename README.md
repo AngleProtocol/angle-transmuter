@@ -147,7 +147,7 @@ yarn foundry:deploy <FILE_NAME> --rpc-url <NETWORK_NAME>
 We recommend the use of this [vscode extension](ryanluker.vscode-coverage-gutters).
 
 ```bash
-yarn foundry:coverage
+yarn coverage
 ```
 
 Otherwise you can install lcov `brew install lcov`:
