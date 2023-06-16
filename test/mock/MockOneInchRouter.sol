@@ -16,17 +16,12 @@ contract MockOneInchRouter {
     bool public setRevert;
     bool public setRevertWithMessage;
 
-    function call(bytes memory payload) external returns (bool success, bytes memory result) {
-        (uint256 amountIn, uint256 amountOut, address tokenIn, address tokenOut) = abi.decode(
-            payload,
-            (uint256, uint256, address, address)
-        );
-        bytes memory data;
-        if (setRevert) return (false, data);
-        if (setRevertWithMessage) return (false, abi.encode("wrong swap"));
+    function swap(uint256 amountIn, uint256 amountOut, address tokenIn, address tokenOut) external returns (uint256) {
+        if (setRevert) require(false);
+        if (setRevertWithMessage) revert("wrong swap");
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
         IERC20(tokenOut).safeTransfer(msg.sender, amountOut);
-        return (true, data);
+        return amountOut;
     }
 
     function setRevertStatuses(bool _setRevert, bool _setRevertWithMessage) external {

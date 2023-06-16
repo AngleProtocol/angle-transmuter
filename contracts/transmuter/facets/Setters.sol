@@ -32,6 +32,7 @@ contract Setters is AccessControlModifiers, ISetters {
     event CollateralManagerSet(address indexed collateral, ManagerStorage managerData);
     event CollateralRevoked(address indexed collateral);
     event ManagerDataSet(address indexed collateral, ManagerStorage managerData);
+    event Recovered(address indexed token, address indexed to, uint256 amount);
     event RedemptionCurveParamsSet(uint64[] xFee, int64[] yFee);
     event ReservesAdjusted(address indexed collateral, uint256 amount, bool increase);
     event TrustedToggled(address indexed sender, bool isTrusted, TrustedType trustedType);
@@ -80,6 +81,7 @@ contract Setters is AccessControlModifiers, ISetters {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
         if (collatInfo.isManaged > 0) LibManager.transferTo(address(token), to, amount, collatInfo.managerData.config);
         else token.safeTransfer(to, amount);
+        emit Recovered(address(token), to, amount);
     }
 
     /// @inheritdoc ISetters
