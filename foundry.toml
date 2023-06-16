@@ -41,7 +41,7 @@ runs = 2000
 runs = 2000
 
 [profile.dev.invariant]
-runs = 10
+runs = 500
 depth = 30
 fail_on_revert = false
 
