@@ -11,7 +11,6 @@ import "../Fixture.sol";
 import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
 import { MockManager } from "../mock/MockManager.sol";
 import "../utils/FunctionUtils.sol";
-import "../utils/FunctionUtils.sol";
 
 contract BurnTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;

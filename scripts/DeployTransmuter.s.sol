@@ -129,6 +129,7 @@ contract DeployTransmuter is Script {
             )
         );
 
+        console.log("Transmuter deployed at: %s", address(transmuter));
         vm.stopBroadcast();
 
         /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

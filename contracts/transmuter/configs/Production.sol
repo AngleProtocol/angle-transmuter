@@ -25,9 +25,7 @@ contract Production {
     function initialize(
         IAccessControlManager _accessControlManager,
         address _agToken,
-        CollateralSetupProd[] calldata collaterals,
-        uint64[] memory xRedeemFee,
-        int64[] memory yRedeemFee
+        CollateralSetupProd[] calldata collaterals
     ) external {
         Setters.setAccessControlManager(_accessControlManager);
 
@@ -42,10 +40,8 @@ contract Production {
             Setters.setOracle(collateral.token, collateral.oracleConfig);
             //Mint fees
             Setters.setFees(collateral.token, collateral.xMintFee, collateral.yMintFee, true);
-            Setters.togglePause(collateral.token, ActionType.Mint);
             //Burn fees
             Setters.setFees(collateral.token, collateral.xBurnFee, collateral.yBurnFee, false);
-            Setters.togglePause(collateral.token, ActionType.Burn);
         }
     }
 }

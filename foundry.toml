@@ -14,10 +14,10 @@ solc_version = '0.8.19'
 ffi = true
 
 [fuzz]
-runs = 1000
+runs = 10000
 
 [invariant]
-runs = 100
+runs = 1000
 depth = 30
 
 [rpc_endpoints]
@@ -42,7 +42,7 @@ gas_reports = ["*"]
 runs = 2000
 
 [profile.dev.fuzz]
-runs = 2000
+runs = 1000
 
 [profile.dev.invariant]
 runs = 500
