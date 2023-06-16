@@ -30,88 +30,6 @@ contract DeployTransmuter is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        FEE STRUCTURE                                                  
-        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-        uint64[] memory xMintFee = new uint64[](4);
-        xMintFee[0] = uint64(0);
-        xMintFee[1] = uint64((40 * BASE_9) / 100);
-        xMintFee[2] = uint64((45 * BASE_9) / 100);
-        xMintFee[3] = uint64((70 * BASE_9) / 100);
-
-        // Linear at 1%, 3% at 45%, then steep to 100%
-        int64[] memory yMintFee = new int64[](4);
-        yMintFee[0] = int64(uint64(BASE_9 / 99));
-        yMintFee[1] = int64(uint64(BASE_9 / 99));
-        yMintFee[2] = int64(uint64((3 * BASE_9) / 97));
-        yMintFee[3] = int64(uint64(BASE_12 - 1));
-
-        uint64[] memory xBurnFee = new uint64[](4);
-        xBurnFee[0] = uint64(BASE_9);
-        xBurnFee[1] = uint64((40 * BASE_9) / 100);
-        xBurnFee[2] = uint64((35 * BASE_9) / 100);
-        xBurnFee[3] = uint64(BASE_9 / 100);
-
-        // Linear at 1%, 3% at 35%, then steep to 100%
-        int64[] memory yBurnFee = new int64[](4);
-        yBurnFee[0] = int64(uint64(BASE_9 / 99));
-        yBurnFee[1] = int64(uint64(BASE_9 / 99));
-        yBurnFee[2] = int64(uint64((3 * BASE_9) / 97));
-        yBurnFee[3] = int64(uint64(MAX_BURN_FEE - 1));
-
-        uint64[] memory xRedeemFee = new uint64[](4);
-        xRedeemFee[0] = uint64(0);
-        xRedeemFee[1] = uint64((8 * BASE_9) / 10);
-        xRedeemFee[1] = uint64((9 * BASE_9) / 10);
-        xRedeemFee[3] = uint64(BASE_9);
-
-        // Linear at 1%, 3% at 35%, then steep to 100%
-        int64[] memory yRedeemFee = new int64[](4);
-        yRedeemFee[0] = int64(uint64(998 * BASE_9) / 1000);
-        yRedeemFee[1] = int64(uint64(998 * BASE_9) / 1000);
-        yRedeemFee[2] = int64(uint64(95 * BASE_9) / 100);
-        yRedeemFee[3] = int64(uint64(998 * BASE_9) / 1000);
-
-        /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                    SET COLLATERALS                                                 
-        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-        CollateralSetupProd[] memory collaterals = new CollateralSetupProd[](3);
-
-        // EUROC
-        {
-            bytes memory readData;
-            bytes memory oracleConfig = abi.encode(
-                Storage.OracleReadType.NO_ORACLE,
-                Storage.OracleTargetType.STABLE,
-                readData
-            );
-            collaterals[0] = CollateralSetupProd(EUROC, oracleConfig, xMintFee, yMintFee, xBurnFee, yBurnFee);
-        }
-
-        // EUROE
-        {
-            bytes memory readData;
-            bytes memory oracleConfig = abi.encode(
-                Storage.OracleReadType.NO_ORACLE,
-                Storage.OracleTargetType.STABLE,
-                readData
-            );
-            collaterals[1] = CollateralSetupProd(EUROE, oracleConfig, xMintFee, yMintFee, xBurnFee, yBurnFee);
-        }
-
-        // EURe
-        {
-            bytes memory readData;
-            bytes memory oracleConfig = abi.encode(
-                Storage.OracleReadType.NO_ORACLE,
-                Storage.OracleTargetType.STABLE,
-                readData
-            );
-            collaterals[2] = CollateralSetupProd(EURE, oracleConfig, xMintFee, yMintFee, xBurnFee, yBurnFee);
-        }
-
-        /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         DEPLOY                                                      
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
@@ -119,14 +37,7 @@ contract DeployTransmuter is Script {
         config = address(new Production());
         ITransmuter transmuter = _deployTransmuter(
             config,
-            abi.encodeWithSelector(
-                Production.initialize.selector,
-                CORE_BORROW,
-                AGEUR,
-                collaterals,
-                xRedeemFee,
-                yRedeemFee
-            )
+            abi.encodeWithSelector(Production.initialize.selector, CORE_BORROW, AGEUR)
         );
 
         console.log("Transmuter deployed at: %s", address(transmuter));

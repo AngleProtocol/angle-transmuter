@@ -12,7 +12,7 @@ import "contracts/transmuter/Storage.sol" as Storage;
 contract CheckTransmuter is Script, StdAssertions {
     using strings for *;
 
-    ITransmuter public constant transmuter = ITransmuter(0xd1df48175CAC7409abfF7d267A2c6bBc010dD19b);
+    ITransmuter public constant transmuter = ITransmuter(0xc03e5186820A090ED32C82Bb2f484570f8Fb2114);
 
     function run() external {
         /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -99,28 +99,34 @@ contract CheckTransmuter is Script, StdAssertions {
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
         {
             address collat = EUROC;
-            (uint256 mint, uint256 burn, uint256 ratio, uint256 redemption) = transmuter.getOracleValues(collat);
+            (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter
+                .getOracleValues(collat);
             assertEq(mint, BASE_18);
             assertEq(burn, BASE_18);
             assertEq(ratio, BASE_18);
+            assertEq(minRatio, BASE_18);
             assertEq(redemption, BASE_18);
         }
 
         {
             address collat = EUROE;
-            (uint256 mint, uint256 burn, uint256 ratio, uint256 redemption) = transmuter.getOracleValues(collat);
+            (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter
+                .getOracleValues(collat);
             assertEq(mint, BASE_18);
             assertEq(burn, BASE_18);
             assertEq(ratio, BASE_18);
+            assertEq(minRatio, BASE_18);
             assertEq(redemption, BASE_18);
         }
 
         {
             address collat = EURE;
-            (uint256 mint, uint256 burn, uint256 ratio, uint256 redemption) = transmuter.getOracleValues(collat);
+            (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter
+                .getOracleValues(collat);
             assertEq(mint, BASE_18);
             assertEq(burn, BASE_18);
             assertEq(ratio, BASE_18);
+            assertEq(minRatio, BASE_18);
             assertEq(redemption, BASE_18);
         }
 
