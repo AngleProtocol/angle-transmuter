@@ -31,17 +31,7 @@ contract MockLib {
         return LibManager.transferRecipient(config);
     }
 
-    function transferFrom(address token, uint256 amount, bytes memory config) external {
-        return LibManager.transferFrom(token, amount, config);
-    }
-
-    function getUnderlyingBalances(
-        bytes memory config
-    ) external view returns (uint256[] memory balances, uint256 totalValue) {
-        return LibManager.getUnderlyingBalances(config);
-    }
-
-    function maxAvailable(bytes memory config) external view returns (uint256 available) {
-        return LibManager.maxAvailable(config);
+    function totalAssets(bytes memory config) external view returns (uint256[] memory balances, uint256 totalValue) {
+        return LibManager.totalAssets(config);
     }
 }

@@ -45,7 +45,7 @@ contract SettersGovernor is AccessControlModifiers, ISettersGovernor {
     /// @dev `collateral` is different from `token` only in the case of a managed collateral
     function recoverERC20(address collateral, IERC20 token, address to, uint256 amount) external onlyGovernor {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
-        if (collatInfo.isManaged > 0) LibManager.transferTo(address(token), to, amount, collatInfo.managerData.config);
+        if (collatInfo.isManaged > 0) LibManager.release(address(token), to, amount, collatInfo.managerData.config);
         else token.safeTransfer(to, amount);
         emit Recovered(address(token), to, amount);
     }
@@ -56,11 +56,15 @@ contract SettersGovernor is AccessControlModifiers, ISettersGovernor {
     }
 
     /// @inheritdoc ISettersGovernor
+    /// @dev Funds needs to have been withdrew from the eventual previous manager prior to this call
     function setCollateralManager(address collateral, ManagerStorage memory managerData) external onlyGovernor {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         uint8 isManaged = collatInfo.isManaged;
-        if (isManaged > 0) LibManager.pullAll(collatInfo.managerData.config);
+        if (isManaged > 0) {
+            (, uint256 totalValue) = LibManager.totalAssets(collatInfo.managerData.config);
+            if (totalValue > 0) revert ManagerHasAssets();
+        }
         if (managerData.config.length != 0) {
             // The first subCollateral given should be the actual collateral asset
             if (address(managerData.subCollaterals[0]) != collateral) revert InvalidParams();
@@ -125,13 +129,16 @@ contract SettersGovernor is AccessControlModifiers, ISettersGovernor {
     /// is not used to back stables
     /// @dev The system may still have a non null balance of the collateral that is revoked: this should later
     /// be handled through a recoverERC20 call
+    /// @dev Funds needs to have been withdrew from the manager prior to this call
     function revokeCollateral(address collateral) external onlyGovernor {
         TransmuterStorage storage ks = s.transmuterStorage();
         Collateral storage collatInfo = ks.collaterals[collateral];
         if (collatInfo.decimals == 0 || collatInfo.normalizedStables > 0) revert NotCollateral();
         uint8 isManaged = collatInfo.isManaged;
-        // If the collateral is managed through strategies, pulling all available funds from there
-        if (isManaged > 0) LibManager.pullAll(collatInfo.managerData.config);
+        if (isManaged > 0) {
+            (, uint256 totalValue) = LibManager.totalAssets(collatInfo.managerData.config);
+            if (totalValue > 0) revert ManagerHasAssets();
+        }
         delete ks.collaterals[collateral];
         address[] memory collateralListMem = ks.collateralList;
         uint256 length = collateralListMem.length;

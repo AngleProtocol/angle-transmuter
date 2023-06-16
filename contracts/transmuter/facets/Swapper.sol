@@ -126,8 +126,8 @@ contract Swapper is ISwapper {
                                                      VIEW HELPERS                                                   
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    // If these functions return a null `amountOut` or `amountIn` value, then calling one of the swap functions above
-    // at the exact same block will not do anything.
+    // If these functions return a 0 `amountOut` or `amountIn` value, then calling one of the swap functions above
+    // will not do anything.
 
     /// @inheritdoc ISwapper
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256 amountOut) {
