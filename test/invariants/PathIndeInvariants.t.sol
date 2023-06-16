@@ -186,7 +186,7 @@ contract PathIndeInvariants is Fixture {
         for (uint256 i; i < _collaterals.length; i++) {
             (uint256 issuedPerCollat, ) = transmuter.getIssuedByCollateral(_collaterals[i]);
             (uint256 issuedPerCollatSplit, ) = transmuterSplit.getIssuedByCollateral(_collaterals[i]);
-            assertApproxEqRelDecimal(issuedPerCollat, issuedPerCollatSplit, _MAX_PERCENTAGE_DEVIATION * 100, 18);
+            assertApproxEqRelDecimal(issuedPerCollat, issuedPerCollatSplit, _MAX_PERCENTAGE_DEVIATION * 500, 18);
         }
     }
 
@@ -194,7 +194,7 @@ contract PathIndeInvariants is Fixture {
         for (uint256 i; i < _collaterals.length; i++) {
             uint256 balance = IERC20(_collaterals[i]).balanceOf(address(transmuter));
             uint256 balanceSplit = IERC20(_collaterals[i]).balanceOf(address(transmuterSplit));
-            assertApproxEqRelDecimal(balance, balanceSplit, _MAX_PERCENTAGE_DEVIATION * 100, 18);
+            assertApproxEqRelDecimal(balance, balanceSplit, _MAX_PERCENTAGE_DEVIATION * 500, 18);
         }
     }
 

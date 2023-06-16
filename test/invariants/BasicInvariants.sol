@@ -184,8 +184,13 @@ contract BasicInvariants is Fixture {
 
     function invariant_MintReflexivity() public {
         uint256 stablecoinIssued = transmuter.getTotalIssued();
-        // TODO need better randomness
-        uint256 stableAmount = stablecoinIssued > BASE_18 ? stablecoinIssued / 10 : BASE_18;
+        uint256 stableAmount;
+        {
+            // source of randomness
+            (uint64 collateralRatio, ) = transmuter.getCollateralRatio();
+            uint256 multiplier = bound(collateralRatio, 1, 1e4);
+            stableAmount = stablecoinIssued > BASE_18 ? (stablecoinIssued * multiplier) / 1e2 : BASE_18;
+        }
         for (uint256 i; i < _collaterals.length; i++) {
             uint256 amountIn = transmuter.quoteOut(stableAmount, _collaterals[i], address(agToken));
             uint256 reflexiveStableAmount = transmuter.quoteIn(amountIn, _collaterals[i], address(agToken));
@@ -198,9 +203,14 @@ contract BasicInvariants is Fixture {
 
     function invariant_BurnReflexivity() public {
         uint256 stablecoinIssued = transmuter.getTotalIssued();
-        // TODO need better randomness
-        uint256 stableAmount = stablecoinIssued / 10;
-        if (stableAmount < BASE_18) return;
+        uint256 stableAmount;
+        {
+            // source of randomness
+            (uint64 collateralRatio, ) = transmuter.getCollateralRatio();
+            uint256 multiplier = bound(collateralRatio, 1, 1e2);
+            stableAmount = (stablecoinIssued * multiplier) / 1e2;
+        }
+        if (stableAmount < 10 * BASE_18) return;
         for (uint256 i; i < _collaterals.length; i++) {
             uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[i]);
             uint256 reflexiveStableAmount = transmuter.quoteOut(amountOut, address(agToken), _collaterals[i]);

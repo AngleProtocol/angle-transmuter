@@ -40,11 +40,20 @@ import { IDiamondLoupe } from "./IDiamondLoupe.sol";
 import { IGetters } from "./IGetters.sol";
 import { IRedeemer } from "./IRedeemer.sol";
 import { IRewardHandler } from "./IRewardHandler.sol";
-import { ISetters } from "./ISetters.sol";
+import { ISettersGovernor, ISettersGuardian } from "./ISetters.sol";
 import { ISwapper } from "./ISwapper.sol";
 
 /// @title ITransmuter
 /// @author Angle Labs, Inc.
-interface ITransmuter is IDiamondCut, IDiamondLoupe, IGetters, IRedeemer, IRewardHandler, ISetters, ISwapper {
+interface ITransmuter is
+    IDiamondCut,
+    IDiamondLoupe,
+    IGetters,
+    IRedeemer,
+    IRewardHandler,
+    ISettersGovernor,
+    ISettersGuardian,
+    ISwapper
+{
 
 }

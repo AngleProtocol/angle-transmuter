@@ -9,7 +9,6 @@ import "mock/MockManager.sol";
 import "contracts/transmuter/Storage.sol";
 import { Test } from "contracts/transmuter/configs/Test.sol";
 import { DiamondCut } from "contracts/transmuter/facets/DiamondCut.sol";
-import { Setters } from "contracts/transmuter/facets/Setters.sol";
 import { LibSetters } from "contracts/transmuter/libraries/LibSetters.sol";
 import "contracts/utils/Constants.sol";
 import "contracts/utils/Errors.sol" as Errors;

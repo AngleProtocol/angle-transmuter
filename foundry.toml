@@ -14,21 +14,25 @@ solc_version = '0.8.19'
 ffi = true
 
 [fuzz]
-runs = 2000
+runs = 10000
 
 [invariant]
-runs = 10
+runs = 1000
 depth = 30
 
 [rpc_endpoints]
+arbitrum = "${ETH_NODE_URI_ARBITRUM}"
 mainnet = "${ETH_NODE_URI_MAINNET}"
+optimism = "${ETH_NODE_URI_OPTIMISM}"
 polygon = "${ETH_NODE_URI_POLYGON}"
-goerli = "${ETH_NODE_URI_GOERLI}"
+fork = "${ETH_NODE_URI_FORK}"
 
 [etherscan]
+arbitrum = { key = "${ARBITRUM_ETHERSCAN_API_KEY}" }
 mainnet = { key = "${MAINNET_ETHERSCAN_API_KEY}" }
+optimism = { key = "${OPTIMISM_ETHERSCAN_API_KEY}" }
 polygon = { key = "${POLYGON_ETHERSCAN_API_KEY}" }
-goerli = { key = "${GOERLI_ETHERSCAN_API_KEY}" }
+
 
 [profile.dev]
 optimizer = false
@@ -38,7 +42,7 @@ gas_reports = ["*"]
 runs = 2000
 
 [profile.dev.fuzz]
-runs = 2000
+runs = 1000
 
 [profile.dev.invariant]
 runs = 500
