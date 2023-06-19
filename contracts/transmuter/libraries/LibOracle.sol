@@ -133,10 +133,9 @@ library LibOracle {
         (uint80 roundId, int256 ratio, , uint256 updatedAt, uint80 answeredInRound) = feed.latestRoundData();
         if (ratio <= 0 || roundId > answeredInRound || block.timestamp - updatedAt > stalePeriod)
             revert InvalidChainlinkRate();
-        uint256 castedRatio = uint256(ratio);
         // Checking whether we should multiply or divide by the ratio computed
-        if (multiplied == 1) return (_quoteAmount * castedRatio) / (10 ** decimals);
-        else return (_quoteAmount * (10 ** decimals)) / castedRatio;
+        if (multiplied == 1) return (_quoteAmount * uint256(ratio)) / (10 ** decimals);
+        else return (_quoteAmount * (10 ** decimals)) / uint256(ratio);
     }
 
     /// @notice Parses an `oracleConfig` into several sub fields

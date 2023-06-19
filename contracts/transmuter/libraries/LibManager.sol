@@ -36,7 +36,7 @@ library LibManager {
     /// @notice Gets the balances of all the tokens controlled through `managerData`
     /// @return balances An array of size `subCollaterals` with current balances of all subCollaterals
     /// including the one corresponding to the `managerData` given
-    /// @return totalValue The value of the `subCollaterals` (excluding the collateral used within Transmuter)
+    /// @return totalValue The value of all the `subCollaterals` in `collateral`
     /// @dev `subCollaterals` must always have as first token (index 0) the collateral itself
     function totalAssets(bytes memory config) internal view returns (uint256[] memory balances, uint256 totalValue) {
         (ManagerType managerType, bytes memory data) = parseManagerConfig(config);

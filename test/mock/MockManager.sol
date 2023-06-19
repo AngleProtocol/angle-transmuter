@@ -12,6 +12,7 @@ import { LibOracle, AggregatorV3Interface } from "../../contracts/transmuter/lib
 
 import "../../contracts/utils/Constants.sol";
 import "../../contracts/utils/Errors.sol";
+import { console } from "forge-std/console.sol";
 
 contract MockManager is IManager {
     address public collateral;
@@ -85,13 +86,16 @@ contract MockManager is IManager {
 
         for (uint256 i = 0; i < nbrCollaterals; ++i) {
             balances[i] = subCollaterals[i].balanceOf(address(this));
-            totalValue += LibOracle.readChainlinkFeed(
-                LibHelpers.convertDecimalTo(balances[i], tokenDecimals[i], 18),
-                oracles[i - 1],
-                oracleIsMultiplied[i - 1],
-                chainlinkDecimals[i - 1],
-                stalePeriods[i - 1]
-            );
+            if (i > 0) {
+                totalValue += LibOracle.readChainlinkFeed(
+                    LibHelpers.convertDecimalTo(balances[i], tokenDecimals[i], tokenDecimals[0]),
+                    oracles[i - 1],
+                    oracleIsMultiplied[i - 1],
+                    chainlinkDecimals[i - 1],
+                    stalePeriods[i - 1]
+                );
+            } else totalValue += balances[i];
+            console.log(totalValue);
         }
     }
 
