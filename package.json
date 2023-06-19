@@ -5,6 +5,8 @@
   "scripts": {
     "coverage": "FOUNDRY_PROFILE=dev forge coverage --report lcov && yarn lcov:clean && yarn lcov:generate-html",
     "compile": "FOUNDRY_PROFILE=dev forge build --optimize --optimizer-runs 1000",
+    "compile:ir": "FOUNDRY_PROFILE=dev forge build --skip test --optimize --optimizer-runs 1000 --via-ir",
+    "compile:ir:ci": "FOUNDRY_PROFILE=ci forge build --skip test --optimize --optimizer-runs 1000 --via-ir",
     "deploy": "forge script --broadcast --verify -vvvv",
     "gas": "yarn test --gas-report",
     "deploy:fork": "FOUNDRY_PROFILE=dev forge script --fork-url fork --broadcast",

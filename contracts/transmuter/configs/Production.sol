@@ -23,13 +23,11 @@ struct CollateralSetupProd {
 /// @dev This contract is used only once to initialize the diamond proxy.
 contract Production {
     function initialize(IAccessControlManager _accessControlManager, address _agToken) external {
-        address EUROC = 0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c;
-        address EUROE = 0x820802Fa8a99901F52e39acD21177b0BE6EE2974;
-        address EURE = 0x3231Cb76718CDeF2155FC47b5286d82e6eDA273f;
+        address euroc = 0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c;
+        address euroe = 0x820802Fa8a99901F52e39acD21177b0BE6EE2974;
+        address eure = 0x3231Cb76718CDeF2155FC47b5286d82e6eDA273f;
 
-        /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        FEE STRUCTURE                                                  
-        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+        // Fee structure
 
         uint64[] memory xMintFee = new uint64[](4);
         xMintFee[0] = uint64(0);
@@ -57,9 +55,7 @@ contract Production {
         yBurnFee[2] = int64(uint64((3 * BASE_9) / 97));
         yBurnFee[3] = int64(uint64(MAX_BURN_FEE - 1));
 
-        /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                    SET COLLATERALS                                                 
-        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+        // Set Collaterals
 
         CollateralSetupProd[] memory collaterals = new CollateralSetupProd[](3);
 
@@ -71,10 +67,10 @@ contract Production {
                 Storage.OracleTargetType.STABLE,
                 readData
             );
-            collaterals[0] = CollateralSetupProd(EUROC, oracleConfig, xMintFee, yMintFee, xBurnFee, yBurnFee);
+            collaterals[0] = CollateralSetupProd(euroc, oracleConfig, xMintFee, yMintFee, xBurnFee, yBurnFee);
         }
 
-        // EUROE
+        // EUROe
         {
             bytes memory readData;
             bytes memory oracleConfig = abi.encode(
@@ -82,7 +78,7 @@ contract Production {
                 Storage.OracleTargetType.STABLE,
                 readData
             );
-            collaterals[1] = CollateralSetupProd(EUROE, oracleConfig, xMintFee, yMintFee, xBurnFee, yBurnFee);
+            collaterals[1] = CollateralSetupProd(euroe, oracleConfig, xMintFee, yMintFee, xBurnFee, yBurnFee);
         }
 
         // EURe
@@ -93,7 +89,7 @@ contract Production {
                 Storage.OracleTargetType.STABLE,
                 readData
             );
-            collaterals[2] = CollateralSetupProd(EURE, oracleConfig, xMintFee, yMintFee, xBurnFee, yBurnFee);
+            collaterals[2] = CollateralSetupProd(eure, oracleConfig, xMintFee, yMintFee, xBurnFee, yBurnFee);
         }
 
         Setters.setAccessControlManager(_accessControlManager);
