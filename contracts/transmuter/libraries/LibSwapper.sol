@@ -80,9 +80,7 @@ library LibSwapper {
                         LibManager.transferRecipient(collatInfo.managerData.config),
                         amountIn
                     );
-                else {
-                    IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
-                }
+                else IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
                 if (collatInfo.isManaged > 0) {
                     LibManager.invest(amountIn, collatInfo.managerData.config);
                 }

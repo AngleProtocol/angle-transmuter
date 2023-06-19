@@ -123,4 +123,17 @@ contract LibrariesTest is Fixture {
         assertEq(balances.length, 0);
         assertEq(totalValue, 0);
     }
+
+    function test_Invest() public {
+        // Tested elsewhere, for the sake of Forge coverage here
+        bytes memory config = abi.encode(ManagerType.EXTERNAL, abi.encode(IManager(address(manager))));
+        mockLib.invest(0, config);
+    }
+
+    function test_MaxAvailable() public {
+        MockManager manager2 = new MockManager(address(eurA));
+        deal(address(eurA), address(manager2), 500);
+        bytes memory config = abi.encode(ManagerType.EXTERNAL, abi.encode(IManager(address(manager2))));
+        assertEq(mockLib.maxAvailable(config), 500);
+    }
 }
