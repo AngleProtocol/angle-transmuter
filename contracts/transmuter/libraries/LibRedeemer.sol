@@ -64,9 +64,9 @@ library LibRedeemer {
                 Collateral storage collatInfo = ks.collaterals[collateralListMem[indexCollateral]];
                 if (collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, to))
                     revert NotWhitelisted();
-                if (collatInfo.isManaged > 0) {
-                    LibManager.transferTo(tokens[i], to, amounts[i], collatInfo.managerData.config);
-                } else IERC20(tokens[i]).safeTransfer(to, amounts[i]);
+                if (collatInfo.isManaged > 0)
+                    LibManager.release(tokens[i], to, amounts[i], collatInfo.managerData.config);
+                else IERC20(tokens[i]).safeTransfer(to, amounts[i]);
             }
             if (subCollateralsTracker[indexCollateral] - 1 <= i) ++indexCollateral;
         }
@@ -148,21 +148,18 @@ library LibRedeemer {
             uint256 countCollat;
             for (uint256 i; i < collateralListLength; ++i) {
                 Collateral storage collateral = ks.collaterals[collateralList[i]];
-                uint256 collateralBalance;
+                uint256 collateralBalance; // Will be either the balance or the value of assets managed
                 if (collateral.isManaged > 0) {
                     // If a collateral is managed, the balances of the sub-collaterals cannot be directly obtained by
-                    // calling `balanceOf` of the sub-collaterals.
-                    // Managed assets must support ways to value their sub-collaterals in a non manipulable way
-                    (uint256[] memory subCollateralsBalances, uint256 subCollateralsValue) = LibManager
-                        .getUnderlyingBalances(collateral.managerData.config);
-                    // `subCollateralsBalances` length is not cached here to avoid stack too deep
-                    for (uint256 k; k < subCollateralsBalances.length; ++k) {
+                    // calling `balanceOf` of the sub-collaterals
+                    uint256[] memory subCollateralsBalances;
+                    (subCollateralsBalances, collateralBalance) = LibManager.totalAssets(collateral.managerData.config);
+                    uint256 numSubCollats = subCollateralsBalances.length;
+                    for (uint256 k; k < numSubCollats; ++k) {
                         tokens[countCollat + k] = address(collateral.managerData.subCollaterals[k]);
                         balances[countCollat + k] = subCollateralsBalances[k];
                     }
-                    collateralBalance = subCollateralsBalances[0];
-                    countCollat += subCollateralsBalances.length;
-                    totalCollateralization += subCollateralsValue;
+                    countCollat += numSubCollats;
                 } else {
                     collateralBalance = IERC20(collateralList[i]).balanceOf(address(this));
                     tokens[countCollat] = collateralList[i];
@@ -174,7 +171,7 @@ library LibRedeemer {
                     BASE_18;
             }
         }
-        // The `stablecoinsIssued` value need to be rounded up because it is then use to as a divizer when computing
+        // The `stablecoinsIssued` value need to be rounded up because it is then used as a divizer when computing
         // the amount of stablecoins issued
         stablecoinsIssued = uint256(ks.normalizedStables).mulDiv(ks.normalizer, BASE_27, Math.Rounding.Up);
         if (stablecoinsIssued > 0)

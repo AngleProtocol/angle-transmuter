@@ -1166,6 +1166,28 @@ contract Test_Setters_RevokeCollateral is Fixture {
         transmuter.adjustStablecoins(address(this), 1 ether, true);
     }
 
+    function test_RevertWhen_ManagerHasAssets() public {
+        MockManager manager = new MockManager(address(eurA));
+        IERC20[] memory subCollaterals = new IERC20[](2);
+        subCollaterals[0] = eurA;
+        subCollaterals[1] = eurB;
+        ManagerStorage memory data = ManagerStorage({
+            subCollaterals: subCollaterals,
+            config: abi.encode(ManagerType.EXTERNAL, abi.encode(manager))
+        });
+        manager.setSubCollaterals(data.subCollaterals, "");
+
+        hoax(governor);
+        transmuter.setCollateralManager(address(eurA), data);
+
+        deal(address(eurA), address(manager), 1 ether);
+
+        vm.expectRevert(Errors.ManagerHasAssets.selector);
+
+        hoax(governor);
+        transmuter.revokeCollateral(address(eurA));
+    }
+
     function test_Success() public {
         address[] memory prevlist = transmuter.getCollateralList();
 
@@ -1216,12 +1238,10 @@ contract Test_Setters_RevokeCollateral is Fixture {
             subCollaterals: subCollaterals,
             config: abi.encode(ManagerType.EXTERNAL, abi.encode(manager))
         });
-        manager.setSubCollaterals(data.subCollaterals, data.config);
+        manager.setSubCollaterals(data.subCollaterals, "");
 
         hoax(governor);
         transmuter.setCollateralManager(address(eurA), data);
-
-        deal(address(eurA), address(manager), 1 ether);
 
         address[] memory prevlist = transmuter.getCollateralList();
 
@@ -1240,7 +1260,7 @@ contract Test_Setters_RevokeCollateral is Fixture {
 
         assertEq(0, transmuter.getCollateralDecimals(address(eurA)));
         assertEq(0, eurA.balanceOf(address(manager)));
-        assertEq(1 ether, eurA.balanceOf(address(transmuter)));
+        assertEq(0, eurA.balanceOf(address(transmuter)));
 
         (bool managed, , ) = transmuter.getManagerData(address(eurA));
         assert(!managed);

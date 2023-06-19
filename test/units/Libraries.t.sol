@@ -116,33 +116,18 @@ contract LibrariesTest is Fixture {
         mockLib.transferRecipient(invalidConfig);
     }
 
-    function test_TransferFrom() public {
-        bytes memory config = abi.encode(ManagerType.EXTERNAL, abi.encode(IManager(address(manager))));
-
-        vm.startPrank(governor);
-        deal(address(agToken), governor, 1000);
-        agToken.approve(address(mockLib), 1000);
-
-        mockLib.transferFrom(address(agToken), 1000, config);
-        assertEq(agToken.balanceOf(governor), 0);
-        assertEq(agToken.balanceOf(address(mockLib)), 0);
-        assertEq(agToken.balanceOf(address(manager)), 1000);
-
-        deal(address(eurA), governor, 500);
-        eurA.approve(address(mockLib), 500);
-        mockLib.transferFrom(address(eurA), 500, config);
-        assertEq(eurA.balanceOf(governor), 0);
-        assertEq(eurA.balanceOf(address(mockLib)), 0);
-        assertEq(eurA.balanceOf(address(manager)), 500);
-        vm.stopPrank();
-    }
-
-    function test_GetUnderlyingBalances() public {
+    function test_TotalAssets() public {
         // Tested elsewhere, for the sake of Forge coverage here
         bytes memory config = abi.encode(ManagerType.EXTERNAL, abi.encode(IManager(address(manager))));
-        (uint256[] memory balances, uint256 totalValue) = mockLib.getUnderlyingBalances(config);
+        (uint256[] memory balances, uint256 totalValue) = mockLib.totalAssets(config);
         assertEq(balances.length, 0);
         assertEq(totalValue, 0);
+    }
+
+    function test_Invest() public {
+        // Tested elsewhere, for the sake of Forge coverage here
+        bytes memory config = abi.encode(ManagerType.EXTERNAL, abi.encode(IManager(address(manager))));
+        mockLib.invest(0, config);
     }
 
     function test_MaxAvailable() public {

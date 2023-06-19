@@ -75,9 +75,14 @@ library LibSwapper {
                 if (permitData.length > 0) {
                     PERMIT_2.functionCall(permitData);
                 } else if (collatInfo.isManaged > 0)
-                    LibManager.transferFrom(tokenIn, amountIn, collatInfo.managerData.config);
-                else {
-                    IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+                    IERC20(tokenIn).safeTransferFrom(
+                        msg.sender,
+                        LibManager.transferRecipient(collatInfo.managerData.config),
+                        amountIn
+                    );
+                else IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+                if (collatInfo.isManaged > 0) {
+                    LibManager.invest(amountIn, collatInfo.managerData.config);
                 }
                 IAgToken(tokenOut).mint(to, amountOut);
             } else {
@@ -90,7 +95,7 @@ library LibSwapper {
                 ks.normalizedStables -= changeAmount;
                 IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
                 if (collatInfo.isManaged > 0)
-                    LibManager.transferTo(tokenOut, to, amountOut, collatInfo.managerData.config);
+                    LibManager.release(tokenOut, to, amountOut, collatInfo.managerData.config);
                 else IERC20(tokenOut).safeTransfer(to, amountOut);
             }
             emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);

@@ -5,13 +5,16 @@ pragma solidity ^0.8.19;
 import "oz/token/ERC20/IERC20.sol";
 import "oz/token/ERC20/utils/SafeERC20.sol";
 
+import "interfaces/IManager.sol";
+
 import { LibHelpers } from "../../contracts/transmuter/libraries/LibHelpers.sol";
 import { LibOracle, AggregatorV3Interface } from "../../contracts/transmuter/libraries/LibOracle.sol";
 
 import "../../contracts/utils/Constants.sol";
 import "../../contracts/utils/Errors.sol";
+import { console } from "forge-std/console.sol";
 
-contract MockManager {
+contract MockManager is IManager {
     address public collateral;
     IERC20[] public subCollaterals;
     bytes public config;
@@ -27,7 +30,7 @@ contract MockManager {
         config = _managerConfig;
     }
 
-    function transferTo(address token, address to, uint256 amount) external {
+    function release(address token, address to, uint256 amount) external {
         bool found;
         for (uint256 i; i < subCollaterals.length; ++i) {
             if (token == address(subCollaterals[i])) {
@@ -38,6 +41,8 @@ contract MockManager {
         if (!found) revert NotCollateral();
         IERC20(token).transfer(to, amount);
     }
+
+    function invest(uint256 amount) external {}
 
     function withdrawAndTransfer(address token, address to, uint256 amount) external {
         bool found;
@@ -60,10 +65,17 @@ contract MockManager {
     /// @notice Gets the balances of all the tokens controlled be the manager contract
     /// @return balances An array of size `subCollaterals` with current balances
     /// @return totalValue The sum of the balances corrected by an oracle
-    function getUnderlyingBalances() external view returns (uint256[] memory balances, uint256 totalValue) {
+    function totalAssets() external view returns (uint256[] memory balances, uint256 totalValue) {
         uint256 nbrCollaterals = subCollaterals.length;
         balances = new uint256[](nbrCollaterals);
         if (nbrCollaterals == 0) return (balances, totalValue);
+        if (config.length == 0) {
+            for (uint256 i = 0; i < nbrCollaterals; ++i) {
+                balances[i] = subCollaterals[i].balanceOf(address(this));
+                totalValue += balances[i];
+            }
+            return (balances, totalValue);
+        }
         (
             uint8[] memory tokenDecimals,
             AggregatorV3Interface[] memory oracles,
@@ -76,13 +88,14 @@ contract MockManager {
             balances[i] = subCollaterals[i].balanceOf(address(this));
             if (i > 0) {
                 totalValue += LibOracle.readChainlinkFeed(
-                    LibHelpers.convertDecimalTo(balances[i], tokenDecimals[i], 18),
+                    LibHelpers.convertDecimalTo(balances[i], tokenDecimals[i], tokenDecimals[0]),
                     oracles[i - 1],
                     oracleIsMultiplied[i - 1],
                     chainlinkDecimals[i - 1],
                     stalePeriods[i - 1]
                 );
-            }
+            } else totalValue += balances[i];
+            console.log(totalValue);
         }
     }
 
