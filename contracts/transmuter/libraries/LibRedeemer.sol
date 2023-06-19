@@ -148,14 +148,13 @@ library LibRedeemer {
             uint256 countCollat;
             for (uint256 i; i < collateralListLength; ++i) {
                 Collateral storage collateral = ks.collaterals[collateralList[i]];
-                uint256 collateralBalance;
+                uint256 collateralBalance; // Will be either the balance or the value of assets managed
                 if (collateral.isManaged > 0) {
                     // If a collateral is managed, the balances of the sub-collaterals cannot be directly obtained by
                     // calling `balanceOf` of the sub-collaterals.
                     // Managed assets must support ways to value their sub-collaterals in a non manipulable way
-                    (uint256[] memory subCollateralsBalances, uint256 totalValueInCollat) = LibManager.totalAssets(
-                        collateral.managerData.config
-                    );
+                    uint256[] memory subCollateralsBalances;
+                    (subCollateralsBalances, collateralBalance) = LibManager.totalAssets(collateral.managerData.config);
                     // `subCollateralsBalances` length is not cached here to avoid stack too deep
                     for (uint256 k; k < subCollateralsBalances.length; ++k) {
                         tokens[countCollat + k] = address(collateral.managerData.subCollaterals[k]);
@@ -169,7 +168,7 @@ library LibRedeemer {
                 }
                 uint256 oracleValue = LibOracle.readRedemption(collateral.oracleConfig);
                 totalCollateralization +=
-                    (oracleValue * LibHelpers.convertDecimalTo(totalValueInCollat, collateral.decimals, 18)) /
+                    (oracleValue * LibHelpers.convertDecimalTo(collateralBalance, collateral.decimals, 18)) /
                     BASE_18;
             }
         }
