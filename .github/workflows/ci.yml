@@ -69,10 +69,10 @@ jobs:
           version: nightly
 
       - name: Build contracts via IR
-        run: yarn test --via-ir
+        run: yarn compile:ir:ci
 
   foundry-tests:
-    name: Fuzz, Unit and Invariant Tests
+    name: Unit, Fuzz and Invariant Tests
     if: github.ref == 'refs/heads/main' || github.event.inputs.workflow_to_run == 'all' || github.event.inputs.workflow_to_run == 'foundry-tests' || github.event.review.state == 'approved' || github.event.action == 'ready_for_review' || github.event.action == 'review_requested'
     runs-on: ubuntu-latest
     steps:
@@ -97,7 +97,7 @@ jobs:
         run: set -o pipefail && yarn run:ci | tee ethereum.gasreport.ansi
 
       - name: Compare gas reports
-        uses: Rubilmax/foundry-gas-diff@v3.14
+        uses: Rubilmax/foundry-gas-diff@v3.13.4
         id: gas_diff
         with:
           match: contracts/transmuter/DiamondProxy.sol

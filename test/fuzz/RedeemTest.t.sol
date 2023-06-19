@@ -512,7 +512,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint64 fee;
         if (collatRatio >= BASE_9) fee = uint64(yFeeRedeem[yFeeRedeem.length - 1]);
         else fee = uint64(LibHelpers.piecewiseLinear(collatRatio, xFeeRedeem, yFeeRedeem));
-        _assertQuoteAmountsWithManager(collatRatio, collatRatioAboveLimit, mintedStables, amountBurnt, fee, amounts);
+        _assertQuoteAmountsWithManager(collatRatioAboveLimit, amountBurnt, fee, amounts);
     }
 
     function testFuzz_MultiRedemptionCurveWithManagerRandomRedemptionFees(
@@ -1030,9 +1030,7 @@ contract RedeemTest is Fixture, FunctionUtils {
     }
 
     function _assertQuoteAmountsWithManager(
-        uint64 collatRatio,
         bool collatRatioAboveLimit,
-        uint256 mintedStables,
         uint256 amountBurnt,
         uint64 fee,
         uint256[] memory amounts
@@ -1059,12 +1057,11 @@ contract RedeemTest is Fixture, FunctionUtils {
                     if (minOracle == 0 || uint256(value) < minOracle) minOracle = uint256(value);
                     if (uint256(value) > BASE_18 || amounts[i] < 10 ** 4) lastCheck = true;
                 }
-                IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
-                AggregatorV3Interface[] memory listOracles = _subCollaterals[_collaterals[i]].oracles;
                 // we don't double count the real collateral
-                for (uint256 k = 1; k < listSubCollaterals.length; k++) {
-                    (, int256 value, , , ) = listOracles[k - 1].latestRoundData();
-                    uint8 decimals = IERC20Metadata(address(listSubCollaterals[k])).decimals();
+                for (uint256 k = 1; k < _subCollaterals[_collaterals[i]].subCollaterals.length; k++) {
+                    (, int256 value, , , ) = _subCollaterals[_collaterals[i]].oracles[k - 1].latestRoundData();
+                    uint8 decimals = IERC20Metadata(address(_subCollaterals[_collaterals[i]].subCollaterals[k]))
+                        .decimals();
                     amountInValueReceived +=
                         (uint256(value) * _convertDecimalTo(amounts[count++], decimals, 18)) /
                         BASE_8;
@@ -1084,6 +1081,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
 
         uint256 count2;
+        (uint256 collatRatio, uint256 mintedStables) = transmuter.getCollateralRatio();
         for (uint256 i; i < _oracles.length; ++i) {
             IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
             for (uint256 k = 0; k < listSubCollaterals.length; ++k) {
