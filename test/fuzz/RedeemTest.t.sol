@@ -1059,7 +1059,6 @@ contract RedeemTest is Fixture, FunctionUtils {
                     if (minOracle == 0 || uint256(oracleValue) < minOracle) minOracle = uint256(oracleValue);
                     if (uint256(oracleValue) > BASE_18 || amounts[i] < 10 ** 4) lastCheck = true;
                 }
-                // TODO change here
                 // we don't double count the real collateral
                 uint256 subCollateralValue;
                 for (uint256 k = 1; k < _subCollaterals[_collaterals[i]].subCollaterals.length; k++) {
@@ -1246,7 +1245,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256 stablecoinsIssued;
         (collatRatio, stablecoinsIssued) = transmuter.getCollateralRatio();
 
-        if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 5 wei);
+        if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
         else assertEq(collatRatio, type(uint64).max);
         assertEq(stablecoinsIssued, mintedStables);
     }
