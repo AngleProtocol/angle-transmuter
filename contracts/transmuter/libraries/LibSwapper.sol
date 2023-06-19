@@ -74,14 +74,16 @@ library LibSwapper {
                 ks.normalizedStables += changeAmount;
                 if (permitData.length > 0) {
                     PERMIT_2.functionCall(permitData);
-                } else if (collatInfo.isManaged > 0) {
+                } else if (collatInfo.isManaged > 0)
                     IERC20(tokenIn).safeTransferFrom(
                         msg.sender,
                         LibManager.transferRecipient(collatInfo.managerData.config),
                         amountIn
                     );
+                else IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+                if (collatInfo.isManaged > 0) {
                     LibManager.invest(amountIn, collatInfo.managerData.config);
-                } else IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+                }
                 IAgToken(tokenOut).mint(to, amountOut);
             } else {
                 if (collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, to))
