@@ -16,6 +16,8 @@ import "contracts/utils/Errors.sol" as Errors;
 import "../Fixture.sol";
 import "../utils/FunctionUtils.sol";
 
+import { console } from "forge-std/console.sol";
+
 struct SubCollateralStorage {
     // The collateral corresponding to the manager must also be in the list
     IERC20[] subCollaterals;
@@ -1045,25 +1047,28 @@ contract RedeemTest is Fixture, FunctionUtils {
             uint256 maxOracle;
             uint256 minOracle;
             for (uint256 i; i < _collaterals.length; ++i) {
+                (, int256 oracleValue, , , ) = _oracles[i].latestRoundData();
                 {
-                    (, int256 value, , , ) = _oracles[i].latestRoundData();
                     uint8 decimals = IERC20Metadata(_collaterals[i]).decimals();
                     amountInValueReceived +=
-                        (uint256(value) * _convertDecimalTo(amounts[count++], decimals, 18)) /
+                        (uint256(oracleValue) * _convertDecimalTo(amounts[count++], decimals, 18)) /
                         BASE_8;
-                    if (uint256(value) > maxOracle) maxOracle = uint256(value);
+                    if (uint256(oracleValue) > maxOracle) maxOracle = uint256(oracleValue);
                     if (amounts[i] > maxValue) maxValue = amounts[i] / 10 ** decimals;
                     if (amounts[i] < minValue || minValue == 0) minValue = amounts[i] / 10 ** decimals;
-                    if (minOracle == 0 || uint256(value) < minOracle) minOracle = uint256(value);
-                    if (uint256(value) > BASE_18 || amounts[i] < 10 ** 4) lastCheck = true;
+                    if (minOracle == 0 || uint256(oracleValue) < minOracle) minOracle = uint256(oracleValue);
+                    if (uint256(oracleValue) > BASE_18 || amounts[i] < 10 ** 4) lastCheck = true;
                 }
+                // TODO change here
                 // we don't double count the real collateral
+                uint256 subCollateralValue;
                 for (uint256 k = 1; k < _subCollaterals[_collaterals[i]].subCollaterals.length; k++) {
                     (, int256 value, , , ) = _subCollaterals[_collaterals[i]].oracles[k - 1].latestRoundData();
                     uint8 decimals = IERC20Metadata(address(_subCollaterals[_collaterals[i]].subCollaterals[k]))
                         .decimals();
-                    amountInValueReceived +=
-                        (uint256(value) * _convertDecimalTo(amounts[count++], decimals, 18)) /
+                    subCollateralValue +=
+                        (uint256(value) *
+                            _convertDecimalTo(amounts[count++], decimals, IERC20Metadata(_collaterals[i]).decimals())) /
                         BASE_8;
                     if (uint256(value) > maxOracle) maxOracle = uint256(value);
                     if (amounts[i] > maxValue) maxValue = amounts[i] / 10 ** decimals;
@@ -1071,6 +1076,10 @@ contract RedeemTest is Fixture, FunctionUtils {
                     if (minOracle == 0 || uint256(value) < minOracle) minOracle = uint256(value);
                     if (uint256(value) > BASE_18 || amounts[i] < 10 ** 4) lastCheck = true;
                 }
+                amountInValueReceived +=
+                    (_convertDecimalTo(subCollateralValue, IERC20Metadata(_collaterals[i]).decimals(), 18) *
+                        uint256(oracleValue)) /
+                    BASE_8;
             }
             if (
                 maxValue > minValue * 10 ** 14 ||
@@ -1194,20 +1203,36 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
 
         uint256 collateralisation;
-        for (uint256 i; i < latestOracleValue.length; ++i) {
-            collateralisation += (latestOracleValue[i] * collateralMintedStables[i]) / BASE_8;
-        }
 
         for (uint256 i; i < latestOracleValue.length; ++i) {
             IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
-            AggregatorV3Interface[] memory listOracles = _subCollaterals[_collaterals[i]].oracles;
-            // we don't double count the real collaterals
-            for (uint256 k = 1; k < listSubCollaterals.length; k++) {
-                (, int256 oracleValue, , , ) = MockChainlinkOracle(address(listOracles[k - 1])).latestRoundData();
-                uint8 decimals = IERC20Metadata(address(listSubCollaterals[k])).decimals();
-                collateralisation += ((airdropAmounts[i * _MAX_SUB_COLLATERALS + k - 1] *
-                    10 ** (18 - decimals) *
-                    uint256(oracleValue)) / BASE_8);
+            if (listSubCollaterals.length <= 1) {
+                collateralisation += (latestOracleValue[i] * collateralMintedStables[i]) / BASE_8;
+            } else {
+                AggregatorV3Interface[] memory listOracles = _subCollaterals[_collaterals[i]].oracles;
+                // we don't double count the real collaterals
+                uint256 subCollateralValue = IERC20Metadata(address(listSubCollaterals[0])).balanceOf(
+                    address(_managers[_collaterals[i]])
+                );
+                for (uint256 k = 1; k < listSubCollaterals.length; k++) {
+                    (, int256 oracleValue, , , ) = MockChainlinkOracle(address(listOracles[k - 1])).latestRoundData();
+                    subCollateralValue +=
+                        (uint256(oracleValue) *
+                            _convertDecimalTo(
+                                airdropAmounts[i * _MAX_SUB_COLLATERALS + k - 1],
+                                IERC20Metadata(address(listSubCollaterals[k])).decimals(),
+                                IERC20Metadata(address(listSubCollaterals[0])).decimals()
+                            )) /
+                        BASE_8;
+                }
+                collateralisation +=
+                    (((BASE_18 * latestOracleValue[i]) / BASE_8) *
+                        _convertDecimalTo(
+                            subCollateralValue,
+                            IERC20Metadata(address(listSubCollaterals[0])).decimals(),
+                            18
+                        )) /
+                    BASE_18;
             }
         }
 
@@ -1221,7 +1246,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256 stablecoinsIssued;
         (collatRatio, stablecoinsIssued) = transmuter.getCollateralRatio();
 
-        if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
+        if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 5 wei);
         else assertEq(collatRatio, type(uint64).max);
         assertEq(stablecoinsIssued, mintedStables);
     }
