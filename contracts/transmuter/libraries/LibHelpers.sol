@@ -25,10 +25,10 @@ library LibHelpers {
     /// @notice Checks whether a `token` is in a list `tokens` and returns the index of the token in the list
     /// or -1 in the other case
     function checkList(address token, address[] memory tokens) internal pure returns (int256) {
-        for (uint256 i = 0; i < tokens.length; ++i) {
+        uint256 tokensLength = tokens.length;
+        for (uint256 i = 0; i < tokensLength; ++i) {
             if (token == tokens[i]) return int256(i);
         }
-
         return -1;
     }
 
