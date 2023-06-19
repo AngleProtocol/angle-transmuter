@@ -1182,8 +1182,6 @@ contract Test_Setters_RevokeCollateral is Fixture {
 
         deal(address(eurA), address(manager), 1 ether);
 
-        address[] memory prevlist = transmuter.getCollateralList();
-
         vm.expectRevert(Errors.ManagerHasAssets.selector);
 
         hoax(governor);

@@ -34,4 +34,12 @@ contract MockLib {
     function totalAssets(bytes memory config) external view returns (uint256[] memory balances, uint256 totalValue) {
         return LibManager.totalAssets(config);
     }
+
+    function invest(uint256 amount, bytes memory config) external {
+        LibManager.invest(amount, config);
+    }
+
+    function maxAvailable(bytes memory config) external view returns (uint256 available) {
+        return LibManager.maxAvailable(config);
+    }
 }
