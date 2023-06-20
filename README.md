@@ -45,7 +45,7 @@ The governor role, which will be a multisig or an onchain governance, has all ri
 
 The guardian role, which will be a multisig, has the right to: freeze assets, and potentially impact transient funds. The idea is that any malicious behavior of the guardian should be fixable by the governor, and that the guardian shouldn't be able to extract funds from the system.
 
-### Know Issue
+### Known Issues
 
 - Lack of support for ERC165
 - At initialization, fees need to be < 100% for 100% exposure because the first exposures will be ~100%
