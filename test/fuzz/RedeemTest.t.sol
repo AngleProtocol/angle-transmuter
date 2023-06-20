@@ -16,8 +16,6 @@ import "contracts/utils/Errors.sol" as Errors;
 import "../Fixture.sol";
 import "../utils/FunctionUtils.sol";
 
-import { console } from "forge-std/console.sol";
-
 struct SubCollateralStorage {
     // The collateral corresponding to the manager must also be in the list
     IERC20[] subCollaterals;

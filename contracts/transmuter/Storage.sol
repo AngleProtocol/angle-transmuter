@@ -96,7 +96,7 @@ struct DiamondStorage {
 
 struct ManagerStorage {
     IERC20[] subCollaterals;                     // Subtokens handled by the manager or strategies
-    bytes config;                         // Additional configuration data
+    bytes config;                                // Additional configuration data
 }
 
 struct Collateral {

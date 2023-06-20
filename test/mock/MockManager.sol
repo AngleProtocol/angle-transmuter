@@ -12,7 +12,6 @@ import { LibOracle, AggregatorV3Interface } from "../../contracts/transmuter/lib
 
 import "../../contracts/utils/Constants.sol";
 import "../../contracts/utils/Errors.sol";
-import { console } from "forge-std/console.sol";
 
 contract MockManager is IManager {
     address public collateral;
@@ -95,7 +94,6 @@ contract MockManager is IManager {
                     stalePeriods[i - 1]
                 );
             } else totalValue += balances[i];
-            console.log(totalValue);
         }
     }
 
