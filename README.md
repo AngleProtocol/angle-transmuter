@@ -19,7 +19,7 @@ The Transmuter system relies on a [diamond proxy pattern](https://eips.ethereum.
 
 - the [`Swapper`](./contracts/transmuter/facets/Swapper.sol) facet with the logic associated to the mint and burn functionalities of the system
 - the [`Redeemer`](./contracts/transmuter/facets/Redeemer.sol) facet for redemptions
-- the [`Getters`](./contracts/transmuter/facets/Swapper.sol) facet with external getters for UIs and contracts built on top of `Transmuter`
+- the [`Getters`](./contracts/transmuter/facets/Getters.sol) facet with external getters for UIs and contracts built on top of `Transmuter`
 - the [`Setters`](./contracts/transmuter/facets/Setters.sol) facet protocols' governance can use to update system parameters.
 
 The storage parameters of the system are defined in the [`Storage`](./contracts/transmuter/Storage.sol) file.
