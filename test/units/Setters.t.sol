@@ -183,6 +183,34 @@ contract Test_Setters_SetFees is Fixture {
         transmuter.setFees(address(eurA), xFee, yFee, true);
     }
 
+    function test_RevertWhen_OnlyGovernorNegativeFees() public {
+        uint64[] memory xFee = new uint64[](3);
+        int64[] memory yFee = new int64[](3);
+
+        xFee[2] = 0;
+        xFee[1] = uint64(BASE_9 / 10);
+        xFee[0] = uint64(BASE_9);
+
+        yFee[0] = int64(1);
+        yFee[1] = int64(1);
+        yFee[2] = int64(uint64(BASE_9 / 10));
+
+        hoax(guardian);
+        transmuter.setFees(address(eurB), xFee, yFee, false);
+
+        xFee[0] = 0;
+        xFee[1] = uint64(BASE_9 / 10);
+        xFee[2] = uint64((2 * BASE_9) / 10);
+
+        yFee[0] = int64(-1);
+        yFee[1] = int64(uint64(BASE_9 / 10));
+        yFee[2] = int64(uint64((2 * BASE_9) / 10));
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        hoax(guardian);
+        transmuter.setFees(address(eurA), xFee, yFee, true);
+    }
+
     function test_RevertWhen_InvalidNegativeFeesMint() public {
         uint64[] memory xFee = new uint64[](3);
         int64[] memory yFee = new int64[](3);

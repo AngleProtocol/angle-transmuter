@@ -7,6 +7,7 @@ import { IERC20Metadata } from "oz/token/ERC20/extensions/IERC20Metadata.sol";
 import { LibHelpers } from "./LibHelpers.sol";
 import { LibOracle } from "./LibOracle.sol";
 import { LibStorage as s } from "./LibStorage.sol";
+import { LibDiamond } from "./LibDiamond.sol";
 import { LibWhitelist } from "./LibWhitelist.sol";
 
 import "../../utils/Constants.sol";
@@ -129,9 +130,10 @@ library LibSetters {
             ) revert InvalidParams();
         }
 
-        // If a mint or burn feefee is negative, we need to check that accounts atomically minting
+        // If a mint or burn fee is negative, we need to check that accounts atomically minting
         // (from any collateral) and then burning cannot get more than their initial value
         if (yFee[0] < 0) {
+            if (!LibDiamond.isGovernor(msg.sender)) revert NotGovernor(); // Only governor can set negative fees
             TransmuterStorage storage ks = s.transmuterStorage();
             address[] memory collateralListMem = ks.collateralList;
             uint256 length = collateralListMem.length;
