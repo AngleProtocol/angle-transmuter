@@ -69,7 +69,7 @@ jobs:
           version: nightly
 
       - name: Build contracts via IR
-        run: yarn compile:ir:ci
+        run: yarn compile
 
   foundry-tests:
     name: Unit, Fuzz and Invariant Tests
@@ -102,4 +102,3 @@ jobs:
         with:
           match: contracts/transmuter/DiamondProxy.sol
           report: ethereum.gasreport.ansi
-
