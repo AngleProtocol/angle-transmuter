@@ -1,4 +1,13 @@
 {
-  "filter_paths": "lib",
-  "solc_remaps": ["ds-test/=lib/ds-test/src/", "forge-std/=lib/forge-std/src/"]
+  "solc_remaps": [
+    "ds-test/=lib/ds-test/src/",
+    "forge-std/=lib/forge-std/src/",
+    "stringutils/=lib/solidity-stringutils",
+    "contracts/=contracts/",
+    "interfaces/=contracts/interfaces/",
+    "oz/=node_modules/@openzeppelin/contracts/",
+    "oz-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/",
+    "mock/=test/mock/",
+    "prb/math/=lib/prb-math/src/"
+  ]
 }

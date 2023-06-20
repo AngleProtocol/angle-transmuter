@@ -10,7 +10,6 @@ via_ir = true
 sizes = true
 optimizer_runs=1000
 solc_version = '0.8.19'
-
 ffi = true
 
 [fuzz]
@@ -39,14 +38,13 @@ optimizer = false
 src = 'test'
 via_ir = false
 gas_reports = ["*"]
-runs = 2000
 
 [profile.dev.fuzz]
-runs = 1000
+runs = 100
 
 [profile.dev.invariant]
-runs = 500
-depth = 30
+runs = 10
+depth = 1
 fail_on_revert = false
 
 [profile.ci]

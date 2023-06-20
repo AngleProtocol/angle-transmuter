@@ -20,11 +20,12 @@ The Transmuter system relies on a [diamond proxy pattern](https://eips.ethereum.
 - the [`Swapper`](./contracts/transmuter/facets/Swapper.sol) facet with the logic associated to the mint and burn functionalities of the system
 - the [`Redeemer`](./contracts/transmuter/facets/Redeemer.sol) facet for redemptions
 - the [`Getters`](./contracts/transmuter/facets/Getters.sol) facet with external getters for UIs and contracts built on top of `Transmuter`
-- the [`Setters`](./contracts/transmuter/facets/Setters.sol) facet protocols' governance can use to update system parameters.
+- the [`SettersGovernor`](./contracts/transmuter/facets/SettersGovernor.sol) facet protocols' governance can use to update system parameters.
+- the [`SettersGuardian`](./contracts/transmuter/facets/SettersGuardian.sol) facet protocols' guardian can use to update system parameters.
 
 The storage parameters of the system are defined in the [`Storage`](./contracts/transmuter/Storage.sol) file.
 
-The Transmuter system can come with optional [ERC4626](https://eips.ethereum.org/EIPS/eip-4626) [savings contracts](./contracts/savings/) which can be used to distribute a yield to the holders of the stablecoin issued through Transmuter.
+The Transmuter system can come with optional [ERC4626](https://eips.ethereum.org/EIPS/eip-4626) [savings contracts](./contracts/savings/) which can be used to distribute a yield to the holders of the stablecoin issued through the Transmuter.
 
 ---
 
@@ -37,6 +38,20 @@ The Transmuter system can come with optional [ERC4626](https://eips.ethereum.org
 ---
 
 ## Security ⛑️
+
+### Trust assumptions of the Transmuter system
+
+The governor role, which will be a multisig or an onchain governance, has all rights, including upgrading contracts, removing funds, changing the code, etc.
+
+The guardian role, which will be a multisig, has the right to: freeze assets, and potentially impact transient funds. The idea is that any malicious behavior of the guardian should be fixable by the governor, and that the guardian shouldn't be able to extract funds from the system.
+
+### Known Issues
+
+- Lack of support for ERC165
+- At initialization, fees need to be < 100% for 100% exposure because the first exposures will be ~100%
+- If at some point there are 0 funds in the system it’ll break as `amountToNextBreakPoint` will be 0
+- In the burn, if there is one asset which is making 99% of the basket, and another one 1%: if the one making 1% depegs, it still impacts the burn for the asset that makes the majority of the funds
+- The whitelist function for burns and redemptions are somehow breaking the fairness of the system as whitelisted actors will redeem more value
 
 ### Audits
 
@@ -98,6 +113,10 @@ yarn
 forge i
 ```
 
+### Warning
+
+This repository uses [`ffi`](https://book.getfoundry.sh/cheatcodes/ffi) in its test suite. Beware as a malicious actor forking this repo could add malicious commands using this.
+
 #### Create `.env` file
 
 In order to interact with non local networks, you must create an `.env` that has:
@@ -112,22 +131,34 @@ Warning: always keep your confidential information safe.
 
 ---
 
-### Testing
+### Compilation
 
-You can run tests as follows:
+Compilation of production contracts will be done using the via-ir pipeline.
+
+However, tests do not compile with via-ir, and to run coverage the optimizer needs to be off. Therefore for development and test purposes you can compile without optimizer.
 
 ```bash
-forge test -vvvv --watch
-forge test -vvvv --match-path test/fuzz/Redeemer.test.sol
-forge test -vvvv --match-test "testAbc*"
-forge test -vvvv --fork-url https://eth-mainnet.alchemyapi.io/v2/Lc7oIGYeL_QvInzI0Wiu_pOZZDEKBrdf
+yarn compile # with via-ir but without compiling tests files
+yarn compile:dev # without optimizer
+```
+
+### Testing
+
+Here are examples of how to run the test suite:
+
+```bash
+yarn test
+FOUNDRY_PROFILE=dev forge test -vvv --watch # To watch changing files
+FOUNDRY_PROFILE=dev forge test -vvv --match-path test/fuzz/Redeemer.test.sol
+FOUNDRY_PROFILE=dev forge test -vvv --match-test "testAbc*"
+FOUNDRY_PROFILE=dev forge test -vvv --fork-url <RPC_URL>
 ```
 
 You can also list tests:
 
 ```bash
-forge test --list
-forge test --list --json --match-test "testXXX*"
+FOUNDRY_PROFILE=dev forge test --list
+FOUNDRY_PROFILE=dev forge test --list --json --match-test "testXXX*"
 ```
 
 ---
@@ -150,18 +181,14 @@ We recommend the use of this [vscode extension](ryanluker.vscode-coverage-gutter
 yarn coverage
 ```
 
-Otherwise you can install lcov `brew install lcov`:
-
-```bash
-genhtml lcov.info --output=coverage
-```
+You'll need to install lcov `brew install lcov` to visualize the coverage report.
 
 ---
 
 ### Gas report ⛽️
 
 ```bash
-yarn foundry:gas
+yarn gas
 ```
 
 ---
@@ -169,11 +196,7 @@ yarn foundry:gas
 ### [Slither](https://github.com/crytic/slither)
 
 ```bash
-pip3 install slither-analyzer
-pip3 install solc-select
-solc-select install 0.8.19
-solc-select use 0.8.19
-slither .
+yarn slither
 ```
 
 ---
