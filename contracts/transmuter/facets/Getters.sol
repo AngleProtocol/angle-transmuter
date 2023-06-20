@@ -71,8 +71,8 @@ contract Getters is IGetters {
         view
         returns (uint64[] memory xRedemptionCurve, int64[] memory yRedemptionCurve)
     {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        return (ks.xRedemptionCurve, ks.yRedemptionCurve);
+        TransmuterStorage storage ts = s.transmuterStorage();
+        return (ts.xRedemptionCurve, ts.yRedemptionCurve);
     }
 
     /// @inheritdoc IGetters
@@ -84,18 +84,18 @@ contract Getters is IGetters {
     function getIssuedByCollateral(
         address collateral
     ) external view returns (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        uint256 _normalizer = ks.normalizer;
+        TransmuterStorage storage ts = s.transmuterStorage();
+        uint256 _normalizer = ts.normalizer;
         return (
-            (uint256(ks.collaterals[collateral].normalizedStables) * _normalizer) / BASE_27,
-            (uint256(ks.normalizedStables) * _normalizer) / BASE_27
+            (uint256(ts.collaterals[collateral].normalizedStables) * _normalizer) / BASE_27,
+            (uint256(ts.normalizedStables) * _normalizer) / BASE_27
         );
     }
 
     /// @inheritdoc IGetters
     function getTotalIssued() external view returns (uint256) {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        return (uint256(ks.normalizedStables) * uint256(ks.normalizer)) / BASE_27;
+        TransmuterStorage storage ts = s.transmuterStorage();
+        return (uint256(ts.normalizedStables) * uint256(ts.normalizer)) / BASE_27;
     }
 
     /// @inheritdoc IGetters

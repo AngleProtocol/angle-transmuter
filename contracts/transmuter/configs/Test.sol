@@ -27,9 +27,9 @@ contract Test {
     ) external {
         Setters.setAccessControlManager(_accessControlManager);
 
-        TransmuterStorage storage ks = s.transmuterStorage();
-        ks.normalizer = uint128(BASE_27);
-        ks.agToken = IAgToken(_agToken);
+        TransmuterStorage storage ts = s.transmuterStorage();
+        ts.normalizer = uint128(BASE_27);
+        ts.agToken = IAgToken(_agToken);
 
         // Setup first collateral
         Setters.addCollateral(eurA.collateral);

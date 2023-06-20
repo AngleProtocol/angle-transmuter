@@ -90,14 +90,14 @@ contract SettersGovernor is AccessControlModifiers, ISettersGovernor {
 
     /// @inheritdoc ISettersGovernor
     function toggleTrusted(address sender, TrustedType t) external onlyGovernor {
-        TransmuterStorage storage ks = s.transmuterStorage();
+        TransmuterStorage storage ts = s.transmuterStorage();
         uint256 trustedStatus;
         if (t == TrustedType.Updater) {
-            trustedStatus = 1 - ks.isTrusted[sender];
-            ks.isTrusted[sender] = trustedStatus;
+            trustedStatus = 1 - ts.isTrusted[sender];
+            ts.isTrusted[sender] = trustedStatus;
         } else {
-            trustedStatus = 1 - ks.isSellerTrusted[sender];
-            ks.isSellerTrusted[sender] = trustedStatus;
+            trustedStatus = 1 - ts.isSellerTrusted[sender];
+            ts.isSellerTrusted[sender] = trustedStatus;
         }
         emit TrustedToggled(sender, trustedStatus == 1, t);
     }
@@ -110,16 +110,16 @@ contract SettersGovernor is AccessControlModifiers, ISettersGovernor {
     /// @inheritdoc ISettersGovernor
     /// @dev The amount passed here must be an absolute amount
     function adjustStablecoins(address collateral, uint128 amount, bool increase) external onlyGovernor {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        Collateral storage collatInfo = ks.collaterals[collateral];
+        TransmuterStorage storage ts = s.transmuterStorage();
+        Collateral storage collatInfo = ts.collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
-        uint128 normalizedAmount = ((amount * BASE_27) / ks.normalizer).toUint128();
+        uint128 normalizedAmount = ((amount * BASE_27) / ts.normalizer).toUint128();
         if (increase) {
             collatInfo.normalizedStables += uint216(normalizedAmount);
-            ks.normalizedStables += normalizedAmount;
+            ts.normalizedStables += normalizedAmount;
         } else {
             collatInfo.normalizedStables -= uint216(normalizedAmount);
-            ks.normalizedStables -= normalizedAmount;
+            ts.normalizedStables -= normalizedAmount;
         }
         emit ReservesAdjusted(collateral, amount, increase);
     }
@@ -131,24 +131,24 @@ contract SettersGovernor is AccessControlModifiers, ISettersGovernor {
     /// be handled through a recoverERC20 call
     /// @dev Funds needs to have been withdrew from the manager prior to this call
     function revokeCollateral(address collateral) external onlyGovernor {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        Collateral storage collatInfo = ks.collaterals[collateral];
+        TransmuterStorage storage ts = s.transmuterStorage();
+        Collateral storage collatInfo = ts.collaterals[collateral];
         if (collatInfo.decimals == 0 || collatInfo.normalizedStables > 0) revert NotCollateral();
         uint8 isManaged = collatInfo.isManaged;
         if (isManaged > 0) {
             (, uint256 totalValue) = LibManager.totalAssets(collatInfo.managerData.config);
             if (totalValue > 0) revert ManagerHasAssets();
         }
-        delete ks.collaterals[collateral];
-        address[] memory collateralListMem = ks.collateralList;
+        delete ts.collaterals[collateral];
+        address[] memory collateralListMem = ts.collateralList;
         uint256 length = collateralListMem.length;
         for (uint256 i; i < length - 1; ++i) {
             if (collateralListMem[i] == collateral) {
-                ks.collateralList[i] = collateralListMem[length - 1];
+                ts.collateralList[i] = collateralListMem[length - 1];
                 break;
             }
         }
-        ks.collateralList.pop();
+        ts.collateralList.pop();
         emit CollateralRevoked(collateral);
     }
 

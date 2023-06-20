@@ -27,9 +27,9 @@ contract RewardHandler is IRewardHandler {
     /// @dev Only governance can set which tokens can be swapped through this function by passing a prior approval
     /// transaction to 1inch router for the token to be swapped
     function sellRewards(uint256 minAmountOut, bytes memory payload) external returns (uint256 amountOut) {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        if (!LibDiamond.isGovernorOrGuardian(msg.sender) && ks.isSellerTrusted[msg.sender] == 0) revert NotTrusted();
-        address[] memory list = ks.collateralList;
+        TransmuterStorage storage ts = s.transmuterStorage();
+        if (!LibDiamond.isGovernorOrGuardian(msg.sender) && ts.isSellerTrusted[msg.sender] == 0) revert NotTrusted();
+        address[] memory list = ts.collateralList;
         uint256 listLength = list.length;
         uint256[] memory balances = new uint256[](listLength);
         // Getting the balances of all collateral assets of the protocol to see if those do not decrease during
