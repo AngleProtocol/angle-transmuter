@@ -17,7 +17,7 @@ bytes32 constant DIAMOND_STORAGE_POSITION = 0xc8fcad8db84d3cc18b4c41d551ea0ee66d
 
 /// @dev Storage position of `TransmuterStorage` structure.
 /// @dev Equals `keccak256("diamond.standard.transmuter.storage") - 1`
-bytes32 constant TRANSMUTER_STORAGE_POSITION = 0x9dc799b68788bb295959b2174a00628b60e2ba03cc4ba2c8c0786bdf437af1b6;
+bytes32 constant TRANSMUTER_STORAGE_POSITION = 0xc1f2f38dde3351ac0a64934139e816326caa800303a1235dc53707d0de05d8bd;
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                      MATHS                                                      
