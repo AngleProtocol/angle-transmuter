@@ -43,21 +43,21 @@ contract Savings is BaseSavings {
 
     /// @notice Initializes the contract
     /// @param _accessControlManager Reference to the `AccessControlManager` contract
-    /// @param _name Name of the savings contract
-    /// @param _symbol Symbol of the savings contract
+    /// @param name_ Name of the savings contract
+    /// @param symbol_ Symbol of the savings contract
     /// @param divizer Quantifies the first initial deposit (should be typically 1 for tokens like agEUR)
     /// @dev A first deposit is done at initialization to protect for the classical issue of ERC4626 contracts
     /// where the the first user of the contract tries to steal everyone else's tokens
     function initialize(
         IAccessControlManager _accessControlManager,
         IERC20MetadataUpgradeable asset_,
-        string memory _name,
-        string memory _symbol,
+        string memory name_,
+        string memory symbol_,
         uint256 divizer
     ) public initializer {
         if (address(_accessControlManager) == address(0)) revert ZeroAddress();
         __ERC4626_init(asset_);
-        __ERC20_init(_name, _symbol);
+        __ERC20_init(name_, symbol_);
         accessControlManager = _accessControlManager;
         _deposit(msg.sender, address(this), 10 ** (asset_.decimals()) / divizer, BASE_18 / divizer);
     }

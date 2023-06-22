@@ -342,11 +342,14 @@ contract Swapper is ISwapper {
                     ? v.stablecoinsIssued - (v.otherStablecoinSupply * v.lowerExposure) / (BASE_9 - v.lowerExposure)
                     : (v.otherStablecoinSupply * v.lowerExposure) / (BASE_9 - v.lowerExposure) - v.stablecoinsIssued;
 
-                // `slope` is in base 18
-                uint256 slope = ((uint256(v.upperFees - v.lowerFees) * BASE_36) /
-                    (v.amountToNextBreakPoint + amountFromPrevBreakPoint));
+                //  slope = (upperFees - lowerFees) / (amountToNextBreakPoint + amountFromPrevBreakPoint)
                 // `currentFees` is the `g(0)` value from the whitepaper
-                currentFees = v.lowerFees + int256((slope * amountFromPrevBreakPoint) / BASE_36);
+                currentFees =
+                    v.lowerFees +
+                    int256(
+                        (uint256(v.upperFees - v.lowerFees) * amountFromPrevBreakPoint) /
+                            (v.amountToNextBreakPoint + amountFromPrevBreakPoint)
+                    );
             }
             {
                 // In the mint case, when `!v.isExact`: = `b_{i+1} * (1+(g_i(0)+f_{i+1})/2)`
