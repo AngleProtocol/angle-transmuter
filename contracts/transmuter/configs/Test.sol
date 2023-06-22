@@ -5,7 +5,7 @@ pragma solidity ^0.8.19;
 import "interfaces/external/chainlink/AggregatorV3Interface.sol";
 
 import "../libraries/LibOracle.sol";
-import { LibSetters as Setters } from "../libraries/LibSetters.sol";
+import { LibSetters } from "../libraries/LibSetters.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 
 import "../../utils/Constants.sol";
@@ -25,14 +25,14 @@ contract Test {
         CollateralSetup calldata eurB,
         CollateralSetup calldata eurY
     ) external {
-        Setters.setAccessControlManager(_accessControlManager);
+        LibSetters.setAccessControlManager(_accessControlManager);
 
         TransmuterStorage storage ts = s.transmuterStorage();
         ts.normalizer = uint128(BASE_27);
         ts.agToken = IAgToken(_agToken);
 
         // Setup first collateral
-        Setters.addCollateral(eurA.collateral);
+        LibSetters.addCollateral(eurA.collateral);
         AggregatorV3Interface[] memory circuitChainlink = new AggregatorV3Interface[](1);
         uint32[] memory stalePeriods = new uint32[](1);
         uint8[] memory circuitChainIsMultiplied = new uint8[](1);
@@ -49,7 +49,7 @@ contract Test {
             chainlinkDecimals,
             quoteType
         );
-        Setters.setOracle(
+        LibSetters.setOracle(
             eurA.collateral,
             abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleTargetType.STABLE, readData)
         );
@@ -68,8 +68,8 @@ contract Test {
         yMintFee[2] = int64(uint64((3 * BASE_9) / 97));
         yMintFee[3] = int64(uint64(BASE_12 - 1));
 
-        Setters.setFees(eurA.collateral, xMintFee, yMintFee, true);
-        Setters.togglePause(eurA.collateral, ActionType.Mint);
+        LibSetters.setFees(eurA.collateral, xMintFee, yMintFee, true);
+        LibSetters.togglePause(eurA.collateral, ActionType.Mint);
 
         uint64[] memory xBurnFee = new uint64[](4);
         xBurnFee[0] = uint64(BASE_9);
@@ -84,11 +84,11 @@ contract Test {
         yBurnFee[2] = int64(uint64((3 * BASE_9) / 97));
         yBurnFee[3] = int64(uint64(MAX_BURN_FEE - 1));
 
-        Setters.setFees(eurA.collateral, xBurnFee, yBurnFee, false);
-        Setters.togglePause(eurA.collateral, ActionType.Burn);
+        LibSetters.setFees(eurA.collateral, xBurnFee, yBurnFee, false);
+        LibSetters.togglePause(eurA.collateral, ActionType.Burn);
 
         // Setup second collateral
-        Setters.addCollateral(eurB.collateral);
+        LibSetters.addCollateral(eurB.collateral);
         circuitChainlink = new AggregatorV3Interface[](1);
         stalePeriods = new uint32[](1);
         circuitChainIsMultiplied = new uint8[](1);
@@ -99,7 +99,7 @@ contract Test {
         chainlinkDecimals[0] = 8;
         quoteType = OracleQuoteType.UNIT;
         readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals, quoteType);
-        Setters.setOracle(
+        LibSetters.setOracle(
             eurB.collateral,
             abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleTargetType.STABLE, readData)
         );
@@ -118,8 +118,8 @@ contract Test {
         yMintFee[2] = int64(uint64((5 * BASE_9) / 100));
         yMintFee[3] = int64(uint64(BASE_12 - 1));
 
-        Setters.setFees(eurB.collateral, xMintFee, yMintFee, true);
-        Setters.togglePause(eurB.collateral, ActionType.Mint);
+        LibSetters.setFees(eurB.collateral, xMintFee, yMintFee, true);
+        LibSetters.togglePause(eurB.collateral, ActionType.Mint);
 
         xBurnFee = new uint64[](4);
         xBurnFee[0] = uint64(BASE_9);
@@ -134,11 +134,11 @@ contract Test {
         yBurnFee[2] = int64(uint64((5 * BASE_9) / 100));
         yBurnFee[3] = int64(uint64(MAX_BURN_FEE - 1));
 
-        Setters.setFees(eurB.collateral, xBurnFee, yBurnFee, false);
-        Setters.togglePause(eurB.collateral, ActionType.Burn);
+        LibSetters.setFees(eurB.collateral, xBurnFee, yBurnFee, false);
+        LibSetters.togglePause(eurB.collateral, ActionType.Burn);
 
         // Setup third collateral
-        Setters.addCollateral(eurY.collateral);
+        LibSetters.addCollateral(eurY.collateral);
         circuitChainlink = new AggregatorV3Interface[](1);
         stalePeriods = new uint32[](1);
         circuitChainIsMultiplied = new uint8[](1);
@@ -149,7 +149,7 @@ contract Test {
         chainlinkDecimals[0] = 8;
         quoteType = OracleQuoteType.UNIT;
         readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals, quoteType);
-        Setters.setOracle(
+        LibSetters.setOracle(
             eurY.collateral,
             abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleTargetType.STABLE, readData)
         );
@@ -168,8 +168,8 @@ contract Test {
         yMintFee[2] = int64(uint64((5 * BASE_9) / 100));
         yMintFee[3] = int64(uint64(BASE_12 - 1));
 
-        Setters.setFees(eurY.collateral, xMintFee, yMintFee, true);
-        Setters.togglePause(eurY.collateral, ActionType.Mint);
+        LibSetters.setFees(eurY.collateral, xMintFee, yMintFee, true);
+        LibSetters.togglePause(eurY.collateral, ActionType.Mint);
 
         xBurnFee = new uint64[](4);
         xBurnFee[0] = uint64(BASE_9);
@@ -184,10 +184,10 @@ contract Test {
         yBurnFee[2] = int64(uint64((5 * BASE_9) / 100));
         yBurnFee[3] = int64(uint64(MAX_BURN_FEE - 1));
 
-        Setters.setFees(eurY.collateral, xBurnFee, yBurnFee, false);
-        Setters.togglePause(eurY.collateral, ActionType.Burn);
+        LibSetters.setFees(eurY.collateral, xBurnFee, yBurnFee, false);
+        LibSetters.togglePause(eurY.collateral, ActionType.Burn);
 
         // Redeem
-        Setters.togglePause(eurA.collateral, ActionType.Redeem);
+        LibSetters.togglePause(eurA.collateral, ActionType.Redeem);
     }
 }

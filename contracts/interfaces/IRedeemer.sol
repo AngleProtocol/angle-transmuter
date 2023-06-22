@@ -34,4 +34,7 @@ interface IRedeemer {
     function quoteRedemptionCurve(
         uint256 amount
     ) external view returns (address[] memory tokens, uint256[] memory amounts);
+
+    /// @notice Updates the normalizer variable by `amount`
+    function updateNormalizer(uint256 amount, bool increase) external returns (uint256);
 }

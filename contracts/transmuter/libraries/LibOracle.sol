@@ -68,6 +68,26 @@ library LibOracle {
         return _parseOracle(s.transmuterStorage().collaterals[collateral].oracleConfig);
     }
 
+    /// @notice Gets the oracle value and the ratio with respect to the target price when it comes to
+    /// burning for `collateral`
+    function getBurnOracle(
+        address collateral,
+        bytes memory oracleConfig
+    ) internal view returns (uint256 minRatio, uint256 oracleValue) {
+        TransmuterStorage storage ts = s.transmuterStorage();
+        minRatio = BASE_18;
+        address[] memory collateralList = ts.collateralList;
+        uint256 length = collateralList.length;
+        for (uint256 i; i < length; ++i) {
+            uint256 ratioObserved = BASE_18;
+            if (collateralList[i] != collateral) {
+                uint256 oracleValueTmp;
+                (oracleValueTmp, ratioObserved) = readBurn(ts.collaterals[collateralList[i]].oracleConfig);
+            } else (oracleValue, ratioObserved) = readBurn(oracleConfig);
+            if (ratioObserved < minRatio) minRatio = ratioObserved;
+        }
+    }
+
     /// @notice Gets a targetPrice depending on a `targetType`
     function targetPrice(OracleTargetType targetType) internal view returns (uint256) {
         if (targetType == OracleTargetType.STABLE) return BASE_18;

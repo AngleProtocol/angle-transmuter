@@ -5,7 +5,7 @@ pragma solidity ^0.8.19;
 import "interfaces/external/chainlink/AggregatorV3Interface.sol";
 
 import "../libraries/LibOracle.sol";
-import { LibSetters as Setters } from "../libraries/LibSetters.sol";
+import { LibSetters } from "../libraries/LibSetters.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 
 import "../../utils/Constants.sol";
@@ -92,7 +92,7 @@ contract Production {
             collaterals[2] = CollateralSetupProd(eure, oracleConfig, xMintFee, yMintFee, xBurnFee, yBurnFee);
         }
 
-        Setters.setAccessControlManager(_accessControlManager);
+        LibSetters.setAccessControlManager(_accessControlManager);
 
         TransmuterStorage storage ts = s.transmuterStorage();
         ts.normalizer = uint128(BASE_27);
@@ -101,12 +101,12 @@ contract Production {
         // Setup each collaterals
         for (uint256 i; i < collaterals.length; i++) {
             CollateralSetupProd memory collateral = collaterals[i];
-            Setters.addCollateral(collateral.token);
-            Setters.setOracle(collateral.token, collateral.oracleConfig);
+            LibSetters.addCollateral(collateral.token);
+            LibSetters.setOracle(collateral.token, collateral.oracleConfig);
             //Mint fees
-            Setters.setFees(collateral.token, collateral.xMintFee, collateral.yMintFee, true);
+            LibSetters.setFees(collateral.token, collateral.xMintFee, collateral.yMintFee, true);
             //Burn fees
-            Setters.setFees(collateral.token, collateral.xBurnFee, collateral.yBurnFee, false);
+            LibSetters.setFees(collateral.token, collateral.xBurnFee, collateral.yBurnFee, false);
         }
     }
 }
