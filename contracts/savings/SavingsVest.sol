@@ -189,7 +189,6 @@ contract SavingsVest is BaseSavings {
 
     /// @notice Sets the `surplusManager` address which handles protocol fees
     function setSurplusManager(address _surplusManager) external onlyGuardian {
-        if (_surplusManager == address(0)) revert ZeroAddress();
         surplusManager = _surplusManager;
     }
 
