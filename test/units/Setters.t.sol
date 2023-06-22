@@ -235,7 +235,7 @@ contract Test_Setters_SetFees is Fixture {
         yFee[2] = int64(uint64((2 * BASE_9) / 10));
 
         vm.expectRevert(Errors.InvalidNegativeFees.selector);
-        hoax(guardian);
+        hoax(governor);
         transmuter.setFees(address(eurA), xFee, yFee, true);
     }
 
@@ -333,7 +333,7 @@ contract Test_Setters_SetFees is Fixture {
         yFee[2] = int64(2);
 
         vm.expectRevert(Errors.InvalidNegativeFees.selector);
-        hoax(guardian);
+        hoax(governor);
         transmuter.setFees(address(eurA), xFee, yFee, false);
     }
 
