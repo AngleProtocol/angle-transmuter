@@ -269,6 +269,12 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         assertEq(_saving.updateDelay(), updateDelay);
     }
 
+    function testFuzz_RevertWhen_SetSurplusManagerZeroAddress() public {
+        vm.prank(governor);
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        _saving.setSurplusManager(address(0));
+    }
+
     function testFuzz_SetSurplusManager(address surplusManager) public {
         vm.prank(governor);
         _saving.setSurplusManager(surplusManager);

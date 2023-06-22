@@ -62,8 +62,8 @@ contract SavingsVest is BaseSavings {
 
     /// @notice Initializes the contract
     /// @param _accessControlManager Reference to the `AccessControlManager` contract
-    /// @param _name Name of the savings contract
-    /// @param _symbol Symbol of the savings contract
+    /// @param name_ Name of the savings contract
+    /// @param symbol_ Symbol of the savings contract
     /// @param divizer Quantifies the first initial deposit (should be typically 1 for tokens like agEUR)
     /// @dev A first deposit is done at initialization to protect for the classical issue of ERC4626 contracts
     /// where the the first user of the contract tries to steal everyone else's tokens
@@ -71,13 +71,13 @@ contract SavingsVest is BaseSavings {
         IAccessControlManager _accessControlManager,
         IERC20MetadataUpgradeable asset_,
         ITransmuter _transmuter,
-        string memory _name,
-        string memory _symbol,
+        string memory name_,
+        string memory symbol_,
         uint256 divizer
     ) public initializer {
         if (address(_accessControlManager) == address(0) || address(_transmuter) == address(0)) revert ZeroAddress();
         __ERC4626_init(asset_);
-        __ERC20_init(_name, _symbol);
+        __ERC20_init(name_, symbol_);
         transmuter = _transmuter;
         accessControlManager = _accessControlManager;
         uint8 numDecimals = asset_.decimals();
@@ -189,6 +189,7 @@ contract SavingsVest is BaseSavings {
 
     /// @notice Sets the `surplusManager` address which handles protocol fees
     function setSurplusManager(address _surplusManager) external onlyGuardian {
+        if (_surplusManager == address(0)) revert ZeroAddress();
         surplusManager = _surplusManager;
     }
 
