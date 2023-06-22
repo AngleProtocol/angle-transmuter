@@ -44,8 +44,8 @@ library LibRedeemer {
         uint256[] memory minAmountOuts,
         address[] memory forfeitTokens
     ) internal returns (address[] memory tokens, uint256[] memory amounts) {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        if (ks.isRedemptionLive == 0) revert Paused();
+        TransmuterStorage storage ts = s.transmuterStorage();
+        if (ts.isRedemptionLive == 0) revert Paused();
         if (block.timestamp > deadline) revert TooLate();
         uint256[] memory subCollateralsTracker;
         (tokens, amounts, subCollateralsTracker) = quoteRedemptionCurve(amount);
@@ -53,15 +53,15 @@ library LibRedeemer {
         // of stablecoins issued from each collateral without having to loop through each of them
         updateNormalizer(amount, false);
 
-        IAgToken(ks.agToken).burnSelf(amount, msg.sender);
+        IAgToken(ts.agToken).burnSelf(amount, msg.sender);
 
-        address[] memory collateralListMem = ks.collateralList;
+        address[] memory collateralListMem = ts.collateralList;
         uint256 indexCollateral;
         for (uint256 i; i < amounts.length; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             // If a token is in the `forfeitTokens` list, then it is not sent as part of the redemption process
             if (amounts[i] > 0 && LibHelpers.checkList(tokens[i], forfeitTokens) < 0) {
-                Collateral storage collatInfo = ks.collaterals[collateralListMem[indexCollateral]];
+                Collateral storage collatInfo = ts.collaterals[collateralListMem[indexCollateral]];
                 if (collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, to))
                     revert NotWhitelisted();
                 if (collatInfo.isManaged > 0)
@@ -82,16 +82,16 @@ library LibRedeemer {
         view
         returns (address[] memory tokens, uint256[] memory balances, uint256[] memory subCollateralsTracker)
     {
-        TransmuterStorage storage ks = s.transmuterStorage();
+        TransmuterStorage storage ts = s.transmuterStorage();
         uint64 collatRatio;
         uint256 stablecoinsIssued;
         (collatRatio, stablecoinsIssued, tokens, balances, subCollateralsTracker) = getCollateralRatio();
         if (amountBurnt > stablecoinsIssued) revert TooBigAmountIn();
-        int64[] memory yRedemptionCurveMem = ks.yRedemptionCurve;
+        int64[] memory yRedemptionCurveMem = ts.yRedemptionCurve;
         uint64 penaltyFactor;
         // If the protocol is under-collateralized, a penalty factor is applied to the returned amount of each asset
         if (collatRatio < BASE_9) {
-            uint64[] memory xRedemptionCurveMem = ks.xRedemptionCurve;
+            uint64[] memory xRedemptionCurveMem = ts.xRedemptionCurve;
             penaltyFactor = uint64(LibHelpers.piecewiseLinear(collatRatio, xRedemptionCurveMem, yRedemptionCurveMem));
         }
 
@@ -128,17 +128,17 @@ library LibRedeemer {
             uint256[] memory subCollateralsTracker
         )
     {
-        TransmuterStorage storage ks = s.transmuterStorage();
+        TransmuterStorage storage ts = s.transmuterStorage();
         uint256 totalCollateralization;
-        address[] memory collateralList = ks.collateralList;
+        address[] memory collateralList = ts.collateralList;
         uint256 collateralListLength = collateralList.length;
         uint256 subCollateralsAmount;
         // Building the `subCollateralsTracker` array which is useful when later sending the tokens as part of the
         // redemption
         subCollateralsTracker = new uint256[](collateralListLength);
         for (uint256 i; i < collateralListLength; ++i) {
-            if (ks.collaterals[collateralList[i]].isManaged == 0) ++subCollateralsAmount;
-            else subCollateralsAmount += ks.collaterals[collateralList[i]].managerData.subCollaterals.length;
+            if (ts.collaterals[collateralList[i]].isManaged == 0) ++subCollateralsAmount;
+            else subCollateralsAmount += ts.collaterals[collateralList[i]].managerData.subCollaterals.length;
             subCollateralsTracker[i] = subCollateralsAmount;
         }
         balances = new uint256[](subCollateralsAmount);
@@ -147,7 +147,7 @@ library LibRedeemer {
         {
             uint256 countCollat;
             for (uint256 i; i < collateralListLength; ++i) {
-                Collateral storage collateral = ks.collaterals[collateralList[i]];
+                Collateral storage collateral = ts.collaterals[collateralList[i]];
                 uint256 collateralBalance; // Will be either the balance or the value of assets managed
                 if (collateral.isManaged > 0) {
                     // If a collateral is managed, the balances of the sub-collaterals cannot be directly obtained by
@@ -173,7 +173,7 @@ library LibRedeemer {
         }
         // The `stablecoinsIssued` value need to be rounded up because it is then used as a divizer when computing
         // the amount of stablecoins issued
-        stablecoinsIssued = uint256(ks.normalizedStables).mulDiv(ks.normalizer, BASE_27, Math.Rounding.Up);
+        stablecoinsIssued = uint256(ts.normalizedStables).mulDiv(ts.normalizer, BASE_27, Math.Rounding.Up);
         if (stablecoinsIssued > 0)
             collatRatio = uint64(totalCollateralization.mulDiv(BASE_9, stablecoinsIssued, Math.Rounding.Up));
         else collatRatio = type(uint64).max;
@@ -181,9 +181,9 @@ library LibRedeemer {
 
     /// @notice Updates the `normalizer` variable used to track stablecoins issued from each asset and globally
     function updateNormalizer(uint256 amount, bool increase) internal returns (uint256 newNormalizerValue) {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        uint256 _normalizer = ks.normalizer;
-        uint256 _normalizedStables = ks.normalizedStables;
+        TransmuterStorage storage ts = s.transmuterStorage();
+        uint256 _normalizer = ts.normalizer;
+        uint256 _normalizedStables = ts.normalizedStables;
         // In case of an increase, the update formula used is the simplified version of the formula below:
         /*
             _normalizer * (BASE_27 + BASE_27 * amount / stablecoinsIssued) / BASE_27
@@ -199,7 +199,7 @@ library LibRedeemer {
         // rounding errors, as well as overflows. In this case, the function has to iterate through all the
         // supported collateral assets
         if (newNormalizerValue <= BASE_18 || newNormalizerValue >= BASE_36) {
-            address[] memory collateralListMem = ks.collateralList;
+            address[] memory collateralListMem = ts.collateralList;
             uint256 collateralListLength = collateralListMem.length;
             // For each asset, we store the actual amount of stablecoins issued based on the `newNormalizerValue`
             // (and not a normalized value)
@@ -207,15 +207,15 @@ library LibRedeemer {
             uint128 newNormalizedStables = 0;
             for (uint256 i; i < collateralListLength; ++i) {
                 uint128 newCollateralNormalizedStable = ((uint256(
-                    ks.collaterals[collateralListMem[i]].normalizedStables
+                    ts.collaterals[collateralListMem[i]].normalizedStables
                 ) * newNormalizerValue) / BASE_27).toUint128();
                 newNormalizedStables += newCollateralNormalizedStable;
-                ks.collaterals[collateralListMem[i]].normalizedStables = uint216(newCollateralNormalizedStable);
+                ts.collaterals[collateralListMem[i]].normalizedStables = uint216(newCollateralNormalizedStable);
             }
-            ks.normalizedStables = newNormalizedStables;
+            ts.normalizedStables = newNormalizedStables;
             newNormalizerValue = BASE_27;
         }
-        ks.normalizer = newNormalizerValue.toUint128();
+        ts.normalizer = newNormalizerValue.toUint128();
         emit NormalizerUpdated(newNormalizerValue);
     }
 }

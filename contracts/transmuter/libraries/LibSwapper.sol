@@ -65,13 +65,13 @@ library LibSwapper {
         bytes memory permitData
     ) internal {
         if (amountIn > 0 && amountOut > 0) {
-            TransmuterStorage storage ks = s.transmuterStorage();
+            TransmuterStorage storage ts = s.transmuterStorage();
             if (mint) {
-                uint128 changeAmount = (amountOut.mulDiv(BASE_27, ks.normalizer, Math.Rounding.Up)).toUint128();
+                uint128 changeAmount = (amountOut.mulDiv(BASE_27, ts.normalizer, Math.Rounding.Up)).toUint128();
                 // The amount of stablecoins issued from a collateral are not stored as absolute variables, but
                 // as variables normalized by a `normalizer`
                 collatInfo.normalizedStables += uint216(changeAmount);
-                ks.normalizedStables += changeAmount;
+                ts.normalizedStables += changeAmount;
                 if (permitData.length > 0) {
                     PERMIT_2.functionCall(permitData);
                 } else if (collatInfo.isManaged > 0)
@@ -88,11 +88,11 @@ library LibSwapper {
             } else {
                 if (collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, to))
                     revert NotWhitelisted();
-                uint128 changeAmount = ((amountIn * BASE_27) / ks.normalizer).toUint128();
+                uint128 changeAmount = ((amountIn * BASE_27) / ts.normalizer).toUint128();
                 // This will underflow when the system is trying to burn more stablecoins than what has been issued
                 // from this collateral
                 collatInfo.normalizedStables -= uint216(changeAmount);
-                ks.normalizedStables -= changeAmount;
+                ts.normalizedStables -= changeAmount;
                 IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
                 if (collatInfo.isManaged > 0)
                     LibManager.release(tokenOut, to, amountOut, collatInfo.managerData.config);
@@ -159,8 +159,8 @@ library LibSwapper {
 
         uint256 currentExposure;
         {
-            TransmuterStorage storage ks = s.transmuterStorage();
-            uint256 normalizedStablesMem = ks.normalizedStables;
+            TransmuterStorage storage ts = s.transmuterStorage();
+            uint256 normalizedStablesMem = ts.normalizedStables;
             // Handling the initialisation and constant fees
             if (normalizedStablesMem == 0 || n == 1)
                 return _computeFee(quoteType, amountStable, v.isMint ? collatInfo.yFeeMint[0] : collatInfo.yFeeBurn[0]);
@@ -168,7 +168,7 @@ library LibSwapper {
             // stablecoin supply and one specific collateral, exposure can be null
             currentExposure = uint64((collatInfo.normalizedStables * BASE_18) / normalizedStablesMem);
 
-            uint256 normalizerMem = ks.normalizer;
+            uint256 normalizerMem = ts.normalizer;
             // Store the current amount of stablecoins issued from this collateral
             v.stablecoinsIssued = (uint256(collatInfo.normalizedStables) * normalizerMem) / BASE_27;
             v.otherStablecoinSupply = (normalizerMem * normalizedStablesMem) / BASE_27 - v.stablecoinsIssued;
@@ -383,15 +383,15 @@ library LibSwapper {
         address collateral,
         bytes memory oracleConfig
     ) internal view returns (uint256 minRatio, uint256 oracleValue) {
-        TransmuterStorage storage ks = s.transmuterStorage();
+        TransmuterStorage storage ts = s.transmuterStorage();
         minRatio = BASE_18;
-        address[] memory collateralList = ks.collateralList;
+        address[] memory collateralList = ts.collateralList;
         uint256 length = collateralList.length;
         for (uint256 i; i < length; ++i) {
             uint256 ratioObserved = BASE_18;
             if (collateralList[i] != collateral) {
                 uint256 oracleValueTmp;
-                (oracleValueTmp, ratioObserved) = LibOracle.readBurn(ks.collaterals[collateralList[i]].oracleConfig);
+                (oracleValueTmp, ratioObserved) = LibOracle.readBurn(ts.collaterals[collateralList[i]].oracleConfig);
             } else (oracleValue, ratioObserved) = LibOracle.readBurn(oracleConfig);
             if (ratioObserved < minRatio) minRatio = ratioObserved;
         }
@@ -415,14 +415,14 @@ library LibSwapper {
         uint256 deadline
     ) internal view returns (bool mint, Collateral storage collatInfo) {
         if (deadline != 0 && block.timestamp > deadline) revert TooLate();
-        TransmuterStorage storage ks = s.transmuterStorage();
-        address _agToken = address(ks.agToken);
+        TransmuterStorage storage ts = s.transmuterStorage();
+        address _agToken = address(ts.agToken);
         if (tokenIn == _agToken) {
-            collatInfo = ks.collaterals[tokenOut];
+            collatInfo = ts.collaterals[tokenOut];
             if (collatInfo.isBurnLive == 0) revert Paused();
             mint = false;
         } else if (tokenOut == _agToken) {
-            collatInfo = ks.collaterals[tokenIn];
+            collatInfo = ts.collaterals[tokenIn];
             if (collatInfo.isMintLive == 0) revert Paused();
             mint = true;
         } else revert InvalidTokens();
@@ -434,10 +434,10 @@ library LibSwapper {
         uint256 deadline
     ) internal view returns (address tokenOut, Collateral storage collatInfo) {
         if (deadline != 0 && block.timestamp > deadline) revert TooLate();
-        TransmuterStorage storage ks = s.transmuterStorage();
-        collatInfo = ks.collaterals[tokenIn];
+        TransmuterStorage storage ts = s.transmuterStorage();
+        collatInfo = ts.collaterals[tokenIn];
         if (collatInfo.isMintLive == 0) revert Paused();
-        tokenOut = address(ks.agToken);
+        tokenOut = address(ts.agToken);
     }
 
     /// @notice Builds a permit2 `permitTransferFrom` payload for a `tokenIn` transfer

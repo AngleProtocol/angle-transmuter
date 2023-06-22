@@ -34,11 +34,11 @@ library LibSetters {
 
     /// @notice Internal version of `addCollateral`
     function addCollateral(address collateral) internal {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        Collateral storage collatInfo = ks.collaterals[collateral];
+        TransmuterStorage storage ts = s.transmuterStorage();
+        Collateral storage collatInfo = ts.collaterals[collateral];
         if (collatInfo.decimals != 0) revert AlreadyAdded();
         collatInfo.decimals = uint8(IERC20Metadata(collateral).decimals());
-        ks.collateralList.push(collateral);
+        ts.collateralList.push(collateral);
         emit CollateralAdded(collateral);
     }
 
@@ -67,8 +67,8 @@ library LibSetters {
 
     /// @notice Internal version of `setFees`
     function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) internal {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        Collateral storage collatInfo = ks.collaterals[collateral];
+        TransmuterStorage storage ts = s.transmuterStorage();
+        Collateral storage collatInfo = ts.collaterals[collateral];
         if (collatInfo.decimals == 0) revert NotCollateral();
         checkFees(xFee, yFee, mint ? ActionType.Mint : ActionType.Burn);
         if (mint) {
@@ -95,9 +95,9 @@ library LibSetters {
                 collatInfo.isBurnLive = isLive;
             }
         } else {
-            TransmuterStorage storage ks = s.transmuterStorage();
-            isLive = 1 - ks.isRedemptionLive;
-            ks.isRedemptionLive = isLive;
+            TransmuterStorage storage ts = s.transmuterStorage();
+            isLive = 1 - ts.isRedemptionLive;
+            ts.isRedemptionLive = isLive;
         }
         emit PauseToggled(collateral, uint256(action), isLive == 0);
     }
@@ -134,20 +134,20 @@ library LibSetters {
         // (from any collateral) and then burning cannot get more than their initial value
         if (yFee[0] < 0) {
             if (!LibDiamond.isGovernor(msg.sender)) revert NotGovernor(); // Only governor can set negative fees
-            TransmuterStorage storage ks = s.transmuterStorage();
-            address[] memory collateralListMem = ks.collateralList;
+            TransmuterStorage storage ts = s.transmuterStorage();
+            address[] memory collateralListMem = ts.collateralList;
             uint256 length = collateralListMem.length;
             if (action == ActionType.Mint) {
                 // This can be mathematically expressed by `(1-min_c(burnFee_c))<=(1+mintFee[0])`
                 for (uint256 i; i < length; ++i) {
-                    int64[] memory burnFees = ks.collaterals[collateralListMem[i]].yFeeBurn;
+                    int64[] memory burnFees = ts.collaterals[collateralListMem[i]].yFeeBurn;
                     if (burnFees[0] + yFee[0] < 0) revert InvalidNegativeFees();
                 }
             }
             if (action == ActionType.Burn) {
                 // This can be mathematically expressed by `(1-burnFee[0])<=(1+min_c(mintFee_c))`
                 for (uint256 i; i < length; ++i) {
-                    int64[] memory mintFees = ks.collaterals[collateralListMem[i]].yFeeMint;
+                    int64[] memory mintFees = ts.collaterals[collateralListMem[i]].yFeeMint;
                     if (yFee[0] + mintFees[0] < 0) revert InvalidNegativeFees();
                 }
             }

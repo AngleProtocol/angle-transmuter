@@ -48,18 +48,18 @@ contract SettersGuardian is AccessControlModifiers, ISettersGuardian {
 
     /// @inheritdoc ISettersGuardian
     function setRedemptionCurveParams(uint64[] memory xFee, int64[] memory yFee) external onlyGuardian {
-        TransmuterStorage storage ks = s.transmuterStorage();
+        TransmuterStorage storage ts = s.transmuterStorage();
         LibSetters.checkFees(xFee, yFee, ActionType.Redeem);
-        ks.xRedemptionCurve = xFee;
-        ks.yRedemptionCurve = yFee;
+        ts.xRedemptionCurve = xFee;
+        ts.yRedemptionCurve = yFee;
         emit RedemptionCurveParamsSet(xFee, yFee);
     }
 
     /// @inheritdoc ISettersGuardian
     function toggleWhitelist(WhitelistType whitelistType, address who) external onlyGuardian {
-        TransmuterStorage storage ks = s.transmuterStorage();
-        uint256 whitelistStatus = 1 - ks.isWhitelistedForType[whitelistType][who];
-        ks.isWhitelistedForType[whitelistType][who] = whitelistStatus;
+        TransmuterStorage storage ts = s.transmuterStorage();
+        uint256 whitelistStatus = 1 - ts.isWhitelistedForType[whitelistType][who];
+        ts.isWhitelistedForType[whitelistType][who] = whitelistStatus;
         emit WhitelistStatusToggled(whitelistType, who, whitelistStatus);
     }
 }

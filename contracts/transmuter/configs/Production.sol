@@ -94,9 +94,9 @@ contract Production {
 
         Setters.setAccessControlManager(_accessControlManager);
 
-        TransmuterStorage storage ks = s.transmuterStorage();
-        ks.normalizer = uint128(BASE_27);
-        ks.agToken = IAgToken(_agToken);
+        TransmuterStorage storage ts = s.transmuterStorage();
+        ts.normalizer = uint128(BASE_27);
+        ts.agToken = IAgToken(_agToken);
 
         // Setup each collaterals
         for (uint256 i; i < collaterals.length; i++) {

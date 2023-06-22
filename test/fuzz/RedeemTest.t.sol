@@ -271,7 +271,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertSizes(tokens, amounts);
         _assertTransfers(alice, _collaterals, amounts);
 
-        // Testing implicitly the ks.normalizer and ks.normalizedStables
+        // Testing implicitly the ts.normalizer and ts.normalizedStables
         for (uint256 i; i < _collaterals.length; ++i) {
             (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(_collaterals[i]);
             assertApproxEqAbs(
@@ -329,7 +329,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertSizes(tokens, amounts);
         _assertTransfers(alice, _collaterals, amounts);
 
-        // Testing implicitly the ks.normalizer and ks.normalizedStables
+        // Testing implicitly the ts.normalizer and ts.normalizedStables
         for (uint256 i; i < _collaterals.length; ++i) {
             (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(_collaterals[i]);
             assertApproxEqAbs(
@@ -384,7 +384,7 @@ contract RedeemTest is Fixture, FunctionUtils {
             _assertSizes(tokens, amounts);
             _assertTransfers(alice, _collaterals, amounts);
 
-            // Testing implicitly the ks.normalizer and ks.normalizedStables
+            // Testing implicitly the ts.normalizer and ts.normalizedStables
             for (uint256 i; i < _collaterals.length; ++i) {
                 (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(
                     _collaterals[i]
@@ -397,7 +397,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                 assertApproxEqAbs(totalStable, mintedStables - amountBurnt, 3 wei);
             }
             mintedStables = transmuter.getTotalIssued();
-            // now do a second redeem to test with non trivial ks.normalizer and ks.normalizedStables
+            // now do a second redeem to test with non trivial ts.normalizer and ts.normalizedStables
             vm.startPrank(bob);
             redeemProportion = bound(redeemProportion, 0, BASE_9);
             amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
@@ -420,7 +420,7 @@ contract RedeemTest is Fixture, FunctionUtils {
             _assertTransfers(bob, _collaterals, amounts);
         }
 
-        // Testing implicitly the ks.normalizer and ks.normalizedStables
+        // Testing implicitly the ts.normalizer and ts.normalizedStables
         uint256 totalStable2;
         for (uint256 i; i < _collaterals.length; ++i) {
             uint256 stableIssuedByCollateral;
@@ -582,7 +582,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                 address[] memory forfeitTokens;
                 _assertTransfersWithManager(alice, _collaterals, forfeitTokens, amounts);
             }
-            // Testing implicitly the ks.normalizer and ks.normalizedStables
+            // Testing implicitly the ts.normalizer and ts.normalizedStables
             for (uint256 i; i < _collaterals.length; ++i) {
                 (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(
                     _collaterals[i]
@@ -596,7 +596,7 @@ contract RedeemTest is Fixture, FunctionUtils {
             }
             mintedStables = transmuter.getTotalIssued();
 
-            // now do a second redeem to test with non trivial ks.normalizer and ks.normalizedStables
+            // now do a second redeem to test with non trivial ts.normalizer and ts.normalizedStables
             vm.startPrank(bob);
             redeemProportion = bound(redeemProportion, 0, BASE_9);
             amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
@@ -623,7 +623,7 @@ contract RedeemTest is Fixture, FunctionUtils {
             }
         }
 
-        // Testing implicitly the ks.normalizer and ks.normalizedStables
+        // Testing implicitly the ts.normalizer and ts.normalizedStables
         uint256 totalStable2;
         for (uint256 i; i < _collaterals.length; ++i) {
             uint256 stableIssuedByCollateral;
@@ -723,7 +723,7 @@ contract RedeemTest is Fixture, FunctionUtils {
             _assertSizesWithManager(tokens, amounts);
             _assertTransfersWithManager(alice, _collaterals, forfeitTokens, amounts);
 
-            // Testing implicitly the ks.normalizer and ks.normalizedStables
+            // Testing implicitly the ts.normalizer and ts.normalizedStables
             for (uint256 i; i < _collaterals.length; ++i) {
                 (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(
                     _collaterals[i]
@@ -737,7 +737,7 @@ contract RedeemTest is Fixture, FunctionUtils {
             }
             mintedStables = transmuter.getTotalIssued();
 
-            // now do a second redeem to test with non trivial ks.normalizer and ks.normalizedStables
+            // now do a second redeem to test with non trivial ts.normalizer and ts.normalizedStables
             vm.startPrank(bob);
             redeemProportion = bound(redeemProportion, 0, BASE_9);
             amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
@@ -763,7 +763,7 @@ contract RedeemTest is Fixture, FunctionUtils {
             }
         }
 
-        // Testing implicitly the ks.normalizer and ks.normalizedStables
+        // Testing implicitly the ts.normalizer and ts.normalizedStables
         {
             uint256 totalStable2;
             for (uint256 i; i < _collaterals.length; ++i) {
@@ -838,7 +838,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         _assertSizes(tokens, amounts);
         _assertTransfers(alice, _collaterals, amounts);
 
-        // Testing implicitly the ks.normalizer and ks.normalizedStables
+        // Testing implicitly the ts.normalizer and ts.normalizedStables
         for (uint256 i; i < _collaterals.length; ++i) {
             (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(_collaterals[i]);
             assertApproxEqAbs(
