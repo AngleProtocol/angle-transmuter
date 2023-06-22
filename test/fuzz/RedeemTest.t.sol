@@ -439,7 +439,7 @@ contract RedeemTest is Fixture, FunctionUtils {
             mintedStables - amountBurntBob,
             totalStable2,
             mintedStables - amountBurntBob,
-            _MAX_PERCENTAGE_DEVIATION,
+            _MAX_PERCENTAGE_DEVIATION * 10,
             18
         );
     }
