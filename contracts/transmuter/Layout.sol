@@ -5,7 +5,7 @@ pragma solidity ^0.8.19;
 import "../utils/Constants.sol";
 import { DiamondStorage, TransmuterStorage, Collateral, FacetInfo, WhitelistType } from "./Storage.sol";
 
-/// @notice Contract mimicing the overall storage layout of the transmuter system.
+/// @notice Contract mimicking the overall storage layout of the transmuter system.
 /// @dev Not meant to be deployed or used. The goals are:
 ///  - To ensure the storage layout is well understood by everyone
 ///  - To force test failures if the layout is changed
