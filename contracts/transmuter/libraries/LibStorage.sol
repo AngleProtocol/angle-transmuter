@@ -19,10 +19,10 @@ library LibStorage {
 
     /// @notice Returns the storage struct stored at the `TRANSMUTER_STORAGE_POSITION` slot
     /// @dev This struct handles the particular logic of the Transmuter system
-    function transmuterStorage() internal pure returns (TransmuterStorage storage ds) {
+    function transmuterStorage() internal pure returns (TransmuterStorage storage ts) {
         bytes32 position = TRANSMUTER_STORAGE_POSITION;
         assembly {
-            ds.slot := position
+            ts.slot := position
         }
     }
 }

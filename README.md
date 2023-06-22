@@ -127,7 +127,10 @@ In order to interact with non local networks, you must create an `.env` that has
 
 For additional keys, you can check the [`.env.example`](/.env.example) file.
 
-Warning: always keep your confidential information safe.
+Warning:
+
+- always keep your confidential information safe
+- this repository uses [`ffi`](https://book.getfoundry.sh/cheatcodes/ffi) in its test suite. Beware as a malicious actor forking this repo may execute malicious commands on your machine
 
 ---
 
