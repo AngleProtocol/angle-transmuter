@@ -22,10 +22,10 @@ contract Layout {
     mapping(address => Collateral) public collaterals;                          // slot 6
     mapping(address => uint256) public isTrusted;                               // slot 7
     mapping(address => uint256) public isSellerTrusted;                         // slot 8
-    mapping(WhitelistType => mapping(address => uint256)) isWhitelistedForType; // slot 9
+    mapping(WhitelistType => mapping(address => uint256)) public isWhitelistedForType; // slot 9
     // uint256(TRANSMUTER_STORAGE_POSITION) - TransmuterStorage offset (9) - uint256(DIAMOND_STORAGE_POSITION)
     uint256[3183375284495168307942345002138838670162164004951576664793207874081895365205] private __gap2;
-    bytes4[] selectors;                                                         // slot 1
-    mapping(bytes4 => FacetInfo) selectorInfo;                                  // slot 2
-    address accessControlManager;                                 // slot 3
+    bytes4[] public selectors;                                                         // slot 1
+    mapping(bytes4 => FacetInfo) public selectorInfo;                                  // slot 2
+    address public accessControlManager;                                 // slot 3
 }

@@ -30,6 +30,14 @@ contract Test_Layout is Fixture {
         uint256 stablecoinsIssued = transmuter.getTotalIssued();
         address[] memory collateralList = transmuter.getCollateralList();
         (uint64[] memory xRedemptionCurve, int64[] memory yRedemptionCurve) = transmuter.getRedemptionFees();
+        Collateral memory collateral = transmuter.getCollateralInfo(collateralList[0]);
+        hoax(governor);
+        transmuter.toggleTrusted(alice, TrustedType.Updater);
+        hoax(governor);
+        transmuter.toggleTrusted(alice, TrustedType.Seller);
+        address accessControlManager = address(transmuter.accessControlManager());
+        // hoax(governor);
+        // transmuter.toggleWhitelist(WhitelistType.BACKED, alice);
 
         _etch();
 
@@ -45,6 +53,38 @@ contract Test_Layout is Fixture {
         for (uint256 i; i < yRedemptionCurve.length; i++) {
             assertEq(layout.yRedemptionCurve(i), yRedemptionCurve[i]);
         }
+        (
+            uint8 isManaged,
+            uint8 isMintLive,
+            uint8 isBurnLive,
+            uint8 decimals,
+            uint8 onlyWhitelisted,
+            uint216 normalizedStables,
+            bytes memory oracleConfig,
+            bytes memory whitelistData,
+            ManagerStorage memory managerData
+        ) = layout.collaterals(collateralList[0]);
+        assertEq(isManaged, collateral.isManaged);
+        assertEq(isMintLive, collateral.isMintLive);
+        assertEq(isBurnLive, collateral.isBurnLive);
+        assertEq(decimals, collateral.decimals);
+        assertEq(onlyWhitelisted, collateral.onlyWhitelisted);
+        assertEq(normalizedStables, collateral.normalizedStables);
+        assertEq(oracleConfig, collateral.oracleConfig);
+        assertEq(whitelistData, collateral.whitelistData);
+        assertEq(layout.isTrusted(alice), 1);
+        assertEq(layout.isSellerTrusted(alice), 1);
+        assertEq(layout.isTrusted(bob), 0);
+        assertEq(layout.isSellerTrusted(bob), 0);
+
+        bytes4[] memory selectors = generateSelectors("ITransmuter");
+        for (uint i = 0; i < selectors.length; ++i) {
+            (address facetAddress, uint16 selectorPosition) = layout.selectorInfo(selectors[i]);
+            assertNotEq(facetAddress, address(0));
+            assertEq(layout.selectors(selectorPosition), selectors[i]);
+        }
+
+        assertEq(layout.accessControlManager(), accessControlManager);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
