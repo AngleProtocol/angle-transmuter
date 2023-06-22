@@ -13,7 +13,7 @@ import { MockChainlinkOracle } from "mock/MockChainlinkOracle.sol";
 import { MockTokenPermit } from "mock/MockTokenPermit.sol";
 
 import { Test } from "contracts/transmuter/configs/Test.sol";
-import { LibRedeemer } from "contracts/transmuter/libraries/LibRedeemer.sol";
+import { LibGetters } from "contracts/transmuter/libraries/LibGetters.sol";
 import "contracts/transmuter/Storage.sol";
 import "contracts/utils/Constants.sol";
 import "contracts/utils/Errors.sol";
@@ -86,7 +86,7 @@ contract TestTransmuter is Fixture {
     }
 
     function test_QuoteCollateralRatioDirectCall() public {
-        LibRedeemer.getCollateralRatio();
+        LibGetters.getCollateralRatio();
         assertEq(uint256(0), uint256(0));
     }
 }

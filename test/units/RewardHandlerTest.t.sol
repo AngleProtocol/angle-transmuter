@@ -19,12 +19,10 @@ contract RewardHandlerTest is Fixture {
     MockOneInchRouter oneInch;
     IERC20 tokenA;
     IERC20 tokenB;
-    bytes4 public constant SELECTOR =
-        bytes4(keccak256("swap(uint256 amountIn, uint256 amountOut, address tokenIn, address tokenOut)"));
 
     function setUp() public override {
         super.setUp();
-        oneInch = MockOneInchRouter(0x1111111254fb6c44bAC0beD2854e76F90643097d);
+        oneInch = MockOneInchRouter(0x1111111254EEB25477B68fb85Ed929f73A960582);
 
         tokenA = IERC20(address(new MockTokenPermit("tokenA", "tokenA", 18)));
         tokenB = IERC20(address(new MockTokenPermit("tokenA", "tokenA", 9)));

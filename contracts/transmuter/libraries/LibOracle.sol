@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.19;
 
-import { IDiamondCut } from "interfaces/IDiamondCut.sol";
 import { ITransmuterOracle } from "interfaces/ITransmuterOracle.sol";
 import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
 
@@ -66,6 +65,26 @@ library LibOracle {
     /// @notice Internal version of the `getOracle` function
     function getOracle(address collateral) internal view returns (OracleReadType, OracleTargetType, bytes memory) {
         return _parseOracle(s.transmuterStorage().collaterals[collateral].oracleConfig);
+    }
+
+    /// @notice Gets the oracle value and the ratio with respect to the target price when it comes to
+    /// burning for `collateral`
+    function getBurnOracle(
+        address collateral,
+        bytes memory oracleConfig
+    ) internal view returns (uint256 minRatio, uint256 oracleValue) {
+        TransmuterStorage storage ts = s.transmuterStorage();
+        minRatio = BASE_18;
+        address[] memory collateralList = ts.collateralList;
+        uint256 length = collateralList.length;
+        for (uint256 i; i < length; ++i) {
+            uint256 ratioObserved = BASE_18;
+            if (collateralList[i] != collateral) {
+                uint256 oracleValueTmp;
+                (oracleValueTmp, ratioObserved) = readBurn(ts.collaterals[collateralList[i]].oracleConfig);
+            } else (oracleValue, ratioObserved) = readBurn(oracleConfig);
+            if (ratioObserved < minRatio) minRatio = ratioObserved;
+        }
     }
 
     /// @notice Gets a targetPrice depending on a `targetType`

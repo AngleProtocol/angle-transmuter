@@ -2,9 +2,6 @@
 
 pragma solidity ^0.8.19;
 
-import { IERC20 } from "oz/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
-
 import { IManager } from "interfaces/IManager.sol";
 
 import "../Storage.sol";
@@ -15,8 +12,6 @@ import "../Storage.sol";
 /// @dev There is no implementation at this point for a managed collateral handled through this library, and
 /// a new specific `ManagerType` would need to be added in this case
 library LibManager {
-    using SafeERC20 for IERC20;
-
     /// @notice Checks to which address managed funds must be transferred
     function transferRecipient(bytes memory config) internal view returns (address recipient) {
         (ManagerType managerType, bytes memory data) = parseManagerConfig(config);

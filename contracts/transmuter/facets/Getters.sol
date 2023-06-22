@@ -6,8 +6,7 @@ import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { IGetters } from "interfaces/IGetters.sol";
 
 import { LibOracle } from "../libraries/LibOracle.sol";
-import { LibRedeemer } from "../libraries/LibRedeemer.sol";
-import { LibSwapper } from "../libraries/LibSwapper.sol";
+import { LibGetters } from "../libraries/LibGetters.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibWhitelist } from "../libraries/LibWhitelist.sol";
 
@@ -77,7 +76,7 @@ contract Getters is IGetters {
 
     /// @inheritdoc IGetters
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 stablecoinsIssued) {
-        (collatRatio, stablecoinsIssued, , , ) = LibRedeemer.getCollateralRatio();
+        (collatRatio, stablecoinsIssued, , , ) = LibGetters.getCollateralRatio();
     }
 
     /// @inheritdoc IGetters
@@ -115,7 +114,7 @@ contract Getters is IGetters {
     ) external view returns (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) {
         bytes memory oracleConfig = s.transmuterStorage().collaterals[collateral].oracleConfig;
         (burn, ratio) = LibOracle.readBurn(oracleConfig);
-        (minRatio, ) = LibSwapper.getBurnOracle(collateral, oracleConfig);
+        (minRatio, ) = LibOracle.getBurnOracle(collateral, oracleConfig);
         return (LibOracle.readMint(oracleConfig), burn, ratio, minRatio, LibOracle.readRedemption(oracleConfig));
     }
 
