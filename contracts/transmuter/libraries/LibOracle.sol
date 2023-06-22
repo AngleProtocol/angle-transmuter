@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.19;
 
-import { IDiamondCut } from "interfaces/IDiamondCut.sol";
 import { ITransmuterOracle } from "interfaces/ITransmuterOracle.sol";
 import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
 

@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.19;
 
-import { SafeCast } from "oz/utils/math/SafeCast.sol";
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
+import { SafeCast } from "oz/utils/math/SafeCast.sol";
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { Math } from "oz/utils/math/Math.sol";
 
@@ -14,7 +14,6 @@ import { LibDiamond } from "../libraries/LibDiamond.sol";
 import { LibHelpers } from "../libraries/LibHelpers.sol";
 import { LibGetters } from "../libraries/LibGetters.sol";
 import { LibManager } from "../libraries/LibManager.sol";
-import { LibOracle } from "../libraries/LibOracle.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibWhitelist } from "../libraries/LibWhitelist.sol";
 

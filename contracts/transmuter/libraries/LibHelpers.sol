@@ -2,19 +2,13 @@
 
 pragma solidity ^0.8.19;
 
-import { IERC20 } from "oz/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { Math } from "oz/utils/math/Math.sol";
-
-import { LibManager } from "../libraries/LibManager.sol";
 
 import "../Storage.sol";
 
 /// @title LibHelpers
 /// @author Angle Labs, Inc.
 library LibHelpers {
-    using SafeERC20 for IERC20;
-
     /// @notice Rebases the units of `amount` from `fromDecimals` to `toDecimals`
     function convertDecimalTo(uint256 amount, uint8 fromDecimals, uint8 toDecimals) internal pure returns (uint256) {
         if (fromDecimals > toDecimals) return amount / 10 ** (fromDecimals - toDecimals);
