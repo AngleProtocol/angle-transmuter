@@ -1,6 +1,6 @@
 # <img src="logo.svg" alt="Transmuter" height="40px"> Angle - Transmuter
 
-[![CI](https://github.com/AngleProtocol/angle-transmuter/workflows/CI/badge.svg)](https://github.com/AngleProtocol/angle-transmuter/actions?query=workflow%3ACI)
+[![Transmuter CI](https://github.com/AngleProtocol/angle-transmuter/workflows/Transmuter%20CI/badge.svg)](https://github.com/AngleProtocol/angle-transmuter/actions)
 
 ## What is Transmuter?
 
