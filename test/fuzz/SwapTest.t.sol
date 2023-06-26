@@ -88,6 +88,40 @@ contract SwapTest is Fixture, FunctionUtils {
         transmuter.swapExactOutput(amount, 0, testToken2, testToken1, alice, block.timestamp * 2);
         vm.expectRevert(Errors.InvalidTokens.selector);
         transmuter.swapExactInput(amount, 0, testToken2, testToken1, alice, block.timestamp * 2);
+
+        vm.expectRevert(Errors.Paused.selector);
+        transmuter.swapExactInput(amount, 0, testToken2, address(agToken), alice, block.timestamp * 2);
+        vm.expectRevert(Errors.Paused.selector);
+        transmuter.swapExactInput(amount, 0, address(agToken), testToken2, alice, block.timestamp * 2);
+        vm.expectRevert(Errors.Paused.selector);
+        transmuter.swapExactInput(amount, 0, testToken1, address(agToken), alice, block.timestamp * 2);
+        vm.expectRevert(Errors.Paused.selector);
+        transmuter.swapExactInput(amount, 0, address(agToken), testToken1, alice, block.timestamp * 2);
+        vm.expectRevert(Errors.Paused.selector);
+        transmuter.swapExactOutput(amount, 0, testToken2, address(agToken), alice, block.timestamp * 2);
+        vm.expectRevert(Errors.Paused.selector);
+        transmuter.swapExactOutput(amount, 0, address(agToken), testToken2, alice, block.timestamp * 2);
+        vm.expectRevert(Errors.Paused.selector);
+        transmuter.swapExactOutput(amount, 0, testToken1, address(agToken), alice, block.timestamp * 2);
+        vm.expectRevert(Errors.Paused.selector);
+        transmuter.swapExactOutput(amount, 0, address(agToken), testToken1, alice, block.timestamp * 2);
+
+        vm.expectRevert(Errors.InvalidTokens.selector);
+        transmuter.swapExactInput(amount, 0, testToken2, address(eurA), alice, block.timestamp * 2);
+        vm.expectRevert(Errors.InvalidTokens.selector);
+        transmuter.swapExactInput(amount, 0, address(eurA), testToken2, alice, block.timestamp * 2);
+        vm.expectRevert(Errors.InvalidTokens.selector);
+        transmuter.swapExactInput(amount, 0, testToken1, address(eurA), alice, block.timestamp * 2);
+        vm.expectRevert(Errors.InvalidTokens.selector);
+        transmuter.swapExactInput(amount, 0, address(eurA), testToken1, alice, block.timestamp * 2);
+        vm.expectRevert(Errors.InvalidTokens.selector);
+        transmuter.swapExactOutput(amount, 0, testToken2, address(eurA), alice, block.timestamp * 2);
+        vm.expectRevert(Errors.InvalidTokens.selector);
+        transmuter.swapExactOutput(amount, 0, address(eurA), testToken2, alice, block.timestamp * 2);
+        vm.expectRevert(Errors.InvalidTokens.selector);
+        transmuter.swapExactOutput(amount, 0, testToken1, address(eurA), alice, block.timestamp * 2);
+        vm.expectRevert(Errors.InvalidTokens.selector);
+        transmuter.swapExactOutput(amount, 0, address(eurA), testToken1, alice, block.timestamp * 2);
         vm.stopPrank();
     }
 
