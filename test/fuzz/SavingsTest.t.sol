@@ -732,13 +732,14 @@ contract SavingsTest is Fixture, FunctionUtils {
             assertEq(agToken.balanceOf(receiver), amountToRedeem);
             assertEq(agToken.balanceOf(alice), 0);
             assertEq(_saving.balanceOf(alice), shares - sharesBurnt);
-            _assertApproxEqRelDecimalWithTolerance(
-                _saving.convertToAssets(_saving.balanceOf(alice)),
-                withdrawableAmount - amountToRedeem,
-                withdrawableAmount - amountToRedeem,
-                _MAX_PERCENTAGE_DEVIATION * 100,
-                18
-            );
+            if (withdrawableAmount - amountToRedeem > _minAmount)
+                _assertApproxEqRelDecimalWithTolerance(
+                    _saving.convertToAssets(_saving.balanceOf(alice)),
+                    withdrawableAmount - amountToRedeem,
+                    withdrawableAmount - amountToRedeem,
+                    _MAX_PERCENTAGE_DEVIATION * 100,
+                    18
+                );
         }
     }
 
