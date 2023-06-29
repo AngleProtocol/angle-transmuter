@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import "forge-std/Script.sol";
+import { Utils } from "./Utils.s.sol";
 import { console } from "forge-std/console.sol";
 import "stringutils/strings.sol";
 import "./Constants.s.sol";
@@ -18,7 +18,7 @@ import { SettersGuardian } from "contracts/transmuter/facets/SettersGuardian.sol
 import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 
-contract DeployTransmuter is Script {
+contract DeployTransmuter is Utils {
     using strings for *;
 
     address public config;
@@ -98,29 +98,5 @@ contract DeployTransmuter is Script {
 
         // Deploy diamond
         transmuter = ITransmuter(address(new DiamondProxy(cut, _init, _calldata)));
-    }
-
-    // return array of function selectors for given facet name
-    function _generateSelectors(string memory _facetName) internal returns (bytes4[] memory selectors) {
-        //get string of contract methods
-        string[] memory cmd = new string[](4);
-        cmd[0] = "forge";
-        cmd[1] = "inspect";
-        cmd[2] = _facetName;
-        cmd[3] = "methods";
-        bytes memory res = vm.ffi(cmd);
-        string memory st = string(res);
-
-        // extract function signatures and take first 4 bytes of keccak
-        strings.slice memory s = st.toSlice();
-        strings.slice memory delim = ":".toSlice();
-        strings.slice memory delim2 = ",".toSlice();
-        selectors = new bytes4[]((s.count(delim)));
-        for (uint i = 0; i < selectors.length; ++i) {
-            s.split('"'.toSlice());
-            selectors[i] = bytes4(s.split(delim).until('"'.toSlice()).keccak());
-            s.split(delim2);
-        }
-        return selectors;
     }
 }
