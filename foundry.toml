@@ -11,6 +11,7 @@ sizes = true
 optimizer_runs=1000
 solc_version = '0.8.19'
 ffi = true
+fs_permissions = [{ access = "read-write", path = "./scripts/selectors.json"}]
 
 [fuzz]
 runs = 10000
@@ -34,11 +35,10 @@ mainnet = { key = "${MAINNET_ETHERSCAN_API_KEY}" }
 optimism = { key = "${OPTIMISM_ETHERSCAN_API_KEY}" }
 polygon = { key = "${POLYGON_ETHERSCAN_API_KEY}" }
 
-
 [profile.dev]
 optimizer = false
-src = 'test'
 via_ir = false
+src = 'test'
 gas_reports = ["*"]
 
 [profile.dev.fuzz]

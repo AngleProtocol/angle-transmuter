@@ -8,6 +8,8 @@ import "stringutils/strings.sol";
 contract Utils is Script, StdAssertions {
     using strings for *;
 
+    string constant JSON_SELECTOR_PATH = "./scripts/selectors.json";
+
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         HELPERS                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
@@ -28,12 +30,14 @@ contract Utils is Script, StdAssertions {
 
     // return array of function selectors for given facet name
     function _generateSelectors(string memory _facetName) internal returns (bytes4[] memory selectors) {
+        console.log("_generateSelectors ", _facetName);
         //get string of contract methods
-        string[] memory cmd = new string[](4);
+        string[] memory cmd = new string[](5);
         cmd[0] = "forge";
         cmd[1] = "inspect";
-        cmd[2] = _facetName;
-        cmd[3] = "methods";
+        cmd[2] = "--force";
+        cmd[3] = _facetName;
+        cmd[4] = "methods";
         bytes memory res = vm.ffi(cmd);
         string memory st = string(res);
 
@@ -48,5 +52,31 @@ contract Utils is Script, StdAssertions {
             s.split(delim2);
         }
         return selectors;
+    }
+
+    function _bytes4ToBytes32(bytes4 _in) internal pure returns (bytes32 out) {
+        assembly {
+            out := _in
+        }
+    }
+
+    function _arrayBytes4ToBytes32(bytes4[] memory _in) internal pure returns (bytes32[] memory out) {
+        out = new bytes32[](_in.length);
+        for (uint i = 0; i < _in.length; ++i) {
+            out[i] = _bytes4ToBytes32(_in[i]);
+        }
+    }
+
+    function _arrayBytes32ToBytes4(bytes32[] memory _in) internal pure returns (bytes4[] memory out) {
+        out = new bytes4[](_in.length);
+        for (uint i = 0; i < _in.length; ++i) {
+            out[i] = bytes4(_in[i]);
+        }
+    }
+
+    function consoleLogBytes4Array(bytes4[] memory _in) internal view {
+        for (uint i = 0; i < _in.length; ++i) {
+            console.logBytes4(_in[i]);
+        }
     }
 }

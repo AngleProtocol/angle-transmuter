@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import { Utils } from "../Utils.s.sol";
 import { console } from "forge-std/console.sol";
+import { stdJson } from "forge-std/StdJson.sol";
 import "stringutils/strings.sol";
 import { CollateralSetupProd, FakeGnosis } from "contracts/transmuter/configs/FakeGnosis.sol";
 import "contracts/transmuter/Storage.sol" as Storage;
@@ -22,6 +23,7 @@ import { MockChainlinkOracle } from "../../../test/mock/MockChainlinkOracle.sol"
 
 contract GnosisDeployTransmuter is Utils {
     using strings for *;
+    using stdJson for string;
 
     address public config;
     string[] facetNames;
@@ -126,14 +128,19 @@ contract GnosisDeployTransmuter is Utils {
         facetNames.push("Swapper");
         facetAddressList.push(address(new Swapper()));
 
+        string memory json = vm.readFile(JSON_SELECTOR_PATH);
         // Build appropriate payload
         uint256 n = facetNames.length;
         Storage.FacetCut[] memory cut = new Storage.FacetCut[](n);
         for (uint256 i = 0; i < n; ++i) {
+            // Get Selectors from json
+            bytes4[] memory selectors = _arrayBytes32ToBytes4(
+                json.readBytes32Array(string.concat("$.", facetNames[i]))
+            );
             cut[i] = Storage.FacetCut({
                 facetAddress: facetAddressList[i],
                 action: Storage.FacetCutAction.Add,
-                functionSelectors: _generateSelectors(facetNames[i])
+                functionSelectors: selectors
             });
         }
 
