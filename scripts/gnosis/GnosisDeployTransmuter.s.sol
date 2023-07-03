@@ -113,9 +113,6 @@ contract GnosisDeployTransmuter is Utils {
         facetNames.push("Getters");
         facetAddressList.push(address(new Getters()));
 
-        facetNames.push("Redeemer");
-        facetAddressList.push(address(new Redeemer()));
-
         facetNames.push("RewardHandler");
         facetAddressList.push(address(new RewardHandler()));
 
@@ -127,6 +124,10 @@ contract GnosisDeployTransmuter is Utils {
 
         facetNames.push("Swapper");
         facetAddressList.push(address(new Swapper()));
+
+        // Putting it at the end as it is the one failing when verifying on etherscan
+        facetNames.push("Redeemer");
+        facetAddressList.push(address(new Redeemer()));
 
         string memory json = vm.readFile(JSON_SELECTOR_PATH);
         // Build appropriate payload
