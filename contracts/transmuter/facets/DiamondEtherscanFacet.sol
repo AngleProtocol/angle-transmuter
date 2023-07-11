@@ -8,10 +8,10 @@ import { AccessControlModifiers } from "./AccessControlModifiers.sol";
 
 contract DiamondEtherscanFacet is AccessControlModifiers {
     function setDummyImplementation(address _implementation) external onlyGovernor {
-        LibDiamondEtherscan._setDummyImplementation(_implementation);
+        LibDiamondEtherscan.setDummyImplementation(_implementation);
     }
 
     function implementation() external view returns (address) {
-        return LibDiamondEtherscan._dummyImplementation();
+        return LibDiamondEtherscan.dummyImplementation();
     }
 }

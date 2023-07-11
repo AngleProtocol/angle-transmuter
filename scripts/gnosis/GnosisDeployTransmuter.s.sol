@@ -17,7 +17,7 @@ import { SettersGovernor } from "contracts/transmuter/facets/SettersGovernor.sol
 import { SettersGuardian } from "contracts/transmuter/facets/SettersGuardian.sol";
 import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
-import { MockTokenPermit } from "borrow/mock/MockTokenPermit.sol";
+import { MockTokenPermit } from "../../../test/mock/MockTokenPermit.sol";
 import { MockCoreBorrow } from "borrow/mock/MockCoreBorrow.sol";
 import { DummyDiamondImplementation } from "../generated/DummyDiamondImplementation.sol";
 import { MockChainlinkOracle } from "../../../test/mock/MockChainlinkOracle.sol";

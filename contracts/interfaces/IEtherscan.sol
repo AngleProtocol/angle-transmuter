@@ -6,4 +6,6 @@ pragma solidity >=0.5.0;
 /// @author Angle Labs, Inc.
 interface IEtherscan {
     function setDummyImplementation(address _implementation) external;
+
+    function implementation() external view returns (address);
 }

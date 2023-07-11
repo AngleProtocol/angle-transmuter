@@ -218,9 +218,9 @@ yarn gas
 
 ---
 
-### Verify on Ethercsan ✅
+### Verify on Etherscan ✅
 
-Follow the instruction `https://github.com/zdenham/diamond-etherscan/blob/main/README.md` - you will have to download the repo - and upload the dummy
+If you are a governor, follow the instruction `https://github.com/zdenham/diamond-etherscan/blob/main/README.md` - you will have to download the repo - and upload the dummy
 implementation `./scripts/generated/DummyDiamonImplementation.sol`.
 Run the script `./scripts/gnosis/VerifyProxyEtherscan.s.sol` - it will deploy an etherscan facet (it should only be done once) and deploy
 a dummy implementation which has all facets entrypoints. Then go to Etherscan and point the `DiamondProxy` to the `DiamondEtherscanFacet` contract.
