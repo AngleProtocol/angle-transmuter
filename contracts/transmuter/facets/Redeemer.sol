@@ -107,6 +107,12 @@ contract Redeemer is IRedeemer {
         address[] memory forfeitTokens
     ) internal returns (address[] memory tokens, uint256[] memory amounts) {
         TransmuterStorage storage ts = s.transmuterStorage();
+        // Reentrant protection
+        // On the first call, _notEntered will be true
+        if (ts.statusRentrant == ENTERED) revert ReentrantCall();
+        // Any calls to nonReentrant after this point will fail
+        ts.statusRentrant = ENTERED;
+
         if (ts.isRedemptionLive == 0) revert Paused();
         if (block.timestamp > deadline) revert TooLate();
         uint256[] memory subCollateralsTracker;
@@ -134,6 +140,10 @@ contract Redeemer is IRedeemer {
             if (subCollateralsTracker[indexCollateral] - 1 <= i) ++indexCollateral;
         }
         emit Redeemed(amount, tokens, amounts, forfeitTokens, msg.sender, to);
+
+        // By storing the original value once again, a refund is triggered (see
+        // https://eips.ethereum.org/EIPS/eip-2200)
+        ts.statusRentrant = NOT_ENTERED;
     }
 
     /// @dev This function reverts if `stablecoinsIssued==0`, which is expected behavior as there is nothing to redeem

@@ -185,6 +185,12 @@ contract Swapper is ISwapper {
     ) internal {
         if (amountIn > 0 && amountOut > 0) {
             TransmuterStorage storage ts = s.transmuterStorage();
+            // Reentrant protection
+            // On the first call, _notEntered will be true
+            if (ts.statusRentrant == ENTERED) revert ReentrantCall();
+            // Any calls to nonReentrant after this point will fail
+            ts.statusRentrant = ENTERED;
+
             if (mint) {
                 uint128 changeAmount = (amountOut.mulDiv(BASE_27, ts.normalizer, Math.Rounding.Up)).toUint128();
                 // The amount of stablecoins issued from a collateral are not stored as absolute variables, but
@@ -218,6 +224,10 @@ contract Swapper is ISwapper {
                 else IERC20(tokenOut).safeTransfer(to, amountOut);
             }
             emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
+
+            // By storing the original value once again, a refund is triggered (see
+            // https://eips.ethereum.org/EIPS/eip-2200)
+            ts.statusRentrant = NOT_ENTERED;
         }
     }
 

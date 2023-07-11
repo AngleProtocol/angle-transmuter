@@ -32,6 +32,7 @@ error NotTrusted();
 error NotWhitelisted();
 error OneInchSwapFailed();
 error Paused();
+error ReentrantCall();
 error RemoveFacetAddressMustBeZeroAddress(address _facetAddress);
 error TooBigAmountIn();
 error TooLate();
