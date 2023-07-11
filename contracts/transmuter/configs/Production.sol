@@ -24,72 +24,88 @@ struct CollateralSetupProd {
 contract Production {
     function initialize(IAccessControlManager _accessControlManager, address _agToken) external {
         address euroc = 0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c;
-        address euroe = 0x820802Fa8a99901F52e39acD21177b0BE6EE2974;
-        address eure = 0x3231Cb76718CDeF2155FC47b5286d82e6eDA273f;
+        address bc3m = 0x2F123cF3F37CE3328CC9B5b8415f9EC5109b45e7;
 
-        // Fee structure
-
-        uint64[] memory xMintFee = new uint64[](4);
-        xMintFee[0] = uint64(0);
-        xMintFee[1] = uint64((40 * BASE_9) / 100);
-        xMintFee[2] = uint64((45 * BASE_9) / 100);
-        xMintFee[3] = uint64((70 * BASE_9) / 100);
-
-        // Linear at 1%, 3% at 45%, then steep to 100%
-        int64[] memory yMintFee = new int64[](4);
-        yMintFee[0] = int64(uint64(BASE_9 / 99));
-        yMintFee[1] = int64(uint64(BASE_9 / 99));
-        yMintFee[2] = int64(uint64((3 * BASE_9) / 97));
-        yMintFee[3] = int64(uint64(BASE_12 - 1));
-
-        uint64[] memory xBurnFee = new uint64[](4);
-        xBurnFee[0] = uint64(BASE_9);
-        xBurnFee[1] = uint64((40 * BASE_9) / 100);
-        xBurnFee[2] = uint64((35 * BASE_9) / 100);
-        xBurnFee[3] = uint64(BASE_9 / 100);
-
-        // Linear at 1%, 3% at 35%, then steep to 100%
-        int64[] memory yBurnFee = new int64[](4);
-        yBurnFee[0] = int64(uint64(BASE_9 / 99));
-        yBurnFee[1] = int64(uint64(BASE_9 / 99));
-        yBurnFee[2] = int64(uint64((3 * BASE_9) / 97));
-        yBurnFee[3] = int64(uint64(MAX_BURN_FEE - 1));
+        // Check this docs for simulations:
+        // https://docs.google.com/spreadsheets/d/1UxS1m4sG8j2Lv02wONYJNkF4S7NDLv-5iyAzFAFTfXw/edit#gid=0
 
         // Set Collaterals
-
-        CollateralSetupProd[] memory collaterals = new CollateralSetupProd[](3);
+        CollateralSetupProd[] memory collaterals = new CollateralSetupProd[](2);
 
         // EUROC
         {
+            uint64[] memory xMintFeeEuroc = new uint64[](3);
+            xMintFeeEuroc[0] = uint64(0);
+            xMintFeeEuroc[1] = uint64((79 * BASE_9) / 100);
+            xMintFeeEuroc[2] = uint64((80 * BASE_9) / 100);
+
+            int64[] memory yMintFeeEuroc = new int64[](3);
+            yMintFeeEuroc[0] = int64(uint64(BASE_9 / 1000));
+            yMintFeeEuroc[1] = int64(uint64(BASE_9 / 1000));
+            yMintFeeEuroc[2] = int64(uint64(MAX_MINT_FEE));
+
+            uint64[] memory xBurnFeeEuroc = new uint64[](3);
+            xBurnFeeEuroc[0] = uint64(BASE_9);
+            xBurnFeeEuroc[1] = uint64((41 * BASE_9) / 100);
+            xBurnFeeEuroc[2] = uint64((40 * BASE_9) / 100);
+
+            int64[] memory yBurnFeeEuroc = new int64[](3);
+            yBurnFeeEuroc[0] = int64(uint64((2 * BASE_9) / 1000));
+            yBurnFeeEuroc[1] = int64(uint64((2 * BASE_9) / 1000));
+            yBurnFeeEuroc[2] = int64(uint64(MAX_BURN_FEE));
+
             bytes memory readData;
             bytes memory oracleConfig = abi.encode(
                 Storage.OracleReadType.NO_ORACLE,
                 Storage.OracleTargetType.STABLE,
                 readData
             );
-            collaterals[0] = CollateralSetupProd(euroc, oracleConfig, xMintFee, yMintFee, xBurnFee, yBurnFee);
+            collaterals[0] = CollateralSetupProd(
+                euroc,
+                oracleConfig,
+                xMintFeeEuroc,
+                yMintFeeEuroc,
+                xBurnFeeEuroc,
+                yBurnFeeEuroc
+            );
         }
 
-        // EUROe
+        // bC3M
         {
-            bytes memory readData;
-            bytes memory oracleConfig = abi.encode(
-                Storage.OracleReadType.NO_ORACLE,
-                Storage.OracleTargetType.STABLE,
-                readData
-            );
-            collaterals[1] = CollateralSetupProd(euroe, oracleConfig, xMintFee, yMintFee, xBurnFee, yBurnFee);
-        }
+            uint64[] memory xMintFeeC3M = new uint64[](3);
+            xMintFeeC3M[0] = uint64(0);
+            xMintFeeC3M[1] = uint64((59 * BASE_9) / 100);
+            xMintFeeC3M[2] = uint64((60 * BASE_9) / 100);
 
-        // EURe
-        {
+            int64[] memory yMintFeeC3M = new int64[](3);
+            yMintFeeC3M[0] = int64(uint64((BASE_9) / 1000));
+            yMintFeeC3M[1] = int64(uint64(BASE_9 / 1000));
+            yMintFeeC3M[2] = int64(uint64(MAX_MINT_FEE));
+
+            uint64[] memory xBurnFeeC3M = new uint64[](3);
+            xBurnFeeC3M[0] = uint64(BASE_9);
+            xBurnFeeC3M[1] = uint64((20 * BASE_9) / 100);
+            xBurnFeeC3M[2] = uint64((21 * BASE_9) / 100);
+
+            int64[] memory yBurnFeeC3M = new int64[](3);
+            yBurnFeeC3M[0] = int64(uint64((5 * BASE_9) / 1000));
+            yBurnFeeC3M[1] = int64(uint64((5 * BASE_9) / 1000));
+            yBurnFeeC3M[2] = int64(uint64(MAX_BURN_FEE));
+
             bytes memory readData;
             bytes memory oracleConfig = abi.encode(
                 Storage.OracleReadType.NO_ORACLE,
                 Storage.OracleTargetType.STABLE,
                 readData
             );
-            collaterals[2] = CollateralSetupProd(eure, oracleConfig, xMintFee, yMintFee, xBurnFee, yBurnFee);
+            collaterals[1] = CollateralSetupProd(
+                bc3m,
+                oracleConfig,
+                xMintFeeC3M,
+                yMintFeeC3M,
+                xBurnFeeC3M,
+                yBurnFeeC3M
+            );
         }
 
         LibSetters.setAccessControlManager(_accessControlManager);
@@ -103,10 +119,31 @@ contract Production {
             CollateralSetupProd memory collateral = collaterals[i];
             LibSetters.addCollateral(collateral.token);
             LibSetters.setOracle(collateral.token, collateral.oracleConfig);
-            //Mint fees
+            // Mint fees
             LibSetters.setFees(collateral.token, collateral.xMintFee, collateral.yMintFee, true);
-            //Burn fees
+            // Burn fees
             LibSetters.setFees(collateral.token, collateral.xBurnFee, collateral.yBurnFee, false);
+            LibSetters.togglePause(collateral.token, ActionType.Mint);
+            LibSetters.togglePause(collateral.token, ActionType.Burn);
         }
+
+        // adjustStablecoins
+        LibSetters.adjustStablecoins(euroc, 8851136430000000000000000, true);
+        LibSetters.adjustStablecoins(bc3m, 4192643570000000000000000, true);
+
+        // setRedemptionCurveParams
+        LibSetters.togglePause(euroc, ActionType.Redeem);
+        uint64[] memory xRedeemFee = new uint64[](4);
+        xRedeemFee[0] = uint64((75 * BASE_9) / 100);
+        xRedeemFee[1] = uint64((85 * BASE_9) / 100);
+        xRedeemFee[2] = uint64((95 * BASE_9) / 100);
+        xRedeemFee[3] = uint64((97 * BASE_9) / 100);
+
+        int64[] memory yRedeemFee = new int64[](4);
+        yRedeemFee[0] = int64(uint64((995 * BASE_9) / 1000));
+        yRedeemFee[1] = int64(uint64((950 * BASE_9) / 1000));
+        yRedeemFee[2] = int64(uint64((950 * BASE_9) / 1000));
+        yRedeemFee[3] = int64(uint64((995 * BASE_9) / 1000));
+        LibSetters.setRedemptionCurveParams(xRedeemFee, yRedeemFee);
     }
 }
