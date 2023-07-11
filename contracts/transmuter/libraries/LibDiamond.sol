@@ -31,7 +31,8 @@ library LibDiamond {
 
     /// @notice Internal function version of `diamondCut`
     function diamondCut(FacetCut[] memory _diamondCut, address _init, bytes memory _calldata) internal {
-        for (uint256 facetIndex; facetIndex < _diamondCut.length; facetIndex++) {
+        uint256 diamondCutLength = _diamondCut.length;
+        for (uint256 facetIndex; facetIndex < diamondCutLength; facetIndex++) {
             bytes4[] memory functionSelectors = _diamondCut[facetIndex].functionSelectors;
             address facetAddress = _diamondCut[facetIndex].facetAddress;
 
@@ -85,7 +86,8 @@ library LibDiamond {
         DiamondStorage storage ds = s.diamondStorage();
         uint16 selectorCount = uint16(ds.selectors.length);
         _enforceHasContractCode(_facetAddress);
-        for (uint256 selectorIndex; selectorIndex < _functionSelectors.length; selectorIndex++) {
+        uint256 functionSelectorsLength = _functionSelectors.length;
+        for (uint256 selectorIndex; selectorIndex < functionSelectorsLength; selectorIndex++) {
             bytes4 selector = _functionSelectors[selectorIndex];
             address oldFacetAddress = ds.selectorInfo[selector].facetAddress;
             if (oldFacetAddress != address(0)) {
@@ -105,7 +107,8 @@ library LibDiamond {
             revert CannotReplaceFunctionsFromFacetWithZeroAddress(_functionSelectors);
         }
         _enforceHasContractCode(_facetAddress);
-        for (uint256 selectorIndex; selectorIndex < _functionSelectors.length; selectorIndex++) {
+        uint256 functionSelectorsLength = _functionSelectors.length;
+        for (uint256 selectorIndex; selectorIndex < functionSelectorsLength; selectorIndex++) {
             bytes4 selector = _functionSelectors[selectorIndex];
             address oldFacetAddress = ds.selectorInfo[selector].facetAddress;
             // Can't replace immutable functions -- functions defined directly in the diamond in this case
@@ -131,7 +134,8 @@ library LibDiamond {
         if (_facetAddress != address(0)) {
             revert RemoveFacetAddressMustBeZeroAddress(_facetAddress);
         }
-        for (uint256 selectorIndex; selectorIndex < _functionSelectors.length; selectorIndex++) {
+        uint256 functionSelectorsLength = _functionSelectors.length;
+        for (uint256 selectorIndex; selectorIndex < functionSelectorsLength; selectorIndex++) {
             bytes4 selector = _functionSelectors[selectorIndex];
             FacetInfo memory oldFacetAddressAndSelectorPosition = ds.selectorInfo[selector];
             if (oldFacetAddressAndSelectorPosition.facetAddress == address(0)) {

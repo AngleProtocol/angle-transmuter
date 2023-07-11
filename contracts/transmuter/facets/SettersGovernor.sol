@@ -68,6 +68,7 @@ contract SettersGovernor is AccessControlModifiers, ISettersGovernor {
     }
 
     /// @inheritdoc ISettersGovernor
+    /// @dev Collateral assets with a fee on transfer are not supported by the system
     function addCollateral(address collateral) external onlyGovernor {
         LibSetters.addCollateral(collateral);
     }
