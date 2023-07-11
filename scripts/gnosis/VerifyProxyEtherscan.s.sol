@@ -31,10 +31,11 @@ contract VerifyProxyEtherscan is Utils {
                                                         DEPLOY                                                      
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-        transmuter = ITransmuter(0x1A42a30dCbA20A22b69C40098d89cB7304f429B9);
+        transmuter = ITransmuter(0x4A44f77978Daa3E92Eb3D97210bd11645cF935Ab);
 
         // deploy dummy implementation
-        DummyDiamondImplementation dummyImpl = new DummyDiamondImplementation();
+        // DummyDiamondImplementation dummyImpl = new DummyDiamondImplementation();
+        DummyDiamondImplementation dummyImpl = DummyDiamondImplementation(0x8911084eF979Ac1B02D6d9AAbfAD86927C5b1589);
         _deployDiamondEtherscan();
         transmuter.setDummyImplementation(address(dummyImpl));
 
@@ -49,17 +50,23 @@ contract VerifyProxyEtherscan is Utils {
     function _deployDiamondEtherscan() internal {
         // Deploy every facet
         facetNames.push("DiamondEtherscanFacet");
-        etherscanFacet = new DiamondEtherscanFacet();
+        // etherscanFacet = new DiamondEtherscanFacet();
+        etherscanFacet = DiamondEtherscanFacet(0xC492fBAe68cE6C5E14C7ed5cd8a59babD5c90e4C);
         facetAddressList.push(address(etherscanFacet));
+
+        string memory json = vm.readFile(JSON_SELECTOR_PATH);
 
         // Build appropriate payload
         uint256 n = facetNames.length;
         Storage.FacetCut[] memory cut = new Storage.FacetCut[](n);
         for (uint256 i = 0; i < n; ++i) {
+            bytes4[] memory selectors = _arrayBytes32ToBytes4(
+                json.readBytes32Array(string.concat("$.", facetNames[i]))
+            );
             cut[i] = Storage.FacetCut({
                 facetAddress: facetAddressList[i],
                 action: Storage.FacetCutAction.Add,
-                functionSelectors: _generateSelectors(facetNames[i])
+                functionSelectors: selectors
             });
         }
 
