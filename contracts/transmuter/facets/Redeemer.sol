@@ -99,6 +99,8 @@ contract Redeemer is IRedeemer {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Internal function of the `redeem` function in the `Redeemer` contract
+    /// @dev If your tx was built before a collateral has been revoked and another added, you should
+    /// not execute your tx as the `minAmountOuts` will be off
     function _redeem(
         uint256 amount,
         address to,
@@ -115,12 +117,11 @@ contract Redeemer is IRedeemer {
 
         if (ts.isRedemptionLive == 0) revert Paused();
         if (block.timestamp > deadline) revert TooLate();
-        if (forfeitTokens.length != minAmountOuts.length) revert InvalidLength();
 
         uint256[] memory subCollateralsTracker;
         (tokens, amounts, subCollateralsTracker) = _quoteRedemptionCurve(amount);
-        // Check that the provided tokens length is identical to the redeem one
-        if (amounts.length != minAmountOuts.length) revert InvalidLength();
+        // Check that the provided slippage tokens length is identical to the redeem one
+        if (amounts.length != minAmountOuts.length) revert InvalidLengths();
         // Updating the normalizer enables to simultaneously and proportionally reduce the amount
         // of stablecoins issued from each collateral without having to loop through each of them
         _updateNormalizer(amount, false);

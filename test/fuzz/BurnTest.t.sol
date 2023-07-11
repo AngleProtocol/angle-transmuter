@@ -142,20 +142,17 @@ contract BurnTest is Fixture, FunctionUtils {
         }
 
         uint256 computedCollatRatio = type(uint64).max;
-        bool collatRatioAboveLimit;
         if (mintedStables + mintedStables2 - burntStables > 0) {
             computedCollatRatio = uint64(
                 (collateralisation * BASE_9) / (mintedStables + mintedStables2 - burntStables)
             );
             if ((collateralisation * BASE_9) / (mintedStables + mintedStables2 - burntStables) > type(uint64).max)
-                collatRatioAboveLimit = true;
+                computedCollatRatio = type(uint64).max;
         }
 
         (uint64 collatRatio, uint256 reservesValue) = transmuter.getCollateralRatio();
-        if (!collatRatioAboveLimit) {
-            assertApproxEqAbs(computedCollatRatio, collatRatio, 1 wei);
-            assertApproxEqAbs(mintedStables + mintedStables2 - burntStables, reservesValue, 1 wei);
-        }
+        assertApproxEqAbs(computedCollatRatio, collatRatio, 1 wei);
+        assertApproxEqAbs(mintedStables + mintedStables2 - burntStables, reservesValue, 1 wei);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

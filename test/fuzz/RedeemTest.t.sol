@@ -661,6 +661,39 @@ contract RedeemTest is Fixture, FunctionUtils {
                                                   REDEEM WITH FORFEIT                                               
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
+    function test_RevertWhen_RedeemInvalidArrayLengths(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion
+    ) public {
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, ) = _loadReserves(initialAmounts, transferProportion);
+
+        // check collateral ratio first
+        (uint64 collatRatio, uint256 stablecoinsIssued) = transmuter.getCollateralRatio();
+        if (mintedStables == 0) return;
+        vm.startPrank(alice);
+        uint256 amountBurnt = agToken.balanceOf(alice);
+        {
+            uint256[] memory minAmountOuts;
+            {
+                (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
+                minAmountOuts = new uint256[](quoteAmounts.length - 1);
+            }
+            vm.expectRevert(Errors.InvalidLengths.selector);
+            transmuter.redeem(amountBurnt, alice, block.timestamp * 2, minAmountOuts);
+        }
+        {
+            uint256[] memory minAmountOuts;
+            {
+                (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
+                minAmountOuts = new uint256[](quoteAmounts.length + 1);
+            }
+            vm.expectRevert(Errors.InvalidLengths.selector);
+            transmuter.redeem(amountBurnt, alice, block.timestamp * 2, minAmountOuts);
+        }
+        vm.stopPrank();
+    }
+
     function testFuzz_MultiForfeitRedemptionCurveWithManagerRandomRedemptionFees(
         uint256[6] memory initialValue, // initialAmounts of size 3 / nbrSubCollaterals of size 3
         bool[3] memory isManaged,

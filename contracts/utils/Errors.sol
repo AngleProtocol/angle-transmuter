@@ -16,7 +16,7 @@ error FunctionNotFound(bytes4 _functionSelector);
 error IncorrectFacetCutAction(uint8 _action);
 error InitializationFunctionReverted(address _initializationContractAddress, bytes _calldata);
 error InvalidChainlinkRate();
-error InvalidLength();
+error InvalidLengths();
 error InvalidNegativeFees();
 error InvalidOracleType();
 error InvalidParam();
