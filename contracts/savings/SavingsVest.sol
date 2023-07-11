@@ -182,6 +182,9 @@ contract SavingsVest is BaseSavings {
 
     /// @notice Provides an estimated Annual Percentage Rate for base depositors on this contract
     function estimatedAPR() external view returns (uint256 apr) {
+        // If everything has been vested current APR is 0
+        if (lockedProfit() == 0) return 0;
+
         uint256 currentlyVestingProfit = vestingProfit;
         uint256 weightedAssets = vestingPeriod * totalAssets();
         if (currentlyVestingProfit != 0 && weightedAssets != 0)

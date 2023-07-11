@@ -115,8 +115,12 @@ contract Redeemer is IRedeemer {
 
         if (ts.isRedemptionLive == 0) revert Paused();
         if (block.timestamp > deadline) revert TooLate();
+        if (forfeitTokens.length != minAmountOuts.length) revert InvalidLength();
+
         uint256[] memory subCollateralsTracker;
         (tokens, amounts, subCollateralsTracker) = _quoteRedemptionCurve(amount);
+        // Check that the provided tokens length is identical to the redeem one
+        if (amounts.length != minAmountOuts.length) revert InvalidLength();
         // Updating the normalizer enables to simultaneously and proportionally reduce the amount
         // of stablecoins issued from each collateral without having to loop through each of them
         _updateNormalizer(amount, false);

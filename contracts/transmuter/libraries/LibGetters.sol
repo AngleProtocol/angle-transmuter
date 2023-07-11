@@ -83,8 +83,11 @@ library LibGetters {
         // The `stablecoinsIssued` value need to be rounded up because it is then used as a divizer when computing
         // the `collatRatio`
         stablecoinsIssued = uint256(ts.normalizedStables).mulDiv(ts.normalizer, BASE_27, Math.Rounding.Up);
-        if (stablecoinsIssued > 0)
-            collatRatio = uint64(totalCollateralization.mulDiv(BASE_9, stablecoinsIssued, Math.Rounding.Up));
-        else collatRatio = type(uint64).max;
+        if (stablecoinsIssued > 0) {
+            uint256 uncastCollatRatio = uint64(
+                totalCollateralization.mulDiv(BASE_9, stablecoinsIssued, Math.Rounding.Up)
+            );
+            collatRatio = (uncastCollatRatio <= type(uint64).max) ? uint64(uncastCollatRatio) : type(uint64).max;
+        } else collatRatio = type(uint64).max;
     }
 }
