@@ -19,6 +19,7 @@ import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 import { MockTokenPermit } from "borrow/mock/MockTokenPermit.sol";
 import { MockCoreBorrow } from "borrow/mock/MockCoreBorrow.sol";
+import { DummyDiamondImplementation } from "../generated/DummyDiamondImplementation.sol";
 import { MockChainlinkOracle } from "../../../test/mock/MockChainlinkOracle.sol";
 
 contract GnosisDeployTransmuter is Utils {
@@ -124,6 +125,11 @@ contract GnosisDeployTransmuter is Utils {
 
         facetNames.push("Swapper");
         facetAddressList.push(address(new Swapper()));
+
+        // TODO when deploying don't forget to regenerate this contract if you
+        // changed any code on the Transmuter
+        facetNames.push("DiamondEtherscanFacet");
+        DummyDiamondImplementation dummyImpl = new DummyDiamondImplementation();
 
         // Putting it at the end as it is the one failing when verifying on etherscan
         facetNames.push("Redeemer");
