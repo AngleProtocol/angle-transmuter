@@ -24,8 +24,8 @@
     "lint": "yarn lint:sol",
     "lint:js:fix": "eslint --ignore-path .gitignore --fix --max-warnings 30 'test/**/*.{js,ts}' '*.{js,ts}'",
     "lint:sol": "solhint --fix --max-warnings 20 \"contracts/**/*.sol\"",
-    "verify": "forge verify-contract --chain-id 100 --num-of-optimizations 1000 --watch --constructor-args $(cast abi-encode 'constructor(string memory,string memory,uint8)' 'Mock-AgEUR' 'Mock-AgEUR' 18) --compiler-version v0.8.19+commit.7dd6d40 --etherscan-api-key HQU42G9VWZ6KFNYTYKE6VFB7V48KMJ69HS 0x5fE0E497Ac676d8bA78598FC8016EBC1E6cE14a3 lib/borrow-contracts/contracts/mock:MockTokenPermit",
-    "verify:Redeemer": "forge verify-contract --chain-id 100 --optimizer-runs 1000 --watch --constructor-args $(cast abi-encode 'constructor()') --etherscan-api-key HQU42G9VWZ6KFNYTYKE6VFB7V48KMJ69HS 0xf868da244C17CF0E288AE4A92c8636f072A7BaE3 Redeemer --show-standard-json-input > etherscan.json"
+    "verify:agEUR": "forge verify-contract --chain-id 100 --num-of-optimizations 1000 --watch --constructor-args $(cast abi-encode 'constructor(string memory,string memory,uint8)' 'Mock-AgEUR' 'Mock-AgEUR' 18) --compiler-version v0.8.19+commit.7dd6d40 --etherscan-api-key HQU42G9VWZ6KFNYTYKE6VFB7V48KMJ69HS 0x5fE0E497Ac676d8bA78598FC8016EBC1E6cE14a3 lib/borrow-contracts/contracts/mock/MockTokenPermit:MockTokenPermit.sol",
+    "verify": "forge verify-contract --chain-id 100 --optimizer-runs 1000 --watch --constructor-args $(cast abi-encode 'constructor()')  --etherscan-api-key HQU42G9VWZ6KFNYTYKE6VFB7V48KMJ69HS 0xf868da244C17CF0E288AE4A92c8636f072A7BaE3 Redeemer"
   },
   "keywords": [],
   "author": "Angle Core Team",
