@@ -452,7 +452,7 @@ contract Swapper is ISwapper {
         // Checking if enough is available for collateral assets that involve manager addresses
         if (
             (collatInfo.isManaged > 0 && LibManager.maxAvailable(collatInfo.managerData.config) < amountOut) ||
-            (IERC20(collateral).balanceOf(address(this)) < amountOut)
+            (collatInfo.isManaged == 0 && IERC20(collateral).balanceOf(address(this)) < amountOut)
         ) revert InvalidSwap();
     }
 

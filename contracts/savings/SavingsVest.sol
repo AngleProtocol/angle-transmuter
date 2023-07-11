@@ -101,7 +101,7 @@ contract SavingsVest is BaseSavings {
 
     /// @notice Accrues interest to this contract by minting agTokens if the protocol is over-collateralized
     /// or burning some if it is not collateralized
-    function accrue() external returns (uint256 minted) {
+    function accrue() public returns (uint256 minted) {
         if (block.timestamp - lastUpdate < updateDelay && !accessControlManager.isGovernorOrGuardian(msg.sender))
             revert NotAllowed();
         ITransmuter _transmuter = transmuter;
@@ -199,11 +199,16 @@ contract SavingsVest is BaseSavings {
     /// @notice Changes the contract parameters
     function setParams(bytes32 what, uint64 param) external onlyGuardian {
         if (param > BASE_9) revert InvalidParam();
-        else if (what == "PF") protocolSafetyFee = param;
-        else if (what == "VP") vestingPeriod = uint32(param);
         else if (what == "UD") updateDelay = uint32(param);
         else if (what == "P") paused = uint8(param);
-        else revert InvalidParam();
+        else {
+            // Interest must be accrued with the current parameters before setting new `protocolSafetyFee`
+            // and `vestingPeriod`
+            accrue();
+            if (what == "PF") protocolSafetyFee = param;
+            else if (what == "VP") vestingPeriod = uint32(param);
+            else revert InvalidParam();
+        }
         emit FiledUint64(param, what);
     }
 }
