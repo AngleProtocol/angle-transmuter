@@ -47,10 +47,7 @@ library LibGetters {
         subCollateralsTracker = new uint256[](collateralListLength);
         for (uint256 i; i < collateralListLength; ++i) {
             if (ts.collaterals[collateralList[i]].isManaged == 0) ++subCollateralsAmount;
-            else
-                subCollateralsAmount =
-                    subCollateralsAmount +
-                    ts.collaterals[collateralList[i]].managerData.subCollaterals.length;
+            else subCollateralsAmount += ts.collaterals[collateralList[i]].managerData.subCollaterals.length;
             subCollateralsTracker[i] = subCollateralsAmount;
         }
         balances = new uint256[](subCollateralsAmount);
@@ -71,15 +68,14 @@ library LibGetters {
                         tokens[countCollat + k] = address(collateral.managerData.subCollaterals[k]);
                         balances[countCollat + k] = subCollateralsBalances[k];
                     }
-                    countCollat = countCollat + numSubCollats;
+                    countCollat += numSubCollats;
                 } else {
                     collateralBalance = IERC20(collateralList[i]).balanceOf(address(this));
                     tokens[countCollat] = collateralList[i];
                     balances[countCollat++] = collateralBalance;
                 }
                 uint256 oracleValue = LibOracle.readRedemption(collateral.oracleConfig);
-                totalCollateralization =
-                    totalCollateralization +
+                totalCollateralization +=
                     (oracleValue * LibHelpers.convertDecimalTo(collateralBalance, collateral.decimals, 18)) /
                     BASE_18;
             }
