@@ -995,7 +995,6 @@ contract RedeemTest is Fixture, FunctionUtils {
         // we should also receive  in value min(collatRatio*amountBurnt,amountBurnt)
         AssertQuoteParams memory quoteStorage;
         {
-            AssertQuoteParams memory quoteStorage;
             for (uint256 i; i < _oracles.length; ++i) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 uint8 decimals = IERC20Metadata(_collaterals[i]).decimals();
