@@ -52,6 +52,7 @@ enum OracleQuoteType {
 
 enum OracleTargetType {
     STABLE,
+    CHAINLINK_FEEDS,
     WSTETH,
     CBETH,
     RETH,
