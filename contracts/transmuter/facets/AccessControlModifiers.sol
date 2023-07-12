@@ -22,7 +22,7 @@ contract AccessControlModifiers {
         _;
     }
 
-    // @dev Fork from https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/security/ReentrancyGuard.sol
+    // @dev https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/security/ReentrancyGuard.sol
     // @dev Prevents a contract from calling itself, directly or indirectly.
     // Calling a `nonReentrant` function from another `nonReentrant`
     // function is not supported. It is possible to prevent this from happening

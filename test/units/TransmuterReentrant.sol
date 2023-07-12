@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.19;
 
-import { console } from "forge-std/console.sol";
 import { IERC20 } from "oz/interfaces/IERC20.sol";
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { IERC1820Registry } from "oz/utils/introspection/IERC1820Registry.sol";
