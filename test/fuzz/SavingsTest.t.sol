@@ -174,6 +174,33 @@ contract SavingsTest is Fixture, FunctionUtils {
         );
     }
 
+    function test_RevertWhen_SetRateNotGovernorOrGuardian(uint256 rate) public {
+        rate = bound(rate, _minRate, _maxRate / 10 - 1);
+        vm.prank(governor);
+        _saving.setRate(uint208(rate));
+
+        assertEq(_saving.rate(), rate);
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        _saving.setRate(uint208(rate + 1));
+
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        _saving.setRate(uint208(rate - 1));
+
+        vm.prank(guardian);
+        _saving.setRate(uint208(rate - 1));
+
+        assertEq(_saving.rate(), rate - 1);
+
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        _saving.setRate(uint208(0));
+
+        vm.prank(guardian);
+        _saving.setRate(uint208(0));
+
+        assertEq(_saving.rate(), 0);
+    }
+
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         DEPOSIT                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
