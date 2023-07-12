@@ -15,6 +15,7 @@ import { SettersGovernor } from "contracts/transmuter/facets/SettersGovernor.sol
 import { SettersGuardian } from "contracts/transmuter/facets/SettersGuardian.sol";
 import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import "contracts/utils/Errors.sol";
+import { DummyDiamondImplementation } from "../../scripts/generated/DummyDiamondImplementation.sol";
 
 import "./Helper.sol";
 
@@ -51,6 +52,11 @@ abstract contract Transmuter is Helper {
 
         facetNames.push("Swapper");
         facetAddressList.push(address(new Swapper()));
+
+        // TODO don't forget to regenerate this contract if you
+        // changed any code on the Transmuter
+        facetNames.push("DiamondEtherscanFacet");
+        DummyDiamondImplementation dummyImpl = new DummyDiamondImplementation();
 
         // Build appropriate payload
         uint256 n = facetNames.length;
