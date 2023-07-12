@@ -42,21 +42,17 @@ enum QuoteType {
 enum OracleReadType {
     CHAINLINK_FEEDS,
     EXTERNAL,
-    NO_ORACLE
+    NO_ORACLE,
+    STABLE,
+    WSTETH,
+    CBETH,
+    RETH,
+    SFRXETH
 }
 
 enum OracleQuoteType {
     UNIT,
     TARGET
-}
-
-enum OracleTargetType {
-    STABLE,
-    CHAINLINK_FEEDS,
-    WSTETH,
-    CBETH,
-    RETH,
-    SFRXETH
 }
 
 enum WhitelistType {
