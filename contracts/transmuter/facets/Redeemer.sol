@@ -119,7 +119,8 @@ contract Redeemer is IRedeemer {
 
         address[] memory collateralListMem = ts.collateralList;
         uint256 indexCollateral;
-        for (uint256 i; i < amounts.length; ++i) {
+        uint256 amountsLength = amounts.length;
+        for (uint256 i; i < amountsLength; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             // If a token is in the `forfeitTokens` list, then it is not sent as part of the redemption process
             if (amounts[i] > 0 && LibHelpers.checkList(tokens[i], forfeitTokens) < 0) {
@@ -196,7 +197,7 @@ contract Redeemer is IRedeemer {
             // For each asset, we store the actual amount of stablecoins issued based on the `newNormalizerValue`
             // (and not a normalized value)
             // We ensure to preserve the invariant `sum(collateralNewNormalizedStables) = normalizedStables`
-            uint128 newNormalizedStables = 0;
+            uint128 newNormalizedStables;
             for (uint256 i; i < collateralListLength; ++i) {
                 uint128 newCollateralNormalizedStable = ((uint256(
                     ts.collaterals[collateralListMem[i]].normalizedStables

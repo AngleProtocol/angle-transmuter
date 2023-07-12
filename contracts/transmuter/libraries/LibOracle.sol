@@ -80,8 +80,7 @@ library LibOracle {
         for (uint256 i; i < length; ++i) {
             uint256 ratioObserved = BASE_18;
             if (collateralList[i] != collateral) {
-                uint256 oracleValueTmp;
-                (oracleValueTmp, ratioObserved) = readBurn(ts.collaterals[collateralList[i]].oracleConfig);
+                (, ratioObserved) = readBurn(ts.collaterals[collateralList[i]].oracleConfig);
             } else (oracleValue, ratioObserved) = readBurn(oracleConfig);
             if (ratioObserved < minRatio) minRatio = ratioObserved;
         }
@@ -149,9 +148,8 @@ library LibOracle {
         uint256 decimals,
         uint32 stalePeriod
     ) internal view returns (uint256) {
-        (uint80 roundId, int256 ratio, , uint256 updatedAt, uint80 answeredInRound) = feed.latestRoundData();
-        if (ratio <= 0 || roundId > answeredInRound || block.timestamp - updatedAt > stalePeriod)
-            revert InvalidChainlinkRate();
+        (, int256 ratio, , uint256 updatedAt, ) = feed.latestRoundData();
+        if (ratio <= 0 || block.timestamp - updatedAt > stalePeriod) revert InvalidChainlinkRate();
         // Checking whether we should multiply or divide by the ratio computed
         if (multiplied == 1) return (_quoteAmount * uint256(ratio)) / (10 ** decimals);
         else return (_quoteAmount * (10 ** decimals)) / uint256(ratio);

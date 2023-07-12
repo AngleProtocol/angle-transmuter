@@ -96,11 +96,11 @@ library LibSetters {
         if (collatInfo.decimals == 0) revert NotCollateral();
         uint128 normalizedAmount = ((amount * BASE_27) / ts.normalizer).toUint128();
         if (increase) {
-            collatInfo.normalizedStables += uint216(normalizedAmount);
-            ts.normalizedStables += normalizedAmount;
+            collatInfo.normalizedStables = collatInfo.normalizedStables + uint216(normalizedAmount);
+            ts.normalizedStables = ts.normalizedStables + normalizedAmount;
         } else {
-            collatInfo.normalizedStables -= uint216(normalizedAmount);
-            ts.normalizedStables -= normalizedAmount;
+            collatInfo.normalizedStables = collatInfo.normalizedStables - uint216(normalizedAmount);
+            ts.normalizedStables = ts.normalizedStables - normalizedAmount;
         }
         emit ReservesAdjusted(collateral, amount, increase);
     }
@@ -230,7 +230,7 @@ library LibSetters {
             (action == ActionType.Redeem && (xFee[n - 1] > BASE_9 || yFee[n - 1] < 0 || yFee[n - 1] > int256(BASE_9)))
         ) revert InvalidParams();
 
-        for (uint256 i = 0; i < n - 1; ++i) {
+        for (uint256 i; i < n - 1; ++i) {
             if (
                 // xFee strictly increasing and yFee increasing for mints
                 (action == ActionType.Mint && (xFee[i] >= xFee[i + 1] || (yFee[i + 1] < yFee[i]))) ||

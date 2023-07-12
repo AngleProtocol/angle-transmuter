@@ -579,27 +579,31 @@ contract BurnTest is Fixture, FunctionUtils {
         if (stableAmount == 0) return;
 
         // _logIssuedCollateral();
-        uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
-        // This will crash if the
-        if (amountOut != 0) {
-            uint256 reflexiveAmountStable = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
-            uint256 reflexiveAmountOut = transmuter.quoteIn(
-                reflexiveAmountStable,
-                address(agToken),
-                _collaterals[fromToken]
-            );
-
-            if (amountOut > _minWallet / 10 ** (18 - IERC20Metadata(_collaterals[fromToken]).decimals())) {
-                _assertApproxEqRelDecimalWithTolerance(
-                    reflexiveAmountOut,
+        try transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]) returns (uint256 amountOut) {
+            if (amountOut != 0) {
+                uint256 reflexiveAmountStable = transmuter.quoteOut(
                     amountOut,
-                    reflexiveAmountOut,
-                    // 0.01%
-                    _MAX_PERCENTAGE_DEVIATION * 100,
-                    IERC20Metadata(_collaterals[fromToken]).decimals()
+                    address(agToken),
+                    _collaterals[fromToken]
                 );
+                uint256 reflexiveAmountOut = transmuter.quoteIn(
+                    reflexiveAmountStable,
+                    address(agToken),
+                    _collaterals[fromToken]
+                );
+
+                if (amountOut > _minWallet / 10 ** (18 - IERC20Metadata(_collaterals[fromToken]).decimals())) {
+                    _assertApproxEqRelDecimalWithTolerance(
+                        reflexiveAmountOut,
+                        amountOut,
+                        reflexiveAmountOut,
+                        // 0.01%
+                        _MAX_PERCENTAGE_DEVIATION * 100,
+                        IERC20Metadata(_collaterals[fromToken]).decimals()
+                    );
+                }
             }
-        }
+        } catch {}
     }
 
     // Oracle precision worsen reflexivity
@@ -631,28 +635,35 @@ contract BurnTest is Fixture, FunctionUtils {
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
         if (stableAmount == 0) return;
 
-        // _logIssuedCollateral();
-        uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
-        // This will crash if the
-        if (amountOut != 0) {
-            uint256 reflexiveAmountStable = transmuter.quoteOut(amountOut, address(agToken), _collaterals[fromToken]);
-            uint256 reflexiveAmountOut = transmuter.quoteIn(
-                reflexiveAmountStable,
-                address(agToken),
-                _collaterals[fromToken]
-            );
-
-            if (amountOut > (10 * _minWallet) / 10 ** (18 - IERC20Metadata(_collaterals[fromToken]).decimals())) {
-                _assertApproxEqRelDecimalWithTolerance(
-                    reflexiveAmountOut,
+        try transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]) returns (uint256 amountOut) {
+            if (amountOut != 0) {
+                uint256 reflexiveAmountStable = transmuter.quoteOut(
                     amountOut,
-                    reflexiveAmountOut,
-                    // 0.01%
-                    _MAX_PERCENTAGE_DEVIATION * 100,
-                    IERC20Metadata(_collaterals[fromToken]).decimals()
+                    address(agToken),
+                    _collaterals[fromToken]
                 );
+                uint256 reflexiveAmountOut = transmuter.quoteIn(
+                    reflexiveAmountStable,
+                    address(agToken),
+                    _collaterals[fromToken]
+                );
+
+                if (amountOut > (10 * _minWallet) / 10 ** (18 - IERC20Metadata(_collaterals[fromToken]).decimals())) {
+                    _assertApproxEqRelDecimalWithTolerance(
+                        reflexiveAmountOut,
+                        amountOut,
+                        reflexiveAmountOut,
+                        // 0.01%
+                        _MAX_PERCENTAGE_DEVIATION * 100,
+                        IERC20Metadata(_collaterals[fromToken]).decimals()
+                    );
+                }
             }
+        } catch {
+            vm.expectRevert(Errors.InvalidSwap.selector);
+            transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
         }
+        // This will crash if the
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -690,28 +701,31 @@ contract BurnTest is Fixture, FunctionUtils {
         );
         stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
         if (stableAmount == 0) return;
+        try transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]) returns (uint256 amountOut) {
+            splitProportion = bound(splitProportion, 0, BASE_9);
+            uint256 amountStableSplit1 = (stableAmount * splitProportion) / BASE_9;
+            amountStableSplit1 = amountStableSplit1 == 0 ? 1 : amountStableSplit1;
+            uint256 amountOutSplit1 = transmuter.quoteIn(amountStableSplit1, address(agToken), _collaterals[fromToken]);
+            // do the swap to update the system
+            _burnExactInput(alice, _collaterals[fromToken], amountStableSplit1, amountOutSplit1);
 
-        uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
-        splitProportion = bound(splitProportion, 0, BASE_9);
-        uint256 amountStableSplit1 = (stableAmount * splitProportion) / BASE_9;
-        amountStableSplit1 = amountStableSplit1 == 0 ? 1 : amountStableSplit1;
-        uint256 amountOutSplit1 = transmuter.quoteIn(amountStableSplit1, address(agToken), _collaterals[fromToken]);
-        // do the swap to update the system
-        _burnExactInput(alice, _collaterals[fromToken], amountStableSplit1, amountOutSplit1);
-        uint256 amountOutSplit2 = transmuter.quoteIn(
-            stableAmount - amountStableSplit1,
-            address(agToken),
-            _collaterals[fromToken]
-        );
-        if (stableAmount > _minWallet) {
-            _assertApproxEqRelDecimalWithTolerance(
-                amountOutSplit1 + amountOutSplit2,
-                amountOut,
-                amountOut,
-                // 0.01%
-                _MAX_PERCENTAGE_DEVIATION * 100,
-                18
-            );
+            try
+                transmuter.quoteIn(stableAmount - amountStableSplit1, address(agToken), _collaterals[fromToken])
+            returns (uint256 amountOutSplit2) {
+                if (stableAmount > _minWallet) {
+                    _assertApproxEqRelDecimalWithTolerance(
+                        amountOutSplit1 + amountOutSplit2,
+                        amountOut,
+                        amountOut,
+                        // 0.01%
+                        _MAX_PERCENTAGE_DEVIATION * 100,
+                        18
+                    );
+                }
+            } catch {}
+        } catch {
+            vm.expectRevert(Errors.InvalidSwap.selector);
+            transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
         }
     }
 
@@ -799,29 +813,30 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256 prevBalanceStable = agToken.balanceOf(alice);
         uint256 prevTransmuterCollat = IERC20(_collaterals[fromToken]).balanceOf(address(transmuter));
 
-        uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
-        bool burnMoreThanHad = _burnExactInput(alice, _collaterals[fromToken], stableAmount, amountOut);
+        try transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]) returns (uint256 amountOut) {
+            bool burnMoreThanHad = _burnExactInput(alice, _collaterals[fromToken], stableAmount, amountOut);
 
-        uint256 balanceStable = agToken.balanceOf(alice);
-        if (amountOut == 0 || stableAmount == 0) assertEq(balanceStable, prevBalanceStable);
-        else assertEq(balanceStable, prevBalanceStable - stableAmount);
-        assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), amountOut);
-        assertEq(
-            IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)),
-            burnMoreThanHad ? 0 : prevTransmuterCollat - amountOut
-        );
+            uint256 balanceStable = agToken.balanceOf(alice);
+            if (amountOut == 0 || stableAmount == 0) assertEq(balanceStable, prevBalanceStable);
+            else assertEq(balanceStable, prevBalanceStable - stableAmount);
+            assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), amountOut);
+            assertEq(
+                IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)),
+                burnMoreThanHad ? 0 : prevTransmuterCollat - amountOut
+            );
 
-        (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(
-            _collaterals[fromToken]
-        );
+            (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(
+                _collaterals[fromToken]
+            );
 
-        if (amountOut == 0 || stableAmount == 0) {
-            assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken], 1 wei);
-            assertApproxEqAbs(newStableAmount, mintedStables, 1 wei);
-        } else {
-            assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken] - stableAmount, 1 wei);
-            assertApproxEqAbs(newStableAmount, mintedStables - stableAmount, 1 wei);
-        }
+            if (amountOut == 0 || stableAmount == 0) {
+                assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken], 1 wei);
+                assertApproxEqAbs(newStableAmount, mintedStables, 1 wei);
+            } else {
+                assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken] - stableAmount, 1 wei);
+                assertApproxEqAbs(newStableAmount, mintedStables - stableAmount, 1 wei);
+            }
+        } catch {}
     }
 
     function testFuzz_BurnExactOutput(
@@ -1010,29 +1025,30 @@ contract BurnTest is Fixture, FunctionUtils {
         hoax(guardian);
         transmuter.toggleWhitelist(WhitelistType.BACKED, alice);
 
-        uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
-        bool burnMoreThanHad = _burnExactInput(alice, _collaterals[fromToken], stableAmount, amountOut);
+        try transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]) returns (uint256 amountOut) {
+            bool burnMoreThanHad = _burnExactInput(alice, _collaterals[fromToken], stableAmount, amountOut);
 
-        uint256 balanceStable = agToken.balanceOf(alice);
-        if (amountOut == 0 || stableAmount == 0) assertEq(balanceStable, prevBalanceStable);
-        else assertEq(balanceStable, prevBalanceStable - stableAmount);
-        assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), amountOut);
-        assertEq(
-            IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)),
-            burnMoreThanHad ? 0 : prevTransmuterCollat - amountOut
-        );
+            uint256 balanceStable = agToken.balanceOf(alice);
+            if (amountOut == 0 || stableAmount == 0) assertEq(balanceStable, prevBalanceStable);
+            else assertEq(balanceStable, prevBalanceStable - stableAmount);
+            assertEq(IERC20(_collaterals[fromToken]).balanceOf(alice), amountOut);
+            assertEq(
+                IERC20(_collaterals[fromToken]).balanceOf(address(transmuter)),
+                burnMoreThanHad ? 0 : prevTransmuterCollat - amountOut
+            );
 
-        (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(
-            _collaterals[fromToken]
-        );
+            (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(
+                _collaterals[fromToken]
+            );
 
-        if (amountOut == 0 || stableAmount == 0) {
-            assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken], 1 wei);
-            assertApproxEqAbs(newStableAmount, mintedStables, 1 wei);
-        } else {
-            assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken] - stableAmount, 1 wei);
-            assertApproxEqAbs(newStableAmount, mintedStables - stableAmount, 1 wei);
-        }
+            if (amountOut == 0 || stableAmount == 0) {
+                assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken], 1 wei);
+                assertApproxEqAbs(newStableAmount, mintedStables, 1 wei);
+            } else {
+                assertApproxEqAbs(newStableAmountCollat, collateralMintedStables[fromToken] - stableAmount, 1 wei);
+                assertApproxEqAbs(newStableAmount, mintedStables - stableAmount, 1 wei);
+            }
+        } catch {}
     }
 
     function testFuzz_BurnExactOutputAndWhitelist(

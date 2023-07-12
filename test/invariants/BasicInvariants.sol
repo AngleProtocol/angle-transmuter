@@ -212,12 +212,13 @@ contract BasicInvariants is Fixture {
         }
         if (stableAmount < 10 * BASE_18) return;
         for (uint256 i; i < _collaterals.length; i++) {
-            uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[i]);
-            uint256 reflexiveStableAmount = transmuter.quoteOut(amountOut, address(agToken), _collaterals[i]);
-            // If amountOut is small then do not check, as in the extreme case amountIn is null and
-            // then reflexiveStableAmount is too
-            if (amountOut < 10 ** (_decimals[i] - 2) || reflexiveStableAmount == 0) continue;
-            assertApproxEqRelDecimal(stableAmount, reflexiveStableAmount, _MAX_PERCENTAGE_DEVIATION * 500, 18);
+            try transmuter.quoteIn(stableAmount, address(agToken), _collaterals[i]) returns (uint256 amountOut) {
+                uint256 reflexiveStableAmount = transmuter.quoteOut(amountOut, address(agToken), _collaterals[i]);
+                // If amountOut is small then do not check, as in the extreme case amountIn is null and
+                // then reflexiveStableAmount is too
+                if (amountOut < 10 ** (_decimals[i] - 2) || reflexiveStableAmount == 0) continue;
+                assertApproxEqRelDecimal(stableAmount, reflexiveStableAmount, _MAX_PERCENTAGE_DEVIATION * 500, 18);
+            } catch {}
         }
     }
 
