@@ -7,3 +7,4 @@ oz/=node_modules/@openzeppelin/contracts/
 oz-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
 mock/=test/mock/
 prb/math/=lib/prb-math/src/
+borrow/=lib/borrow-contracts/contracts

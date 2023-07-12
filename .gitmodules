@@ -10,3 +10,7 @@
 	path = lib/prb-math
 	url = https://github.com/PaulRBerg/prb-math
 	ignore = dirty
+[submodule "lib/borrow-contracts"]
+	path = lib/borrow-contracts
+	url = https://github.com/AngleProtocol/borrow-contracts
+	tags = v2.3
