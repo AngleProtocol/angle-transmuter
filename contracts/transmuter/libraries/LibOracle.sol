@@ -30,7 +30,7 @@ library LibOracle {
         if (readType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(readData, (ITransmuterOracle));
             return externalOracle.readRedemption();
-        } else return read(readType, targetPrice(targetType, targetData), oracleReadData);
+        } else return read(readType, targetPrice(targetType, targetData), readData);
     }
 
     /// @notice Reads the oracle value used during mint operations for an asset with `oracleConfig`
