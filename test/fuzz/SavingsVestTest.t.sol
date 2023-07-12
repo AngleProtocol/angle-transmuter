@@ -783,6 +783,9 @@ contract SavingsVestTest is Fixture, FunctionUtils {
             assertEq(estimatedAPR, 0);
             assertEq(maxWithdrawAlice, _saving.maxWithdraw(alice));
             assertEq(maxWithdrawBob, _saving.maxWithdraw(bob));
+        } else {
+            estimatedAPR = _saving.estimatedAPR();
+            assertEq(estimatedAPR, 0);
         }
     }
 
