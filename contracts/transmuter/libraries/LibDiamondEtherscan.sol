@@ -10,18 +10,18 @@ import "oz/utils/StorageSlot.sol";
 library LibDiamondEtherscan {
     event Upgraded(address indexed implementation);
 
-    /**
-     * @dev Storage slot with the address of the current dummy-implementation.
-     * This is the keccak-256 hash of "eip1967.proxy.implementation" subtracted by 1
-     */
+    /// @notice Storage slot with the address of the current dummy-implementation.
+    /// This is the keccak-256 hash of "eip1967.proxy.implementation" subtracted by 1
     bytes32 internal constant IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
+    /// @notice Internal version of `setDummyImplementation`
     function setDummyImplementation(address implementationAddress) internal {
         StorageSlot.getAddressSlot(IMPLEMENTATION_SLOT).value = implementationAddress;
 
         emit Upgraded(implementationAddress);
     }
 
+    /// @notice Internal version of `implementation`
     function dummyImplementation() internal view returns (address) {
         return StorageSlot.getAddressSlot(IMPLEMENTATION_SLOT).value;
     }

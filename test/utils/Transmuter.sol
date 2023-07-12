@@ -55,7 +55,7 @@ abstract contract Transmuter is Helper {
 
         // TODO don't forget to regenerate this contract if you
         // changed any code on the Transmuter
-        facetNames.push("DiamondEtherscanFacet");
+        facetNames.push("DiamondEtherscan");
         facetAddressList.push(address(new DummyDiamondImplementation()));
 
         // Build appropriate payload

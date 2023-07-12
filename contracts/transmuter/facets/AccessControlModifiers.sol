@@ -22,24 +22,21 @@ contract AccessControlModifiers {
         _;
     }
 
-    // @dev https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/security/ReentrancyGuard.sol
-    // @dev Prevents a contract from calling itself, directly or indirectly.
-    // Calling a `nonReentrant` function from another `nonReentrant`
-    // function is not supported. It is possible to prevent this from happening
-    // by making the `nonReentrant` function external, and making it call a
-    // `private` function that does the actual work.
+    /// @notice Prevents a contract from calling itself, directly or indirectly
+    /// @dev This implementation is an adaptation of the OpenZepellin `ReentrancyGuard` for the purpose of this
+    /// Diamond Proxy system. The base implementation can be found here
+    /// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/security/ReentrancyGuard.sol
     modifier nonReentrant() {
         TransmuterStorage storage ts = s.transmuterStorage();
         // Reentrant protection
-        // On the first call, _notEntered will be true
+        // On the first call, `_notEntered` will be true
         if (ts.statusReentrant == ENTERED) revert ReentrantCall();
-        // Any calls to nonReentrant after this point will fail
+        // Any calls to the `nonReentrant` modifier after this point will fail
         ts.statusReentrant = ENTERED;
 
         _;
 
-        // By storing the original value once again, a refund is triggered (see
-        // https://eips.ethereum.org/EIPS/eip-2200)
+        // By storing the original value once again, a refund is triggered (see https://eips.ethereum.org/EIPS/eip-2200)
         ts.statusReentrant = NOT_ENTERED;
     }
 }

@@ -128,7 +128,7 @@ contract GnosisDeployTransmuter is Utils {
 
         // TODO when deploying don't forget to regenerate this contract if you
         // changed any code on the Transmuter
-        facetNames.push("DiamondEtherscanFacet");
+        facetNames.push("DiamondEtherscan");
         DummyDiamondImplementation dummyImpl = new DummyDiamondImplementation();
 
         // Putting it at the end as it is the one failing when verifying on etherscan
