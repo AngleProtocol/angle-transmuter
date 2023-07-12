@@ -44,7 +44,7 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IRedeemer
-    /// @dev The `minAmountOuts` list must reflect or be longer than the amount of `tokens` returned
+    /// @dev The `minAmountOuts` list must reflect the amount of `tokens` returned
     /// @dev In normal conditions, the amount of tokens outputted by this function should be the amount
     /// of collateral assets supported by the system, following their order in the `collateralList`.
     /// @dev If one collateral has its liquidity managed through strategies, then it's possible that this asset
@@ -100,7 +100,6 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Internal function of the `redeem` function in the `Redeemer` contract
-    /// @dev The `minAmountOuts` list must reflect or be longer than the amount of `tokens` returned
     function _redeem(
         uint256 amount,
         address to,
