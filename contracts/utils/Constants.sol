@@ -35,6 +35,18 @@ uint256 constant MAX_BURN_FEE = 999_000_000;
 uint256 constant MAX_MINT_FEE = BASE_12 - 1;
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                     REENTRANT                                                      
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+// The values being non-zero value makes deployment a bit more expensive,
+// but in exchange the refund on every call to nonReentrant will be lower in
+// amount. Since refunds are capped to a percentage of the total
+// transaction's gas, it is best to keep them low in cases like this one, to
+// increase the likelihood of the full refund coming into effect.
+uint8 constant NOT_ENTERED = 1;
+uint8 constant ENTERED = 2;
+
+/*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                COMMON ADDRESSES                                                 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 

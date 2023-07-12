@@ -10,6 +10,7 @@ import { Math } from "oz/utils/math/Math.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
 import { IRedeemer } from "interfaces/IRedeemer.sol";
 
+import { AccessControlModifiers } from "./AccessControlModifiers.sol";
 import { LibDiamond } from "../libraries/LibDiamond.sol";
 import { LibHelpers } from "../libraries/LibHelpers.sol";
 import { LibGetters } from "../libraries/LibGetters.sol";
@@ -23,7 +24,7 @@ import "../Storage.sol";
 
 /// @title Redeemer
 /// @author Angle Labs, Inc.
-contract Redeemer is IRedeemer {
+contract Redeemer is IRedeemer, AccessControlModifiers {
     using SafeERC20 for IERC20;
     using Math for uint256;
     using SafeCast for uint256;
@@ -43,7 +44,7 @@ contract Redeemer is IRedeemer {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IRedeemer
-    /// @dev The `minAmountOuts` list must reflect or be longer than the amount of `tokens` returned
+    /// @dev The `minAmountOuts` list must reflect the amount of `tokens` returned
     /// @dev In normal conditions, the amount of tokens outputted by this function should be the amount
     /// of collateral assets supported by the system, following their order in the `collateralList`.
     /// @dev If one collateral has its liquidity managed through strategies, then it's possible that this asset
@@ -105,12 +106,16 @@ contract Redeemer is IRedeemer {
         uint256 deadline,
         uint256[] memory minAmountOuts,
         address[] memory forfeitTokens
-    ) internal returns (address[] memory tokens, uint256[] memory amounts) {
+    ) internal nonReentrant returns (address[] memory tokens, uint256[] memory amounts) {
         TransmuterStorage storage ts = s.transmuterStorage();
+
         if (ts.isRedemptionLive == 0) revert Paused();
         if (block.timestamp > deadline) revert TooLate();
+
         uint256[] memory subCollateralsTracker;
         (tokens, amounts, subCollateralsTracker) = _quoteRedemptionCurve(amount);
+        // Check that the provided slippage tokens length is identical to the redeem one
+        if (amounts.length != minAmountOuts.length) revert InvalidLengths();
         // Updating the normalizer enables to simultaneously and proportionally reduce the amount
         // of stablecoins issued from each collateral without having to loop through each of them
         _updateNormalizer(amount, false);

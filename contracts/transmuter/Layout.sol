@@ -14,6 +14,7 @@ contract Layout {
     uint256[87725637715361972314474735372533017845526400132006062725239677556399819577533] private __gap1;
     address public agToken;                                                    // slot 1
     uint8 public isRedemptionLive;                                              // slot 1
+    uint8 public nonReentrant;                                                  // slot 1
     uint128 public normalizedStables;                                           // slot 2
     uint128 public normalizer;                                                  // slot 2
     address[] public collateralList;                                            // slot 3

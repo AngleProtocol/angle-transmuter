@@ -118,6 +118,7 @@ struct Collateral {
 struct TransmuterStorage {
     IAgToken agToken;                            // agToken handled by the system
     uint8 isRedemptionLive;                      // If redemption is unpaused
+    uint8 statusReentrant;                        // If call is reentrant or not
     uint128 normalizedStables;                   // Normalized amount of stablecoins issued by the system
     uint128 normalizer;                          // To reconcile `normalizedStables` values with the actual amount
     address[] collateralList;                    // List of collateral assets supported by the system
