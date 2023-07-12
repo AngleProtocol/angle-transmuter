@@ -10,6 +10,7 @@ import { Math } from "oz/utils/math/Math.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
 import { IRedeemer } from "interfaces/IRedeemer.sol";
 
+import { AccessControlModifiers } from "./AccessControlModifiers.sol";
 import { LibDiamond } from "../libraries/LibDiamond.sol";
 import { LibHelpers } from "../libraries/LibHelpers.sol";
 import { LibGetters } from "../libraries/LibGetters.sol";
@@ -23,7 +24,7 @@ import "../Storage.sol";
 
 /// @title Redeemer
 /// @author Angle Labs, Inc.
-contract Redeemer is IRedeemer {
+contract Redeemer is IRedeemer, AccessControlModifiers {
     using SafeERC20 for IERC20;
     using Math for uint256;
     using SafeCast for uint256;
@@ -107,13 +108,8 @@ contract Redeemer is IRedeemer {
         uint256 deadline,
         uint256[] memory minAmountOuts,
         address[] memory forfeitTokens
-    ) internal returns (address[] memory tokens, uint256[] memory amounts) {
+    ) internal nonReentrant returns (address[] memory tokens, uint256[] memory amounts) {
         TransmuterStorage storage ts = s.transmuterStorage();
-        // Reentrant protection
-        // On the first call, _notEntered will be true
-        if (ts.statusRentrant == ENTERED) revert ReentrantCall();
-        // Any calls to nonReentrant after this point will fail
-        ts.statusRentrant = ENTERED;
 
         if (ts.isRedemptionLive == 0) revert Paused();
         if (block.timestamp > deadline) revert TooLate();
@@ -145,10 +141,6 @@ contract Redeemer is IRedeemer {
             if (subCollateralsTracker[indexCollateral] - 1 <= i) ++indexCollateral;
         }
         emit Redeemed(amount, tokens, amounts, forfeitTokens, msg.sender, to);
-
-        // By storing the original value once again, a refund is triggered (see
-        // https://eips.ethereum.org/EIPS/eip-2200)
-        ts.statusRentrant = NOT_ENTERED;
     }
 
     /// @dev This function reverts if `stablecoinsIssued==0`, which is expected behavior as there is nothing to redeem

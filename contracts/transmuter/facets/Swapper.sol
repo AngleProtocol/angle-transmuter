@@ -13,6 +13,7 @@ import { ISwapper } from "interfaces/ISwapper.sol";
 import { IPermit2, PermitTransferFrom } from "interfaces/external/permit2/IPermit2.sol";
 import { SignatureTransferDetails, TokenPermissions } from "interfaces/external/permit2/IPermit2.sol";
 
+import { AccessControlModifiers } from "./AccessControlModifiers.sol";
 import { LibHelpers } from "../libraries/LibHelpers.sol";
 import { LibManager } from "../libraries/LibManager.sol";
 import { LibOracle } from "../libraries/LibOracle.sol";
@@ -48,7 +49,7 @@ struct LocalVariables {
 /// @dev In case of a burn again, the swap functions will revert if the call concerns a collateral that requires a
 /// whitelist but the `to` address does not have it. The quote functions will not revert in this case.
 /// @dev Calling one of the swap functions in a burn case does not require any prior token approval
-contract Swapper is ISwapper {
+contract Swapper is ISwapper, AccessControlModifiers {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
     using Address for address;
@@ -182,14 +183,9 @@ contract Swapper is ISwapper {
         bool mint,
         Collateral storage collatInfo,
         bytes memory permitData
-    ) internal {
+    ) internal nonReentrant {
         if (amountIn > 0 && amountOut > 0) {
             TransmuterStorage storage ts = s.transmuterStorage();
-            // Reentrant protection
-            // On the first call, _notEntered will be true
-            if (ts.statusRentrant == ENTERED) revert ReentrantCall();
-            // Any calls to nonReentrant after this point will fail
-            ts.statusRentrant = ENTERED;
 
             if (mint) {
                 uint128 changeAmount = (amountOut.mulDiv(BASE_27, ts.normalizer, Math.Rounding.Up)).toUint128();
@@ -224,10 +220,6 @@ contract Swapper is ISwapper {
                 else IERC20(tokenOut).safeTransfer(to, amountOut);
             }
             emit Swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, to);
-
-            // By storing the original value once again, a refund is triggered (see
-            // https://eips.ethereum.org/EIPS/eip-2200)
-            ts.statusRentrant = NOT_ENTERED;
         }
     }
 

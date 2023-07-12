@@ -75,19 +75,12 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
-    function getCollateralRatio() external returns (uint64 collatRatio, uint256 stablecoinsIssued) {
-        TransmuterStorage storage ts = s.transmuterStorage();
+    function getCollateralRatio() external view returns (uint64 collatRatio, uint256 stablecoinsIssued) {
+        DiamondStorage storage ts = s.diamondStorage();
         // Reentrant protection
-        // On the first call, _notEntered will be true
-        if (ts.statusRentrant == ENTERED) revert ReentrantCall();
-        // Any calls to nonReentrant after this point will fail
-        ts.statusRentrant = ENTERED;
+        if (ts.statusReentrant == ENTERED) revert ReentrantCall();
 
         (collatRatio, stablecoinsIssued, , , ) = LibGetters.getCollateralRatio();
-
-        // By storing the original value once again, a refund is triggered (see
-        // https://eips.ethereum.org/EIPS/eip-2200)
-        ts.statusRentrant = NOT_ENTERED;
     }
 
     /// @inheritdoc IGetters
