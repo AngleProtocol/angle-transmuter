@@ -125,7 +125,11 @@ contract Getters is IGetters {
     /// @inheritdoc IGetters
     function getOracle(
         address collateral
-    ) external view returns (OracleReadType readType, OracleTargetType targetType, bytes memory data) {
+    )
+        external
+        view
+        returns (OracleReadType oracleType, OracleReadType targetType, bytes memory oracleData, bytes memory targetData)
+    {
         return LibOracle.getOracle(collateral);
     }
 

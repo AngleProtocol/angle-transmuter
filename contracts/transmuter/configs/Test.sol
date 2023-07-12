@@ -50,9 +50,10 @@ contract Test {
             chainlinkDecimals,
             quoteType
         );
+        bytes memory targetData;
         LibSetters.setOracle(
             eurA.collateral,
-            abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleTargetType.STABLE, readData)
+            abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleReadType.STABLE, readData, targetData)
         );
 
         // Fees
@@ -102,7 +103,7 @@ contract Test {
         readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals, quoteType);
         LibSetters.setOracle(
             eurB.collateral,
-            abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleTargetType.STABLE, readData)
+            abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleReadType.STABLE, readData, targetData)
         );
 
         // Fees
@@ -152,7 +153,7 @@ contract Test {
         readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals, quoteType);
         LibSetters.setOracle(
             eurY.collateral,
-            abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleTargetType.STABLE, readData)
+            abi.encode(OracleReadType.CHAINLINK_FEEDS, OracleReadType.STABLE, readData, targetData)
         );
 
         // Fees

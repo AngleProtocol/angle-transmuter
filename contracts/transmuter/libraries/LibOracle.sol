@@ -22,33 +22,33 @@ library LibOracle {
     /// @dev This value is only sensitive to compute the collateral ratio and deduce a penalty factor
     function readRedemption(bytes memory oracleConfig) internal view returns (uint256) {
         (
-            OracleReadType readType,
+            OracleReadType oracleType,
             OracleReadType targetType,
-            bytes memory readData,
+            bytes memory oracleData,
             bytes memory targetData
-        ) = _parseOracle(oracleConfig);
-        if (readType == OracleReadType.EXTERNAL) {
-            ITransmuterOracle externalOracle = abi.decode(readData, (ITransmuterOracle));
+        ) = _parseOracleConfig(oracleConfig);
+        if (oracleType == OracleReadType.EXTERNAL) {
+            ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readRedemption();
-        } else return read(readType, read(targetType, BASE_18, targetData), readData);
+        } else return read(oracleType, read(targetType, BASE_18, targetData), oracleData);
     }
 
     /// @notice Reads the oracle value used during mint operations for an asset with `oracleConfig`
-    /// @dev For assets which do not rely on external oracles, this value is the minimum between the oracle
-    /// value through the `read` function and the target price.
+    /// @dev For assets which do not rely on external oracles, this value is the minimum between the asset oracle
+    /// value and its target price
     function readMint(bytes memory oracleConfig) internal view returns (uint256 oracleValue) {
         (
-            OracleReadType readType,
+            OracleReadType oracleType,
             OracleReadType targetType,
-            bytes memory readData,
+            bytes memory oracleData,
             bytes memory targetData
-        ) = _parseOracle(oracleConfig);
-        if (readType == OracleReadType.EXTERNAL) {
-            ITransmuterOracle externalOracle = abi.decode(readData, (ITransmuterOracle));
+        ) = _parseOracleConfig(oracleConfig);
+        if (oracleType == OracleReadType.EXTERNAL) {
+            ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readMint();
         }
         uint256 _targetPrice = read(targetType, BASE_18, targetData);
-        oracleValue = read(readType, _targetPrice, readData);
+        oracleValue = read(oracleType, _targetPrice, oracleData);
         if (_targetPrice < oracleValue) oracleValue = _targetPrice;
     }
 
@@ -58,17 +58,17 @@ library LibOracle {
     /// price, otherwise `BASE_18`
     function readBurn(bytes memory oracleConfig) internal view returns (uint256 oracleValue, uint256 ratio) {
         (
-            OracleReadType readType,
+            OracleReadType oracleType,
             OracleReadType targetType,
-            bytes memory readData,
+            bytes memory oracleData,
             bytes memory targetData
-        ) = _parseOracle(oracleConfig);
-        if (readType == OracleReadType.EXTERNAL) {
-            ITransmuterOracle externalOracle = abi.decode(readData, (ITransmuterOracle));
+        ) = _parseOracleConfig(oracleConfig);
+        if (oracleType == OracleReadType.EXTERNAL) {
+            ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readBurn();
         }
         uint256 _targetPrice = read(targetType, BASE_18, targetData);
-        oracleValue = read(readType, _targetPrice, readData);
+        oracleValue = read(oracleType, _targetPrice, oracleData);
         ratio = BASE_18;
         if (oracleValue < _targetPrice) ratio = (oracleValue * BASE_18) / _targetPrice;
     }
@@ -81,7 +81,7 @@ library LibOracle {
     function getOracle(
         address collateral
     ) internal view returns (OracleReadType, OracleReadType, bytes memory, bytes memory) {
-        return _parseOracle(s.transmuterStorage().collaterals[collateral].oracleConfig);
+        return _parseOracleConfig(s.transmuterStorage().collaterals[collateral].oracleConfig);
     }
 
     /// @notice Gets the oracle value and the ratio with respect to the target price when it comes to
@@ -103,8 +103,8 @@ library LibOracle {
         }
     }
 
-    /// @notice Computes the `quoteAmount` (for Chainlink oracles) depending on a `quoteType` encoded in the
-    /// `oracleConfig` and the target price of the asset
+    /// @notice Computes the `quoteAmount` (for Chainlink oracles) depending on a `quoteType` and a base value
+    /// (e.g the target price of the asset)
     /// @dev For cases where the Chainlink feed directly looks into the value of the asset, `quoteAmount` is `BASE_18`.
     /// For others, like wstETH for which Chainlink only has an oracle for stETH, `quoteAmount` is the target price
     function quoteAmount(OracleQuoteType quoteType, uint256 baseValue) internal pure returns (uint256) {
@@ -112,7 +112,7 @@ library LibOracle {
         else return baseValue;
     }
 
-    /// @notice Reads an oracle value for an asset based on its parsed `oracleConfig`
+    /// @notice Reads an oracle value (or a target oracle value) for an asset based on its data parsed `oracleConfig`
     function read(OracleReadType readType, uint256 baseValue, bytes memory data) internal view returns (uint256) {
         if (readType == OracleReadType.CHAINLINK_FEEDS) {
             (
@@ -135,6 +135,7 @@ library LibOracle {
             }
             return quotePrice;
         } else if (readType == OracleReadType.STABLE) return BASE_18;
+        else if (readType == OracleReadType.NO_ORACLE) return baseValue;
         else if (readType == OracleReadType.WSTETH) return STETH.getPooledEthByShares(1 ether);
         else if (readType == OracleReadType.CBETH) return CBETH.exchangeRate();
         else if (readType == OracleReadType.RETH) return RETH.getExchangeRate();
@@ -169,9 +170,9 @@ library LibOracle {
     }
 
     /// @notice Parses an `oracleConfig` into several sub fields
-    function _parseOracle(
+    function _parseOracleConfig(
         bytes memory oracleConfig
-    ) private pure returns (OracleReadType, OracleTargetType, bytes memory, bytes memory) {
-        return abi.decode(oracleConfig, (OracleReadType, OracleTargetType, bytes, bytes));
+    ) private pure returns (OracleReadType, OracleReadType, bytes memory, bytes memory) {
+        return abi.decode(oracleConfig, (OracleReadType, OracleReadType, bytes, bytes));
     }
 }
