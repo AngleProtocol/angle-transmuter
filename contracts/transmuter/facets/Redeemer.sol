@@ -125,6 +125,7 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
 
         address[] memory collateralListMem = ts.collateralList;
         uint256 indexCollateral;
+        uint256 amountsLength = amounts.length;
         for (uint256 i; i < amountsLength; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             // If a token is in the `forfeitTokens` list, then it is not sent as part of the redemption process
