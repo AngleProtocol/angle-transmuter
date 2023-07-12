@@ -103,6 +103,7 @@ contract OracleTest is Fixture, FunctionUtils {
         uint256 minStalePeriod = _updateOracleStalePeriods(newStalePeriods);
         skip(elapseTimestamp);
 
+        deal(_collaterals[fromToken], address(transmuter), _maxTokenAmount[fromToken]);
         if (minStalePeriod < elapseTimestamp) vm.expectRevert(Errors.InvalidChainlinkRate.selector);
         transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
     }

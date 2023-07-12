@@ -36,7 +36,7 @@ contract SavingsVest is BaseSavings {
     uint64 public protocolSafetyFee;
 
     /// @notice The period in seconds over which locked profit is unlocked
-    /// @dev Cannot be 0 as it opens the system to sandwich attacks
+    /// @dev A vesting period of 0 opens the system to sandwich attacks
     uint32 public vestingPeriod;
 
     /// @notice Minimum time between two calls to the `accrue` function
@@ -52,6 +52,7 @@ contract SavingsVest is BaseSavings {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     event FiledUint64(uint64 param, bytes32 what);
+    event SurplusManagerUpdated(address indexed _surplusManager);
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     INITIALIZATION                                                  
@@ -100,44 +101,48 @@ contract SavingsVest is BaseSavings {
 
     /// @notice Accrues interest to this contract by minting agTokens if the protocol is over-collateralized
     /// or burning some if it is not collateralized
-    function accrue() external returns (uint256 minted) {
+    function accrue() public returns (uint256 minted) {
         if (block.timestamp - lastUpdate < updateDelay && !accessControlManager.isGovernorOrGuardian(msg.sender))
             revert NotAllowed();
         ITransmuter _transmuter = transmuter;
         IAgToken _agToken = IAgToken(asset());
         (uint64 collatRatio, uint256 stablecoinsIssued) = _transmuter.getCollateralRatio();
-        // It needs to deviate significantly (>0.1%) from the target in order to accrue
-        if (collatRatio > BASE_9 + BASE_6) {
-            // The surplus of profit minus a fee is distributed through this contract
-            minted = (collatRatio * stablecoinsIssued) / BASE_9 - stablecoinsIssued;
-            // Updating normalizer in order not to double count profits
-            _transmuter.updateNormalizer(minted, true);
-            uint256 surplusForProtocol = (minted * protocolSafetyFee) / BASE_9;
-            address _surplusManager = surplusManager;
-            _surplusManager = _surplusManager == address(0) ? address(_transmuter) : _surplusManager;
-            _agToken.mint(_surplusManager, surplusForProtocol);
-            uint256 surplus = minted - surplusForProtocol;
-            if (surplus != 0) {
-                // Adding new profits relaunches to zero the vesting period for the profits that were
-                // previously being vested
-                vestingProfit = (lockedProfit() + surplus);
-                lastUpdate = uint64(block.timestamp);
-                _agToken.mint(address(this), surplus);
-            }
-        } else if (collatRatio < BASE_9 - BASE_6) {
-            // If the protocol is under-collateralized, slashing the profits that are still being vested
-            uint256 missing = stablecoinsIssued - (collatRatio * stablecoinsIssued) / BASE_9;
-            uint256 currentLockedProfit = lockedProfit();
-            if (missing > currentLockedProfit) {
-                vestingProfit = 0;
-                missing = currentLockedProfit;
-            } else {
-                vestingProfit = currentLockedProfit - missing;
-                lastUpdate = uint64(block.timestamp);
-            }
-            if (missing > 0) {
-                _agToken.burnSelf(missing, address(this));
-                _transmuter.updateNormalizer(missing, false);
+        if (stablecoinsIssued > 0) {
+            // It needs to deviate significantly (>0.1%) from the target in order to accrue
+            if (collatRatio > BASE_9 + BASE_6) {
+                // The surplus of profit minus a fee is distributed through this contract
+                minted = (collatRatio * stablecoinsIssued) / BASE_9 - stablecoinsIssued;
+                // Updating normalizer in order not to double count profits
+                _transmuter.updateNormalizer(minted, true);
+                uint256 surplusForProtocol = (minted * protocolSafetyFee) / BASE_9;
+                address _surplusManager = surplusManager;
+                _surplusManager = _surplusManager == address(0) ? address(_transmuter) : _surplusManager;
+                _agToken.mint(_surplusManager, surplusForProtocol);
+                uint256 surplus = minted - surplusForProtocol;
+                if (surplus != 0) {
+                    // Adding new profits relaunches to zero the vesting period for the profits that were
+                    // previously being vested
+                    vestingProfit = (lockedProfit() + surplus);
+                    lastUpdate = uint64(block.timestamp);
+                    _agToken.mint(address(this), surplus);
+                }
+            } else if (collatRatio < BASE_9 - BASE_6) {
+                // If the protocol is under-collateralized, slashing the profits that are still being vested
+                uint256 missing = stablecoinsIssued - (collatRatio * stablecoinsIssued) / BASE_9;
+                uint256 currentLockedProfit = lockedProfit();
+                if (missing > currentLockedProfit) {
+                    vestingProfit = 0;
+                    missing = currentLockedProfit;
+                } else {
+                    unchecked {
+                        vestingProfit = currentLockedProfit - missing;
+                        lastUpdate = uint64(block.timestamp);
+                    }
+                }
+                if (missing > 0) {
+                    _agToken.burnSelf(missing, address(this));
+                    _transmuter.updateNormalizer(missing, false);
+                }
             }
         }
     }
@@ -190,16 +195,22 @@ contract SavingsVest is BaseSavings {
     /// @notice Sets the `surplusManager` address which handles protocol fees
     function setSurplusManager(address _surplusManager) external onlyGuardian {
         surplusManager = _surplusManager;
+        emit SurplusManagerUpdated(_surplusManager);
     }
 
     /// @notice Changes the contract parameters
     function setParams(bytes32 what, uint64 param) external onlyGuardian {
         if (param > BASE_9) revert InvalidParam();
-        else if (what == "PF") protocolSafetyFee = param;
-        else if (what == "VP") vestingPeriod = uint32(param);
         else if (what == "UD") updateDelay = uint32(param);
         else if (what == "P") paused = uint8(param);
-        else revert InvalidParam();
+        else {
+            // Interest must be accrued with the current parameters before setting new `protocolSafetyFee`
+            // and `vestingPeriod`
+            accrue();
+            if (what == "PF") protocolSafetyFee = param;
+            else if (what == "VP") vestingPeriod = uint32(param);
+            else revert InvalidParam();
+        }
         emit FiledUint64(param, what);
     }
 }

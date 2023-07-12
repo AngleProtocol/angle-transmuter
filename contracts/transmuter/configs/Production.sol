@@ -115,7 +115,8 @@ contract Production {
         ts.agToken = IAgToken(_agToken);
 
         // Setup each collaterals
-        for (uint256 i; i < collaterals.length; i++) {
+        uint256 collateralsLength = collaterals.length;
+        for (uint256 i; i < collateralsLength; i++) {
             CollateralSetupProd memory collateral = collaterals[i];
             LibSetters.addCollateral(collateral.token);
             LibSetters.setOracle(collateral.token, collateral.oracleConfig);

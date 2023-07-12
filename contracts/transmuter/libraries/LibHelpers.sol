@@ -20,7 +20,7 @@ library LibHelpers {
     /// or -1 in the other case
     function checkList(address token, address[] memory tokens) internal pure returns (int256) {
         uint256 tokensLength = tokens.length;
-        for (uint256 i = 0; i < tokensLength; ++i) {
+        for (uint256 i; i < tokensLength; ++i) {
             if (token == tokens[i]) return int256(i);
         }
         return -1;
@@ -73,7 +73,8 @@ library LibHelpers {
     /// @dev The values in the `xArray` must be increasing
     function piecewiseLinear(uint64 x, uint64[] memory xArray, int64[] memory yArray) internal pure returns (int64) {
         uint256 indexLowerBound = findLowerBound(true, xArray, 1, x);
-        if (indexLowerBound == xArray.length - 1) return yArray[xArray.length - 1];
+        if (indexLowerBound == 0 && x < xArray[0]) return yArray[0];
+        else if (indexLowerBound == xArray.length - 1) return yArray[xArray.length - 1];
         return
             yArray[indexLowerBound] +
             ((yArray[indexLowerBound + 1] - yArray[indexLowerBound]) * int64(x - xArray[indexLowerBound])) /
