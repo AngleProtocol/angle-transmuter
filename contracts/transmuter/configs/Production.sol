@@ -111,6 +111,7 @@ contract Production {
         LibSetters.setAccessControlManager(_accessControlManager);
 
         TransmuterStorage storage ts = s.transmuterStorage();
+        ts.statusReentrant = NOT_ENTERED;
         ts.normalizer = uint128(BASE_27);
         ts.agToken = IAgToken(_agToken);
 
