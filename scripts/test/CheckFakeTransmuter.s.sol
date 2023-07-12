@@ -3,15 +3,24 @@ pragma solidity ^0.8.19;
 
 import { Utils } from "../Utils.s.sol";
 import { console } from "forge-std/console.sol";
+import { StdAssertions } from "forge-std/Test.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 import "stringutils/strings.sol";
-import "../Constants.s.sol";
 import "contracts/transmuter/Storage.sol" as Storage;
 
-contract CheckTransmuter is Utils {
+contract CheckFakeTransmuter is Utils {
     using strings for *;
 
-    ITransmuter public constant transmuter = ITransmuter(0xc03e5186820A090ED32C82Bb2f484570f8Fb2114);
+    ITransmuter public constant transmuter = ITransmuter(0x4A44f77978Daa3E92Eb3D97210bd11645cF935Ab);
+    address public constant EUROC = 0xC011882d0f7672D8942e7fE2248C174eeD640c8f;
+    address public constant EUROE = 0x7f66DcC27c5c07E87945CB808483BB9eCa683A39;
+    address public constant EURE = 0xf89fa5D0f1A85c2bAda78dBCc1d6CDC09a7c8e12;
+    address public constant CORE_BORROW = 0xBDbdF128368De1cf6a3Aa37f67Bc19405c96f49F;
+    address public constant AGEUR = 0x5fE0E497Ac676d8bA78598FC8016EBC1E6cE14a3;
+    uint256 public constant BASE_18 = 1e18;
+    uint256 public constant BASE_9 = 1e9;
+    uint256 public constant BASE_12 = 1e12;
+    uint256 constant MAX_BURN_FEE = 999_000_000;
 
     function run() external {
         /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -45,8 +54,10 @@ contract CheckTransmuter is Utils {
         yBurnFee[3] = int64(uint64(MAX_BURN_FEE - 1));
 
         // not set yet
-        uint64[] memory xRedeemFee = new uint64[](0);
-        int64[] memory yRedeemFee = new int64[](0);
+        uint64[] memory xRedeemFee = new uint64[](1);
+        int64[] memory yRedeemFee = new int64[](1);
+        xRedeemFee[0] = uint64(0);
+        yRedeemFee[0] = int64(1e9);
 
         address[] memory collaterals = new address[](3);
         collaterals[0] = EUROC;
@@ -62,7 +73,7 @@ contract CheckTransmuter is Utils {
         assertEq(address(transmuter.agToken()), address(AGEUR));
         assertEq(transmuter.getCollateralList(), collaterals);
         assertEq(transmuter.getCollateralDecimals(EUROC), 6);
-        assertEq(transmuter.getCollateralDecimals(EUROE), 6);
+        assertEq(transmuter.getCollateralDecimals(EUROE), 12);
         assertEq(transmuter.getCollateralDecimals(EURE), 18);
         {
             address collat = EUROC;
@@ -81,17 +92,17 @@ contract CheckTransmuter is Utils {
                                                          PAUSE                                                      
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-        assertEq(transmuter.isPaused(EUROC, Storage.ActionType.Mint), true);
-        assertEq(transmuter.isPaused(EUROC, Storage.ActionType.Burn), true);
-        assertEq(transmuter.isPaused(EUROC, Storage.ActionType.Redeem), true);
+        assertEq(transmuter.isPaused(EUROC, Storage.ActionType.Mint), false);
+        assertEq(transmuter.isPaused(EUROC, Storage.ActionType.Burn), false);
+        assertEq(transmuter.isPaused(EUROC, Storage.ActionType.Redeem), false);
 
-        assertEq(transmuter.isPaused(EUROE, Storage.ActionType.Mint), true);
-        assertEq(transmuter.isPaused(EUROE, Storage.ActionType.Burn), true);
-        assertEq(transmuter.isPaused(EUROE, Storage.ActionType.Redeem), true);
+        assertEq(transmuter.isPaused(EUROE, Storage.ActionType.Mint), false);
+        assertEq(transmuter.isPaused(EUROE, Storage.ActionType.Burn), false);
+        assertEq(transmuter.isPaused(EUROE, Storage.ActionType.Redeem), false);
 
-        assertEq(transmuter.isPaused(EURE, Storage.ActionType.Mint), true);
-        assertEq(transmuter.isPaused(EURE, Storage.ActionType.Burn), true);
-        assertEq(transmuter.isPaused(EURE, Storage.ActionType.Redeem), true);
+        assertEq(transmuter.isPaused(EURE, Storage.ActionType.Mint), false);
+        assertEq(transmuter.isPaused(EURE, Storage.ActionType.Burn), false);
+        assertEq(transmuter.isPaused(EURE, Storage.ActionType.Redeem), false);
 
         /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         ORACLES                                                     

@@ -44,3 +44,4 @@ bin
 # foundry
 /out
 /cache-forge
+/scripts/selectors.json
