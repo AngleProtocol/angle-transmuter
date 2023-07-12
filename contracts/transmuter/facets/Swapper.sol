@@ -424,14 +424,10 @@ contract Swapper is ISwapper {
                     }
                     return amount + _computeFee(quoteType, amountStable, midFee);
                 } else {
-                    amountStable = amountStable - amountToNextBreakPointNormalizer;
-                    amount =
-                        amount +
-                        (
-                            !v.isExact ? v.amountToNextBreakPoint : v.isMint
-                                ? _invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
-                                : _applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
-                        );
+                    amountStable -= amountToNextBreakPointNormalizer;
+                    amount += !v.isExact ? v.amountToNextBreakPoint : v.isMint
+                        ? _invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
+                        : _applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
                     currentExposure = v.upperExposure * BASE_9;
                     ++i;
                     // Update for the rest of the swaps the stablecoins issued from the asset
@@ -449,7 +445,6 @@ contract Swapper is ISwapper {
 
     /// @notice Checks whether there is still enough of the collateral to process the transfer
     function _checkAmounts(address collateral, Collateral storage collatInfo, uint256 amountOut) internal view {
-        // Checking if enough is available for collateral assets that involve manager addresses
         if (
             (collatInfo.isManaged > 0 && LibManager.maxAvailable(collatInfo.managerData.config) < amountOut) ||
             (collatInfo.isManaged == 0 && IERC20(collateral).balanceOf(address(this)) < amountOut)

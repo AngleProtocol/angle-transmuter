@@ -202,7 +202,7 @@ contract Redeemer is IRedeemer {
                 uint128 newCollateralNormalizedStable = ((uint256(
                     ts.collaterals[collateralListMem[i]].normalizedStables
                 ) * newNormalizerValue) / BASE_27).toUint128();
-                newNormalizedStables = newNormalizedStables + newCollateralNormalizedStable;
+                newNormalizedStables += newCollateralNormalizedStable;
                 ts.collaterals[collateralListMem[i]].normalizedStables = uint216(newCollateralNormalizedStable);
             }
             ts.normalizedStables = newNormalizedStables;
