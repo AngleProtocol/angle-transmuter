@@ -76,7 +76,7 @@ contract Getters is IGetters {
 
     /// @inheritdoc IGetters
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 stablecoinsIssued) {
-        DiamondStorage storage ts = s.diamondStorage();
+        TransmuterStorage storage ts = s.transmuterStorage();
         // Reentrant protection
         if (ts.statusReentrant == ENTERED) revert ReentrantCall();
 

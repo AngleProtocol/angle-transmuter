@@ -100,8 +100,7 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Internal function of the `redeem` function in the `Redeemer` contract
-    /// @dev If your tx was built before a collateral has been revoked and another added, you should
-    /// not execute your tx as the `minAmountOuts` will be off
+    /// @dev The `minAmountOuts` list must reflect or be longer than the amount of `tokens` returned
     function _redeem(
         uint256 amount,
         address to,

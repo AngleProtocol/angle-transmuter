@@ -3,7 +3,7 @@
 pragma solidity ^0.8.19;
 
 import { LibDiamond } from "../libraries/LibDiamond.sol";
-import { LibStorage as s, DiamondStorage } from "../libraries/LibStorage.sol";
+import { LibStorage as s, TransmuterStorage } from "../libraries/LibStorage.sol";
 import "../../utils/Errors.sol";
 import "../../utils/Constants.sol";
 
@@ -29,17 +29,17 @@ contract AccessControlModifiers {
     // by making the `nonReentrant` function external, and making it call a
     // `private` function that does the actual work.
     modifier nonReentrant() {
-        DiamondStorage storage ds = s.diamondStorage();
+        TransmuterStorage storage ts = s.transmuterStorage();
         // Reentrant protection
         // On the first call, _notEntered will be true
-        if (ds.statusReentrant == ENTERED) revert ReentrantCall();
+        if (ts.statusReentrant == ENTERED) revert ReentrantCall();
         // Any calls to nonReentrant after this point will fail
-        ds.statusReentrant = ENTERED;
+        ts.statusReentrant = ENTERED;
 
         _;
 
         // By storing the original value once again, a refund is triggered (see
         // https://eips.ethereum.org/EIPS/eip-2200)
-        ds.statusReentrant = NOT_ENTERED;
+        ts.statusReentrant = NOT_ENTERED;
     }
 }

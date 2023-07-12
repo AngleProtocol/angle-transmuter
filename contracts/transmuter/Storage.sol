@@ -92,7 +92,6 @@ struct DiamondStorage {
     bytes4[] selectors;                          // List of all available selectors
     mapping(bytes4 => FacetInfo) selectorInfo;   // Selector to (address, position in list)
     IAccessControlManager accessControlManager;  // Contract handling access control
-    uint8 statusReentrant;                        // If call is reentrant or not
 }
 
 struct ManagerStorage {
@@ -119,6 +118,7 @@ struct Collateral {
 struct TransmuterStorage {
     IAgToken agToken;                            // agToken handled by the system
     uint8 isRedemptionLive;                      // If redemption is unpaused
+    uint8 statusReentrant;                        // If call is reentrant or not
     uint128 normalizedStables;                   // Normalized amount of stablecoins issued by the system
     uint128 normalizer;                          // To reconcile `normalizedStables` values with the actual amount
     address[] collateralList;                    // List of collateral assets supported by the system

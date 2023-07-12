@@ -110,9 +110,8 @@ contract Production {
 
         LibSetters.setAccessControlManager(_accessControlManager);
 
-        DiamondStorage storage ds = s.diamondStorage();
-        ds.statusReentrant = NOT_ENTERED;
         TransmuterStorage storage ts = s.transmuterStorage();
+        ts.statusReentrant = NOT_ENTERED;
         ts.normalizer = uint128(BASE_27);
         ts.agToken = IAgToken(_agToken);
 

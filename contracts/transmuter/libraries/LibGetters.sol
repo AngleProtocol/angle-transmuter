@@ -84,9 +84,7 @@ library LibGetters {
         // the `collatRatio`
         stablecoinsIssued = uint256(ts.normalizedStables).mulDiv(ts.normalizer, BASE_27, Math.Rounding.Up);
         if (stablecoinsIssued > 0) {
-            uint256 uncastCollatRatio = uint64(
-                totalCollateralization.mulDiv(BASE_9, stablecoinsIssued, Math.Rounding.Up)
-            );
+            uint256 uncastCollatRatio = totalCollateralization.mulDiv(BASE_9, stablecoinsIssued, Math.Rounding.Up);
             collatRatio = (uncastCollatRatio <= type(uint64).max) ? uint64(uncastCollatRatio) : type(uint64).max;
         } else collatRatio = type(uint64).max;
     }

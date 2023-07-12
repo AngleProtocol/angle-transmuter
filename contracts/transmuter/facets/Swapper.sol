@@ -186,7 +186,6 @@ contract Swapper is ISwapper, AccessControlModifiers {
     ) internal nonReentrant {
         if (amountIn > 0 && amountOut > 0) {
             TransmuterStorage storage ts = s.transmuterStorage();
-
             if (mint) {
                 uint128 changeAmount = (amountOut.mulDiv(BASE_27, ts.normalizer, Math.Rounding.Up)).toUint128();
                 // The amount of stablecoins issued from a collateral are not stored as absolute variables, but
