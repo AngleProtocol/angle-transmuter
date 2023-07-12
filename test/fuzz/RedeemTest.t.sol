@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "oz/token/ERC20/utils/SafeERC20.sol";
+import { Math } from "oz/utils/math/Math.sol";
 import "oz/utils/Strings.sol";
 
 import { stdError } from "forge-std/Test.sol";
@@ -33,6 +34,7 @@ struct AssertQuoteParams {
 }
 
 contract RedeemTest is Fixture, FunctionUtils {
+    using Math for uint256;
     using SafeERC20 for IERC20;
 
     uint256 internal _maxAmountWithoutDecimals = 10 ** 15;
@@ -169,8 +171,12 @@ contract RedeemTest is Fixture, FunctionUtils {
             initialAmounts,
             transferProportion
         );
-
-        uint64 collatRatio = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
+        uint64 collatRatio;
+        {
+            bool reverted;
+            (collatRatio, reverted) = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
+            if (reverted) return;
+        }
 
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
@@ -224,7 +230,12 @@ contract RedeemTest is Fixture, FunctionUtils {
             initialAmounts,
             transferProportion
         );
-        uint64 collatRatio = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
+        uint64 collatRatio;
+        {
+            bool reverted;
+            (collatRatio, reverted) = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
+            if (reverted) return;
+        }
         (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) = _randomRedeemptionFees(
             xFeeRedeemUnbounded,
             yFeeRedeemUnbounded
@@ -305,8 +316,13 @@ contract RedeemTest is Fixture, FunctionUtils {
             initialAmounts,
             transferProportion
         );
+        uint64 collatRatio;
+        {
+            bool reverted;
+            (collatRatio, reverted) = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
+            if (reverted) return;
+        }
 
-        uint64 collatRatio = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
         (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) = _randomRedeemptionFees(
             xFeeRedeemUnbounded,
             yFeeRedeemUnbounded
@@ -364,7 +380,10 @@ contract RedeemTest is Fixture, FunctionUtils {
             initialAmounts,
             transferProportion
         );
-        _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
+        {
+            (, bool reverted) = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
+            if (reverted) return;
+        }
         _randomRedeemptionFees(xFeeRedeemUnbounded, yFeeRedeemUnbounded);
         _sweepBalances(alice, _collaterals);
         _sweepBalances(bob, _collaterals);
@@ -373,9 +392,23 @@ contract RedeemTest is Fixture, FunctionUtils {
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
         uint256 amountBurntBob;
-        if (amountBurnt > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
-        else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-        (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
+        uint256[] memory quoteAmounts;
+        {
+            bool shouldReturn;
+            {
+                uint256 totalCollateralization = _computeCollateralisation();
+                if (
+                    mintedStables > 0 &&
+                    (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
+                ) {
+                    vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
+                    shouldReturn = true;
+                } else if (amountBurnt > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
+                else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+            }
+            (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
+            if (shouldReturn) return;
+        }
         if (amountBurnt > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
         else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
         {
@@ -411,9 +444,23 @@ contract RedeemTest is Fixture, FunctionUtils {
             vm.startPrank(bob);
             redeemProportion = bound(redeemProportion, 0, BASE_9);
             amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
-            if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
-            else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-            (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurntBob);
+            {
+                bool shouldReturn;
+                {
+                    uint256 totalCollateralization = _computeCollateralisation();
+                    if (
+                        mintedStables > 0 &&
+                        (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
+                    ) {
+                        vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
+                        shouldReturn = true;
+                    } else if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
+                    else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+                }
+                (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurntBob);
+                if (shouldReturn) return;
+            }
+
             if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
             else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
             {
@@ -496,13 +543,17 @@ contract RedeemTest is Fixture, FunctionUtils {
                 _loadSubCollaterals(address(_collaterals[i]), airdropAmounts, i * _MAX_SUB_COLLATERALS);
             }
         }
-
-        (uint64 collatRatio, bool collatRatioAboveLimit) = _updateOraclesWithSubCollaterals(
-            latestOracleValue,
-            mintedStables,
-            collateralMintedStables,
-            airdropAmounts
-        );
+        uint64 collatRatio;
+        {
+            bool reverted;
+            (collatRatio, reverted) = _updateOraclesWithSubCollaterals(
+                latestOracleValue,
+                mintedStables,
+                collateralMintedStables,
+                airdropAmounts
+            );
+            if (reverted) return;
+        }
 
         (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) = _randomRedeemptionFees(
             xFeeRedeemUnbounded,
@@ -511,8 +562,23 @@ contract RedeemTest is Fixture, FunctionUtils {
 
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
-        if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-        (address[] memory tokens, uint256[] memory amounts) = transmuter.quoteRedemptionCurve(amountBurnt);
+        address[] memory tokens;
+        uint256[] memory amounts;
+        {
+            bool shouldReturn;
+            {
+                uint256 totalCollateralization = _computeCollateralisation();
+                if (
+                    mintedStables > 0 &&
+                    (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
+                ) {
+                    vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
+                    shouldReturn = true;
+                } else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+            }
+            (tokens, amounts) = transmuter.quoteRedemptionCurve(amountBurnt);
+            if (shouldReturn) return;
+        }
         vm.stopPrank();
 
         if (mintedStables == 0) return;
@@ -522,7 +588,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint64 fee;
         if (collatRatio >= BASE_9) fee = uint64(yFeeRedeem[yFeeRedeem.length - 1]);
         else fee = uint64(LibHelpers.piecewiseLinear(collatRatio, xFeeRedeem, yFeeRedeem));
-        _assertQuoteAmountsWithManager(collatRatioAboveLimit, amountBurnt, fee, amounts);
+        _assertQuoteAmountsWithManager(amountBurnt, fee, amounts);
     }
 
     function testFuzz_MultiRedemptionCurveWithManagerRandomRedemptionFees(
@@ -571,8 +637,22 @@ contract RedeemTest is Fixture, FunctionUtils {
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
         uint256 amountBurntBob;
-        if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-        (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
+        uint256[] memory quoteAmounts;
+        {
+            bool shouldReturn;
+            {
+                uint256 totalCollateralization = _computeCollateralisation();
+                if (
+                    mintedStables > 0 &&
+                    (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
+                ) {
+                    vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
+                    shouldReturn = true;
+                } else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+            }
+            (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
+            if (shouldReturn) return;
+        }
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
         {
             address[] memory tokens;
@@ -610,10 +690,22 @@ contract RedeemTest is Fixture, FunctionUtils {
             vm.startPrank(bob);
             redeemProportion = bound(redeemProportion, 0, BASE_9);
             amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
-
-            if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
-            else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-            (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurntBob);
+            {
+                bool shouldReturn;
+                {
+                    uint256 totalCollateralization = _computeCollateralisation();
+                    if (
+                        mintedStables > 0 &&
+                        (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
+                    ) {
+                        vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
+                        shouldReturn = true;
+                    } else if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
+                    else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+                }
+                (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurntBob);
+                if (shouldReturn) return;
+            }
             if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
             else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
             {
@@ -740,8 +832,22 @@ contract RedeemTest is Fixture, FunctionUtils {
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
         uint256 amountBurntBob;
-        if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-        (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
+        uint256[] memory quoteAmounts;
+        {
+            bool shouldReturn;
+            {
+                uint256 totalCollateralization = _computeCollateralisation();
+                if (
+                    mintedStables > 0 &&
+                    (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
+                ) {
+                    vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
+                    shouldReturn = true;
+                } else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+            }
+            (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
+            if (shouldReturn) return;
+        }
         {
             address[] memory tokens;
             uint256[] memory amounts;
@@ -784,9 +890,21 @@ contract RedeemTest is Fixture, FunctionUtils {
             vm.startPrank(bob);
             redeemProportion = bound(redeemProportion, 0, BASE_9);
             amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
-            if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
-            else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
-            (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurntBob);
+            {
+                bool shouldReturn;
+                uint256 totalCollateralization = _computeCollateralisation();
+                if (
+                    mintedStables > 0 &&
+                    (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
+                ) {
+                    vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
+                    shouldReturn = true;
+                } else if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
+                else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
+                (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurntBob);
+                if (shouldReturn) return;
+            }
+
             if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
             else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
             {
@@ -1069,12 +1187,7 @@ contract RedeemTest is Fixture, FunctionUtils {
             assertApproxEqRelDecimal(quoteStorage.amountInValueReceived, valueCheck, _MAX_PERCENTAGE_DEVIATION, 18);
     }
 
-    function _assertQuoteAmountsWithManager(
-        bool collatRatioAboveLimit,
-        uint256 amountBurnt,
-        uint64 fee,
-        uint256[] memory amounts
-    ) internal {
+    function _assertQuoteAmountsWithManager(uint256 amountBurnt, uint64 fee, uint256[] memory amounts) internal {
         // we should also receive  in value `min(collatRatio*amountBurnt,amountBurnt)`
         AssertQuoteParams memory quoteStorage;
         {
@@ -1130,7 +1243,21 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
 
         uint256 count2;
+        bool reverted;
+        {
+            uint256 totalCollateralization = _computeCollateralisation();
+            uint256 trueMintedStables = transmuter.getTotalIssued();
+            if (
+                trueMintedStables > 0 &&
+                totalCollateralization.mulDiv(BASE_9, trueMintedStables, Math.Rounding.Up) > type(uint64).max
+            ) {
+                reverted = true;
+                vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
+            }
+        }
         (uint256 collatRatio, uint256 mintedStables) = transmuter.getCollateralRatio();
+        if (reverted) return;
+
         for (uint256 i; i < _oracles.length; ++i) {
             IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
             for (uint256 k = 0; k < listSubCollaterals.length; ++k) {
@@ -1150,7 +1277,6 @@ contract RedeemTest is Fixture, FunctionUtils {
             assertLe(quoteStorage.amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
             valueCheck = (collatRatio * amountBurnt * fee) / BASE_18;
         }
-        if (!collatRatioAboveLimit) assertLe(quoteStorage.amountInValueReceived, amountBurnt);
         if (quoteStorage.amountInValueReceived >= _minWallet && !quoteStorage.lastCheck)
             assertApproxEqRelDecimal(quoteStorage.amountInValueReceived, valueCheck, _MAX_PERCENTAGE_DEVIATION, 18);
     }
@@ -1209,7 +1335,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256[3] memory latestOracleValue,
         uint256 mintedStables,
         uint256[] memory collateralMintedStables
-    ) internal returns (uint64 collatRatio) {
+    ) internal returns (uint64 collatRatio, bool reverted) {
         for (uint256 i; i < latestOracleValue.length; ++i) {
             latestOracleValue[i] = bound(latestOracleValue[i], _minOracleValue, BASE_18);
             MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(int256(latestOracleValue[i]));
@@ -1225,7 +1351,20 @@ contract RedeemTest is Fixture, FunctionUtils {
 
         // check collateral ratio first
         uint256 stablecoinsIssued;
-        (collatRatio, stablecoinsIssued) = transmuter.getCollateralRatio();
+        {
+            uint256 totalCollateralization = _computeCollateralisation();
+            uint256 trueMintedStables = transmuter.getTotalIssued();
+            if (
+                trueMintedStables > 0 &&
+                totalCollateralization.mulDiv(BASE_9, trueMintedStables, Math.Rounding.Up) > type(uint64).max
+            ) {
+                reverted = true;
+                vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
+            }
+            (collatRatio, stablecoinsIssued) = transmuter.getCollateralRatio();
+            if (reverted) return (collatRatio, true);
+        }
+
         if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
         else assertEq(collatRatio, type(uint64).max);
         assertEq(stablecoinsIssued, mintedStables);
@@ -1236,7 +1375,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256 mintedStables,
         uint256[] memory collateralMintedStables,
         uint256[3 * _MAX_SUB_COLLATERALS] memory airdropAmounts
-    ) internal returns (uint64 collatRatio, bool collatRatioAboveLimit) {
+    ) internal returns (uint64 collatRatio, bool reverted) {
         for (uint256 i; i < latestOracleValue.length; ++i) {
             latestOracleValue[i] = bound(latestOracleValue[i], _minOracleValue, BASE_18);
             MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(int256(latestOracleValue[i]));
@@ -1277,14 +1416,24 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
 
         uint256 computedCollatRatio = type(uint64).max;
-        if (mintedStables > 0) {
-            computedCollatRatio = uint64((collateralisation * BASE_9) / mintedStables);
-            if ((collateralisation * BASE_9) / mintedStables > type(uint64).max) collatRatioAboveLimit = true;
-        }
+        if (mintedStables > 0) computedCollatRatio = uint64((collateralisation * BASE_9) / mintedStables);
 
         // check collateral ratio first
         uint256 stablecoinsIssued;
-        (collatRatio, stablecoinsIssued) = transmuter.getCollateralRatio();
+        {
+            uint256 totalCollateralization = _computeCollateralisation();
+            uint256 trueMintedStables = transmuter.getTotalIssued();
+            if (
+                trueMintedStables > 0 &&
+                totalCollateralization.mulDiv(BASE_9, trueMintedStables, Math.Rounding.Up) > type(uint64).max
+            ) {
+                reverted = true;
+                vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
+            }
+
+            (collatRatio, stablecoinsIssued) = transmuter.getCollateralRatio();
+            if (reverted) return (0, true);
+        }
 
         if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
         else assertEq(collatRatio, type(uint64).max);
@@ -1412,5 +1561,24 @@ contract RedeemTest is Fixture, FunctionUtils {
 
         vm.prank(governor);
         transmuter.setCollateralManager(token, managerData);
+    }
+
+    function _computeCollateralisation() internal returns (uint256 totalCollateralization) {
+        address[] memory collateralList = transmuter.getCollateralList();
+        uint256 collateralListLength = collateralList.length;
+
+        for (uint256 i; i < collateralListLength; ++i) {
+            Collateral memory collateral = transmuter.getCollateralInfo(collateralList[i]);
+            uint256 collateralBalance;
+            if (collateral.isManaged > 0) {
+                (, bytes memory data) = abi.decode(collateral.managerData.config, (ManagerType, bytes));
+                (, collateralBalance) = abi.decode(data, (IManager)).totalAssets();
+            } else collateralBalance = IERC20(collateralList[i]).balanceOf(address(transmuter));
+
+            (, , , , uint256 oracleValue) = transmuter.getOracleValues(collateralList[i]);
+            totalCollateralization +=
+                (oracleValue * LibHelpers.convertDecimalTo(collateralBalance, collateral.decimals, 18)) /
+                BASE_18;
+        }
     }
 }
