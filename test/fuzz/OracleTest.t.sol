@@ -180,28 +180,55 @@ contract OracleTest is Fixture, FunctionUtils {
         );
 
         for (uint i; i < _collaterals.length; i++) {
-            bytes memory data;
-
             {
-                bytes memory targetData;
-                Storage.OracleReadType readType;
-                Storage.OracleReadType targetType;
-                (readType, targetType, data, targetData) = transmuter.getOracle(address(_collaterals[i]));
+                bytes memory data;
+                {
+                    bytes memory targetData;
+                    Storage.OracleReadType readType;
+                    Storage.OracleReadType targetType;
+                    (readType, targetType, data, targetData) = transmuter.getOracle(address(_collaterals[i]));
 
-                assertEq(uint8(readType), newReadType[i]);
-                assertEq(uint8(targetType), newTargetType[i]);
+                    assertEq(uint8(readType), newReadType[i]);
+                    assertEq(uint8(targetType), newTargetType[i]);
+                }
+                if (newReadType[i] == 1) {
+                    ITransmuterOracle externalOracle = abi.decode(data, (ITransmuterOracle));
+                    assertEq(address(externalOracle), externalOracles[i]);
+                } else {
+                    (
+                        AggregatorV3Interface[] memory circuitChainlink,
+                        uint32[] memory stalePeriods,
+                        uint8[] memory circuitChainIsMultiplied,
+                        uint8[] memory chainlinkDecimals,
+                        Storage.OracleQuoteType quoteType
+                    ) = abi.decode(
+                            data,
+                            (AggregatorV3Interface[], uint32[], uint8[], uint8[], Storage.OracleQuoteType)
+                        );
+                    assertEq(circuitChainlink.length, 1);
+                    assertEq(circuitChainIsMultiplied.length, 1);
+                    assertEq(chainlinkDecimals.length, 1);
+                    assertEq(stalePeriods.length, 1);
+                    assertEq(address(circuitChainlink[0]), address(_oracles[i]));
+                    assertEq(circuitChainIsMultiplied[0], newCircuitChainIsMultiplied[i]);
+                    assertEq(chainlinkDecimals[0], newChainlinkDecimals[i]);
+                    assertEq(uint8(quoteType), newQuoteType[i]);
+                }
             }
-            if (newReadType[i] == 1) {
-                ITransmuterOracle externalOracle = abi.decode(data, (ITransmuterOracle));
-                assertEq(address(externalOracle), externalOracles[i]);
-            } else {
+
+            if (newTargetType[i] == 0) {
+                bytes memory targetData;
+                (, , , targetData) = transmuter.getOracle(address(_collaterals[i]));
                 (
                     AggregatorV3Interface[] memory circuitChainlink,
                     uint32[] memory stalePeriods,
                     uint8[] memory circuitChainIsMultiplied,
                     uint8[] memory chainlinkDecimals,
                     Storage.OracleQuoteType quoteType
-                ) = abi.decode(data, (AggregatorV3Interface[], uint32[], uint8[], uint8[], Storage.OracleQuoteType));
+                ) = abi.decode(
+                        targetData,
+                        (AggregatorV3Interface[], uint32[], uint8[], uint8[], Storage.OracleQuoteType)
+                    );
                 assertEq(circuitChainlink.length, 1);
                 assertEq(circuitChainIsMultiplied.length, 1);
                 assertEq(chainlinkDecimals.length, 1);
@@ -393,23 +420,41 @@ contract OracleTest is Fixture, FunctionUtils {
             newChainlinkDecimals[i] = uint8(bound(newChainlinkDecimals[i], 2, 18));
             newCircuitChainIsMultiplied[i] = uint8(bound(newCircuitChainIsMultiplied[i], 0, 1));
             newQuoteType[i] = uint8(bound(newQuoteType[i], 0, 1));
-            newReadType[i] = uint8(bound(newReadType[i], 0, 2));
-            newTargetType[i] = uint8(bound(newTargetType[i], 0, 4));
+            newReadType[i] = uint8(bound(newReadType[i], 0, 7));
+            newTargetType[i] = uint8(bound(newTargetType[i], 0, 7));
 
             Storage.OracleReadType readType = newReadType[i] == 0
                 ? Storage.OracleReadType.CHAINLINK_FEEDS
                 : newReadType[i] == 1
                 ? Storage.OracleReadType.EXTERNAL
-                : Storage.OracleReadType.NO_ORACLE;
-            Storage.OracleReadType targetType = newTargetType[i] == 0
+                : newReadType[i] == 2
+                ? Storage.OracleReadType.NO_ORACLE
+                : newReadType[i] == 3
                 ? Storage.OracleReadType.STABLE
-                : newTargetType[i] == 1
+                : newReadType[i] == 4
                 ? Storage.OracleReadType.WSTETH
-                : newTargetType[i] == 2
+                : newReadType[i] == 5
                 ? Storage.OracleReadType.CBETH
-                : newTargetType[i] == 3
+                : newReadType[i] == 6
                 ? Storage.OracleReadType.RETH
                 : Storage.OracleReadType.SFRXETH;
+
+            Storage.OracleReadType targetType = newTargetType[i] == 0
+                ? Storage.OracleReadType.CHAINLINK_FEEDS
+                : newTargetType[i] == 1
+                ? Storage.OracleReadType.EXTERNAL
+                : newTargetType[i] == 2
+                ? Storage.OracleReadType.NO_ORACLE
+                : newTargetType[i] == 3
+                ? Storage.OracleReadType.STABLE
+                : newTargetType[i] == 4
+                ? Storage.OracleReadType.WSTETH
+                : newTargetType[i] == 5
+                ? Storage.OracleReadType.CBETH
+                : newTargetType[i] == 6
+                ? Storage.OracleReadType.RETH
+                : Storage.OracleReadType.SFRXETH;
+
             Storage.OracleQuoteType quoteType = newQuoteType[i] == 0
                 ? Storage.OracleQuoteType.UNIT
                 : Storage.OracleQuoteType.TARGET;
@@ -436,7 +481,25 @@ contract OracleTest is Fixture, FunctionUtils {
                     quoteType
                 );
             }
+
             bytes memory targetData;
+            if (targetType == Storage.OracleReadType.CHAINLINK_FEEDS) {
+                AggregatorV3Interface[] memory circuitChainlink = new AggregatorV3Interface[](1);
+                uint32[] memory stalePeriods = new uint32[](1);
+                uint8[] memory circuitChainIsMultiplied = new uint8[](1);
+                uint8[] memory chainlinkDecimals = new uint8[](1);
+                circuitChainlink[0] = AggregatorV3Interface(_oracles[i]);
+                stalePeriods[0] = 1 hours;
+                circuitChainIsMultiplied[0] = newCircuitChainIsMultiplied[i];
+                chainlinkDecimals[0] = newChainlinkDecimals[i];
+                targetData = abi.encode(
+                    circuitChainlink,
+                    stalePeriods,
+                    circuitChainIsMultiplied,
+                    chainlinkDecimals,
+                    quoteType
+                );
+            }
             transmuter.setOracle(_collaterals[i], abi.encode(readType, targetType, readData, targetData));
         }
         vm.stopPrank();

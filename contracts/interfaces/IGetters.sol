@@ -77,7 +77,7 @@ interface IGetters {
     /// @notice Returns the data used to compute oracle values for `collateral`
     /// @return oracleType Type of oracle (Chainlink, external smart contract, ...)
     /// @return targetType Type passed to read the value of the target price
-    /// @return oracleData Extra data needed to read the oracle. For Chainlink type of oracles, this data is supposed to give
+    /// @return oracleData Extra data needed to read the oracle. For Chainlink oracles, this data is supposed to give
     /// the addresses of the Chainlink feeds to read, the stale periods for each feed, ...
     /// @return targetData Extra data needed to read the target price of the asset
     function getOracle(

@@ -140,6 +140,8 @@ library LibOracle {
         else if (readType == OracleReadType.CBETH) return CBETH.exchangeRate();
         else if (readType == OracleReadType.RETH) return RETH.getExchangeRate();
         else if (readType == OracleReadType.SFRXETH) return SFRXETH.pricePerShare();
+        // If the `OracleReadType` is `EXTERNAL`, it means that this function is called to compute a
+        // `targetPrice` in which case the `baseValue` is returned here
         else return baseValue;
     }
 
