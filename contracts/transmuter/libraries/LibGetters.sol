@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { Math } from "oz/utils/math/Math.sol";
+import { SafeCast } from "oz/utils/math/SafeCast.sol";
 
 import { LibHelpers } from "./LibHelpers.sol";
 import { LibManager } from "./LibManager.sol";
@@ -17,6 +18,7 @@ import "../Storage.sol";
 /// @author Angle Labs, Inc.
 library LibGetters {
     using Math for uint256;
+    using SafeCast for uint256;
 
     /// @notice Internal version of the `getCollateralRatio` function with additional return values like `tokens` that
     /// is the list of tokens supported by the system, or `balances` which is the amount of each token in `tokens`
@@ -84,8 +86,7 @@ library LibGetters {
         // the `collatRatio`
         stablecoinsIssued = uint256(ts.normalizedStables).mulDiv(ts.normalizer, BASE_27, Math.Rounding.Up);
         if (stablecoinsIssued > 0) {
-            uint256 uncastCollatRatio = totalCollateralization.mulDiv(BASE_9, stablecoinsIssued, Math.Rounding.Up);
-            collatRatio = (uncastCollatRatio <= type(uint64).max) ? uint64(uncastCollatRatio) : type(uint64).max;
+            collatRatio = totalCollateralization.mulDiv(BASE_9, stablecoinsIssued, Math.Rounding.Up).toUint64();
         } else collatRatio = type(uint64).max;
     }
 }

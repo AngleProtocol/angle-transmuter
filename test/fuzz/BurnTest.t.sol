@@ -147,7 +147,7 @@ contract BurnTest is Fixture, FunctionUtils {
                 (collateralisation * BASE_9) / (mintedStables + mintedStables2 - burntStables)
             );
             if ((collateralisation * BASE_9) / (mintedStables + mintedStables2 - burntStables) > type(uint64).max)
-                computedCollatRatio = type(uint64).max;
+                vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
         }
 
         (uint64 collatRatio, uint256 reservesValue) = transmuter.getCollateralRatio();
