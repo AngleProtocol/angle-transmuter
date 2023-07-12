@@ -42,6 +42,7 @@ import { IRedeemer } from "./IRedeemer.sol";
 import { IRewardHandler } from "./IRewardHandler.sol";
 import { ISettersGovernor, ISettersGuardian } from "./ISetters.sol";
 import { ISwapper } from "./ISwapper.sol";
+import { IEtherscan } from "./IEtherscan.sol";
 
 /// @title ITransmuter
 /// @author Angle Labs, Inc.
@@ -53,7 +54,8 @@ interface ITransmuter is
     IRewardHandler,
     ISettersGovernor,
     ISettersGuardian,
-    ISwapper
+    ISwapper,
+    IEtherscan
 {
 
 }

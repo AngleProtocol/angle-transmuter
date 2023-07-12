@@ -22,6 +22,16 @@ struct SubCollateralStorage {
     AggregatorV3Interface[] oracles;
 }
 
+struct AssertQuoteParams {
+    uint256 amountInValueReceived;
+    bool lastCheck;
+    uint256 count;
+    uint256 maxValue;
+    uint256 minValue;
+    uint256 maxOracle;
+    uint256 minOracle;
+}
+
 contract RedeemTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
 
@@ -983,50 +993,47 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256[] memory amounts
     ) internal {
         // we should also receive  in value min(collatRatio*amountBurnt,amountBurnt)
-        uint256 amountInValueReceived;
-        bool lastCheck;
+        AssertQuoteParams memory quoteStorage;
         {
-            uint256 maxValue;
-            uint256 minValue;
-            uint256 maxOracle;
-            uint256 minOracle;
             for (uint256 i; i < _oracles.length; ++i) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 uint8 decimals = IERC20Metadata(_collaterals[i]).decimals();
-                if (uint256(value) > maxOracle) maxOracle = uint256(value);
-                if (amounts[i] > maxValue) maxValue = amounts[i] / 10 ** decimals;
-                if (amounts[i] < minValue || minValue == 0) minValue = amounts[i] / 10 ** decimals;
-                if (minOracle == 0 || uint256(value) < minOracle) minOracle = uint256(value);
-                if (uint256(value) > BASE_18 || amounts[i] < 10 ** 4) lastCheck = true;
-                amountInValueReceived += (uint256(value) * _convertDecimalTo(amounts[i], decimals, 18));
+                if (uint256(value) > quoteStorage.maxOracle) quoteStorage.maxOracle = uint256(value);
+                if (amounts[i] > quoteStorage.maxValue) quoteStorage.maxValue = amounts[i] / 10 ** decimals;
+                if (amounts[i] < quoteStorage.minValue || quoteStorage.minValue == 0)
+                    quoteStorage.minValue = amounts[i] / 10 ** decimals;
+                if (quoteStorage.minOracle == 0 || uint256(value) < quoteStorage.minOracle)
+                    quoteStorage.minOracle = uint256(value);
+                if (uint256(value) > BASE_18 || amounts[i] < 10 ** 4) quoteStorage.lastCheck = true;
+                quoteStorage.amountInValueReceived += (uint256(value) * _convertDecimalTo(amounts[i], decimals, 18));
             }
             // Otherwise there can be rounding errors that make the last check not precise at all
             if (
-                maxValue > minValue * 10 ** 14 ||
-                maxOracle > minOracle * 10 ** 14 ||
-                minOracle < 10 ** 5 ||
-                maxOracle > 10 ** 13
-            ) lastCheck = true;
+                quoteStorage.maxValue > quoteStorage.minValue * 10 ** 14 ||
+                quoteStorage.maxOracle > quoteStorage.minOracle * 10 ** 14 ||
+                quoteStorage.minOracle < 10 ** 5 ||
+                quoteStorage.maxOracle > 10 ** 13
+            ) quoteStorage.lastCheck = true;
         }
-        amountInValueReceived = amountInValueReceived / BASE_8;
+        quoteStorage.amountInValueReceived = quoteStorage.amountInValueReceived / BASE_8;
 
         uint256 denom = (mintedStables * BASE_9);
         uint256 valueCheck = (collatRatio * amountBurnt * fee) / BASE_18;
         if (collatRatio >= BASE_9) {
             denom = (mintedStables * collatRatio);
             // for rounding errors
-            assertLe(amountInValueReceived, amountBurnt + 1);
+            assertLe(quoteStorage.amountInValueReceived, amountBurnt + 1);
             valueCheck = (amountBurnt * fee) / BASE_9;
         }
         assertApproxEqAbs(amounts[0], (eurA.balanceOf(address(transmuter)) * amountBurnt * fee) / denom, 1 wei);
         assertApproxEqAbs(amounts[1], (eurB.balanceOf(address(transmuter)) * amountBurnt * fee) / denom, 1 wei);
         assertApproxEqAbs(amounts[2], (eurY.balanceOf(address(transmuter)) * amountBurnt * fee) / denom, 1 wei);
         if (collatRatio < BASE_9) {
-            assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9 + 1);
+            assertLe(quoteStorage.amountInValueReceived, (collatRatio * amountBurnt) / BASE_9 + 1);
         }
 
-        if (amountInValueReceived >= _minWallet && !lastCheck)
-            assertApproxEqRelDecimal(amountInValueReceived, valueCheck, _MAX_PERCENTAGE_DEVIATION, 18);
+        if (quoteStorage.amountInValueReceived >= _minWallet && !quoteStorage.lastCheck)
+            assertApproxEqRelDecimal(quoteStorage.amountInValueReceived, valueCheck, _MAX_PERCENTAGE_DEVIATION, 18);
     }
 
     function _assertQuoteAmountsWithManager(
@@ -1036,26 +1043,23 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256[] memory amounts
     ) internal {
         // we should also receive  in value `min(collatRatio*amountBurnt,amountBurnt)`
-        uint256 amountInValueReceived;
-        bool lastCheck;
+        AssertQuoteParams memory quoteStorage;
         {
-            uint256 count;
-            uint256 maxValue;
-            uint256 minValue;
-            uint256 maxOracle;
-            uint256 minOracle;
+            AssertQuoteParams memory quoteStorage;
             for (uint256 i; i < _collaterals.length; ++i) {
                 (, int256 oracleValue, , , ) = _oracles[i].latestRoundData();
                 {
                     uint8 decimals = IERC20Metadata(_collaterals[i]).decimals();
-                    amountInValueReceived +=
-                        (uint256(oracleValue) * _convertDecimalTo(amounts[count++], decimals, 18)) /
+                    quoteStorage.amountInValueReceived +=
+                        (uint256(oracleValue) * _convertDecimalTo(amounts[quoteStorage.count++], decimals, 18)) /
                         BASE_8;
-                    if (uint256(oracleValue) > maxOracle) maxOracle = uint256(oracleValue);
-                    if (amounts[i] > maxValue) maxValue = amounts[i] / 10 ** decimals;
-                    if (amounts[i] < minValue || minValue == 0) minValue = amounts[i] / 10 ** decimals;
-                    if (minOracle == 0 || uint256(oracleValue) < minOracle) minOracle = uint256(oracleValue);
-                    if (uint256(oracleValue) > BASE_18 || amounts[i] < 10 ** 4) lastCheck = true;
+                    if (uint256(oracleValue) > quoteStorage.maxOracle) quoteStorage.maxOracle = uint256(oracleValue);
+                    if (amounts[i] > quoteStorage.maxValue) quoteStorage.maxValue = amounts[i] / 10 ** decimals;
+                    if (amounts[i] < quoteStorage.minValue || quoteStorage.minValue == 0)
+                        quoteStorage.minValue = amounts[i] / 10 ** decimals;
+                    if (quoteStorage.minOracle == 0 || uint256(oracleValue) < quoteStorage.minOracle)
+                        quoteStorage.minOracle = uint256(oracleValue);
+                    if (uint256(oracleValue) > BASE_18 || amounts[i] < 10 ** 4) quoteStorage.lastCheck = true;
                 }
                 // we don't double count the real collateral
                 uint256 subCollateralValue;
@@ -1065,25 +1069,31 @@ contract RedeemTest is Fixture, FunctionUtils {
                         .decimals();
                     subCollateralValue +=
                         (uint256(value) *
-                            _convertDecimalTo(amounts[count++], decimals, IERC20Metadata(_collaterals[i]).decimals())) /
+                            _convertDecimalTo(
+                                amounts[quoteStorage.count++],
+                                decimals,
+                                IERC20Metadata(_collaterals[i]).decimals()
+                            )) /
                         BASE_8;
-                    if (uint256(value) > maxOracle) maxOracle = uint256(value);
-                    if (amounts[i] > maxValue) maxValue = amounts[i] / 10 ** decimals;
-                    if (amounts[i] < minValue || minValue == 0) minValue = amounts[i] / 10 ** decimals;
-                    if (minOracle == 0 || uint256(value) < minOracle) minOracle = uint256(value);
-                    if (uint256(value) > BASE_18 || amounts[i] < 10 ** 4) lastCheck = true;
+                    if (uint256(value) > quoteStorage.maxOracle) quoteStorage.maxOracle = uint256(value);
+                    if (amounts[i] > quoteStorage.maxValue) quoteStorage.maxValue = amounts[i] / 10 ** decimals;
+                    if (amounts[i] < quoteStorage.minValue || quoteStorage.minValue == 0)
+                        quoteStorage.minValue = amounts[i] / 10 ** decimals;
+                    if (quoteStorage.minOracle == 0 || uint256(value) < quoteStorage.minOracle)
+                        quoteStorage.minOracle = uint256(value);
+                    if (uint256(value) > BASE_18 || amounts[i] < 10 ** 4) quoteStorage.lastCheck = true;
                 }
-                amountInValueReceived +=
+                quoteStorage.amountInValueReceived +=
                     (_convertDecimalTo(subCollateralValue, IERC20Metadata(_collaterals[i]).decimals(), 18) *
                         uint256(oracleValue)) /
                     BASE_8;
             }
             if (
-                maxValue > minValue * 10 ** 14 ||
-                maxOracle > minOracle * 10 ** 14 ||
-                minOracle < 10 ** 5 ||
-                maxOracle > 10 ** 13
-            ) lastCheck = true;
+                quoteStorage.maxValue > quoteStorage.minValue * 10 ** 14 ||
+                quoteStorage.maxOracle > quoteStorage.minOracle * 10 ** 14 ||
+                quoteStorage.minOracle < 10 ** 5 ||
+                quoteStorage.maxOracle > 10 ** 13
+            ) quoteStorage.lastCheck = true;
         }
 
         uint256 count2;
@@ -1104,12 +1114,12 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
         uint256 valueCheck = (amountBurnt * fee) / BASE_9;
         if (collatRatio < BASE_9) {
-            assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
+            assertLe(quoteStorage.amountInValueReceived, (collatRatio * amountBurnt) / BASE_9);
             valueCheck = (collatRatio * amountBurnt * fee) / BASE_18;
         }
-        if (!collatRatioAboveLimit) assertLe(amountInValueReceived, amountBurnt);
-        if (amountInValueReceived >= _minWallet && !lastCheck)
-            assertApproxEqRelDecimal(amountInValueReceived, valueCheck, _MAX_PERCENTAGE_DEVIATION, 18);
+        if (!collatRatioAboveLimit) assertLe(quoteStorage.amountInValueReceived, amountBurnt);
+        if (quoteStorage.amountInValueReceived >= _minWallet && !quoteStorage.lastCheck)
+            assertApproxEqRelDecimal(quoteStorage.amountInValueReceived, valueCheck, _MAX_PERCENTAGE_DEVIATION, 18);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -171,7 +171,29 @@ FOUNDRY_PROFILE=dev forge test --list --json --match-test "testXXX*"
 There is an example script in the `scripts/foundry` folder. Then you can run:
 
 ```bash
-yarn foundry:deploy <FILE_NAME> --rpc-url <NETWORK_NAME>
+yarn deploy <FILE_NAME> --rpc-url <NETWORK_NAME>
+```
+
+---
+
+### Fork
+
+if you first want to test your deployments/scripts in fork mode. You should run:
+
+```bash
+source .env
+```
+
+Then fork the network of your choice, by adding the associated script in the `package.json`
+
+```bash
+yarn fork:<CHAIN_NAME>
+```
+
+Finnaly run your script in fork mode:
+
+```bash
+yarn deploy:fork <FILE_NAME>
 ```
 
 ---
@@ -193,6 +215,16 @@ You'll need to install lcov `brew install lcov` to visualize the coverage report
 ```bash
 yarn gas
 ```
+
+---
+
+### Verify on Etherscan ✅
+
+If you are a governor, follow the instruction `https://github.com/zdenham/diamond-etherscan/blob/main/README.md` - you will have to download the repo - and upload the dummy
+implementation `./scripts/generated/DummyDiamonImplementation.sol`.
+Run the script `./scripts/gnosis/VerifyProxyEtherscan.s.sol` - it will deploy an etherscan facet (it should only be done once) and deploy
+a dummy implementation which has all facets entrypoints. Then go to Etherscan and point the `DiamondProxy` to the `DiamondEtherscanFacet` contract.
+If you happen to update any facet, you need to call `DiamondEtherscanFacet.setDummyImplementation(XXX)` with the newly deployed dummy implementation
 
 ---
 
