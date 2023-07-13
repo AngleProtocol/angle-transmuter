@@ -148,13 +148,14 @@ contract OracleTest is Fixture, FunctionUtils {
         _updateOracleValues(latestOracleValue);
         uint256 minStalePeriod = _updateTargetOracleStalePeriods(newStalePeriods);
         skip(elapseTimestamp);
+
+        if (minStalePeriod < elapseTimestamp) vm.expectRevert(Errors.InvalidChainlinkRate.selector);
+        transmuter.getCollateralRatio();
+
         deal(_collaterals[fromToken], address(transmuter), _maxTokenAmount[fromToken]);
 
         if (minStalePeriod < elapseTimestamp) vm.expectRevert(Errors.InvalidChainlinkRate.selector);
         transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
-
-        if (minStalePeriod < elapseTimestamp) vm.expectRevert(Errors.InvalidChainlinkRate.selector);
-        transmuter.getCollateralRatio();
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
