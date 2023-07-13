@@ -8,7 +8,7 @@ import "./Constants.s.sol";
 import { CollateralSetupProd, Production } from "contracts/transmuter/configs/Production.sol";
 import "contracts/transmuter/Storage.sol" as Storage;
 import { DiamondCut } from "contracts/transmuter/facets/DiamondCut.sol";
-import { DiamondEtherscan } from "contracts/transmuter/DiamondEtherscan.sol";
+import { DiamondEtherscan } from "contracts/transmuter/facets/DiamondEtherscan.sol";
 import { DiamondLoupe } from "contracts/transmuter/facets/DiamondLoupe.sol";
 import { DiamondProxy } from "contracts/transmuter/DiamondProxy.sol";
 import { Getters } from "contracts/transmuter/facets/Getters.sol";
@@ -66,10 +66,6 @@ contract DeployTransmuter is Utils {
         facetNames.push("DiamondCut");
         facetAddressList.push(address(new DiamondCut()));
 
-        // TODO don't forget to set the dummy implementation as an implementation (after having regenerated it)
-        facetNames.push("DiamondEtherscan");
-        facetAddressList.push(address(new DiamondEtherscan()));
-
         facetNames.push("DiamondLoupe");
         facetAddressList.push(address(new DiamondLoupe()));
 
@@ -90,6 +86,10 @@ contract DeployTransmuter is Utils {
 
         facetNames.push("Swapper");
         facetAddressList.push(address(new Swapper()));
+
+        // TODO don't forget to set the dummy implementation as an implementation (after having regenerated it)
+        facetNames.push("DiamondEtherscan");
+        facetAddressList.push(address(new DiamondEtherscan()));
 
         // Build appropriate payload
         uint256 n = facetNames.length;

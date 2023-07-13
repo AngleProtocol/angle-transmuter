@@ -91,6 +91,10 @@ struct DiamondStorage {
     IAccessControlManager accessControlManager;  // Contract handling access control
 }
 
+struct ImplementationStorage {
+    address implementation;                      // Dummy implementation address for Etherscan usability
+}
+
 struct ManagerStorage {
     IERC20[] subCollaterals;                     // Subtokens handled by the manager or strategies
     bytes config;                                // Additional configuration data
