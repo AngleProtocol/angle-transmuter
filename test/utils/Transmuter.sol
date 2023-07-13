@@ -53,11 +53,6 @@ abstract contract Transmuter is Helper {
         facetNames.push("Swapper");
         facetAddressList.push(address(new Swapper()));
 
-        // TODO don't forget to regenerate this contract if you
-        // changed any code on the Transmuter
-        facetNames.push("DiamondEtherscan");
-        facetAddressList.push(address(new DummyDiamondImplementation()));
-
         // Build appropriate payload
         uint256 n = facetNames.length;
         FacetCut[] memory cut = new FacetCut[](n);

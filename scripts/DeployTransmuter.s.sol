@@ -15,6 +15,7 @@ import { Redeemer } from "contracts/transmuter/facets/Redeemer.sol";
 import { RewardHandler } from "contracts/transmuter/facets/RewardHandler.sol";
 import { SettersGovernor } from "contracts/transmuter/facets/SettersGovernor.sol";
 import { SettersGuardian } from "contracts/transmuter/facets/SettersGuardian.sol";
+import { DummyDiamondImplementation } from "./generated/DummyDiamondImplementation.sol";
 import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 
@@ -84,6 +85,11 @@ contract DeployTransmuter is Utils {
 
         facetNames.push("Swapper");
         facetAddressList.push(address(new Swapper()));
+
+        // TODO don't forget to regenerate this contract if you
+        // changed any code on the Transmuter
+        facetNames.push("DiamondEtherscan");
+        facetAddressList.push(address(new DummyDiamondImplementation()));
 
         // Build appropriate payload
         uint256 n = facetNames.length;

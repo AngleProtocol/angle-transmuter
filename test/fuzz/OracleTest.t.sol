@@ -14,7 +14,6 @@ import { ISfrxETH } from "contracts/interfaces/external/frax/ISfrxETH.sol";
 import { ICbETH } from "contracts/interfaces/external/coinbase/ICbETH.sol";
 import { IRETH } from "contracts/interfaces/external/rocketPool/IRETH.sol";
 import { stdError } from "forge-std/Test.sol";
-import { console } from "forge-std/console.sol";
 
 contract OracleTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
