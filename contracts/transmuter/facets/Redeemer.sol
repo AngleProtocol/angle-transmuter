@@ -115,7 +115,8 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
         uint256[] memory subCollateralsTracker;
         (tokens, amounts, subCollateralsTracker) = _quoteRedemptionCurve(amount);
         // Check that the provided slippage tokens length is identical to the redeem one
-        if (amounts.length != minAmountOuts.length) revert InvalidLengths();
+        uint256 amountsLength = amounts.length;
+        if (amountsLength != minAmountOuts.length) revert InvalidLengths();
         // Updating the normalizer enables to simultaneously and proportionally reduce the amount
         // of stablecoins issued from each collateral without having to loop through each of them
         _updateNormalizer(amount, false);
@@ -124,7 +125,6 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
 
         address[] memory collateralListMem = ts.collateralList;
         uint256 indexCollateral;
-        uint256 amountsLength = amounts.length;
         for (uint256 i; i < amountsLength; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             // If a token is in the `forfeitTokens` list, then it is not sent as part of the redemption process
