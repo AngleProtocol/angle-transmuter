@@ -144,7 +144,7 @@ library LibSetters {
         if (collatInfo.decimals == 0) revert NotCollateral();
         if (whitelistStatus == 1) {
             // Sanity check
-            LibWhitelist.parseWhitelistData(whitelistData);
+            LibWhitelist.checkWhitelist(whitelistData, address(this));
             collatInfo.whitelistData = whitelistData;
         }
         collatInfo.onlyWhitelisted = whitelistStatus;

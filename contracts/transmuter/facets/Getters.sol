@@ -160,11 +160,12 @@ contract Getters is IGetters {
 
     /// @inheritdoc IGetters
     function isWhitelistedForType(WhitelistType whitelistType, address sender) external view returns (bool) {
-        return LibWhitelist.isWhitelistedForType(whitelistType, sender);
+        return s.transmuterStorage().isWhitelistedForType[whitelistType][sender] > 0;
     }
 
     /// @inheritdoc IGetters
-    function isWhitelistedForCollateral(address collateral, address sender) external view returns (bool) {
+    /// @dev This function is non view as it may consult external non view functions from whitelist providers
+    function isWhitelistedForCollateral(address collateral, address sender) external returns (bool) {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
         return (collatInfo.onlyWhitelisted == 0 || LibWhitelist.checkWhitelist(collatInfo.whitelistData, sender));
     }
