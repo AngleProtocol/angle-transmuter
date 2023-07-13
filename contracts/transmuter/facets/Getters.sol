@@ -164,6 +164,7 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
+    /// @dev This function is non view as it may consult external non view functions from whitelist providers
     function isWhitelistedForCollateral(address collateral, address sender) external returns (bool) {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
         return (collatInfo.onlyWhitelisted == 0 || LibWhitelist.checkWhitelist(collatInfo.whitelistData, sender));
