@@ -5,6 +5,7 @@ pragma solidity ^0.8.19;
 import { stdError } from "forge-std/Test.sol";
 
 import "mock/MockManager.sol";
+import { MockKeyringGuard } from "mock/MockKeyringGuard.sol";
 
 import "contracts/transmuter/Storage.sol";
 import { Test } from "contracts/transmuter/configs/Test.sol";
@@ -671,6 +672,35 @@ contract Test_Setters_SetWhitelistStatus is Fixture {
 
         assert(transmuter.isWhitelistedCollateral(address(eurA)));
         assertEq(transmuter.getCollateralWhitelistData(address(eurA)), whitelistData);
+    }
+
+    function test_SetPositiveStatusThroughNonEmptyData() public {
+        MockKeyringGuard keyringGuard = new MockKeyringGuard();
+
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(0)));
+        assert(!transmuter.isWhitelistedCollateral(address(eurA)));
+        bytes memory emptyData;
+        assertEq(transmuter.getCollateralWhitelistData(address(eurA)), emptyData);
+
+        vm.expectEmit(address(transmuter));
+        emit LibSetters.CollateralWhitelistStatusUpdated(address(eurA), whitelistData, 1);
+
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
+
+        assert(transmuter.isWhitelistedCollateral(address(eurA)));
+        assertEq(transmuter.getCollateralWhitelistData(address(eurA)), whitelistData);
+
+        assert(!transmuter.isWhitelistedForCollateral(address(eurA), address(bob)));
+        whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(keyringGuard)));
+        hoax(governor);
+        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
+        assertEq(transmuter.getCollateralWhitelistData(address(eurA)), whitelistData);
+        assert(transmuter.isWhitelistedCollateral(address(eurA)));
+        keyringGuard.setAuthorized(address(bob), true);
+        assert(transmuter.isWhitelistedForCollateral(address(eurA), address(bob)));
+        keyringGuard.setAuthorized(address(bob), false);
+        assert(!transmuter.isWhitelistedForCollateral(address(eurA), address(bob)));
     }
 
     function test_SetNegativeStatus() public {
