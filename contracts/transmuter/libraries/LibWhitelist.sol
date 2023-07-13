@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.19;
 
-import { IKeyringGuard } from "../../interfaces/external/Keyring/IKeyringGuard.sol";
+import { IKeyringGuard } from "interfaces/external/keyring/IKeyringGuard.sol";
 
 import { LibStorage as s } from "./LibStorage.sol";
 
