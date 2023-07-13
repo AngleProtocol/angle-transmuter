@@ -101,11 +101,12 @@ interface IGetters {
     /// @notice Returns if `sender` is trusted to update sell rewards
     function isTrustedSeller(address sender) external view returns (bool);
 
-    /// @notice Checks whether `sender` is whitelisted for collaterals with type `whitelistType`
+    /// @notice Checks whether `sender` has a non null entry in the `isWhitelistedForType` storage mapping
+    /// @dev Note that ultimately whitelisting may depend as well on external providers
     function isWhitelistedForType(WhitelistType whitelistType, address sender) external view returns (bool);
 
     /// @notice Checks whether `sender` can deal with `collateral` during burns and redemptions
-    function isWhitelistedForCollateral(address collateral, address sender) external view returns (bool);
+    function isWhitelistedForCollateral(address collateral, address sender) external returns (bool);
 
     /// @notice Checks whether only whitelisted address can deal with `collateral` during burns and redemptions
     function isWhitelistedCollateral(address collateral) external view returns (bool);

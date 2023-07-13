@@ -961,7 +961,8 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256 amountOut = transmuter.quoteIn(burnAmount, address(agToken), _collaterals[fromToken]);
         uint256 amountIn = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
 
-        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        bytes memory emptyData;
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, emptyData);
         hoax(governor);
         transmuter.setWhitelistStatus(_collaterals[fromToken], 1, whitelistData);
 
@@ -1015,7 +1016,8 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256 prevBalanceStable = agToken.balanceOf(alice);
         uint256 prevTransmuterCollat = IERC20(_collaterals[fromToken]).balanceOf(address(transmuter));
 
-        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        bytes memory emptyData;
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, emptyData);
         hoax(governor);
         transmuter.setWhitelistStatus(_collaterals[fromToken], 1, whitelistData);
 
@@ -1078,7 +1080,8 @@ contract BurnTest is Fixture, FunctionUtils {
 
         uint256 prevBalanceStable = agToken.balanceOf(alice);
 
-        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        bytes memory emptyData;
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, emptyData);
         hoax(governor);
         transmuter.setWhitelistStatus(_collaterals[fromToken], 1, whitelistData);
 
