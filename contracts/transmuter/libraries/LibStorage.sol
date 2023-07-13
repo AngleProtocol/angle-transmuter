@@ -3,7 +3,7 @@
 pragma solidity ^0.8.19;
 
 import "../../utils/Constants.sol";
-import { DiamondStorage, TransmuterStorage } from "../Storage.sol";
+import { DiamondStorage, ImplementationStorage, TransmuterStorage } from "../Storage.sol";
 
 /// @title LibStorage
 /// @author Angle Labs, Inc.
@@ -23,6 +23,15 @@ library LibStorage {
         bytes32 position = TRANSMUTER_STORAGE_POSITION;
         assembly {
             ts.slot := position
+        }
+    }
+
+    /// @notice Returns the storage struct stored at the `IMPLEMENTATION_STORAGE_POSITION` slot
+    /// @dev This struct handles the logic for making the contract easily usable on Etherscan
+    function implementationStorage() internal pure returns (ImplementationStorage storage ims) {
+        bytes32 position = IMPLEMENTATION_STORAGE_POSITION;
+        assembly {
+            ims.slot := position
         }
     }
 }

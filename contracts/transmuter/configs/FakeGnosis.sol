@@ -80,10 +80,12 @@ contract FakeGnosis {
                     quoteType
                 );
             }
+            bytes memory targetData;
             bytes memory oracleConfig = abi.encode(
                 Storage.OracleReadType.CHAINLINK_FEEDS,
-                Storage.OracleTargetType.STABLE,
-                readData
+                Storage.OracleReadType.STABLE,
+                readData,
+                targetData
             );
             collaterals[i] = CollateralSetupProd(
                 _collateralAddresses[i],

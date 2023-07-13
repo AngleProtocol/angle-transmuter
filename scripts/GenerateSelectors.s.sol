@@ -20,7 +20,7 @@ contract GenerateSelectors is Utils {
         facetNames.push("SettersGovernor");
         facetNames.push("SettersGuardian");
         facetNames.push("Swapper");
-        facetNames.push("DiamondEtherscanFacet");
+        facetNames.push("DiamondEtherscan");
 
         string memory json = "";
         for (uint256 i = 0; i < facetNames.length; ++i) {

@@ -1294,3 +1294,32 @@ contract Test_Setters_RevokeCollateral is Fixture {
         assert(!managed);
     }
 }
+
+contract Test_Setters_DiamondEtherscan is Fixture {
+    event Upgraded(address indexed implementation);
+
+    function test_RevertWhen_NotGovernor() public {
+        vm.expectRevert(Errors.NotGovernor.selector);
+        transmuter.setDummyImplementation(address(bob));
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        hoax(alice);
+        transmuter.setDummyImplementation(address(bob));
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        hoax(guardian);
+        transmuter.setDummyImplementation(address(bob));
+
+        hoax(governor);
+        vm.expectEmit(address(transmuter));
+        emit Upgraded(address(bob));
+        transmuter.setDummyImplementation(address(bob));
+        assertEq(transmuter.implementation(), address(bob));
+
+        hoax(governor);
+        vm.expectEmit(address(transmuter));
+        emit Upgraded(address(alice));
+        transmuter.setDummyImplementation(address(alice));
+        assertEq(transmuter.implementation(), address(alice));
+    }
+}

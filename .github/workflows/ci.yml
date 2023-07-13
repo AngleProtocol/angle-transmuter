@@ -28,7 +28,7 @@ defaults:
 jobs:
   run-linters:
     name: Run Linters
-    if: github.ref == 'refs/heads/main' || github.event.review.state == 'approved' || github.event.action == 'ready_for_review' || github.event.action == 'review_requested'
+    if: github.ref == 'refs/heads/main' || github.event.inputs.workflow_to_run == 'all' || github.event.review.state == 'approved' || github.event.action == 'ready_for_review' || github.event.action == 'review_requested'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
