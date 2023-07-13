@@ -13,7 +13,7 @@ import "../Storage.sol";
 /// @author Angle Labs, Inc.
 library LibWhitelist {
     /// @notice Checks whether `sender` is whitelisted for a collateral with `whitelistData`
-    function checkWhitelist(bytes memory whitelistData, address sender) internal view returns (bool) {
+    function checkWhitelist(bytes memory whitelistData, address sender) internal returns (bool) {
         (WhitelistType whitelistType, bytes memory data) = abi.decode(whitelistData, (WhitelistType, bytes));
         if (s.transmuterStorage().isWhitelistedForType[whitelistType][sender] > 0) return true;
         if (data.length != 0) {

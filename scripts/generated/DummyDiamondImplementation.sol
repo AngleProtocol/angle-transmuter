@@ -104,7 +104,7 @@ contract DummyDiamondImplementation {
 
     function isWhitelistedCollateral(address collateral) external view returns (bool) {}
 
-    function isWhitelistedForCollateral(address collateral, address sender) external view returns (bool) {}
+    function isWhitelistedForCollateral(address collateral, address sender) external returns (bool) {}
 
     function isWhitelistedForType(uint8 whitelistType, address sender) external view returns (bool) {}
 

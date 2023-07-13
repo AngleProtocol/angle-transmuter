@@ -105,7 +105,8 @@ interface IGetters {
     function isWhitelistedForType(WhitelistType whitelistType, address sender) external view returns (bool);
 
     /// @notice Checks whether `sender` can deal with `collateral` during burns and redemptions
-    function isWhitelistedForCollateral(address collateral, address sender) external view returns (bool);
+    /// @dev May perform some state changes
+    function isWhitelistedForCollateral(address collateral, address sender) external returns (bool);
 
     /// @notice Checks whether only whitelisted address can deal with `collateral` during burns and redemptions
     function isWhitelistedCollateral(address collateral) external view returns (bool);

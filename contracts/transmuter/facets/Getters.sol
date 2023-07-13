@@ -164,7 +164,7 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
-    function isWhitelistedForCollateral(address collateral, address sender) external view returns (bool) {
+    function isWhitelistedForCollateral(address collateral, address sender) external returns (bool) {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
         return (collatInfo.onlyWhitelisted == 0 || LibWhitelist.checkWhitelist(collatInfo.whitelistData, sender));
     }
