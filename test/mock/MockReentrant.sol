@@ -38,7 +38,7 @@ contract ReentrantRedeemGetCollateralRatio {
         uint256 amount,
         bytes calldata data,
         bytes calldata operatorData
-    ) external {
+    ) external view {
         // reenter here
         if (from != address(0)) {
             // It should revert here
