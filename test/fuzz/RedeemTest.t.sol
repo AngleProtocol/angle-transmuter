@@ -963,7 +963,8 @@ contract RedeemTest is Fixture, FunctionUtils {
 
         _sweepBalances(alice, _collaterals);
 
-        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        bytes memory emptyData;
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, emptyData);
         hoax(governor);
         transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
 
@@ -1022,7 +1023,8 @@ contract RedeemTest is Fixture, FunctionUtils {
 
         _sweepBalances(alice, _collaterals);
 
-        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(transmuter)));
+        bytes memory emptyData;
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, emptyData);
         hoax(governor);
         transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
         hoax(governor);
