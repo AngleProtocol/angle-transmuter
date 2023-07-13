@@ -17,10 +17,10 @@ import { SettersGovernor } from "contracts/transmuter/facets/SettersGovernor.sol
 import { SettersGuardian } from "contracts/transmuter/facets/SettersGuardian.sol";
 import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
-import { MockTokenPermit } from "../../../test/mock/MockTokenPermit.sol";
+import { MockTokenPermit } from "test/mock/MockTokenPermit.sol";
 import { MockCoreBorrow } from "borrow/mock/MockCoreBorrow.sol";
 import { DummyDiamondImplementation } from "../generated/DummyDiamondImplementation.sol";
-import { MockChainlinkOracle } from "../../../test/mock/MockChainlinkOracle.sol";
+import { MockChainlinkOracle } from "test/mock/MockChainlinkOracle.sol";
 
 contract GnosisDeployTransmuter is Utils {
     using strings for *;
@@ -128,8 +128,8 @@ contract GnosisDeployTransmuter is Utils {
 
         // TODO when deploying don't forget to regenerate this contract if you
         // changed any code on the Transmuter
-        facetNames.push("DiamondEtherscanFacet");
-        DummyDiamondImplementation dummyImpl = new DummyDiamondImplementation();
+        facetNames.push("DiamondEtherscan");
+        facetAddressList.push(address(new DummyDiamondImplementation()));
 
         // Putting it at the end as it is the one failing when verifying on etherscan
         facetNames.push("Redeemer");

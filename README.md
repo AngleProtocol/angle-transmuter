@@ -218,13 +218,18 @@ yarn gas
 
 ---
 
-### Verify on Etherscan ✅
+### Etherscan Verification ✅
 
-If you are a governor, follow the instruction `https://github.com/zdenham/diamond-etherscan/blob/main/README.md` - you will have to download the repo - and upload the dummy
-implementation `./scripts/generated/DummyDiamonImplementation.sol`.
-Run the script `./scripts/gnosis/VerifyProxyEtherscan.s.sol` - it will deploy an etherscan facet (it should only be done once) and deploy
-a dummy implementation which has all facets entrypoints. Then go to Etherscan and point the `DiamondProxy` to the `DiamondEtherscanFacet` contract.
-If you happen to update any facet, you need to call `DiamondEtherscanFacet.setDummyImplementation(XXX)` with the newly deployed dummy implementation
+To facilitate the interactions with the Diamond Proxy contract on Etherscan, one solution introduced [here](https://github.com/zdenham/diamond-etherscan/blob/main/README.md) is to deploy the system with a dummy facet that is in fact a noop mock of the whole diamond.
+
+To get the dummy implementation, solution is to:
+
+- download the [repo](https://github.com/zdenham/diamond-etherscan/blob/main/README.md) and follow the instructions
+- upload the dummy implementation [here](./scripts/generated/DummyDiamondImplementation.sol)
+- if the address used has ownership on the Transmuter contracts, run [this script](./scripts/gnosis/VerifyProxyEtherscan.s.sol) to deploy the new dummy facet and add it to the whole Transmuter system
+- go to Etherscan and point the `DiamondProxy` to the `DiamondEtherscanFacet` contract
+
+Every time a facet is updated with a new function or a change in interface, a new dummy implementation should be deployed and governance should call `DiamondEtherscan.setDummyImplementation()` with the newly deployed dummy implementation.
 
 ---
 

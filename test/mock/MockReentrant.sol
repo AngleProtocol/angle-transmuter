@@ -31,14 +31,7 @@ contract ReentrantRedeemGetCollateralRatio {
         registry.setInterfaceImplementer(address(this), _TOKENS_RECIPIENT_INTERFACE_HASH, address(this));
     }
 
-    function tokensReceived(
-        address operator,
-        address from,
-        address to,
-        uint256 amount,
-        bytes calldata data,
-        bytes calldata operatorData
-    ) external view {
+    function tokensReceived(address, address from, address, uint256, bytes calldata, bytes calldata) external view {
         // reenter here
         if (from != address(0)) {
             // It should revert here
@@ -78,14 +71,7 @@ contract ReentrantRedeemSwap {
         registry.setInterfaceImplementer(address(this), _TOKENS_RECIPIENT_INTERFACE_HASH, address(this));
     }
 
-    function tokensReceived(
-        address operator,
-        address from,
-        address to,
-        uint256 amount,
-        bytes calldata data,
-        bytes calldata operatorData
-    ) external {
+    function tokensReceived(address, address from, address, uint256, bytes calldata, bytes calldata) external {
         // reenter here
         if (from != address(0)) {
             // It should revert here

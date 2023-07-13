@@ -32,6 +32,8 @@ contract Production {
         // Set Collaterals
         CollateralSetupProd[] memory collaterals = new CollateralSetupProd[](2);
 
+        bytes memory targetData;
+
         // EUROC
         {
             uint64[] memory xMintFeeEuroc = new uint64[](3);
@@ -57,8 +59,9 @@ contract Production {
             bytes memory readData;
             bytes memory oracleConfig = abi.encode(
                 Storage.OracleReadType.NO_ORACLE,
-                Storage.OracleTargetType.STABLE,
-                readData
+                Storage.OracleReadType.STABLE,
+                readData,
+                targetData
             );
             collaterals[0] = CollateralSetupProd(
                 euroc,
@@ -95,8 +98,9 @@ contract Production {
             bytes memory readData;
             bytes memory oracleConfig = abi.encode(
                 Storage.OracleReadType.NO_ORACLE,
-                Storage.OracleTargetType.STABLE,
-                readData
+                Storage.OracleReadType.STABLE,
+                readData,
+                targetData
             );
             collaterals[1] = CollateralSetupProd(
                 bc3m,

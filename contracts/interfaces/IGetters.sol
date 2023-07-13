@@ -75,14 +75,22 @@ interface IGetters {
     ) external view returns (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption);
 
     /// @notice Returns the data used to compute oracle values for `collateral`
-    /// @return readType Type of oracle (Chainlink, external smart contract, ...)
-    /// @return targetType Type of target price for the collateral: is it that of the stablecoin or evolve
-    /// following something like wstETH?
-    /// @return data Extra data needed to read the oracle. For Chainlink type of oracles, this data is supposed to give
+    /// @return oracleType Type of oracle (Chainlink, external smart contract, ...)
+    /// @return targetType Type passed to read the value of the target price
+    /// @return oracleData Extra data needed to read the oracle. For Chainlink oracles, this data is supposed to give
     /// the addresses of the Chainlink feeds to read, the stale periods for each feed, ...
+    /// @return targetData Extra data needed to read the target price of the asset
     function getOracle(
         address collateral
-    ) external view returns (OracleReadType readType, OracleTargetType targetType, bytes memory data);
+    )
+        external
+        view
+        returns (
+            OracleReadType oracleType,
+            OracleReadType targetType,
+            bytes memory oracleData,
+            bytes memory targetData
+        );
 
     /// @notice Returns if the associated functionality is paused or not
     function isPaused(address collateral, ActionType action) external view returns (bool);

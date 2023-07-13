@@ -36,8 +36,9 @@ contract Test_Layout is Fixture {
         hoax(governor);
         transmuter.toggleTrusted(alice, TrustedType.Seller);
         address accessControlManager = address(transmuter.accessControlManager());
-        // hoax(governor);
-        // transmuter.toggleWhitelist(WhitelistType.BACKED, alice);
+        hoax(governor);
+        transmuter.setDummyImplementation(address(alice));
+        address implementation = transmuter.implementation();
 
         _etch();
 
@@ -62,8 +63,9 @@ contract Test_Layout is Fixture {
             uint216 normalizedStables,
             bytes memory oracleConfig,
             bytes memory whitelistData,
-            ManagerStorage memory managerData
+
         ) = layout.collaterals(collateralList[0]);
+
         assertEq(isManaged, collateral.isManaged);
         assertEq(isMintLive, collateral.isMintLive);
         assertEq(isBurnLive, collateral.isBurnLive);
@@ -85,6 +87,7 @@ contract Test_Layout is Fixture {
         }
 
         assertEq(layout.accessControlManager(), accessControlManager);
+        assertEq(layout.implementation(), implementation);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
