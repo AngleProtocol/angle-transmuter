@@ -7,6 +7,7 @@ import { ITransmuter } from "interfaces/ITransmuter.sol";
 import { DiamondProxy } from "contracts/transmuter/DiamondProxy.sol";
 import "contracts/transmuter/Storage.sol";
 import { DiamondCut } from "contracts/transmuter/facets/DiamondCut.sol";
+import { DiamondEtherscan } from "contracts/transmuter/facets/DiamondEtherscan.sol";
 import { DiamondLoupe } from "contracts/transmuter/facets/DiamondLoupe.sol";
 import { Getters } from "contracts/transmuter/facets/Getters.sol";
 import { Redeemer } from "contracts/transmuter/facets/Redeemer.sol";
@@ -31,6 +32,9 @@ abstract contract Transmuter is Helper {
         // Deploy every facet
         facetNames.push("DiamondCut");
         facetAddressList.push(address(new DiamondCut()));
+
+        facetNames.push("DiamondEtherscan");
+        facetAddressList.push(address(new DiamondEtherscan()));
 
         facetNames.push("DiamondLoupe");
         facetAddressList.push(address(new DiamondLoupe()));
