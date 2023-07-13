@@ -761,7 +761,6 @@ contract RedeemTest is Fixture, FunctionUtils {
         (uint256 mintedStables, ) = _loadReserves(initialAmounts, transferProportion);
 
         // check collateral ratio first
-        (uint64 collatRatio, uint256 stablecoinsIssued) = transmuter.getCollateralRatio();
         if (mintedStables == 0) return;
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
@@ -1562,7 +1561,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         transmuter.setCollateralManager(token, managerData);
     }
 
-    function _computeCollateralisation() internal returns (uint256 totalCollateralization) {
+    function _computeCollateralisation() internal view returns (uint256 totalCollateralization) {
         address[] memory collateralList = transmuter.getCollateralList();
         uint256 collateralListLength = collateralList.length;
 
