@@ -50,8 +50,8 @@ contract VerifyProxyEtherscan is Utils {
     function _deployDiamondEtherscan() internal {
         // Deploy every facet
         facetNames.push("DiamondEtherscan");
-        // etherscanFacet = new DiamondEtherscan();
-        etherscanFacet = DiamondEtherscan(0xC492fBAe68cE6C5E14C7ed5cd8a59babD5c90e4C);
+        etherscanFacet = new DiamondEtherscan();
+        // etherscanFacet = DiamondEtherscan(0xC492fBAe68cE6C5E14C7ed5cd8a59babD5c90e4C);
         facetAddressList.push(address(etherscanFacet));
 
         string memory json = vm.readFile(JSON_SELECTOR_PATH);

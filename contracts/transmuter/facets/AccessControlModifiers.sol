@@ -29,7 +29,7 @@ contract AccessControlModifiers {
     modifier nonReentrant() {
         TransmuterStorage storage ts = s.transmuterStorage();
         // Reentrant protection
-        // On the first call, `_notEntered` will be true
+        // On the first call, `ts.statusReentrant` will be `NOT_ENTERED`
         if (ts.statusReentrant == ENTERED) revert ReentrantCall();
         // Any calls to the `nonReentrant` modifier after this point will fail
         ts.statusReentrant = ENTERED;

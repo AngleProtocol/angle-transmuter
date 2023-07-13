@@ -226,7 +226,7 @@ To get the dummy implementation, solution is to:
 
 - download the [repo](https://github.com/zdenham/diamond-etherscan/blob/main/README.md) and follow the instructions
 - upload the dummy implementation [here](./scripts/generated/DummyDiamondImplementation.sol)
-- run [this script](./scripts/gnosis/VerifyProxyEtherscan.s.sol) to deploy the new dummy facet. If the address you're doing this with has ownership on the Transmuter contracts, it will also add the facet to the whole Transmuter system
+- if the address used has ownership on the Transmuter contracts, run [this script](./scripts/gnosis/VerifyProxyEtherscan.s.sol) to deploy the new dummy facet and add it to the whole Transmuter system
 - go to Etherscan and point the `DiamondProxy` to the `DiamondEtherscanFacet` contract
 
 Every time a facet is updated with a new function or a change in interface, a new dummy implementation should be deployed and governance should call `DiamondEtherscan.setDummyImplementation()` with the newly deployed dummy implementation.
