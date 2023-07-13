@@ -11,13 +11,17 @@ import { IRETH } from "interfaces/external/rocketPool/IRETH.sol";
                                                  STORAGE SLOTS                                                  
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-/// @dev Storage position of `DiamondStorage` structure.
+/// @dev Storage position of `DiamondStorage` structure
 /// @dev Equals `keccak256("diamond.standard.diamond.storage") - 1`
 bytes32 constant DIAMOND_STORAGE_POSITION = 0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131b;
 
-/// @dev Storage position of `TransmuterStorage` structure.
+/// @dev Storage position of `TransmuterStorage` structure
 /// @dev Equals `keccak256("diamond.standard.transmuter.storage") - 1`
 bytes32 constant TRANSMUTER_STORAGE_POSITION = 0xc1f2f38dde3351ac0a64934139e816326caa800303a1235dc53707d0de05d8bd;
+
+/// @dev Storage position of `ImplementationStorage` structure
+/// @dev Equals `keccak256("eip1967.proxy.implementation") - 1`
+bytes32 constant IMPLEMENTATION_STORAGE_POSITION = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                      MATHS                                                      
