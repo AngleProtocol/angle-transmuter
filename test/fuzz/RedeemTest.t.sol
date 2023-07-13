@@ -1022,13 +1022,14 @@ contract RedeemTest is Fixture, FunctionUtils {
         );
 
         _sweepBalances(alice, _collaterals);
-
-        bytes memory emptyData;
-        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, emptyData);
-        hoax(governor);
-        transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
-        hoax(governor);
-        transmuter.setWhitelistStatus(address(eurB), 1, whitelistData);
+        {
+            bytes memory emptyData;
+            bytes memory whitelistData = abi.encode(WhitelistType.BACKED, emptyData);
+            hoax(governor);
+            transmuter.setWhitelistStatus(address(eurA), 1, whitelistData);
+            hoax(governor);
+            transmuter.setWhitelistStatus(address(eurB), 1, whitelistData);
+        }
         uint256 amountBurnt = agToken.balanceOf(alice);
         if (mintedStables == 0 || amountBurnt == 0) return;
         (, uint256[] memory quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
