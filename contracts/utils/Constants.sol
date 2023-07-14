@@ -11,13 +11,17 @@ import { IRETH } from "interfaces/external/rocketPool/IRETH.sol";
                                                  STORAGE SLOTS                                                  
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-/// @dev Storage position of `DiamondStorage` structure.
+/// @dev Storage position of `DiamondStorage` structure
 /// @dev Equals `keccak256("diamond.standard.diamond.storage") - 1`
 bytes32 constant DIAMOND_STORAGE_POSITION = 0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131b;
 
-/// @dev Storage position of `TransmuterStorage` structure.
+/// @dev Storage position of `TransmuterStorage` structure
 /// @dev Equals `keccak256("diamond.standard.transmuter.storage") - 1`
 bytes32 constant TRANSMUTER_STORAGE_POSITION = 0xc1f2f38dde3351ac0a64934139e816326caa800303a1235dc53707d0de05d8bd;
+
+/// @dev Storage position of `ImplementationStorage` structure
+/// @dev Equals `keccak256("eip1967.proxy.implementation") - 1`
+bytes32 constant IMPLEMENTATION_STORAGE_POSITION = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                      MATHS                                                      
@@ -32,6 +36,19 @@ uint256 constant HALF_BASE_27 = 1e27 / 2;
 uint256 constant BASE_27 = 1e27;
 uint256 constant BASE_36 = 1e36;
 uint256 constant MAX_BURN_FEE = 999_000_000;
+uint256 constant MAX_MINT_FEE = BASE_12 - 1;
+
+/*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                     REENTRANT                                                      
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+// The values being non-zero value makes deployment a bit more expensive,
+// but in exchange the refund on every call to nonReentrant will be lower in
+// amount. Since refunds are capped to a percentage of the total
+// transaction's gas, it is best to keep them low in cases like this one, to
+// increase the likelihood of the full refund coming into effect.
+uint8 constant NOT_ENTERED = 1;
+uint8 constant ENTERED = 2;
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                COMMON ADDRESSES                                                 

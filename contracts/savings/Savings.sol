@@ -224,7 +224,11 @@ contract Savings is BaseSavings {
     }
 
     /// @notice Updates the inflation rate for depositing `asset` in this contract
-    function setRate(uint208 newRate) external onlyGovernor {
+    /// @dev Guardian can reduce the rate but not increase it
+    function setRate(uint208 newRate) external {
+        if (newRate < rate) {
+            if (!accessControlManager.isGovernorOrGuardian(msg.sender)) revert NotGovernorOrGuardian();
+        } else if (!accessControlManager.isGovernor(msg.sender)) revert NotGovernor();
         _accrue();
         rate = newRate;
         emit RateUpdated(newRate);

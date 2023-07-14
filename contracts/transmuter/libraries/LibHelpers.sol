@@ -20,7 +20,7 @@ library LibHelpers {
     /// or -1 in the other case
     function checkList(address token, address[] memory tokens) internal pure returns (int256) {
         uint256 tokensLength = tokens.length;
-        for (uint256 i = 0; i < tokensLength; ++i) {
+        for (uint256 i; i < tokensLength; ++i) {
             if (token == tokens[i]) return int256(i);
         }
         return -1;

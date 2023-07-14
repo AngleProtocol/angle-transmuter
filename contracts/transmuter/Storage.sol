@@ -42,20 +42,17 @@ enum QuoteType {
 enum OracleReadType {
     CHAINLINK_FEEDS,
     EXTERNAL,
-    NO_ORACLE
-}
-
-enum OracleQuoteType {
-    UNIT,
-    TARGET
-}
-
-enum OracleTargetType {
+    NO_ORACLE,
     STABLE,
     WSTETH,
     CBETH,
     RETH,
     SFRXETH
+}
+
+enum OracleQuoteType {
+    UNIT,
+    TARGET
 }
 
 enum WhitelistType {
@@ -92,6 +89,10 @@ struct DiamondStorage {
     bytes4[] selectors;                          // List of all available selectors
     mapping(bytes4 => FacetInfo) selectorInfo;   // Selector to (address, position in list)
     IAccessControlManager accessControlManager;  // Contract handling access control
+}
+
+struct ImplementationStorage {
+    address implementation;                      // Dummy implementation address for Etherscan usability
 }
 
 struct ManagerStorage {

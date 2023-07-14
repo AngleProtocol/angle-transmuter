@@ -36,7 +36,7 @@ contract SavingsVest is BaseSavings {
     uint64 public protocolSafetyFee;
 
     /// @notice The period in seconds over which locked profit is unlocked
-    /// @dev Cannot be 0 as it opens the system to sandwich attacks
+    /// @dev A vesting period of 0 opens the system to sandwich attacks
     uint32 public vestingPeriod;
 
     /// @notice Minimum time between two calls to the `accrue` function
@@ -52,6 +52,7 @@ contract SavingsVest is BaseSavings {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     event FiledUint64(uint64 param, bytes32 what);
+    event SurplusManagerUpdated(address indexed _surplusManager);
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     INITIALIZATION                                                  
@@ -199,6 +200,7 @@ contract SavingsVest is BaseSavings {
     /// @notice Sets the `surplusManager` address which handles protocol fees
     function setSurplusManager(address _surplusManager) external onlyGuardian {
         surplusManager = _surplusManager;
+        emit SurplusManagerUpdated(_surplusManager);
     }
 
     /// @notice Changes the contract parameters

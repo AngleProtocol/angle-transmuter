@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.19;
 
+import { Address } from "oz/utils/Address.sol";
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
-import { Address } from "oz/utils/Address.sol";
 import { Math } from "oz/utils/math/Math.sol";
 import { SafeCast } from "oz/utils/math/SafeCast.sol";
 
@@ -13,12 +13,12 @@ import { ISwapper } from "interfaces/ISwapper.sol";
 import { IPermit2, PermitTransferFrom } from "interfaces/external/permit2/IPermit2.sol";
 import { SignatureTransferDetails, TokenPermissions } from "interfaces/external/permit2/IPermit2.sol";
 
+import { AccessControlModifiers } from "./AccessControlModifiers.sol";
 import { LibHelpers } from "../libraries/LibHelpers.sol";
 import { LibManager } from "../libraries/LibManager.sol";
 import { LibOracle } from "../libraries/LibOracle.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibWhitelist } from "../libraries/LibWhitelist.sol";
-import { AccessControlModifiers } from "./AccessControlModifiers.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -155,7 +155,7 @@ contract Swapper is ISwapper, AccessControlModifiers {
         if (mint) return _quoteMintExactInput(collatInfo, amountIn);
         else {
             amountOut = _quoteBurnExactInput(tokenOut, collatInfo, amountIn);
-            _checkAmounts(collatInfo, amountOut);
+            _checkAmounts(tokenOut, collatInfo, amountOut);
         }
     }
 
@@ -164,7 +164,7 @@ contract Swapper is ISwapper, AccessControlModifiers {
         (bool mint, Collateral storage collatInfo) = _getMintBurn(tokenIn, tokenOut, 0);
         if (mint) return _quoteMintExactOutput(collatInfo, amountOut);
         else {
-            _checkAmounts(collatInfo, amountOut);
+            _checkAmounts(tokenOut, collatInfo, amountOut);
             return _quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         }
     }
@@ -190,8 +190,8 @@ contract Swapper is ISwapper, AccessControlModifiers {
                 uint128 changeAmount = (amountOut.mulDiv(BASE_27, ts.normalizer, Math.Rounding.Up)).toUint128();
                 // The amount of stablecoins issued from a collateral are not stored as absolute variables, but
                 // as variables normalized by a `normalizer`
-                collatInfo.normalizedStables += uint216(changeAmount);
-                ts.normalizedStables += changeAmount;
+                collatInfo.normalizedStables = collatInfo.normalizedStables + uint216(changeAmount);
+                ts.normalizedStables = ts.normalizedStables + changeAmount;
                 if (permitData.length > 0) {
                     PERMIT_2.functionCall(permitData);
                 } else if (collatInfo.isManaged > 0)
@@ -211,8 +211,8 @@ contract Swapper is ISwapper, AccessControlModifiers {
                 uint128 changeAmount = ((amountIn * BASE_27) / ts.normalizer).toUint128();
                 // This will underflow when the system is trying to burn more stablecoins than what has been issued
                 // from this collateral
-                collatInfo.normalizedStables -= uint216(changeAmount);
-                ts.normalizedStables -= changeAmount;
+                collatInfo.normalizedStables = collatInfo.normalizedStables - uint216(changeAmount);
+                ts.normalizedStables = ts.normalizedStables - changeAmount;
                 IAgToken(tokenIn).burnSelf(amountIn, msg.sender);
                 if (collatInfo.isManaged > 0)
                     LibManager.release(tokenOut, to, amountOut, collatInfo.managerData.config);
@@ -388,7 +388,7 @@ contract Swapper is ISwapper, AccessControlModifiers {
                             // In the mint case:
                             // `m_t = (-1-g(0)+sqrt[(1+g(0))**2+2M(f_{i+1}-g(0))/b_{i+1})]/((f_{i+1}-g(0))/b_{i+1})`
                             // And so: g(0)+(f_{i+1}-f_i)/(b_{i+1}-b_i)m_t/2
-                            //                      = (g(0)-1+sqrt[(1+g(0))**2+2M(f_{i+1}-g(0))/b_{i+1})])
+                            //                      = (g(0)-1+sqrt[(1+g(0))**2+2M(f_{i+1}-g(0))/b_{i+1})]) / 2
                             midFee = int64(
                                 (int256(
                                     Math.sqrt((uint256(int256(BASE_9) + currentFees)) ** 2 + ac4, Math.Rounding.Up)
@@ -400,7 +400,7 @@ contract Swapper is ISwapper, AccessControlModifiers {
                             // In the burn case:
                             // `m_t = (1-g(0)+sqrt[(1-g(0))**2-2M(f_{i+1}-g(0))/b_{i+1})]/((f_{i+1}-g(0))/b_{i+1})`
                             // And so: g(0)+(f_{i+1}-f_i)/(b_{i+1}-b_i)m_t/2
-                            //                      = (g(0)+1-sqrt[(1-g(0))**2-2M(f_{i+1}-g(0))/b_{i+1})])
+                            //                      = (g(0)+1-sqrt[(1-g(0))**2-2M(f_{i+1}-g(0))/b_{i+1})]) / 2
 
                             uint256 baseMinusCurrentSquared = (uint256(int256(BASE_9) - currentFees)) ** 2;
                             // Mathematically, this condition is always verified, but rounding errors may make this
@@ -444,12 +444,12 @@ contract Swapper is ISwapper, AccessControlModifiers {
             _computeFee(quoteType, amountStable, v.isMint ? collatInfo.yFeeMint[n - 1] : collatInfo.yFeeBurn[n - 1]);
     }
 
-    /// @notice Checks whether a managed collateral asset still has enough collateral available to process
-    /// a transfer
-    function _checkAmounts(Collateral storage collatInfo, uint256 amountOut) internal view {
-        // Checking if enough is available for collateral assets that involve manager addresses
-        if (collatInfo.isManaged > 0 && LibManager.maxAvailable(collatInfo.managerData.config) < amountOut)
-            revert InvalidSwap();
+    /// @notice Checks whether there is still enough of the collateral to process the transfer
+    function _checkAmounts(address collateral, Collateral storage collatInfo, uint256 amountOut) internal view {
+        if (
+            (collatInfo.isManaged > 0 && LibManager.maxAvailable(collatInfo.managerData.config) < amountOut) ||
+            (collatInfo.isManaged == 0 && IERC20(collateral).balanceOf(address(this)) < amountOut)
+        ) revert InvalidSwap();
     }
 
     /// @notice Checks whether a swap from `tokenIn` to `tokenOut` is a mint or a burn, whether the
@@ -490,7 +490,7 @@ contract Swapper is ISwapper, AccessControlModifiers {
     /// @notice Builds a permit2 `permitTransferFrom` payload for a `tokenIn` transfer
     /// @dev The transfer should be from `msg.sender` to this contract or a manager
     function _buildPermitTransferPayload(
-        uint256 amount,
+        uint256 amountIn,
         uint256 approvedAmount,
         address tokenIn,
         uint256 deadline,
@@ -508,7 +508,7 @@ contract Swapper is ISwapper, AccessControlModifiers {
                 nonce: details.nonce,
                 deadline: deadline
             }),
-            SignatureTransferDetails({ to: details.to, requestedAmount: amount }),
+            SignatureTransferDetails({ to: details.to, requestedAmount: amountIn }),
             msg.sender,
             details.signature
         );
