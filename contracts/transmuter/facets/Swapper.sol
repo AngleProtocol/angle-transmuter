@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.19;
 
-import { Address } from "oz/utils/Address.sol";
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
+import { Address } from "oz/utils/Address.sol";
 import { Math } from "oz/utils/math/Math.sol";
 import { SafeCast } from "oz/utils/math/SafeCast.sol";
 
@@ -18,6 +18,7 @@ import { LibManager } from "../libraries/LibManager.sol";
 import { LibOracle } from "../libraries/LibOracle.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { LibWhitelist } from "../libraries/LibWhitelist.sol";
+import { AccessControlModifiers } from "./AccessControlModifiers.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -48,7 +49,7 @@ struct LocalVariables {
 /// @dev In case of a burn again, the swap functions will revert if the call concerns a collateral that requires a
 /// whitelist but the `to` address does not have it. The quote functions will not revert in this case.
 /// @dev Calling one of the swap functions in a burn case does not require any prior token approval
-contract Swapper is ISwapper {
+contract Swapper is ISwapper, AccessControlModifiers {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
     using Address for address;
@@ -182,7 +183,7 @@ contract Swapper is ISwapper {
         bool mint,
         Collateral storage collatInfo,
         bytes memory permitData
-    ) internal {
+    ) internal nonReentrant {
         if (amountIn > 0 && amountOut > 0) {
             TransmuterStorage storage ts = s.transmuterStorage();
             if (mint) {

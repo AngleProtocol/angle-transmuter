@@ -10,6 +10,7 @@ import { Math } from "oz/utils/math/Math.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
 import { IRedeemer } from "interfaces/IRedeemer.sol";
 
+import { AccessControlModifiers } from "./AccessControlModifiers.sol";
 import { LibDiamond } from "../libraries/LibDiamond.sol";
 import { LibHelpers } from "../libraries/LibHelpers.sol";
 import { LibGetters } from "../libraries/LibGetters.sol";
@@ -23,7 +24,7 @@ import "../Storage.sol";
 
 /// @title Redeemer
 /// @author Angle Labs, Inc.
-contract Redeemer is IRedeemer {
+contract Redeemer is IRedeemer, AccessControlModifiers {
     using SafeERC20 for IERC20;
     using Math for uint256;
     using SafeCast for uint256;
@@ -105,7 +106,7 @@ contract Redeemer is IRedeemer {
         uint256 deadline,
         uint256[] memory minAmountOuts,
         address[] memory forfeitTokens
-    ) internal returns (address[] memory tokens, uint256[] memory amounts) {
+    ) internal nonReentrant returns (address[] memory tokens, uint256[] memory amounts) {
         TransmuterStorage storage ts = s.transmuterStorage();
         if (ts.isRedemptionLive == 0) revert Paused();
         if (block.timestamp > deadline) revert TooLate();
