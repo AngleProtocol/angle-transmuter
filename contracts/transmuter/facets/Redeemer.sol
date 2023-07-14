@@ -44,7 +44,7 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IRedeemer
-    /// @dev The `minAmountOuts` list must reflect or be longer than the amount of `tokens` returned
+    /// @dev The `minAmountOuts` list must reflect the amount of `tokens` returned
     /// @dev In normal conditions, the amount of tokens outputted by this function should be the amount
     /// of collateral assets supported by the system, following their order in the `collateralList`.
     /// @dev If one collateral has its liquidity managed through strategies, then it's possible that this asset
@@ -108,10 +108,15 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
         address[] memory forfeitTokens
     ) internal nonReentrant returns (address[] memory tokens, uint256[] memory amounts) {
         TransmuterStorage storage ts = s.transmuterStorage();
+
         if (ts.isRedemptionLive == 0) revert Paused();
         if (block.timestamp > deadline) revert TooLate();
+
         uint256[] memory subCollateralsTracker;
         (tokens, amounts, subCollateralsTracker) = _quoteRedemptionCurve(amount);
+        // Check that the provided slippage tokens length is identical to the redeem one
+        uint256 amountsLength = amounts.length;
+        if (amountsLength != minAmountOuts.length) revert InvalidLengths();
         // Updating the normalizer enables to simultaneously and proportionally reduce the amount
         // of stablecoins issued from each collateral without having to loop through each of them
         _updateNormalizer(amount, false);
@@ -120,7 +125,7 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
 
         address[] memory collateralListMem = ts.collateralList;
         uint256 indexCollateral;
-        for (uint256 i; i < amounts.length; ++i) {
+        for (uint256 i; i < amountsLength; ++i) {
             if (amounts[i] < minAmountOuts[i]) revert TooSmallAmountOut();
             // If a token is in the `forfeitTokens` list, then it is not sent as part of the redemption process
             if (amounts[i] > 0 && LibHelpers.checkList(tokens[i], forfeitTokens) < 0) {
@@ -197,7 +202,7 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
             // For each asset, we store the actual amount of stablecoins issued based on the `newNormalizerValue`
             // (and not a normalized value)
             // We ensure to preserve the invariant `sum(collateralNewNormalizedStables) = normalizedStables`
-            uint128 newNormalizedStables = 0;
+            uint128 newNormalizedStables;
             for (uint256 i; i < collateralListLength; ++i) {
                 uint128 newCollateralNormalizedStable = ((uint256(
                     ts.collaterals[collateralListMem[i]].normalizedStables
