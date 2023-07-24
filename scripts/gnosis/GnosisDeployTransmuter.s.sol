@@ -8,6 +8,7 @@ import "stringutils/strings.sol";
 import { CollateralSetupProd, FakeGnosis } from "contracts/transmuter/configs/FakeGnosis.sol";
 import "contracts/transmuter/Storage.sol" as Storage;
 import { DiamondCut } from "contracts/transmuter/facets/DiamondCut.sol";
+import { DiamondEtherscan } from "contracts/transmuter/facets/DiamondEtherscan.sol";
 import { DiamondLoupe } from "contracts/transmuter/facets/DiamondLoupe.sol";
 import { DiamondProxy } from "contracts/transmuter/DiamondProxy.sol";
 import { Getters } from "contracts/transmuter/facets/Getters.sol";
@@ -81,9 +82,6 @@ contract GnosisDeployTransmuter is Utils {
 
         console.log("Transmuter deployed at: %s", address(transmuter));
 
-        /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                    TODO GOVERNANCE                                                 
-        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
         // Redeem
         uint64[] memory xRedeemFee = new uint64[](1);
         int64[] memory yRedeemFee = new int64[](1);
@@ -126,10 +124,8 @@ contract GnosisDeployTransmuter is Utils {
         facetNames.push("Swapper");
         facetAddressList.push(address(new Swapper()));
 
-        // TODO when deploying don't forget to regenerate this contract if you
-        // changed any code on the Transmuter
         facetNames.push("DiamondEtherscan");
-        facetAddressList.push(address(new DummyDiamondImplementation()));
+        facetAddressList.push(address(new DiamondEtherscan()));
 
         // Putting it at the end as it is the one failing when verifying on etherscan
         facetNames.push("Redeemer");

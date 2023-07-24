@@ -13,7 +13,7 @@ import { AccessControlModifiers } from "./AccessControlModifiers.sol";
 /// https://github.com/zdenham/diamond-etherscan/blob/main/contracts/libraries/LibDiamondEtherscan.sol
 contract DiamondEtherscan is IDiamondEtherscan, AccessControlModifiers {
     /// @inheritdoc IDiamondEtherscan
-    function setDummyImplementation(address _implementation) external onlyGovernor {
+    function setDummyImplementation(address _implementation) external onlyGuardian {
         LibDiamondEtherscan.setDummyImplementation(_implementation);
     }
 

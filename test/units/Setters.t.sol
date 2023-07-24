@@ -1331,16 +1331,12 @@ contract Test_Setters_RevokeCollateral is Fixture {
 contract Test_Setters_DiamondEtherscan is Fixture {
     event Upgraded(address indexed implementation);
 
-    function test_RevertWhen_NotGovernor() public {
-        vm.expectRevert(Errors.NotGovernor.selector);
+    function test_RevertWhen_NotGuardian() public {
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
         transmuter.setDummyImplementation(address(bob));
 
-        vm.expectRevert(Errors.NotGovernor.selector);
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
         hoax(alice);
-        transmuter.setDummyImplementation(address(bob));
-
-        vm.expectRevert(Errors.NotGovernor.selector);
-        hoax(guardian);
         transmuter.setDummyImplementation(address(bob));
 
         hoax(governor);

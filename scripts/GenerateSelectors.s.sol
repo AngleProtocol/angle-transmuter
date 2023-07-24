@@ -2,7 +2,6 @@
 pragma solidity ^0.8.19;
 
 import { Utils } from "./Utils.s.sol";
-import { console } from "forge-std/console.sol";
 import "stringutils/strings.sol";
 
 contract GenerateSelectors is Utils {
