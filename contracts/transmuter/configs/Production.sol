@@ -73,8 +73,8 @@ contract Production {
                 feedIds[0] = 0xd052e6f54fe29355d6a3c06592fdefe49fae7840df6d8655bf6d6bfb789b56e4;
                 // USD/EUR
                 feedIds[1] = 0xa995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b;
-                stalePeriods[0] = 3 days;
-                stalePeriods[1] = 3 days;
+                stalePeriods[0] = 7 days;
+                stalePeriods[1] = 7 days;
                 isMultiplied[0] = 1;
                 isMultiplied[1] = 0;
                 OracleQuoteType quoteType = OracleQuoteType.UNIT;
