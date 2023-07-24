@@ -75,6 +75,10 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
+    /// @dev This function may revert and overflow if the collateral ratio is too big due to a too small
+    /// amount of `stablecoinsIssued`. Due to this, it is recommended to initialize the system with a non
+    /// negligible amount of `stablecoinsIssued` so DoS attacks on redemptions which use this function
+    /// become economically impossible
     function getCollateralRatio() external view returns (uint64 collatRatio, uint256 stablecoinsIssued) {
         TransmuterStorage storage ts = s.transmuterStorage();
         // Reentrant protection

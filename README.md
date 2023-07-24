@@ -178,7 +178,7 @@ yarn deploy <FILE_NAME> --rpc-url <NETWORK_NAME>
 
 ### Fork
 
-if you first want to test your deployments/scripts in fork mode. You should run:
+If you first want to test your deployments/scripts in fork mode. You should run:
 
 ```bash
 source .env

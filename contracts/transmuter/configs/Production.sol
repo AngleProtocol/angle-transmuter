@@ -4,9 +4,12 @@ pragma solidity ^0.8.19;
 
 import "interfaces/external/chainlink/AggregatorV3Interface.sol";
 
+import { LibDiamondEtherscan } from "../libraries/LibDiamondEtherscan.sol";
 import "../libraries/LibOracle.sol";
 import { LibSetters } from "../libraries/LibSetters.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
+
+import { DummyDiamondImplementation } from "../../../scripts/generated/DummyDiamondImplementation.sol";
 
 import "../../utils/Constants.sol";
 import "../Storage.sol" as Storage;
@@ -22,7 +25,11 @@ struct CollateralSetupProd {
 
 /// @dev This contract is used only once to initialize the diamond proxy.
 contract Production {
-    function initialize(IAccessControlManager _accessControlManager, address _agToken) external {
+    function initialize(
+        IAccessControlManager _accessControlManager,
+        address _agToken,
+        address dummyImplementation
+    ) external {
         address euroc = 0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c;
         address bc3m = 0x2F123cF3F37CE3328CC9B5b8415f9EC5109b45e7;
 
@@ -31,8 +38,6 @@ contract Production {
 
         // Set Collaterals
         CollateralSetupProd[] memory collaterals = new CollateralSetupProd[](2);
-
-        bytes memory targetData;
 
         // EUROC
         {
@@ -56,12 +61,13 @@ contract Production {
             yBurnFeeEuroc[1] = int64(uint64((2 * BASE_9) / 1000));
             yBurnFeeEuroc[2] = int64(uint64(MAX_BURN_FEE));
 
+            // No oracle for EUROC at launch -> assuming 1 EUROC = 1 EUR
             bytes memory readData;
             bytes memory oracleConfig = abi.encode(
                 Storage.OracleReadType.NO_ORACLE,
                 Storage.OracleReadType.STABLE,
                 readData,
-                targetData
+                readData
             );
             collaterals[0] = CollateralSetupProd(
                 euroc,
@@ -81,27 +87,57 @@ contract Production {
             xMintFeeC3M[2] = uint64((60 * BASE_9) / 100);
 
             int64[] memory yMintFeeC3M = new int64[](3);
-            yMintFeeC3M[0] = int64(uint64((BASE_9) / 1000));
+            yMintFeeC3M[0] = int64(uint64(BASE_9 / 1000));
             yMintFeeC3M[1] = int64(uint64(BASE_9 / 1000));
             yMintFeeC3M[2] = int64(uint64(MAX_MINT_FEE));
 
             uint64[] memory xBurnFeeC3M = new uint64[](3);
             xBurnFeeC3M[0] = uint64(BASE_9);
-            xBurnFeeC3M[1] = uint64((20 * BASE_9) / 100);
-            xBurnFeeC3M[2] = uint64((21 * BASE_9) / 100);
+            xBurnFeeC3M[1] = uint64((21 * BASE_9) / 100);
+            xBurnFeeC3M[2] = uint64((20 * BASE_9) / 100);
 
             int64[] memory yBurnFeeC3M = new int64[](3);
             yBurnFeeC3M[0] = int64(uint64((5 * BASE_9) / 1000));
             yBurnFeeC3M[1] = int64(uint64((5 * BASE_9) / 1000));
             yBurnFeeC3M[2] = int64(uint64(MAX_BURN_FEE));
 
-            bytes memory readData;
+            AggregatorV3Interface[] memory circuitChainlink = new AggregatorV3Interface[](1);
+            uint32[] memory stalePeriods = new uint32[](1);
+            uint8[] memory circuitChainIsMultiplied = new uint8[](1);
+            uint8[] memory chainlinkDecimals = new uint8[](1);
+
+            // bC3M: Redstone as a current price (more accurate for redemptions), and Backed as a target
+
+            // Redstone C3M Oracle
+            circuitChainlink[0] = AggregatorV3Interface(0x6E27A25999B3C665E44D903B2139F5a4Be2B6C26);
+            stalePeriods[0] = 72 hours;
+            circuitChainIsMultiplied[0] = 1;
+            chainlinkDecimals[0] = 8;
+            OracleQuoteType quoteType = OracleQuoteType.UNIT;
+            bytes memory readData = abi.encode(
+                circuitChainlink,
+                stalePeriods,
+                circuitChainIsMultiplied,
+                chainlinkDecimals,
+                quoteType
+            );
+
+            // Backed C3M Oracle
+            circuitChainlink[0] = AggregatorV3Interface(0x83Ec02059F686E747392A22ddfED7833bA0d7cE3);
+            bytes memory targetData = abi.encode(
+                circuitChainlink,
+                stalePeriods,
+                circuitChainIsMultiplied,
+                chainlinkDecimals,
+                quoteType
+            );
             bytes memory oracleConfig = abi.encode(
-                Storage.OracleReadType.NO_ORACLE,
-                Storage.OracleReadType.STABLE,
+                Storage.OracleReadType.CHAINLINK_FEEDS,
+                Storage.OracleReadType.CHAINLINK_FEEDS,
                 readData,
                 targetData
             );
+
             collaterals[1] = CollateralSetupProd(
                 bc3m,
                 oracleConfig,
@@ -119,7 +155,7 @@ contract Production {
         ts.normalizer = uint128(BASE_27);
         ts.agToken = IAgToken(_agToken);
 
-        // Setup each collaterals
+        // Setup each collateral
         uint256 collateralsLength = collaterals.length;
         for (uint256 i; i < collateralsLength; i++) {
             CollateralSetupProd memory collateral = collaterals[i];
@@ -151,5 +187,8 @@ contract Production {
         yRedeemFee[2] = int64(uint64((950 * BASE_9) / 1000));
         yRedeemFee[3] = int64(uint64((995 * BASE_9) / 1000));
         LibSetters.setRedemptionCurveParams(xRedeemFee, yRedeemFee);
+
+        // setDummyImplementation
+        LibDiamondEtherscan.setDummyImplementation(dummyImplementation);
     }
 }

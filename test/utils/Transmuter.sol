@@ -93,20 +93,4 @@ abstract contract Transmuter is Helper {
 
         return _transmuter;
     }
-
-    // @dev Helper to deploy a given Facet
-    function deployFacet(address facet, string memory name) public {
-        bytes4[] memory fromGenSelectors = generateSelectors(name);
-
-        // Array of functions to add
-        FacetCut[] memory facetCut = new FacetCut[](1);
-        facetCut[0] = FacetCut({
-            facetAddress: address(facet),
-            action: FacetCutAction.Add,
-            functionSelectors: fromGenSelectors
-        });
-
-        // Add functions to diamond
-        transmuter.diamondCut(facetCut, address(0x0), "");
-    }
 }

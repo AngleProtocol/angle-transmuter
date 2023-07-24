@@ -16,7 +16,4 @@ address constant CORE_BORROW = 0x5bc6BEf80DA563EBf6Df6D6913513fa9A7ec89BE;
 address constant EUROC = 0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c;
 address constant EUROE = 0x820802Fa8a99901F52e39acD21177b0BE6EE2974;
 address constant EURE = 0x3231Cb76718CDeF2155FC47b5286d82e6eDA273f;
-
-address constant CHAINLINK_EUROC_EUR = address(0x0);
-address constant CHAINLINK_EUROE_EUR = address(0x0);
-address constant CHAINLINK_EURE_EUR = address(0x0);
+address constant BC3M = 0x2F123cF3F37CE3328CC9B5b8415f9EC5109b45e7;
