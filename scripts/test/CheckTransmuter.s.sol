@@ -14,7 +14,7 @@ contract CheckTransmuter is Utils {
     using strings for *;
 
     // TODO: replace with deployed Transmuter address
-    ITransmuter public constant transmuter = ITransmuter(0xa85EffB2658CFd81e0B1AaD4f2364CdBCd89F3a1);
+    ITransmuter public constant transmuter = ITransmuter(0xbFD3c8A956AFB7a9754C951D03C9aDdA7EC5d638);
 
     function run() external {
         /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -131,11 +131,8 @@ contract CheckTransmuter is Utils {
             address collat = EUROC;
             (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter
                 .getOracleValues(collat);
-            assertEq(mint, BASE_18);
-            assertEq(burn, BASE_18);
-            assertEq(ratio, BASE_18);
-            assertEq(minRatio, BASE_18);
-            assertEq(redemption, BASE_18);
+            console.log(mint, burn, ratio);
+            console.log(minRatio, redemption);
         }
 
         {

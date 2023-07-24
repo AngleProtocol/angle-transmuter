@@ -63,7 +63,7 @@ contract Production {
 
             bytes memory oracleConfig;
             {
-                // Pyth oracle for EUROC at launch
+                // Pyth oracle for EUROC
                 bytes32[] memory feedIds = new bytes32[](2);
                 uint32[] memory stalePeriods = new uint32[](2);
                 uint8[] memory isMultiplied = new uint8[](2);
