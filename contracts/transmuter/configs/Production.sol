@@ -187,6 +187,11 @@ contract Production {
             LibSetters.togglePause(collateral.token, ActionType.Burn);
         }
 
+        // Set whitelist status for bC3M
+        // TODO: replace the address(0) by the `keyringGuard` address here
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(0)));
+        LibSetters.setWhitelistStatus(bc3m, 1, whitelistData);
+
         // adjustStablecoins
         LibSetters.adjustStablecoins(euroc, 8851136430000000000000000, true);
         LibSetters.adjustStablecoins(bc3m, 4192643570000000000000000, true);

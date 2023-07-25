@@ -14,7 +14,7 @@ contract CheckTransmuter is Utils {
     using strings for *;
 
     // TODO: replace with deployed Transmuter address
-    ITransmuter public constant transmuter = ITransmuter(0xbFD3c8A956AFB7a9754C951D03C9aDdA7EC5d638);
+    ITransmuter public constant transmuter = ITransmuter(0xa85EffB2658CFd81e0B1AaD4f2364CdBCd89F3a1);
 
     function run() external {
         /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -27,6 +27,7 @@ contract CheckTransmuter is Utils {
 
         // Checks all valid selectors are here
         bytes4[] memory selectors = _generateSelectors("ITransmuter");
+        console.log("Num selectors: ", selectors.length);
         for (uint i = 0; i < selectors.length; ++i) {
             assertEq(transmuter.isValidSelector(selectors[i]), true);
         }
@@ -131,6 +132,7 @@ contract CheckTransmuter is Utils {
             address collat = EUROC;
             (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter
                 .getOracleValues(collat);
+            console.log("EUROC oracle values");
             console.log(mint, burn, ratio);
             console.log(minRatio, redemption);
         }
@@ -139,7 +141,7 @@ contract CheckTransmuter is Utils {
             address collat = BC3M;
             (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter
                 .getOracleValues(collat);
-
+            console.log("BC3M oracle values");
             console.log(mint, burn, ratio);
             console.log(minRatio, redemption);
         }
@@ -151,5 +153,15 @@ contract CheckTransmuter is Utils {
         (uint64 collatRatio, uint256 stablecoinsIssued) = transmuter.getCollateralRatio();
         assertEq(stablecoinsIssued, 13043780000000000000000000);
         assertEq(collatRatio, 0);
+
+        /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                   WHITELIST STATUS                                                 
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+        assert(transmuter.isWhitelistedCollateral(BC3M));
+        bytes memory whitelistData = abi.encode(Storage.WhitelistType.BACKED, abi.encode(address(0)));
+        assertEq(transmuter.getCollateralWhitelistData(BC3M), whitelistData);
+        // Choosing a random address here
+        assert(!transmuter.isWhitelistedForCollateral(BC3M, EUROC));
     }
 }
