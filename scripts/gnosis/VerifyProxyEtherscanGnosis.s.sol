@@ -11,7 +11,7 @@ import { DiamondEtherscan } from "contracts/transmuter/facets/DiamondEtherscan.s
 import { DummyDiamondImplementation } from "../generated/DummyDiamondImplementation.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 
-contract VerifyProxyEtherscan is Utils {
+contract VerifyProxyEtherscanGnosis is Utils {
     using strings for *;
     using stdJson for string;
 

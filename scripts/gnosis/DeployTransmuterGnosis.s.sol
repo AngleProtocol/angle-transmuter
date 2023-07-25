@@ -23,7 +23,7 @@ import { MockCoreBorrow } from "borrow/mock/MockCoreBorrow.sol";
 import { DummyDiamondImplementation } from "../generated/DummyDiamondImplementation.sol";
 import { MockChainlinkOracle } from "test/mock/MockChainlinkOracle.sol";
 
-contract GnosisDeployTransmuter is Utils {
+contract DeployTransmuterGnosis is Utils {
     using strings for *;
     using stdJson for string;
 
