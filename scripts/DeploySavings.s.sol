@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import { Utils } from "./Utils.s.sol";
+import { Utils } from "./utils/Utils.s.sol";
 import { console } from "forge-std/console.sol";
 import { Savings } from "contracts/savings/Savings.sol";
 import { IAccessControlManager } from "contracts/utils/AccessControl.sol";

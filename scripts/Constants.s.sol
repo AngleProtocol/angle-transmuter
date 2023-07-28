@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import "contracts/utils/Constants.sol";
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                   PROTOCOL RELATED                                                 
+                                                   MAINNET CONSTANTS                                                
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
 address constant ACCESS_CONTROL_MANAGER = 0x5bc6BEf80DA563EBf6Df6D6913513fa9A7ec89BE;
@@ -13,10 +13,6 @@ address constant GOVERNOR = 0xdC4e6DFe07EFCa50a197DF15D9200883eF4Eb1c8;
 address constant GUARDIAN = 0x0C2553e4B9dFA9f83b1A6D3EAB96c4bAaB42d430;
 address constant PROXY_ADMIN = 0x1D941EF0D3Bba4ad67DBfBCeE5262F4CEE53A32b;
 address constant PROXY_ADMIN_GUARDIAN = 0xD9F1A8e00b0EEbeDddd9aFEaB55019D55fcec017;
-
-/*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                  COLLATERALS RELATED
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
 address constant EUROC = 0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c;
 address constant EUROE = 0x820802Fa8a99901F52e39acD21177b0BE6EE2974;
