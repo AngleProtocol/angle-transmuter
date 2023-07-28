@@ -24,10 +24,6 @@ contract SettersGovernor is AccessControlModifiers, ISettersGovernor {
 
     event Recovered(address indexed token, address indexed to, uint256 amount);
 
-    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                  GOVERNOR FUNCTIONS                                                
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
     /// @inheritdoc ISettersGovernor
     /// @dev No check is made on the collateral that is redeemed: this function could typically be used by a
     /// governance during a manual rebalance of the reserves of the system

@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 
 import { ITransmuterOracle } from "interfaces/ITransmuterOracle.sol";
 import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
+import { IPyth, PythStructs } from "interfaces/external/pyth/IPyth.sol";
 
 import { LibStorage as s } from "./LibStorage.sol";
 
@@ -140,6 +141,21 @@ library LibOracle {
         else if (readType == OracleReadType.CBETH) return CBETH.exchangeRate();
         else if (readType == OracleReadType.RETH) return RETH.getExchangeRate();
         else if (readType == OracleReadType.SFRXETH) return SFRXETH.pricePerShare();
+        else if (readType == OracleReadType.PYTH) {
+            (
+                address pyth,
+                bytes32[] memory feedIds,
+                uint32[] memory stalePeriods,
+                uint8[] memory isMultiplied,
+                OracleQuoteType quoteType
+            ) = abi.decode(data, (address, bytes32[], uint32[], uint8[], OracleQuoteType));
+            uint256 quotePrice = quoteAmount(quoteType, baseValue);
+            uint256 listLength = feedIds.length;
+            for (uint256 i; i < listLength; ++i) {
+                quotePrice = readPythFeed(quotePrice, feedIds[i], pyth, isMultiplied[i], stalePeriods[i]);
+            }
+            return quotePrice;
+        }
         // If the `OracleReadType` is `EXTERNAL`, it means that this function is called to compute a
         // `targetPrice` in which case the `baseValue` is returned here
         else return baseValue;
@@ -149,12 +165,10 @@ library LibOracle {
                                                    SPECIFIC HELPERS                                                 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Reads a Chainlink feed using a quote amount and converts the quote amount to
-    /// the out-currency
+    /// @notice Reads a Chainlink feed using a quote amount and converts the quote amount to the out-currency
     /// @param _quoteAmount The amount for which to compute the price expressed in `BASE_18`
     /// @param feed Chainlink feed to query
-    /// @param multiplied Whether the ratio outputted by Chainlink should be multiplied or divided
-    /// to the `quoteAmount`
+    /// @param multiplied Whether the ratio outputted by Chainlink should be multiplied or divided to the `quoteAmount`
     /// @param decimals Number of decimals of the corresponding Chainlink pair
     /// @return The `quoteAmount` converted in out-currency
     function readChainlinkFeed(
@@ -169,6 +183,25 @@ library LibOracle {
         // Checking whether we should multiply or divide by the ratio computed
         if (multiplied == 1) return (_quoteAmount * uint256(ratio)) / (10 ** decimals);
         else return (_quoteAmount * (10 ** decimals)) / uint256(ratio);
+    }
+
+    /// @notice Reads a Pyth fee using a quote amount and converts the quote amount to the `out-currency`
+    function readPythFeed(
+        uint256 _quoteAmount,
+        bytes32 feedId,
+        address pyth,
+        uint8 multiplied,
+        uint32 stalePeriod
+    ) internal view returns (uint256) {
+        PythStructs.Price memory pythData = IPyth(pyth).getPriceNoOlderThan(feedId, stalePeriod);
+        if (pythData.price <= 0) revert InvalidRate();
+        uint256 normalizedPrice = uint64(pythData.price);
+        bool isNormalizerExpoNeg = pythData.expo < 0;
+        uint256 normalizer = isNormalizerExpoNeg ? 10 ** uint32(-pythData.expo) : 10 ** uint32(pythData.expo);
+        if (multiplied == 1 && isNormalizerExpoNeg) return (_quoteAmount * normalizedPrice) / normalizer;
+        else if (multiplied == 1 && !isNormalizerExpoNeg) return _quoteAmount * normalizedPrice * normalizer;
+        else if (multiplied == 0 && isNormalizerExpoNeg) return (_quoteAmount * normalizer) / normalizedPrice;
+        else return _quoteAmount / (normalizer * normalizedPrice);
     }
 
     /// @notice Parses an `oracleConfig` into several sub fields

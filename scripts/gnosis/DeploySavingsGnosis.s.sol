@@ -11,10 +11,7 @@ import { MockTokenPermit } from "../../../test/mock/MockTokenPermit.sol";
 import "oz/interfaces/IERC20.sol";
 import "oz-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 
-import "borrow/external/ProxyAdmin.sol";
-import "borrow/external/TransparentUpgradeableProxy.sol";
-
-contract DeploySavings is Utils {
+contract DeploySavingsGnosis is Utils {
     using strings for *;
     using stdJson for string;
 
@@ -47,15 +44,12 @@ contract DeploySavings is Utils {
         Savings saving = Savings(
             deployUpgradeable(
                 address(savingsImpl),
+                address(proxy),
                 abi.encodeWithSelector(Savings.initialize.selector, coreBorrow, agEUR, "Mock-sagEUR", "Mock-sagEUR", 1)
             )
         );
         console.log("Savings deployed at: %s", address(saving));
 
         vm.stopBroadcast();
-    }
-
-    function deployUpgradeable(address implementation, bytes memory data) public returns (address) {
-        return address(new TransparentUpgradeableProxy(implementation, address(proxy), data));
     }
 }

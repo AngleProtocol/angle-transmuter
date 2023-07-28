@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import { Utils } from "../Utils.s.sol";
+import { TransmuterDeploymentHelper } from "../TransmuterDeploymentHelper.s.sol";
 import { console } from "forge-std/console.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 import "stringutils/strings.sol";
@@ -23,7 +24,7 @@ import { MockCoreBorrow } from "borrow/mock/MockCoreBorrow.sol";
 import { DummyDiamondImplementation } from "../generated/DummyDiamondImplementation.sol";
 import { MockChainlinkOracle } from "test/mock/MockChainlinkOracle.sol";
 
-contract GnosisDeployTransmuter is Utils {
+contract DeployTransmuterGnosis is TransmuterDeploymentHelper {
     using strings for *;
     using stdJson for string;
 
@@ -91,63 +92,5 @@ contract GnosisDeployTransmuter is Utils {
         transmuter.togglePause(address(0x0), Storage.ActionType.Redeem);
 
         vm.stopBroadcast();
-    }
-
-    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        HELPERS                                                     
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    // @dev Deploys diamond and connects facets
-    function _deployTransmuter(
-        address _init,
-        bytes memory _calldata
-    ) internal virtual returns (ITransmuter transmuter) {
-        // Deploy every facet
-        facetNames.push("DiamondCut");
-        facetAddressList.push(address(new DiamondCut()));
-
-        facetNames.push("DiamondLoupe");
-        facetAddressList.push(address(new DiamondLoupe()));
-
-        facetNames.push("Getters");
-        facetAddressList.push(address(new Getters()));
-
-        facetNames.push("RewardHandler");
-        facetAddressList.push(address(new RewardHandler()));
-
-        facetNames.push("SettersGovernor");
-        facetAddressList.push(address(new SettersGovernor()));
-
-        facetNames.push("SettersGuardian");
-        facetAddressList.push(address(new SettersGuardian()));
-
-        facetNames.push("Swapper");
-        facetAddressList.push(address(new Swapper()));
-
-        facetNames.push("DiamondEtherscan");
-        facetAddressList.push(address(new DiamondEtherscan()));
-
-        // Putting it at the end as it is the one failing when verifying on etherscan
-        facetNames.push("Redeemer");
-        facetAddressList.push(address(new Redeemer()));
-
-        string memory json = vm.readFile(JSON_SELECTOR_PATH);
-        // Build appropriate payload
-        uint256 n = facetNames.length;
-        Storage.FacetCut[] memory cut = new Storage.FacetCut[](n);
-        for (uint256 i = 0; i < n; ++i) {
-            // Get Selectors from json
-            bytes4[] memory selectors = _arrayBytes32ToBytes4(
-                json.readBytes32Array(string.concat("$.", facetNames[i]))
-            );
-            cut[i] = Storage.FacetCut({
-                facetAddress: facetAddressList[i],
-                action: Storage.FacetCutAction.Add,
-                functionSelectors: selectors
-            });
-        }
-
-        // Deploy diamond
-        transmuter = ITransmuter(address(new DiamondProxy(cut, _init, _calldata)));
     }
 }
