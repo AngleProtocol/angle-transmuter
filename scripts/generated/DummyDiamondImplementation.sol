@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 /**
  * This is a generated dummy diamond implementation for compatibility with
  * etherscan. For full contract implementation, check out the diamond on louper:
- * https://louper.dev/diamond/0x1A42a30dCbA20A22b69C40098d89cB7304f429B9?network=gnosis
+ * https://louper.dev/diamond/0xFF091a4FDBcddce68805183dfFdeA47cDbb9fEAC?network=xdai
  */
 
 contract DummyDiamondImplementation {
@@ -41,6 +41,10 @@ contract DummyDiamondImplementation {
     }
 
     function diamondCut(Tuple6871229[] memory _diamondCut, address _init, bytes memory _calldata) external {}
+
+    function implementation() external view returns (address) {}
+
+    function setDummyImplementation(address _implementation) external {}
 
     function facetAddress(bytes4 _functionSelector) external view returns (address facetAddress_) {}
 
@@ -80,7 +84,7 @@ contract DummyDiamondImplementation {
 
     function getOracle(
         address collateral
-    ) external view returns (uint8 readType, uint8 targetType, bytes memory data) {}
+    ) external view returns (uint8 oracleType, uint8 targetType, bytes memory oracleData, bytes memory targetData) {}
 
     function getOracleValues(
         address collateral
@@ -107,27 +111,6 @@ contract DummyDiamondImplementation {
     function isWhitelistedForCollateral(address collateral, address sender) external returns (bool) {}
 
     function isWhitelistedForType(uint8 whitelistType, address sender) external view returns (bool) {}
-
-    function quoteRedemptionCurve(
-        uint256 amount
-    ) external view returns (address[] memory tokens, uint256[] memory amounts) {}
-
-    function redeem(
-        uint256 amount,
-        address receiver,
-        uint256 deadline,
-        uint256[] memory minAmountOuts
-    ) external returns (address[] memory tokens, uint256[] memory amounts) {}
-
-    function redeemWithForfeit(
-        uint256 amount,
-        address receiver,
-        uint256 deadline,
-        uint256[] memory minAmountOuts,
-        address[] memory forfeitTokens
-    ) external returns (address[] memory tokens, uint256[] memory amounts) {}
-
-    function updateNormalizer(uint256 amount, bool increase) external returns (uint256) {}
 
     function sellRewards(uint256 minAmountOut, bytes memory payload) external returns (uint256 amountOut) {}
 
@@ -198,4 +181,25 @@ contract DummyDiamondImplementation {
         uint256 deadline,
         bytes memory permitData
     ) external returns (uint256 amountIn) {}
+
+    function quoteRedemptionCurve(
+        uint256 amount
+    ) external view returns (address[] memory tokens, uint256[] memory amounts) {}
+
+    function redeem(
+        uint256 amount,
+        address receiver,
+        uint256 deadline,
+        uint256[] memory minAmountOuts
+    ) external returns (address[] memory tokens, uint256[] memory amounts) {}
+
+    function redeemWithForfeit(
+        uint256 amount,
+        address receiver,
+        uint256 deadline,
+        uint256[] memory minAmountOuts,
+        address[] memory forfeitTokens
+    ) external returns (address[] memory tokens, uint256[] memory amounts) {}
+
+    function updateNormalizer(uint256 amount, bool increase) external returns (uint256) {}
 }

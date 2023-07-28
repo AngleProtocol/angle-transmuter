@@ -38,14 +38,14 @@ contract TransmuterDeploymentHelper is Utils {
         facetNames.push("DiamondCut");
         facetAddressList.push(address(new DiamondCut()));
 
+        facetNames.push("DiamondEtherscan");
+        facetAddressList.push(address(new DiamondEtherscan()));
+
         facetNames.push("DiamondLoupe");
         facetAddressList.push(address(new DiamondLoupe()));
 
         facetNames.push("Getters");
         facetAddressList.push(address(new Getters()));
-
-        facetNames.push("Redeemer");
-        facetAddressList.push(address(new Redeemer()));
 
         facetNames.push("RewardHandler");
         facetAddressList.push(address(new RewardHandler()));
@@ -59,8 +59,8 @@ contract TransmuterDeploymentHelper is Utils {
         facetNames.push("Swapper");
         facetAddressList.push(address(new Swapper()));
 
-        facetNames.push("DiamondEtherscan");
-        facetAddressList.push(address(new DiamondEtherscan()));
+        facetNames.push("Redeemer");
+        facetAddressList.push(address(new Redeemer()));
 
         string memory json = vm.readFile(JSON_SELECTOR_PATH);
         // Build appropriate payload
