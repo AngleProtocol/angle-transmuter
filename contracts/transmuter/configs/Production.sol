@@ -188,8 +188,11 @@ contract Production {
         }
 
         // Set whitelist status for bC3M
-        // TODO: replace the address(0) by the `keyringGuard` address here
-        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(0)));
+        bytes memory whitelistData = abi.encode(
+            WhitelistType.BACKED,
+            // Keyring whitelist check
+            abi.encode(address(0x4954c61984180868495D1a7Fb193b05a2cbd9dE3))
+        );
         LibSetters.setWhitelistStatus(bc3m, 1, whitelistData);
 
         // adjustStablecoins
