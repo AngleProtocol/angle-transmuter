@@ -1346,9 +1346,6 @@ contract RedeemTest is Fixture, FunctionUtils {
         for (uint256 i; i < latestOracleValue.length; ++i) {
             collateralisation += (latestOracleValue[i] * collateralMintedStables[i]) / BASE_8;
         }
-        uint256 computedCollatRatio;
-        if (mintedStables > 0) computedCollatRatio = uint64((collateralisation * BASE_9) / mintedStables);
-        else computedCollatRatio = type(uint64).max;
 
         // check collateral ratio first
         uint256 stablecoinsIssued;
@@ -1366,7 +1363,9 @@ contract RedeemTest is Fixture, FunctionUtils {
             if (reverted) return (collatRatio, true);
         }
 
-        if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
+        if (mintedStables > 0)
+            // This is the computed collateral ratio
+            assertApproxEqAbs(collatRatio, uint64((collateralisation * BASE_9) / mintedStables), 1 wei);
         else assertEq(collatRatio, type(uint64).max);
         assertEq(stablecoinsIssued, mintedStables);
     }
@@ -1377,25 +1376,23 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256[] memory collateralMintedStables,
         uint256[3 * _MAX_SUB_COLLATERALS] memory airdropAmounts
     ) internal returns (uint64 collatRatio, bool reverted) {
+        uint256 collateralisation;
         for (uint256 i; i < latestOracleValue.length; ++i) {
             latestOracleValue[i] = bound(latestOracleValue[i], _minOracleValue, BASE_18);
             MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(int256(latestOracleValue[i]));
-        }
 
-        uint256 collateralisation;
-
-        for (uint256 i; i < latestOracleValue.length; ++i) {
             IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
             if (listSubCollaterals.length <= 1) {
                 collateralisation += (latestOracleValue[i] * collateralMintedStables[i]) / BASE_8;
             } else {
-                AggregatorV3Interface[] memory listOracles = _subCollaterals[_collaterals[i]].oracles;
                 // we don't double count the real collaterals
                 uint256 subCollateralValue = IERC20Metadata(address(listSubCollaterals[0])).balanceOf(
                     address(_managers[_collaterals[i]])
                 );
                 for (uint256 k = 1; k < listSubCollaterals.length; k++) {
-                    (, int256 oracleValue, , , ) = MockChainlinkOracle(address(listOracles[k - 1])).latestRoundData();
+                    (, int256 oracleValue, , , ) = MockChainlinkOracle(
+                        address(_subCollaterals[_collaterals[i]].oracles[k - 1])
+                    ).latestRoundData();
                     subCollateralValue +=
                         (uint256(oracleValue) *
                             _convertDecimalTo(
@@ -1416,29 +1413,24 @@ contract RedeemTest is Fixture, FunctionUtils {
             }
         }
 
-        uint256 computedCollatRatio = type(uint64).max;
-        if (mintedStables > 0) computedCollatRatio = uint64((collateralisation * BASE_9) / mintedStables);
-
-        // check collateral ratio first
-        uint256 stablecoinsIssued;
         {
-            uint256 totalCollateralization = _computeCollateralisation();
             uint256 trueMintedStables = transmuter.getTotalIssued();
             if (
                 trueMintedStables > 0 &&
-                totalCollateralization.mulDiv(BASE_9, trueMintedStables, Math.Rounding.Up) > type(uint64).max
+                _computeCollateralisation().mulDiv(BASE_9, trueMintedStables, Math.Rounding.Up) > type(uint64).max
             ) {
                 reverted = true;
                 vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
             }
-
+            uint256 stablecoinsIssued;
             (collatRatio, stablecoinsIssued) = transmuter.getCollateralRatio();
             if (reverted) return (0, true);
+            assertEq(stablecoinsIssued, mintedStables);
         }
 
-        if (mintedStables > 0) assertApproxEqAbs(collatRatio, computedCollatRatio, 1 wei);
+        if (mintedStables > 0)
+            assertApproxEqAbs(collatRatio, uint64((collateralisation * BASE_9) / mintedStables), 1 wei);
         else assertEq(collatRatio, type(uint64).max);
-        assertEq(stablecoinsIssued, mintedStables);
     }
 
     function _randomRedeemptionFees(

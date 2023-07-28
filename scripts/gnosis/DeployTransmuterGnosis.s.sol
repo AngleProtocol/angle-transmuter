@@ -1,23 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import { Utils } from "../Utils.s.sol";
-import { TransmuterDeploymentHelper } from "../TransmuterDeploymentHelper.s.sol";
+import { Utils } from "../utils/Utils.s.sol";
+import { TransmuterDeploymentHelper } from "../utils/TransmuterDeploymentHelper.s.sol";
 import { console } from "forge-std/console.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 import "stringutils/strings.sol";
 import { CollateralSetupProd, FakeGnosis } from "contracts/transmuter/configs/FakeGnosis.sol";
 import "contracts/transmuter/Storage.sol" as Storage;
-import { DiamondCut } from "contracts/transmuter/facets/DiamondCut.sol";
-import { DiamondEtherscan } from "contracts/transmuter/facets/DiamondEtherscan.sol";
-import { DiamondLoupe } from "contracts/transmuter/facets/DiamondLoupe.sol";
-import { DiamondProxy } from "contracts/transmuter/DiamondProxy.sol";
-import { Getters } from "contracts/transmuter/facets/Getters.sol";
-import { Redeemer } from "contracts/transmuter/facets/Redeemer.sol";
-import { RewardHandler } from "contracts/transmuter/facets/RewardHandler.sol";
-import { SettersGovernor } from "contracts/transmuter/facets/SettersGovernor.sol";
-import { SettersGuardian } from "contracts/transmuter/facets/SettersGuardian.sol";
-import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 import { MockTokenPermit } from "test/mock/MockTokenPermit.sol";
 import { MockCoreBorrow } from "borrow/mock/MockCoreBorrow.sol";
@@ -27,10 +17,6 @@ import { MockChainlinkOracle } from "test/mock/MockChainlinkOracle.sol";
 contract DeployTransmuterGnosis is TransmuterDeploymentHelper {
     using strings for *;
     using stdJson for string;
-
-    address public config;
-    string[] facetNames;
-    address[] facetAddressList;
 
     function run() external {
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_GNOSIS"), 0);
