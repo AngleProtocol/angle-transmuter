@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import { Utils } from "../Utils.s.sol";
+import { Utils } from "../utils/Utils.s.sol";
 import { console } from "forge-std/console.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 import "stringutils/strings.sol";
 import "../Constants.s.sol";
 import "contracts/transmuter/Storage.sol" as Storage;
-
-import { console } from "forge-std/console.sol";
 
 contract CheckTransmuter is Utils {
     using strings for *;
@@ -32,7 +30,7 @@ contract CheckTransmuter is Utils {
             assertEq(transmuter.isValidSelector(selectors[i]), true);
         }
 
-        assertEq(address(transmuter.accessControlManager()), address(CORE_BORROW));
+        assertEq(address(transmuter.accessControlManager()), address(ACCESS_CONTROL_MANAGER));
         assertEq(address(transmuter.agToken()), address(AGEUR));
         assertEq(transmuter.getCollateralList(), collaterals);
         assertEq(transmuter.getCollateralDecimals(EUROC), 6);

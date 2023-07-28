@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import { Utils } from "../Utils.s.sol";
+import { Utils } from "../utils/Utils.s.sol";
 import { console } from "forge-std/console.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 import "stringutils/strings.sol";
