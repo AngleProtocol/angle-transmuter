@@ -61,14 +61,32 @@ contract Production {
             yBurnFeeEuroc[1] = int64(uint64((2 * BASE_9) / 1000));
             yBurnFeeEuroc[2] = int64(uint64(MAX_BURN_FEE));
 
-            // No oracle for EUROC at launch -> assuming 1 EUROC = 1 EUR
-            bytes memory readData;
-            bytes memory oracleConfig = abi.encode(
-                Storage.OracleReadType.NO_ORACLE,
-                Storage.OracleReadType.STABLE,
-                readData,
-                readData
-            );
+            bytes memory oracleConfig;
+            {
+                // Pyth oracle for EUROC
+                bytes32[] memory feedIds = new bytes32[](2);
+                uint32[] memory stalePeriods = new uint32[](2);
+                uint8[] memory isMultiplied = new uint8[](2);
+                // pyth address
+                address pyth = 0x4305FB66699C3B2702D4d05CF36551390A4c69C6;
+                // EUROC/USD
+                feedIds[0] = 0xd052e6f54fe29355d6a3c06592fdefe49fae7840df6d8655bf6d6bfb789b56e4;
+                // USD/EUR
+                feedIds[1] = 0xa995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b;
+                stalePeriods[0] = 7 days;
+                stalePeriods[1] = 7 days;
+                isMultiplied[0] = 1;
+                isMultiplied[1] = 0;
+                OracleQuoteType quoteType = OracleQuoteType.UNIT;
+                bytes memory readData = abi.encode(pyth, feedIds, stalePeriods, isMultiplied, quoteType);
+                bytes memory targetData;
+                oracleConfig = abi.encode(
+                    Storage.OracleReadType.PYTH,
+                    Storage.OracleReadType.STABLE,
+                    readData,
+                    targetData
+                );
+            }
             collaterals[0] = CollateralSetupProd(
                 euroc,
                 oracleConfig,
@@ -168,6 +186,11 @@ contract Production {
             LibSetters.togglePause(collateral.token, ActionType.Mint);
             LibSetters.togglePause(collateral.token, ActionType.Burn);
         }
+
+        // Set whitelist status for bC3M
+        // TODO: replace the address(0) by the `keyringGuard` address here
+        bytes memory whitelistData = abi.encode(WhitelistType.BACKED, abi.encode(address(0)));
+        LibSetters.setWhitelistStatus(bc3m, 1, whitelistData);
 
         // adjustStablecoins
         LibSetters.adjustStablecoins(euroc, 8851136430000000000000000, true);

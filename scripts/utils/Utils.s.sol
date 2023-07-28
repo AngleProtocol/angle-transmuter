@@ -5,6 +5,8 @@ import "forge-std/Script.sol";
 import { StdAssertions } from "forge-std/Test.sol";
 import "stringutils/strings.sol";
 
+import { TransparentUpgradeableProxy } from "oz/proxy/transparent/TransparentUpgradeableProxy.sol";
+
 contract Utils is Script, StdAssertions {
     using strings for *;
 
@@ -78,5 +80,13 @@ contract Utils is Script, StdAssertions {
         for (uint i = 0; i < _in.length; ++i) {
             console.logBytes4(_in[i]);
         }
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                         PROXY                                                      
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function deployUpgradeable(address implementation, address proxyAdmin, bytes memory data) public returns (address) {
+        return address(new TransparentUpgradeableProxy(implementation, proxyAdmin, data));
     }
 }

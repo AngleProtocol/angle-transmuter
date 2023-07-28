@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { ITransmuterOracle, MockExternalOracle } from "../mock/MockExternalOracle.sol";
+import { MockPyth } from "../mock/MockPyth.sol";
 import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
 import "../Fixture.sol";
 import "../utils/FunctionUtils.sol";
@@ -429,6 +430,84 @@ contract OracleTest is Fixture, FunctionUtils {
             assertEq(burn, oracleBurn);
         }
         assertEq(minDeviation, minRatio);
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                         PYTH                                                       
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testFuzz_ReadPythFeed(
+        uint256[3] memory prices,
+        uint256[3] memory expos,
+        uint8[3] memory circuitIsMultiplied
+    ) public {
+        MockPyth pyth = new MockPyth();
+        vm.startPrank(governor);
+        for (uint256 i; i < _collaterals.length; i++) {
+            int64 price;
+            int32 expo;
+            circuitIsMultiplied[i] = uint8(bound(circuitIsMultiplied[i], 0, 1));
+            prices[i] = uint256(bound(prices[i], 0, BASE_9));
+            expos[i] = uint256(bound(prices[i], 0, 20));
+            if (prices[i] > BASE_9 / 2) price = int64(int256(prices[i]) - int256(BASE_9));
+            else price = int64(int256(prices[i]));
+            if (expos[i] > 10) expo = -int32(int256(expos[i]) - int256(20));
+            else expo = int32(int256(expos[i]));
+
+            {
+                Storage.OracleReadType readType = Storage.OracleReadType.PYTH;
+                Storage.OracleReadType targetType = Storage.OracleReadType.STABLE;
+                Storage.OracleQuoteType quoteType = Storage.OracleQuoteType.UNIT;
+                bytes memory readData;
+                bytes memory targetData;
+                {
+                    bytes32[] memory feedIds = new bytes32[](1);
+                    uint32[] memory stalePeriods = new uint32[](1);
+                    uint8[] memory isMultiplied = new uint8[](1);
+                    feedIds[0] = 0xd052e6f54fe29355d6a3c06592fdefe49fae7840df6d8655bf6d6bfb789b56e4;
+                    stalePeriods[0] = 1 hours;
+                    isMultiplied[0] = circuitIsMultiplied[i];
+                    readData = abi.encode(address(pyth), feedIds, stalePeriods, isMultiplied, quoteType);
+                }
+                vm.expectRevert(Errors.InvalidRate.selector);
+                transmuter.setOracle(_collaterals[i], abi.encode(readType, targetType, readData, targetData));
+
+                pyth.setParams(110000000, -8);
+                transmuter.setOracle(_collaterals[i], abi.encode(readType, targetType, readData, targetData));
+            }
+            if (i == 0) {
+                (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter
+                    .getOracleValues(address(_collaterals[i]));
+                if (circuitIsMultiplied[i] == 0) {
+                    assertEq(mint, (BASE_18 * 10) / 11);
+                    assertEq(burn, (BASE_18 * 10) / 11);
+                    assertEq(ratio, (BASE_18 * 10) / 11);
+                    assertEq(minRatio, (BASE_18 * 10) / 11);
+                    assertEq(redemption, (BASE_18 * 10) / 11);
+                } else {
+                    assertEq(mint, BASE_18);
+                    assertEq(burn, (BASE_18 * 11) / 10);
+                    assertEq(ratio, BASE_18);
+                    assertEq(minRatio, BASE_18);
+                    assertEq(redemption, (BASE_18 * 11) / 10);
+                }
+            }
+            pyth.setParams(price, expo);
+            if (price <= 0) vm.expectRevert(Errors.InvalidRate.selector);
+            (, , , , uint256 redemption2) = transmuter.getOracleValues(address(_collaterals[i]));
+            if (price <= 0) return;
+            uint256 normalizer = expos[i] < 0 ? 10 ** uint32(-expo) : 10 ** uint32(expo);
+            prices[i] = uint64(price);
+            if (circuitIsMultiplied[i] == 1 && expos[i] < 0) assertEq(redemption2, (BASE_18 * prices[i]) / normalizer);
+            else if (circuitIsMultiplied[i] == 1 && expos[i] >= 0)
+                assertEq(redemption2, BASE_18 * prices[i] * normalizer);
+            else if (circuitIsMultiplied[i] == 0 && expos[i] < 0)
+                assertEq(redemption2, (BASE_18 * normalizer) / prices[i]);
+            else if (circuitIsMultiplied[i] == 0 && expos[i] >= 0)
+                assertEq(redemption2, BASE_18 / (normalizer * prices[i]));
+            pyth.setParams(0, 0);
+        }
+        vm.stopPrank();
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -47,7 +47,8 @@ enum OracleReadType {
     WSTETH,
     CBETH,
     RETH,
-    SFRXETH
+    SFRXETH,
+    PYTH
 }
 
 enum OracleQuoteType {
