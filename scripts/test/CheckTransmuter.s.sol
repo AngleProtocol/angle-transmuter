@@ -40,8 +40,8 @@ contract CheckTransmuter is Utils {
             address collat = EUROC;
             uint64[] memory xMintFeeEuroc = new uint64[](3);
             xMintFeeEuroc[0] = uint64(0);
-            xMintFeeEuroc[1] = uint64((79 * BASE_9) / 100);
-            xMintFeeEuroc[2] = uint64((80 * BASE_9) / 100);
+            xMintFeeEuroc[1] = uint64((74 * BASE_9) / 100);
+            xMintFeeEuroc[2] = uint64((75 * BASE_9) / 100);
 
             int64[] memory yMintFeeEuroc = new int64[](3);
             yMintFeeEuroc[0] = int64(uint64(BASE_9 / 1000));
@@ -50,8 +50,8 @@ contract CheckTransmuter is Utils {
 
             uint64[] memory xBurnFeeEuroc = new uint64[](3);
             xBurnFeeEuroc[0] = uint64(BASE_9);
-            xBurnFeeEuroc[1] = uint64((41 * BASE_9) / 100);
-            xBurnFeeEuroc[2] = uint64((40 * BASE_9) / 100);
+            xBurnFeeEuroc[1] = uint64((51 * BASE_9) / 100);
+            xBurnFeeEuroc[2] = uint64((50 * BASE_9) / 100);
 
             int64[] memory yBurnFeeEuroc = new int64[](3);
             yBurnFeeEuroc[0] = int64(uint64((2 * BASE_9) / 1000));
@@ -69,18 +69,18 @@ contract CheckTransmuter is Utils {
             address collat = BC3M;
             uint64[] memory xMintFeeC3M = new uint64[](3);
             xMintFeeC3M[0] = uint64(0);
-            xMintFeeC3M[1] = uint64((59 * BASE_9) / 100);
-            xMintFeeC3M[2] = uint64((60 * BASE_9) / 100);
+            xMintFeeC3M[1] = uint64((49 * BASE_9) / 100);
+            xMintFeeC3M[2] = uint64((50 * BASE_9) / 100);
 
             int64[] memory yMintFeeC3M = new int64[](3);
-            yMintFeeC3M[0] = int64(uint64((BASE_9) / 1000));
-            yMintFeeC3M[1] = int64(uint64(BASE_9 / 1000));
+            yMintFeeC3M[0] = int64(uint64((2 * BASE_9) / 1000));
+            yMintFeeC3M[1] = int64(uint64((2 * BASE_9) / 1000));
             yMintFeeC3M[2] = int64(uint64(MAX_MINT_FEE));
 
             uint64[] memory xBurnFeeC3M = new uint64[](3);
             xBurnFeeC3M[0] = uint64(BASE_9);
-            xBurnFeeC3M[1] = uint64((21 * BASE_9) / 100);
-            xBurnFeeC3M[2] = uint64((20 * BASE_9) / 100);
+            xBurnFeeC3M[1] = uint64((26 * BASE_9) / 100);
+            xBurnFeeC3M[2] = uint64((25 * BASE_9) / 100);
 
             int64[] memory yBurnFeeC3M = new int64[](3);
             yBurnFeeC3M[0] = int64(uint64((5 * BASE_9) / 1000));
