@@ -128,7 +128,7 @@ contract Production {
 
             // Redstone C3M Oracle
             circuitChainlink[0] = AggregatorV3Interface(0x6E27A25999B3C665E44D903B2139F5a4Be2B6C26);
-            stalePeriods[0] = 72 hours;
+            stalePeriods[0] = 14 days;
             circuitChainIsMultiplied[0] = 1;
             chainlinkDecimals[0] = 8;
             OracleQuoteType quoteType = OracleQuoteType.UNIT;
