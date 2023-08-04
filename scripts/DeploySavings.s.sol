@@ -14,6 +14,7 @@ import "oz-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 contract DeploySavings is Utils {
     function run() external {
         // TODO: make sure that deployer has a 1 agEUR (=1e18) balance
+        // TODO: check the import of the constants file if it corresponds to the chain you're deploying on
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_FORK"), "m/44'/60'/0'/0/", 0);
         vm.startBroadcast(deployerPrivateKey);
 

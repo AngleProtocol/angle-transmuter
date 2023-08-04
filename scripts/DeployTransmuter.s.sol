@@ -26,6 +26,7 @@ import { ITransmuter } from "interfaces/ITransmuter.sol";
 contract DeployTransmuter is TransmuterDeploymentHelper {
     function run() external {
         // TODO: make sure that selectors are well generated `yarn generate` before running this script
+        // Here the `selectors.json` file is normally up to date
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_FORK"), "m/44'/60'/0'/0/", 0);
         address deployer = vm.addr(deployerPrivateKey);
         console.log("Address: %s", deployer);
