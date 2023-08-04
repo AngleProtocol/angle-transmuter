@@ -6,6 +6,7 @@ import { console } from "forge-std/console.sol";
 import { StdCheats } from "forge-std/Test.sol";
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
+import { IAgToken } from "interfaces/IAgToken.sol";
 import "stringutils/strings.sol";
 import "../Constants.s.sol";
 import "contracts/transmuter/Storage.sol" as Storage;
@@ -14,7 +15,7 @@ contract CheckTransmuter is Utils, StdCheats {
     using strings for *;
 
     // TODO: replace with deployed Transmuter address
-    ITransmuter public constant transmuter = ITransmuter(0xd3b893cd083f07Fe371c1a87393576e7B01C52C6);
+    ITransmuter public constant transmuter = ITransmuter(0x1757a98c1333B9dc8D408b194B2279b5AFDF70Cc);
 
     function run() external {
         /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -173,10 +174,10 @@ contract CheckTransmuter is Utils, StdCheats {
                                                       TEST SWAPS                                                    
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-        console.log(transmuter.quoteIn(1000000, EUROC, address(AGEUR)));
-        console.log(transmuter.quoteIn(BASE_18, BC3M, address(AGEUR)));
-        console.log(transmuter.quoteOut(BASE_18, EUROC, address(AGEUR)));
-        console.log(transmuter.quoteOut(BASE_18, BC3M, address(AGEUR)));
+        console.log("quoteIn EUROC Mint", transmuter.quoteIn(1000000, EUROC, address(AGEUR)));
+        console.log("quoteIn C3M Mint", transmuter.quoteIn(BASE_18, BC3M, address(AGEUR)));
+        console.log("quoteOut EUROC Mint", transmuter.quoteOut(BASE_18, EUROC, address(AGEUR)));
+        console.log("quoteOut C3M Mint", transmuter.quoteOut(BASE_18, BC3M, address(AGEUR)));
         vm.expectRevert();
         transmuter.quoteIn(BASE_18, address(AGEUR), BC3M);
         vm.expectRevert();
@@ -185,23 +186,28 @@ contract CheckTransmuter is Utils, StdCheats {
         deal(BC3M, address(transmuter), 38445108900000000000000);
         deal(EUROC, address(transmuter), 9500000000000);
 
-        console.log(transmuter.quoteIn(BASE_18, address(AGEUR), BC3M));
-        console.log(transmuter.quoteIn(BASE_18, address(AGEUR), EUROC));
+        console.log("quoteIn BC3M Burn", transmuter.quoteIn(BASE_18, address(AGEUR), BC3M));
+        console.log("quoteIn EUROC Burn", transmuter.quoteIn(BASE_18, address(AGEUR), EUROC));
 
         deal(BC3M, address(transmuter), BASE_18);
 
+        hoax(GOVERNOR);
+        IAgToken(address(TREASURY_EUR)).addMinter(address(transmuter));
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_FORK"), "m/44'/60'/0'/0/", 0);
         address deployer = vm.addr(deployerPrivateKey);
 
+        deal(BC3M, deployer, BASE_18);
         vm.startBroadcast(deployerPrivateKey);
 
-        deal(BC3M, deployer, BASE_18);
         IERC20(BC3M).approve(address(transmuter), BASE_18);
-        console.log("Balance Pre", IERC20(address(AGEUR)).balanceOf(deployer));
-        vm.expectRevert();
+        console.log("Balance AGEUR Pre", IERC20(address(AGEUR)).balanceOf(deployer));
+        console.log("Balance BC3M Pre", IERC20(BC3M).balanceOf(deployer));
         transmuter.swapExactInput(BASE_18, 0, BC3M, address(AGEUR), deployer, type(uint256).max);
-        console.log("Balance Post", IERC20(address(AGEUR)).balanceOf(deployer));
-
+        console.log("Balance AGEUR Post Mint", IERC20(address(AGEUR)).balanceOf(deployer));
+        console.log("Balance BC3M Post Mint", IERC20(BC3M).balanceOf(deployer));
+        transmuter.swapExactInput(BASE_18, 0, address(AGEUR), BC3M, deployer, type(uint256).max);
+        console.log("Balance AGEUR Post Burn", IERC20(address(AGEUR)).balanceOf(deployer));
+        console.log("Balance BC3M Post Burn", IERC20(BC3M).balanceOf(deployer));
         vm.stopBroadcast();
     }
 }
