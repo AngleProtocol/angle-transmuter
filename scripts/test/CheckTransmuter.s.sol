@@ -205,9 +205,14 @@ contract CheckTransmuter is Utils, StdCheats {
         transmuter.swapExactInput(BASE_18, 0, BC3M, address(AGEUR), deployer, type(uint256).max);
         console.log("Balance AGEUR Post Mint", IERC20(address(AGEUR)).balanceOf(deployer));
         console.log("Balance BC3M Post Mint", IERC20(BC3M).balanceOf(deployer));
+        vm.expectRevert();
+        // Not whitelisted
         transmuter.swapExactInput(BASE_18, 0, address(AGEUR), BC3M, deployer, type(uint256).max);
+
+        transmuter.swapExactInput(BASE_18, 0, address(AGEUR), EUROC, deployer, type(uint256).max);
         console.log("Balance AGEUR Post Burn", IERC20(address(AGEUR)).balanceOf(deployer));
         console.log("Balance BC3M Post Burn", IERC20(BC3M).balanceOf(deployer));
+        console.log("Balance EUROC Post Burn", IERC20(EUROC).balanceOf(deployer));
         vm.stopBroadcast();
     }
 }
