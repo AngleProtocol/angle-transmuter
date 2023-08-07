@@ -116,6 +116,9 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
         (tokens, amounts, subCollateralsTracker) = _quoteRedemptionCurve(amount);
         // Check that the provided slippage tokens length is identical to the redeem one
         uint256 amountsLength = amounts.length;
+        // If a collateral is added and another one is removed after a redeem transaction is sent, the tokens
+        // corresponding to the `minAmountOuts` given may not correspond to the actual collateral `tokens` of
+        // the protocol
         if (amountsLength != minAmountOuts.length) revert InvalidLengths();
         // Updating the normalizer enables to simultaneously and proportionally reduce the amount
         // of stablecoins issued from each collateral without having to loop through each of them

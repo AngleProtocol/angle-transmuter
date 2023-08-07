@@ -3,11 +3,12 @@ src = 'contracts'
 out = 'out'
 test = 'test'
 libs = ['node_modules', 'lib']
-script = 'scripts/foundry'
+script = 'scripts'
 cache_path = 'cache-forge'
 gas_reports = ["*"]
 via_ir = true
 sizes = true
+optimizer = true
 optimizer_runs=1000
 solc_version = '0.8.19'
 ffi = true
@@ -36,7 +37,7 @@ optimism = { key = "${OPTIMISM_ETHERSCAN_API_KEY}" }
 polygon = { key = "${POLYGON_ETHERSCAN_API_KEY}" }
 
 [profile.dev]
-optimizer = false
+optimizer = true
 via_ir = false
 src = 'test'
 gas_reports = ["*"]
