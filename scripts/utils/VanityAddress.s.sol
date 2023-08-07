@@ -44,7 +44,7 @@ contract VanityAddress is Utils {
                 break;
             }
             i = i + 1;
-            console.logBytes32(bytes32(abi.encodePacked(DEPLOYER, bytes12(bytes32(i)))));
+            console.logBytes32(bytes32(abi.encodePacked(DEPLOYER, abi.encodePacked(uint24(i)))));
             console.log(i);
             console.log(computedAddress);
         }
