@@ -34,18 +34,19 @@ contract VanityAddress is Utils {
         uint256 i = 0;
         address computedAddress;
         bool found = false;
-        address computedAddress;
         while (!found) {
             computedAddress = _findDeploymentAddress(
-                bytes32(abi.encodePacked(DEPLOYER, bytes12(bytes32(i << 160)))),
+                bytes32(abi.encodePacked(DEPLOYER, abi.encodePacked(uint24(i)))),
                 initCode
             );
             if (uint24(uint160(bytes20(computedAddress))) == uint24(0x002535) || i > 400000) {
                 found = true;
                 break;
             }
-            i--;
+            i = i + 1;
             console.logBytes32(bytes32(abi.encodePacked(DEPLOYER, bytes12(bytes32(i)))));
+            console.log(i);
+            console.log(computedAddress);
         }
 
         console.log("computedAddress ", computedAddress);
