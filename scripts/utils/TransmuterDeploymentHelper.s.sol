@@ -115,6 +115,10 @@ contract TransmuterDeploymentHelper is Utils {
 
         bytes memory initCode = abi.encodePacked(type(DiamondProxy).creationCode, abi.encode(cut, _init, _calldata));
         console.logBytes(initCode);
+        console.logBytes(type(DiamondProxy).creationCode);
+        console.logBytes(abi.encode(cut));
+        console.logBytes(abi.encode(_init));
+        console.logBytes(abi.encode(_calldata));
 
         // Deploy diamond
         bytes32 salt = bytes32(0);
