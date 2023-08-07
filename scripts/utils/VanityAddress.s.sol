@@ -39,7 +39,7 @@ contract VanityAddress is Utils {
                 bytes32(abi.encodePacked(DEPLOYER, abi.encodePacked(uint64(i)))),
                 initCode
             );
-            if (uint24(uint160(bytes20(computedAddress))) == uint24(0x002535)) {
+            if (uint24(uint160(bytes20(computedAddress))) == uint24(0x002535) || i > 400000) {
                 found = true;
                 break;
             }
