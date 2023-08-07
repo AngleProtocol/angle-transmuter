@@ -32,6 +32,8 @@ contract Production {
     ) external {
         address euroc = 0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c;
         address bc3m = 0x2F123cF3F37CE3328CC9B5b8415f9EC5109b45e7;
+        require(address(_accessControlManager) == 0x5bc6BEf80DA563EBf6Df6D6913513fa9A7ec89BE);
+        require(address(_agToken) == 0x1a7e4e63778B4f12a199C062f3eFdD288afCBce8);
 
         // Check this docs for simulations:
         // https://docs.google.com/spreadsheets/d/1UxS1m4sG8j2Lv02wONYJNkF4S7NDLv-5iyAzFAFTfXw/edit#gid=0

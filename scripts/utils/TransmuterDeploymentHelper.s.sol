@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import { Utils } from "./Utils.s.sol";
 import { stdJson } from "forge-std/StdJson.sol";
+import { console } from "forge-std/console.sol";
 import "stringutils/strings.sol";
 import "../Constants.s.sol";
 
@@ -21,6 +22,20 @@ import { DummyDiamondImplementation } from "../generated/DummyDiamondImplementat
 import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 
+interface ImmutableCreate2Factory {
+    function safeCreate2(bytes32 salt, bytes memory initCode) external payable returns (address deploymentAddress);
+
+    function findCreate2Address(
+        bytes32 salt,
+        bytes calldata initCode
+    ) external view returns (address deploymentAddress);
+
+    function findCreate2AddressViaHash(
+        bytes32 salt,
+        bytes32 initCodeHash
+    ) external view returns (address deploymentAddress);
+}
+
 contract TransmuterDeploymentHelper is Utils {
     using strings for *;
     using stdJson for string;
@@ -28,6 +43,26 @@ contract TransmuterDeploymentHelper is Utils {
     address public config;
     string[] facetNames;
     address[] facetAddressList;
+
+    function _findDeploymentAddress(
+        bytes32 salt,
+        bytes memory initCode
+    ) internal pure returns (address deploymentAddress) {
+        deploymentAddress = address(
+            uint160( // downcast to match the address type.
+                uint256( // convert to uint to truncate upper digits.
+                    keccak256( // compute the CREATE2 hash using 4 inputs.
+                        abi.encodePacked( // pack all inputs to the hash together.
+                            hex"ff", // start with 0xff to distinguish from RLP.
+                            IMMUTABLE_CREATE2_FACTORY_ADDRESS, // this contract will be the caller.
+                            salt, // pass in the supplied salt value.
+                            keccak256(abi.encodePacked(initCode)) // pass in the hash of initialization code.
+                        )
+                    )
+                )
+            )
+        );
+    }
 
     /// @dev Deploys diamond and connects facets
     function _deployTransmuter(
@@ -78,7 +113,13 @@ contract TransmuterDeploymentHelper is Utils {
             });
         }
 
+        bytes memory initCode = abi.encodePacked(type(DiamondProxy).creationCode, abi.encode(cut, _init, _calldata));
+        console.logBytes(initCode);
+
         // Deploy diamond
-        transmuter = ITransmuter(address(new DiamondProxy(cut, _init, _calldata)));
+        bytes32 salt = bytes32(0);
+
+        ImmutableCreate2Factory create2Factory = ImmutableCreate2Factory(IMMUTABLE_CREATE2_FACTORY_ADDRESS);
+        transmuter = ITransmuter(create2Factory.safeCreate2(salt, initCode));
     }
 }
