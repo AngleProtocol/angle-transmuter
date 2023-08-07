@@ -16,6 +16,7 @@
     "fork:polygon": "source .env && anvil --fork-url $ETH_NODE_URI_POLYGON",
     "fork:gnosis": "source .env && anvil --fork-url $ETH_NODE_URI_GNOSIS",
     "run": "docker run -it --rm -v $(pwd):/app -w /app ghcr.io/foundry-rs/foundry sh",
+    "script:fork": "source .env && forge script --skip test --fork-url fork --broadcast -vvvv",
     "run:ci": "FOUNDRY_PROFILE=ci forge test -vvv --gas-report",
     "slither": "chmod +x ./slither.sh && ./slither.sh",
     "test": "FOUNDRY_PROFILE=dev forge test -vvv",
