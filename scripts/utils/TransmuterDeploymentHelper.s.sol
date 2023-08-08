@@ -123,7 +123,8 @@ contract TransmuterDeploymentHelper is Utils {
         console.logBytes(abi.encode(_calldata));
 
         // Deploy diamond
-        bytes32 salt = bytes32(abi.encodePacked(DEPLOYER, abi.encodePacked(uint96(27613212))));
+        string memory jsonVanity = vm.readFile(JSON_VANITY_PATH);
+        bytes32 salt = jsonVanity.readBytes32(string.concat("$.", "salt"));
 
         ImmutableCreate2Factory create2Factory = ImmutableCreate2Factory(IMMUTABLE_CREATE2_FACTORY_ADDRESS);
 
