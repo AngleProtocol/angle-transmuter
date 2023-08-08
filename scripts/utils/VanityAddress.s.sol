@@ -39,12 +39,12 @@ contract VanityAddress is Utils {
         uint256 i = initInt;
         address computedAddress;
         bool found = false;
-        while (!found && i - initInt < 1000000) {
+        while (!found && i - initInt < 3000000) {
             computedAddress = _findDeploymentAddress(
                 bytes32(abi.encodePacked(DEPLOYER, abi.encodePacked(uint96(i)))),
                 initCode
             );
-            if (uint24(uint160(bytes20(computedAddress)) >> 152) == uint24(0x02)) {
+            if (uint24(uint160(bytes20(computedAddress)) >> 136) == uint24(0x002535)) {
                 found = true;
                 break;
             }
