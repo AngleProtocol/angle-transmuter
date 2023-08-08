@@ -44,6 +44,8 @@ contract TransmuterDeploymentHelper is Utils {
     string[] facetNames;
     address[] facetAddressList;
 
+    error InvalidVanityAddress();
+
     function _findDeploymentAddress(
         bytes32 salt,
         bytes memory initCode
@@ -121,9 +123,14 @@ contract TransmuterDeploymentHelper is Utils {
         console.logBytes(abi.encode(_calldata));
 
         // Deploy diamond
-        bytes32 salt = bytes32(0);
+        bytes32 salt = bytes32(abi.encodePacked(DEPLOYER, abi.encodePacked(uint96(27613212))));
 
         ImmutableCreate2Factory create2Factory = ImmutableCreate2Factory(IMMUTABLE_CREATE2_FACTORY_ADDRESS);
+
+        address computedAddress = create2Factory.findCreate2Address(salt, initCode);
+        console.log("Supposed to deploy: %s", address(computedAddress));
+        // if (computedAddress != 0x002535d40c962646418E26E00Bf810A4b77560C2) revert InvalidVanityAddress();
+
         transmuter = ITransmuter(create2Factory.safeCreate2(salt, initCode));
     }
 }
