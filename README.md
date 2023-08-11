@@ -55,7 +55,7 @@ The guardian role, which will be a multisig, has the right to: freeze assets, an
 
 ### Audits
 
-Audits for Transmuter smart contracts can be found in the [audits](./audits/)' folder.
+The Transmuter and savings smart contracts have been audited by Code4rena, find the audit report [here](https://code4rena.com/reports/2023-06-angle).
 
 ---
 
