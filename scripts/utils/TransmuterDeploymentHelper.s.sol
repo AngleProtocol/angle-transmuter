@@ -46,26 +46,6 @@ contract TransmuterDeploymentHelper is Utils {
 
     error InvalidVanityAddress();
 
-    function _findDeploymentAddress(
-        bytes32 salt,
-        bytes memory initCode
-    ) internal pure returns (address deploymentAddress) {
-        deploymentAddress = address(
-            uint160( // downcast to match the address type.
-                uint256( // convert to uint to truncate upper digits.
-                    keccak256( // compute the CREATE2 hash using 4 inputs.
-                        abi.encodePacked( // pack all inputs to the hash together.
-                            hex"ff", // start with 0xff to distinguish from RLP.
-                            IMMUTABLE_CREATE2_FACTORY_ADDRESS, // this contract will be the caller.
-                            salt, // pass in the supplied salt value.
-                            keccak256(abi.encodePacked(initCode)) // pass in the hash of initialization code.
-                        )
-                    )
-                )
-            )
-        );
-    }
-
     /// @dev Deploys diamond and connects facets
     function _deployTransmuter(
         address _init,
@@ -130,7 +110,7 @@ contract TransmuterDeploymentHelper is Utils {
 
         address computedAddress = create2Factory.findCreate2Address(salt, initCode);
         console.log("Supposed to deploy: %s", address(computedAddress));
-        // if (computedAddress != 0x002535d40c962646418E26E00Bf810A4b77560C2) revert InvalidVanityAddress();
+        if (computedAddress != 0x002535d40c962646418E26E00Bf810A4b77560C2) revert InvalidVanityAddress();
 
         transmuter = ITransmuter(create2Factory.safeCreate2(salt, initCode));
     }
