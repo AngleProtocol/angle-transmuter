@@ -52,6 +52,7 @@ The guardian role, which will be a multisig, has the right to: freeze assets, an
 - If at some point there are 0 funds in the system it’ll break as `amountToNextBreakPoint` will be 0
 - In the burn, if there is one asset which is making 99% of the basket, and another one 1%: if the one making 1% depegs, it still impacts the burn for the asset that makes the majority of the funds
 - The whitelist function for burns and redemptions are somehow breaking the fairness of the system as whitelisted actors will redeem more value
+- The `getCollateralRatio` function may overflow and revert if the amount of stablecoins issued is really small (1 billion x smaller) than the value of the collateral in the system.
 
 ### Audits
 
