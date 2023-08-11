@@ -9,6 +9,10 @@
   "editor.codeActionsOnSave": {
     "source.fixAll": true
   },
+  "workbench.colorCustomizations": {
+    "diffEditor.insertedTextBackground": "#00bb0044",
+    "diffEditor.removedTextBackground": "#ff000044"
+  },
   "slither.solcPath": "",
   "slither.hiddenDetectors": [],
   "solidity.compileUsingRemoteVersion": "v0.8.19+commit.7dd6d404"

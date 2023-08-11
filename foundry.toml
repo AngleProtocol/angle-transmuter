@@ -12,7 +12,8 @@ optimizer = true
 optimizer_runs=1000
 solc_version = '0.8.19'
 ffi = true
-fs_permissions = [{ access = "read-write", path = "./scripts/selectors.json"}]
+fs_permissions = [{ access = "read-write", path = "./scripts/selectors.json"}, { access = "read-write", path = "./scripts/vanity.json"}]
+memory_limit = 1000043554432
 
 [fuzz]
 runs = 10000

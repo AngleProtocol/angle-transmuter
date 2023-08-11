@@ -11,6 +11,7 @@ contract Utils is Script, StdAssertions {
     using strings for *;
 
     string constant JSON_SELECTOR_PATH = "./scripts/selectors.json";
+    string constant JSON_VANITY_PATH = "./scripts/vanity.json";
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         HELPERS                                                     

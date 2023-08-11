@@ -35,6 +35,7 @@ contract DeployTransmuter is TransmuterDeploymentHelper {
 
         // Config
         config = address(new Production());
+
         address dummyImplementation = address(new DummyDiamondImplementation());
         ITransmuter transmuter = _deployTransmuter(
             config,
