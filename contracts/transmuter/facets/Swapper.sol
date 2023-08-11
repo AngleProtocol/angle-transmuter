@@ -542,8 +542,8 @@ contract Swapper is ISwapper, AccessControlModifiers {
     function _applyFeeMint(uint256 amountIn, int64 fees) internal pure returns (uint256 amountOut) {
         if (fees >= 0) {
             uint256 castedFees = uint256(int256(fees));
-            // Consider that if fees are above `BASE_12` this is equivalent to infinite fees
-            if (castedFees >= BASE_12) revert InvalidSwap();
+            // Consider that if fees are above `MAX_MINT_FEE` this is equivalent to infinite fees
+            if (castedFees >= MAX_MINT_FEE) revert InvalidSwap();
             amountOut = (amountIn * BASE_9) / (BASE_9 + castedFees);
         } else amountOut = (amountIn * BASE_9) / (BASE_9 - uint256(int256(-fees)));
     }
@@ -553,8 +553,8 @@ contract Swapper is ISwapper, AccessControlModifiers {
     function _invertFeeMint(uint256 amountOut, int64 fees) internal pure returns (uint256 amountIn) {
         if (fees >= 0) {
             uint256 castedFees = uint256(int256(fees));
-            // Consider that if fees are above `BASE_12` this is equivalent to infinite fees
-            if (castedFees >= BASE_12) revert InvalidSwap();
+            // Consider that if fees are above `MAX_MINT_FEE` this is equivalent to infinite fees
+            if (castedFees >= MAX_MINT_FEE) revert InvalidSwap();
             amountIn = amountOut.mulDiv(BASE_9 + castedFees, BASE_9, Math.Rounding.Up);
         } else amountIn = amountOut.mulDiv(BASE_9 - uint256(int256(-fees)), BASE_9, Math.Rounding.Up);
     }
