@@ -68,9 +68,7 @@ For contracts deployed for the Angle Protocol, a bug bounty is open on [Immunefi
 
 ## Deployment Addresses 🚦
 
-### agEUR - Transmuter (Ethereum)
-
-- Transmuter (agEUR):
+- Transmuter for agEUR on Ethereum: [0x00253582b2a3FE112feEC532221d9708c64cEFAb](https://etherscan.io/address/0x00253582b2a3FE112feEC532221d9708c64cEFAb)
 
 ---
 
