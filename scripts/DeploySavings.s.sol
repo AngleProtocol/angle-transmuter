@@ -25,39 +25,39 @@ contract DeploySavings is Utils {
         // TODO: check the import of the constants file if it corresponds to the chain you're deploying on
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_MAINNET"), "m/44'/60'/0'/0/", 0);
         ImmutableCreate2Factory create2Factory = ImmutableCreate2Factory(IMMUTABLE_CREATE2_FACTORY_ADDRESS);
+        string memory jsonVanity = vm.readFile(JSON_VANITY_PATH);
+        bytes32 salt = jsonVanity.readBytes32(string.concat("$.", "salt"));
         vm.startBroadcast(deployerPrivateKey);
 
         address deployer = vm.addr(deployerPrivateKey);
         console.log("Deployer address: ", deployer);
 
-        // First deploying the implementation using create2 -> we do it this way in order not to make it dependent
-        // on the nonce of the deployer. We choose to this extent a random salt
-
-        bytes memory initCodeImplem = abi.encodePacked(type(Savings).creationCode, "");
-        bytes32 saltImplem = 0xfda462548ce04282f4b6d6619823a7c64fdc01850000000000000000005af2a6;
-
-        address computedAddressImplem = create2Factory.findCreate2Address(saltImplem, initCodeImplem);
-        Savings savingsImpl = Savings(create2Factory.safeCreate2(saltImplem, initCodeImplem));
-        console.log(computedAddressImplem, address(savingsImpl));
-
-        // Then deploying the proxy
+        // First deploying the implementation
+        Savings savingsImpl = new Savings();
+        // Then deploying the proxy.
+        // To maintain chain consistency, we deploy with the deployer as a proxyAdmin before transferring
+        // to another address
+        // We use a contract that is widely deployed across many chains as an implementation to make it resilient
+        // to possible implementation changes
 
         bytes memory emptyData;
         bytes memory initCode = abi.encodePacked(
             type(TransparentUpgradeableProxy).creationCode,
-            abi.encode(computedAddressImplem, PROXY_ADMIN, emptyData)
+            abi.encode(IMMUTABLE_CREATE2_FACTORY_ADDRESS, deployer, emptyData)
         );
+        console.log("Proxy bytecode");
         console.logBytes(initCode);
-        string memory jsonVanity = vm.readFile(JSON_VANITY_PATH);
-        bytes32 salt = jsonVanity.readBytes32(string.concat("$.", "salt"));
+        console.log("");
 
         address computedAddress = create2Factory.findCreate2Address(salt, initCode);
-        console.log("Supposed to deploy: %s", address(computedAddress));
-        if (computedAddress != 0x004626fEE6FF73fBd42c36d07106fB683CB505CE) revert();
-        Savings saving = Savings(create2Factory.safeCreate2(salt, initCode));
+        console.log("Supposed to deploy: %s", computedAddress);
+        if (computedAddress != 0x004626A008B1aCdC4c74ab51644093b155e59A23) revert();
+        address saving = create2Factory.safeCreate2(salt, initCode);
         console.log("Savings deployed at: ", address(saving));
+        TransparentUpgradeableProxy(payable(saving)).upgradeTo(address(savingsImpl));
+        TransparentUpgradeableProxy(payable(saving)).changeAdmin(PROXY_ADMIN);
         IERC20MetadataUpgradeable(CHAIN_AGEUR).approve(address(saving), 1e18);
-        saving.initialize(
+        Savings(saving).initialize(
             IAccessControlManager(ACCESS_CONTROL_MANAGER),
             IERC20MetadataUpgradeable(CHAIN_AGEUR),
             "Staked agEUR",
