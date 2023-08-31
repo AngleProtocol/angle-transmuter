@@ -12,6 +12,8 @@ import { UD60x18, ud, pow, powu, unwrap } from "prb/math/UD60x18.sol";
 import { stdError } from "forge-std/Test.sol";
 
 contract SavingsTest is Fixture, FunctionUtils {
+    event MaxRateUpdated(uint256 newMaxRate);
+    event RateUpdated(uint256 newRate);
     using SafeERC20 for IERC20;
 
     uint256 internal constant _initDeposit = 1e12;
@@ -54,6 +56,7 @@ contract SavingsTest is Fixture, FunctionUtils {
             _symbol,
             BASE_18 / _initDeposit
         );
+        _saving.setMaxRate(type(uint256).max);
         vm.stopPrank();
     }
 
@@ -158,6 +161,8 @@ contract SavingsTest is Fixture, FunctionUtils {
         // even currently we can not achieve a 0.1% precision
         rate = bound(rate, _minRate, _maxRate / 10);
         vm.prank(governor);
+        vm.expectEmit(address(_saving));
+        emit RateUpdated(rate);
         _saving.setRate(uint208(rate));
 
         assertEq(_saving.rate(), rate);
@@ -174,6 +179,30 @@ contract SavingsTest is Fixture, FunctionUtils {
         );
     }
 
+    function testFuzz_SetMaxRate(uint256 rate) public {
+        rate = bound(rate, _minRate, _maxRate);
+        vm.prank(governor);
+        vm.expectEmit(address(_saving));
+        emit MaxRateUpdated(rate);
+        _saving.setMaxRate(rate);
+
+        assertEq(_saving.maxRate(), rate);
+    }
+
+    function test_RevertWhen_SetMaxRateNotGovernor(uint256 rate) public {
+        rate = bound(rate, _minRate, _maxRate);
+        vm.prank(governor);
+        _saving.setMaxRate(uint208(rate));
+        assertEq(_saving.maxRate(), rate);
+
+        vm.expectRevert(Errors.NotGovernor.selector);
+        _saving.setMaxRate(uint208(rate + 1));
+
+        vm.prank(guardian);
+        vm.expectRevert(Errors.NotGovernor.selector);
+        _saving.setMaxRate(uint208(rate - 1));
+    }
+
     function test_RevertWhen_SetRateNotGovernorOrGuardian(uint256 rate) public {
         rate = bound(rate, _minRate, _maxRate / 10 - 1);
         vm.prank(governor);
@@ -181,7 +210,7 @@ contract SavingsTest is Fixture, FunctionUtils {
 
         assertEq(_saving.rate(), rate);
 
-        vm.expectRevert(Errors.NotGovernor.selector);
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
         _saving.setRate(uint208(rate + 1));
 
         vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
@@ -199,6 +228,29 @@ contract SavingsTest is Fixture, FunctionUtils {
         _saving.setRate(uint208(0));
 
         assertEq(_saving.rate(), 0);
+    }
+
+    function test_RevertWhen_SetRateInvalidRate(uint256 rate, uint256 maxRate) public {
+        rate = bound(rate, _minRate, _maxRate / 10 - 1);
+        maxRate = bound(maxRate, _minRate, _maxRate);
+
+        vm.prank(governor);
+        _saving.setMaxRate(maxRate);
+        assertEq(_saving.maxRate(), maxRate);
+
+        if (maxRate >= rate) {
+            vm.prank(guardian);
+            _saving.setRate(uint208(rate));
+            assertEq(_saving.rate(), rate);
+        } else {
+            vm.prank(guardian);
+            vm.expectRevert(Errors.InvalidRate.selector);
+            _saving.setRate(uint208(rate));
+        }
+
+        vm.prank(guardian);
+        vm.expectRevert(Errors.InvalidRate.selector);
+        _saving.setRate(uint208(maxRate + 1));
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

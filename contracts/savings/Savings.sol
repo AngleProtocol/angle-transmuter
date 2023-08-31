@@ -24,6 +24,11 @@ contract Savings is BaseSavings {
     /// @notice Whether the contract is paused or not
     uint8 public paused;
 
+    /// @notice Maximum inflation rate
+    /// @dev Note that `rate` can still be greater than `maxRate` if this `maxRate` is reduced by governance
+    /// to a level inferior to the current rate
+    uint256 public maxRate;
+
     uint256[49] private __gap;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -31,6 +36,7 @@ contract Savings is BaseSavings {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     event Accrued(uint256 interest);
+    event MaxRateUpdated(uint256 newMaxRate);
     event ToggledPause(uint128 pauseStatus);
     event RateUpdated(uint256 newRate);
 
@@ -224,13 +230,18 @@ contract Savings is BaseSavings {
     }
 
     /// @notice Updates the inflation rate for depositing `asset` in this contract
-    /// @dev Guardian can reduce the rate but not increase it
-    function setRate(uint208 newRate) external {
-        if (newRate < rate) {
-            if (!accessControlManager.isGovernorOrGuardian(msg.sender)) revert NotGovernorOrGuardian();
-        } else if (!accessControlManager.isGovernor(msg.sender)) revert NotGovernor();
+    /// @dev Any `rate` can be set by the guardian provided that it is inferior to the `maxRate` settable
+    /// by a governor address
+    function setRate(uint208 newRate) external onlyGuardian {
+        if (newRate > maxRate) revert InvalidRate();
         _accrue();
         rate = newRate;
         emit RateUpdated(newRate);
+    }
+
+    /// @notice Updates the maximum rate settable
+    function setMaxRate(uint256 newMaxRate) external onlyGovernor {
+        maxRate = newMaxRate;
+        emit MaxRateUpdated(newMaxRate);
     }
 }
