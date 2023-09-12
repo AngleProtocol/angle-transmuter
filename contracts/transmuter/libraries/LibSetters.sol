@@ -241,27 +241,8 @@ library LibSetters {
             ) revert InvalidParams();
         }
 
-        // If a mint or burn fee is negative, we need to check that accounts atomically minting
-        // (from any collateral) and then burning cannot get more than their initial value
-        if (yFee[0] < 0) {
-            if (!LibDiamond.isGovernor(msg.sender)) revert NotGovernor(); // Only governor can set negative fees
-            TransmuterStorage storage ts = s.transmuterStorage();
-            address[] memory collateralListMem = ts.collateralList;
-            uint256 length = collateralListMem.length;
-            if (action == ActionType.Mint) {
-                // This can be mathematically expressed by `(1-min_c(burnFee_c))<=(1+mintFee[0])`
-                for (uint256 i; i < length; ++i) {
-                    int64[] memory burnFees = ts.collaterals[collateralListMem[i]].yFeeBurn;
-                    if (burnFees[0] + yFee[0] < 0) revert InvalidNegativeFees();
-                }
-            }
-            if (action == ActionType.Burn) {
-                // This can be mathematically expressed by `(1-burnFee[0])<=(1+min_c(mintFee_c))`
-                for (uint256 i; i < length; ++i) {
-                    int64[] memory mintFees = ts.collaterals[collateralListMem[i]].yFeeMint;
-                    if (yFee[0] + mintFees[0] < 0) revert InvalidNegativeFees();
-                }
-            }
-        }
+        // If a mint or burn fee is negative, accounts atomically minting and burning may arb the protocol,
+        // so setting negative fees should only be available to a governor address
+        if (yFee[0] < 0 && !LibDiamond.isGovernor(msg.sender)) revert NotGovernor();
     }
 }
