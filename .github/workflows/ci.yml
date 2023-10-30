@@ -198,3 +198,24 @@ jobs:
         run: |
           echo "## Slither result" >> $GITHUB_STEP_SUMMARY
           echo "✅ Uploaded to GitHub code scanning" >> $GITHUB_STEP_SUMMARY
+
+  check_storage_layout:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: onbjerg/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Check storage layout
+        uses: Rubilmax/foundry-storage-check@v3.7
+        with:
+          contract: contracts/transmuter/Layout.sol:Layout
+          rpcUrl: ${{ secrets.ETH_NODE_URI_MAINNET }}
+          address: 0x00253582b2a3FE112feEC532221d9708c64cEFAb
+          failOnRemoval: true
