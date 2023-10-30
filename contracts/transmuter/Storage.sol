@@ -3,7 +3,6 @@
 pragma solidity ^0.8.19;
 
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
-
 import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
 
@@ -68,7 +67,7 @@ struct Permit2Details {
     address to;                                  // Address that will receive the funds
     uint256 nonce;                               // Nonce of the transaction
     bytes signature;                             // Permit signature of the user
-}       
+}
 
 struct FacetCut {
     address facetAddress;                        // Facet contract address
