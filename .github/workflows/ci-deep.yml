@@ -1,4 +1,4 @@
-name: Transmuter CI
+name: "CI Deep"
 
 env:
   FOUNDRY_PROFILE: "ci"
