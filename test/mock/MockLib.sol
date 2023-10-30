@@ -4,6 +4,8 @@ pragma solidity ^0.8.19;
 
 import { LibHelpers } from "../../contracts/transmuter/libraries/LibHelpers.sol";
 import { LibManager } from "../../contracts/transmuter/libraries/LibManager.sol";
+import { LibStorage } from "../../contracts/transmuter/libraries/LibStorage.sol";
+import { ImplementationStorage } from "../../contracts/transmuter/Storage.sol";
 
 contract MockLib {
     function convertDecimalTo(uint256 amount, uint8 fromDecimals, uint8 toDecimals) external pure returns (uint256) {
@@ -25,6 +27,10 @@ contract MockLib {
 
     function piecewiseLinear(uint64 x, uint64[] memory xArray, int64[] memory yArray) external pure returns (int64) {
         return LibHelpers.piecewiseLinear(x, xArray, yArray);
+    }
+
+    function implementationStorage() external pure returns (ImplementationStorage memory) {
+        return LibStorage.implementationStorage();
     }
 
     function transferRecipient(bytes memory config) external view returns (address) {
