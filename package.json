@@ -5,7 +5,7 @@
   "scripts": {
     "ci:coverage": "forge coverage --report lcov --match-path \"test/{units,fuzz}/**/*.sol\"",
     "coverage": "FOUNDRY_PROFILE=dev forge coverage --report lcov && yarn lcov:clean && yarn lcov:generate-html",
-    "compile": "forge build --skip test",
+    "compile": "forge build",
     "compile:dev": "FOUNDRY_PROFILE=dev forge build",
     "deploy": "forge script --skip test --broadcast --verify --slow -vvvv --rpc-url polygonzkevm scripts/DeploySavings.s.sol",
     "deploy:fork": "source .env && forge script --skip test  --slow --fork-url fork --broadcast scripts/DeploySavings.s.sol -vvvv",
