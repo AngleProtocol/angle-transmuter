@@ -13,11 +13,11 @@ on:
         description: "Unit: number of fuzz runs."
         required: false
       invariantRuns:
-        default: "64"
+        default: "300"
         description: "Unit: number of invariant runs."
         required: false
       invariantDepth:
-        default: "2048"
+        default: "50"
         description: "Unit: invariant depth."
         required: false
 
