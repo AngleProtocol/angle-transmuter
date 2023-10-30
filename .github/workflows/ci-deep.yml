@@ -1,0 +1,149 @@
+name: Transmuter CI
+
+env:
+  FOUNDRY_PROFILE: "ci"
+
+on:
+  schedule:
+    - cron: "0 3 * * 0" # at 3:00am UTC every Sunday
+  workflow_dispatch:
+    inputs:
+      fuzzRuns:
+        default: "100000"
+        description: "Unit: number of fuzz runs."
+        required: false
+      invariantRuns:
+        default: "64"
+        description: "Unit: number of invariant runs."
+        required: false
+      invariantDepth:
+        default: "2048"
+        description: "Unit: invariant depth."
+        required: false
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Run solhint
+        run: yarn lint:check
+
+      - name: "Add lint summary"
+        run: |
+          echo "## Lint result" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Passed" >> $GITHUB_STEP_SUMMARY
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: "recursive"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Compile foundry
+        run: yarn compile --sizes
+
+      - name: "Cache the build so that it can be re-used by the other jobs"
+        uses: "actions/cache/save@v3"
+        with:
+          key: "build-${{ github.sha }}"
+          path: |
+            cache-forge
+            out
+
+      - name: "Add build summary"
+        run: |
+          echo "## Build result" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Passed" >> $GITHUB_STEP_SUMMARY
+
+  test-unit:
+    needs: ["build", "lint"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: "recursive"
+
+      - uses: actions/cache/restore@v3
+        with:
+          fail-on-cache-miss: true
+          path: |
+            cache-forge
+            out
+          key: "build-${{ github.sha }}"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Foundry tests
+        run: yarn test:unit
+
+  test-invariant:
+    needs: ["build", "lint"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: "recursive"
+
+      - uses: actions/cache/restore@v3
+        with:
+          fail-on-cache-miss: true
+          path: |
+            cache-forge
+            out
+          key: "build-${{ github.sha }}"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Foundry tests
+        run: yarn test:invariant
+        env:
+          FOUNDRY_INVARIANT_RUNS: ${{ github.event.inputs.invariantRuns }}
+          FOUNDRY_INVARIANT_DEPTH: ${{ github.event.inputs.invariantDepth }}
+
+  test-fuzz:
+    needs: ["build", "lint"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: "recursive"
+
+      - uses: actions/cache/restore@v3
+        with:
+          fail-on-cache-miss: true
+          path: |
+            cache-forge
+            out
+          key: "build-${{ github.sha }}"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Foundry tests
+        run: yarn test:fuzz
+        env:
+          FOUNDRY_FUZZ_RUNS: ${{ github.event.inputs.fuzzRuns }}
