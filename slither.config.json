@@ -1,13 +1,18 @@
 {
+  "filter_paths": "(lib|test|external)",
   "solc_remaps": [
-    "ds-test/=lib/ds-test/src/",
+    "ds-test/=lib/forge-std/lib/ds-test/src/",
     "forge-std/=lib/forge-std/src/",
     "stringutils/=lib/solidity-stringutils",
     "contracts/=contracts/",
+    "test/=test/",
     "interfaces/=contracts/interfaces/",
-    "oz/=node_modules/@openzeppelin/contracts/",
-    "oz-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/",
+    "oz/=lib/openzeppelin-contracts/contracts/",
+    "oz-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
     "mock/=test/mock/",
-    "prb/math/=lib/prb-math/src/"
+    "prb/math/=lib/prb-math/src/",
+    "borrow/=lib/borrow-contracts/contracts"
   ]
 }

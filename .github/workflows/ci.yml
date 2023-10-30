@@ -107,6 +107,9 @@ jobs:
 
       - name: Run Foundry tests
         run: yarn test:invariant
+        env:
+          FOUNDRY_INVARIANT_RUNS: "8"
+          FOUNDRY_INVARIANT_DEPTH: "256"
 
   test-fuzz:
     needs: ["build", "lint"]
@@ -131,6 +134,8 @@ jobs:
 
       - name: Run Foundry tests
         run: yarn test:fuzz
+        env:
+          FOUNDRY_FUZZ_RUNS: "5000"
 
   coverage:
     needs: ["build", "lint"]
@@ -168,10 +173,19 @@ jobs:
         with:
           submodules: "recursive"
 
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Compile foundry
+        run: forge build --build-info --skip */test/** */scripts/** --force
+
       - name: "Run Slither analysis"
         uses: "crytic/slither-action@v0.3.0"
         id: "slither"
         with:
+          ignore-compile: true
           fail-on: "none"
           sarif: "results.sarif"
 
