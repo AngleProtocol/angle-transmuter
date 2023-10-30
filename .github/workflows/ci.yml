@@ -1,79 +1,67 @@
 name: Transmuter CI
 
+env:
+  FOUNDRY_PROFILE: "ci"
+
 on:
+  workflow_dispatch:
+  pull_request:
   push:
     branches:
-      - main
-  workflow_dispatch:
-    inputs:
-      workflow_to_run:
-        type: choice
-        description: Which workflow to run?
-        required: true
-        options:
-          - all
-          - foundry-tests
-          - build-via-ir
-  pull_request:
-    types:
-      - ready_for_review
-      - review_requested
-  pull_request_review:
-    types: [submitted]
-
-defaults:
-  run:
-    shell: bash
+      - "main"
 
 jobs:
-  run-linters:
-    name: Run Linters
-    if: github.ref == 'refs/heads/main' || github.event.inputs.workflow_to_run == 'all' || github.event.review.state == 'approved' || github.event.action == 'ready_for_review' || github.event.action == 'review_requested'
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
         with:
           node-version: 18
-      - uses: actions/cache@v2
-        with:
-          path: node_modules
-          key: yarn-${{ hashFiles('yarn.lock') }}
-          restore-keys: yarn-
+          cache: "yarn"
+
       - name: Install dependencies
-        run: |
-          yarn install --frozen-lockfile
-      - name: Run lint
-        run: yarn lint
+        run: yarn install
 
-  build-via-ir:
-    name: Compilation (via IR)
-    if: github.ref == 'refs/heads/main' || github.event.inputs.workflow_to_run == 'all' || github.event.inputs.workflow_to_run == 'build-via-ir' || github.event.review.state == 'approved' || github.event.action == 'ready_for_review' || github.event.action == 'review_requested'
+      - name: Run solhint
+        run: yarn lint:check
+
+      - name: "Add lint summary"
+        run: |
+          echo "## Lint result" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Passed" >> $GITHUB_STEP_SUMMARY
+
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
         with:
-          node-version: 18
-      - uses: actions/cache@v2
-        with:
-          path: node_modules
-          key: yarn-${{ hashFiles('yarn.lock') }}
-          restore-keys: yarn-
-      - run: yarn install --frozen-lockfile
+          submodules: "recursive"
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
 
-      - name: Build contracts via IR
-        run: yarn compile
+      - name: Compile foundry
+        run: yarn compile --sizes
 
-  foundry-tests:
-    name: Unit, Fuzz and Invariant Tests
-    if: github.ref == 'refs/heads/main' || github.event.inputs.workflow_to_run == 'all' || github.event.inputs.workflow_to_run == 'foundry-tests' || github.event.review.state == 'approved' || github.event.action == 'ready_for_review' || github.event.action == 'review_requested'
+      - name: "Cache the build so that it can be re-used by the other jobs"
+        uses: "actions/cache/save@v3"
+        with:
+          key: "build-${{ github.sha }}"
+          path: |
+            cache-forge
+            out
+
+      - name: "Add build summary"
+        run: |
+          echo "## Build result" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Passed" >> $GITHUB_STEP_SUMMARY
+
+  test-unit:
+    needs: ["build", "lint"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -81,12 +69,14 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: 18
-      - uses: actions/cache@v2
+
+      - uses: actions/cache/restore@v3
         with:
-          path: node_modules
-          key: yarn-${{ hashFiles('yarn.lock') }}
-          restore-keys: yarn-
-      - run: yarn install --frozen-lockfile
+          fail-on-cache-miss: true
+          path: |
+            cache-forge
+            out
+          key: "build-${{ github.sha }}"
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -94,11 +84,111 @@ jobs:
           version: nightly
 
       - name: Run Foundry tests
-        run: set -o pipefail && yarn run:ci | tee ethereum.gasreport.ansi
+        run: yarn test:unit
 
-      - name: Compare gas reports
-        uses: Rubilmax/foundry-gas-diff@v3.13.4
-        id: gas_diff
+  test-invariant:
+    needs: ["build", "lint"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v2
         with:
-          match: contracts/transmuter/DiamondProxy.sol
-          report: ethereum.gasreport.ansi
+          node-version: 18
+
+      - uses: actions/cache/restore@v3
+        with:
+          fail-on-cache-miss: true
+          path: |
+            cache-forge
+            out
+          key: "build-${{ github.sha }}"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Foundry tests
+        run: yarn test:invariant
+
+  test-fuzz:
+    needs: ["build", "lint"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 18
+
+      - uses: actions/cache/restore@v3
+        with:
+          fail-on-cache-miss: true
+          path: |
+            cache-forge
+            out
+          key: "build-${{ github.sha }}"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Foundry tests
+        run: yarn test:fuzz
+
+  coverage:
+    needs: ["build", "lint"]
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Check out the repo"
+        uses: "actions/checkout@v3"
+        with:
+          submodules: "recursive"
+
+      - name: "Install Foundry"
+        uses: "foundry-rs/foundry-toolchain@v1"
+
+      - name: "Generate the coverage report using the unit and the integration tests"
+        run: "yarn ci:coverage"
+
+      - name: "Upload coverage report to Codecov"
+        uses: "codecov/codecov-action@v3"
+        with:
+          files: "./lcov.info"
+
+      - name: "Add coverage summary"
+        run: |
+          echo "## Coverage result" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Uploaded to Codecov" >> $GITHUB_STEP_SUMMARY
+
+  slither-analyze:
+    needs: ["build", "lint"]
+    runs-on: "ubuntu-latest"
+    permissions:
+      actions: "read"
+      contents: "read"
+      security-events: "write"
+    steps:
+      - name: "Check out the repo"
+        uses: "actions/checkout@v3"
+        with:
+          submodules: "recursive"
+
+      - name: "Run Slither analysis"
+        uses: "crytic/slither-action@v0.3.0"
+        id: "slither"
+        with:
+          fail-on: "none"
+          sarif: "results.sarif"
+
+      - name: "Upload SARIF file to GitHub code scanning"
+        uses: "github/codeql-action/upload-sarif@v2"
+        with:
+          sarif_file: ${{ steps.slither.outputs.sarif }}
+
+      - name: "Add Slither summary"
+        run: |
+          echo "## Slither result" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Uploaded to GitHub code scanning" >> $GITHUB_STEP_SUMMARY

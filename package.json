@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
+    "ci:coverage": "forge coverage --report lcov --match-path \"test/{units,fuzz}/**/*.sol\"",
     "coverage": "FOUNDRY_PROFILE=dev forge coverage --report lcov && yarn lcov:clean && yarn lcov:generate-html",
     "compile": "forge build --skip test",
     "compile:dev": "FOUNDRY_PROFILE=dev forge build",
@@ -23,7 +24,9 @@
     "fork:optimism": "source .env && anvil --fork-url $ETH_NODE_URI_OPTIMISM",
     "run": "docker run -it --rm -v $(pwd):/app -w /app ghcr.io/foundry-rs/foundry sh",
     "script:fork": "source .env && forge script --skip test --fork-url fork --broadcast -vvvv",
-    "run:ci": "FOUNDRY_PROFILE=ci forge test -vvv --gas-report",
+    "test:unit": "forge test -vvv --gas-report --match-path \"test/units/**/*.sol\"",
+    "test:invariant": "forge test -vvv --gas-report --match-path \"test/invariants/**/*.sol\"",
+    "test:fuzz": "forge test -vvv --gas-report --match-path \"test/fuzz/**/*.sol\"",
     "slither": "chmod +x ./slither.sh && ./slither.sh",
     "test": "FOUNDRY_PROFILE=dev forge test -vvv",
     "lcov:clean": "lcov --remove lcov.info -o lcov.info 'test/**/**' 'test/**' 'contracts/transmuter/configs/**' 'contracts/utils/**'",
