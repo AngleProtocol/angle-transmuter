@@ -1,14 +1,25 @@
-name: "CI"
+name: "CI Deep"
 
 env:
   FOUNDRY_PROFILE: "ci"
 
 on:
+  schedule:
+    - cron: "0 3 * * 0" # at 3:00am UTC every Sunday
   workflow_dispatch:
-  pull_request:
-  push:
-    branches:
-      - "main"
+    inputs:
+      fuzzRuns:
+        default: "100000"
+        description: "Unit: number of fuzz runs."
+        required: false
+      invariantRuns:
+        default: "300"
+        description: "Unit: number of invariant runs."
+        required: false
+      invariantDepth:
+        default: "50"
+        description: "Unit: invariant depth."
+        required: false
 
 jobs:
   lint:
@@ -108,8 +119,8 @@ jobs:
       - name: Run Foundry tests
         run: yarn test:invariant
         env:
-          FOUNDRY_INVARIANT_RUNS: "8"
-          FOUNDRY_INVARIANT_DEPTH: "256"
+          FOUNDRY_INVARIANT_RUNS: ${{ github.event.inputs.invariantRuns }}
+          FOUNDRY_INVARIANT_DEPTH: ${{ github.event.inputs.invariantDepth }}
 
   test-fuzz:
     needs: ["build", "lint"]
@@ -135,91 +146,4 @@ jobs:
       - name: Run Foundry tests
         run: yarn test:fuzz
         env:
-          FOUNDRY_FUZZ_RUNS: "5000"
-
-  coverage:
-    needs: ["build", "lint"]
-    runs-on: "ubuntu-latest"
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: "recursive"
-
-      - name: "Install Foundry"
-        uses: "foundry-rs/foundry-toolchain@v1"
-
-      - name: "Install lcov"
-        run: "sudo apt-get install lcov"
-
-      - name: "Generate the coverage report using the unit and the integration tests"
-        run: "yarn ci:coverage"
-
-      - name: "Upload coverage report to Codecov"
-        uses: "codecov/codecov-action@v3"
-        with:
-          files: "./lcov.info"
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: "Add coverage summary"
-        run: |
-          echo "## Coverage result" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Uploaded to Codecov" >> $GITHUB_STEP_SUMMARY
-
-  slither-analyze:
-    needs: ["build", "lint"]
-    runs-on: "ubuntu-latest"
-    permissions:
-      actions: "read"
-      contents: "read"
-      security-events: "write"
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: "recursive"
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Compile foundry
-        run: forge build --build-info --skip */test/** */scripts/** --force
-
-      - name: "Run Slither analysis"
-        uses: "crytic/slither-action@v0.3.0"
-        id: "slither"
-        with:
-          ignore-compile: true
-          fail-on: "none"
-          sarif: "results.sarif"
-
-      - name: "Upload SARIF file to GitHub code scanning"
-        uses: "github/codeql-action/upload-sarif@v2"
-        with:
-          sarif_file: ${{ steps.slither.outputs.sarif }}
-
-      - name: "Add Slither summary"
-        run: |
-          echo "## Slither result" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Uploaded to GitHub code scanning" >> $GITHUB_STEP_SUMMARY
-
-  check_storage_layout:
-    needs: ["build", "lint"]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-
-      - name: Install Foundry
-        uses: onbjerg/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Check storage layout
-        uses: Rubilmax/foundry-storage-check@v3.7
-        with:
-          contract: contracts/transmuter/Layout.sol:Layout
-          rpcUrl: ${{ secrets.ETH_NODE_URI_MAINNET }}
-          address: "0x00253582b2a3FE112feEC532221d9708c64cEFAb"
-          failOnRemoval: true
+          FOUNDRY_FUZZ_RUNS: ${{ github.event.inputs.fuzzRuns }}

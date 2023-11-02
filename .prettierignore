@@ -1,2 +1,6 @@
 contracts/transmuter/Storage.sol
 contracts/transmuter/Layout.sol
+
+lib
+cache
+out
