@@ -40,7 +40,7 @@
     "verify": "forge verify-contract --watch 0x8E669F6eF8485694196F32d568BA4Ac268b9FE8f Redeemer"
   },
   "keywords": [],
-  "author": "Angle Core Team",
+  "author": "Angle Labs, Inc.",
   "license": "BUSL-1.1",
   "bugs": {
     "url": "https://github.com/AngleProtocol/angle-transmuter/issues"
