@@ -5,7 +5,6 @@ pragma solidity ^0.8.19;
 import "oz/interfaces/IERC20.sol";
 import "oz/token/ERC20/utils/SafeERC20.sol";
 
-import { IAgToken } from "interfaces/IAgToken.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 
 import { AccessControl, IAccessControlManager } from "../utils/AccessControl.sol";
