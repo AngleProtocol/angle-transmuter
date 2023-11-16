@@ -50,7 +50,7 @@ bsc = { key = "${BSC_ETHERSCAN_API_KEY}"}
 [profile.dev]
 optimizer = true
 via_ir = false
-src = 'test'
+src = 'contracts'
 gas_reports = ["*"]
 
 [profile.dev.fuzz]
@@ -62,7 +62,7 @@ depth = 1
 fail_on_revert = false
 
 [profile.ci]
-src = 'test'
+src = 'contracts'
 via_ir = false
 gas_reports = ["*"]
 
