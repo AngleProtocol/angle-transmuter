@@ -95,8 +95,11 @@ contract Rebalancer is AccessControl {
         if (amountOut < amountOutMin) revert TooSmallAmountOut();
     }
 
-    /// @notice Simulates how much a call to `swapExactInput` with the same parameters would yield in terms
+    /// @notice Approximates how much a call to `swapExactInput` with the same parameters would yield in terms
     /// of `amountOut`
+    /// @dev This function returns an approximation and not an exact value as the first mint to compute `amountAgToken`
+    /// might change the state of the fees slope within the Transmuter that will then be taken into account when
+    /// burning the minted agToken
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256) {
         uint256 amountAgToken = transmuter.quoteIn(amountIn, tokenIn, agToken);
         uint256 amountOut = transmuter.quoteIn(amountAgToken, agToken, tokenOut);
