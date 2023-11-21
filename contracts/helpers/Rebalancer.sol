@@ -87,7 +87,7 @@ contract Rebalancer is AccessControl {
             block.timestamp
         );
         // Based on the `amountAgToken` obtained, checking whether this is eligible to a subsidy
-        uint256 subsidy = _computeSubsidy(tokenIn, tokenOut, amountAgToken);
+        subsidy = _computeSubsidy(tokenIn, tokenOut, amountAgToken);
         if (subsidy < subsidyOutMin) revert TooSmallAmountOut();
         // Then, burn the minted agToken to `tokenOut`
         amountOut = transmuter.swapExactInput(amountAgToken, amountOutMin, agToken, tokenOut, to, deadline);
