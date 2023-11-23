@@ -126,8 +126,8 @@ contract Rebalancer is AccessControl {
         uint256 guaranteedRate
     ) internal view returns (uint256 amountOut) {
         return
-            (amountIn * guaranteedRate * IERC20Metadata(tokenOut).decimals()) /
-            (1e18 * IERC20Metadata(tokenIn).decimals());
+            (amountIn * guaranteedRate * (10 ** IERC20Metadata(tokenOut).decimals())) /
+            (1e18 * (10 ** IERC20Metadata(tokenIn).decimals()));
     }
 
     /// @notice Computes the additional subsidy amount in agToken that must be added during the process of a swap

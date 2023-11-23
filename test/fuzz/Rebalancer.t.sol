@@ -19,6 +19,9 @@ contract RebalancerTest is Fixture, FunctionUtils {
     address[] internal _collaterals;
 
     Rebalancer public rebalancer;
+    uint256 public decimalsA;
+    uint256 public decimalsB;
+    uint256 public decimalsY;
 
     function setUp() public override {
         super.setUp();
@@ -48,6 +51,10 @@ contract RebalancerTest is Fixture, FunctionUtils {
         _collaterals.push(address(eurB));
         _collaterals.push(address(eurY));
         rebalancer = new Rebalancer(accessControlManager, transmuter);
+
+        decimalsA = 10 ** IERC20Metadata(address(eurA)).decimals();
+        decimalsB = 10 ** IERC20Metadata(address(eurB)).decimals();
+        decimalsY = 10 ** IERC20Metadata(address(eurY)).decimals();
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -86,124 +93,109 @@ contract RebalancerTest is Fixture, FunctionUtils {
 
     function testFuzz_SetOrder(
         uint256 subsidyBudget,
-        uint256 premium,
+        uint256 guaranteedRate,
         uint256 subsidyBudget1,
-        uint256 premium1
+        uint256 guaranteedRate1
     ) public {
         uint256 a;
         uint256 b;
         subsidyBudget = bound(subsidyBudget, 10 ** 9, 10 ** 27);
-        premium = bound(premium, 0, 10 ** 9);
+        guaranteedRate = bound(guaranteedRate, 10 ** 15, 10 ** 21);
         subsidyBudget1 = bound(subsidyBudget1, 10 ** 9, 10 ** 27);
-        premium1 = bound(premium1, 0, 10 ** 9);
-        deal(address(eurB), address(rebalancer), subsidyBudget);
+        guaranteedRate1 = bound(guaranteedRate1, 10 ** 15, 10 ** 21);
+        deal(address(agToken), address(rebalancer), subsidyBudget);
         vm.startPrank(governor);
-        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, premium);
+        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, guaranteedRate);
         vm.stopPrank();
         (a, b) = rebalancer.orders(address(eurA), address(eurB));
         assertEq(a, subsidyBudget);
-        assertEq(b, premium);
-        assertEq(rebalancer.budget(address(eurB)), subsidyBudget);
-        if (premium == 0) assertEq(rebalancer.estimateAmountEligibleForIncentives(address(eurA), address(eurB)), 0);
-        else
-            assertEq(
-                rebalancer.estimateAmountEligibleForIncentives(address(eurA), address(eurB)),
-                (subsidyBudget * BASE_9) / premium
-            );
+        assertEq(b, guaranteedRate);
+        assertEq(rebalancer.budget(), subsidyBudget);
+        assertEq(
+            rebalancer.getGuaranteedAmountOut(address(eurA), address(eurB), decimalsA),
+            (guaranteedRate * decimalsB) / 1e18
+        );
 
         vm.startPrank(governor);
         vm.expectRevert(Errors.InvalidParam.selector);
-        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget + 1, premium + 1);
+        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget + 1, guaranteedRate + 1);
         vm.stopPrank();
 
         vm.startPrank(governor);
-        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget / 3, premium);
+        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget / 3, guaranteedRate);
         vm.stopPrank();
         (a, b) = rebalancer.orders(address(eurA), address(eurB));
         assertEq(a, subsidyBudget / 3);
-        assertEq(b, premium);
-        assertEq(rebalancer.budget(address(eurB)), subsidyBudget / 3);
-        if (premium == 0) assertEq(rebalancer.estimateAmountEligibleForIncentives(address(eurA), address(eurB)), 0);
-        else
-            assertEq(
-                rebalancer.estimateAmountEligibleForIncentives(address(eurA), address(eurB)),
-                ((subsidyBudget / 3) * BASE_9) / premium
-            );
+        assertEq(b, guaranteedRate);
+        assertEq(rebalancer.budget(), subsidyBudget / 3);
 
+        assertEq(
+            rebalancer.getGuaranteedAmountOut(address(eurA), address(eurB), decimalsA),
+            (guaranteedRate * decimalsB) / 1e18
+        );
         vm.startPrank(governor);
-        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, premium / 2);
+        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, guaranteedRate / 2);
         vm.stopPrank();
         (a, b) = rebalancer.orders(address(eurA), address(eurB));
         assertEq(a, subsidyBudget);
-        assertEq(b, premium / 2);
-        assertEq(rebalancer.budget(address(eurB)), subsidyBudget);
-        if (premium / 2 == 0) assertEq(rebalancer.estimateAmountEligibleForIncentives(address(eurA), address(eurB)), 0);
-        else
-            assertEq(
-                rebalancer.estimateAmountEligibleForIncentives(address(eurA), address(eurB)),
-                (subsidyBudget * BASE_9) / (premium / 2)
-            );
+        assertEq(b, guaranteedRate / 2);
+        assertEq(rebalancer.budget(), subsidyBudget);
+        assertEq(
+            rebalancer.getGuaranteedAmountOut(address(eurA), address(eurB), decimalsA),
+            ((guaranteedRate / 2) * decimalsB) / 1e18
+        );
         // Resetting to normal
         vm.startPrank(governor);
-        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, premium);
+        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, guaranteedRate);
         vm.stopPrank();
+
         // Now checking with multi token budget
 
-        deal(address(eurB), address(governor), subsidyBudget1);
-
         vm.startPrank(governor);
-        if (premium1 > 0) {
+        if (guaranteedRate1 > 0) {
             vm.expectRevert(Errors.InvalidParam.selector);
-            rebalancer.setOrder(address(eurY), address(eurB), subsidyBudget1, premium1);
+            rebalancer.setOrder(address(eurY), address(eurB), subsidyBudget1, guaranteedRate1);
         }
+        deal(address(agToken), address(rebalancer), subsidyBudget1 + subsidyBudget);
 
-        eurB.transfer(address(rebalancer), subsidyBudget1);
-        rebalancer.setOrder(address(eurY), address(eurB), subsidyBudget1, premium1);
+        rebalancer.setOrder(address(eurY), address(eurB), subsidyBudget1, guaranteedRate1);
         vm.stopPrank();
         (a, b) = rebalancer.orders(address(eurY), address(eurB));
         assertEq(a, subsidyBudget1);
-        assertEq(b, premium1);
-        assertEq(rebalancer.budget(address(eurB)), subsidyBudget + subsidyBudget1);
-        if (premium1 == 0) assertEq(rebalancer.estimateAmountEligibleForIncentives(address(eurY), address(eurB)), 0);
-        else
-            assertEq(
-                rebalancer.estimateAmountEligibleForIncentives(address(eurY), address(eurB)),
-                (subsidyBudget1 * BASE_9) / premium1
-            );
-
+        assertEq(b, guaranteedRate1);
+        assertEq(rebalancer.budget(), subsidyBudget + subsidyBudget1);
+        assertEq(
+            rebalancer.getGuaranteedAmountOut(address(eurY), address(eurB), decimalsY),
+            (guaranteedRate1 * decimalsB) / 1e18
+        );
         vm.startPrank(governor);
-        if (premium1 > 0) {
+        if (guaranteedRate1 > 0) {
             vm.expectRevert(Errors.InvalidParam.selector);
-            rebalancer.setOrder(address(eurY), address(eurB), subsidyBudget1 + 1, premium1 + 1);
+            rebalancer.setOrder(address(eurY), address(eurB), subsidyBudget1 + 1, guaranteedRate1 + 1);
         }
 
-        rebalancer.setOrder(address(eurY), address(eurB), subsidyBudget1, premium1 / 2);
+        rebalancer.setOrder(address(eurY), address(eurB), subsidyBudget1, guaranteedRate1 / 2);
         vm.stopPrank();
         (a, b) = rebalancer.orders(address(eurY), address(eurB));
         assertEq(a, subsidyBudget1);
-        assertEq(b, premium1 / 2);
-        assertEq(rebalancer.budget(address(eurB)), subsidyBudget + subsidyBudget1);
-        if (premium1 / 2 == 0)
-            assertEq(rebalancer.estimateAmountEligibleForIncentives(address(eurY), address(eurB)), 0);
-        else
-            assertEq(
-                rebalancer.estimateAmountEligibleForIncentives(address(eurY), address(eurB)),
-                (subsidyBudget1 * BASE_9) / (premium1 / 2)
-            );
+        assertEq(b, guaranteedRate1 / 2);
+        assertEq(rebalancer.budget(), subsidyBudget + subsidyBudget1);
+        assertEq(
+            rebalancer.getGuaranteedAmountOut(address(eurY), address(eurB), decimalsY),
+            ((guaranteedRate1 / 2) * decimalsB) / 1e18
+        );
 
         vm.startPrank(governor);
-        rebalancer.setOrder(address(eurY), address(eurB), subsidyBudget1 / 3, premium1);
+        rebalancer.setOrder(address(eurY), address(eurB), subsidyBudget1 / 3, guaranteedRate1);
         vm.stopPrank();
         (a, b) = rebalancer.orders(address(eurY), address(eurB));
         assertEq(a, subsidyBudget1 / 3);
-        assertEq(b, premium1);
-        assertEq(rebalancer.budget(address(eurB)), subsidyBudget + subsidyBudget1 / 3);
-        if (premium1 == 0) assertEq(rebalancer.estimateAmountEligibleForIncentives(address(eurY), address(eurB)), 0);
-        else
-            assertEq(
-                rebalancer.estimateAmountEligibleForIncentives(address(eurY), address(eurB)),
-                ((subsidyBudget1 / 3) * BASE_9) / premium1
-            );
+        assertEq(b, guaranteedRate1);
+        assertEq(rebalancer.budget(), subsidyBudget + subsidyBudget1 / 3);
+        assertEq(
+            rebalancer.getGuaranteedAmountOut(address(eurY), address(eurB), decimalsY),
+            (guaranteedRate1 * decimalsB) / 1e18
+        );
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -217,8 +209,10 @@ contract RebalancerTest is Fixture, FunctionUtils {
 
     function test_Recover_RevertWhen_InvalidParam() public {
         vm.startPrank(governor);
-        vm.expectRevert(Errors.InvalidParam.selector);
+        vm.expectRevert();
         rebalancer.recover(address(eurA), 100, address(governor));
+        vm.expectRevert(Errors.InvalidParam.selector);
+        rebalancer.recover(address(agToken), 100, address(governor));
         vm.stopPrank();
     }
 
@@ -230,14 +224,15 @@ contract RebalancerTest is Fixture, FunctionUtils {
         vm.stopPrank();
         assertEq(eurB.balanceOf(address(governor)), amount / 2);
         vm.startPrank(governor);
-        rebalancer.setOrder(address(eurA), address(eurB), amount / 2, BASE_9 / 100);
+        deal(address(agToken), address(rebalancer), amount);
+        rebalancer.setOrder(address(eurA), address(eurB), amount / 2, BASE_18 / 100);
         vm.stopPrank();
         (uint256 a, uint256 b) = rebalancer.orders(address(eurA), address(eurB));
         assertEq(a, amount / 2);
-        assertEq(b, BASE_9 / 100);
+        assertEq(b, BASE_18 / 100);
         vm.startPrank(governor);
         vm.expectRevert(Errors.InvalidParam.selector);
-        rebalancer.recover(address(eurB), 100, address(governor));
+        rebalancer.recover(address(agToken), amount - 1, address(governor));
         vm.stopPrank();
     }
 
@@ -253,7 +248,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
         // Here there are no fees, and oracles are all constant -> so any mint and burn should be an onpar
         // conversion for both tokens
 
-        uint256 swapAmount = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurA)).decimals()) / 100;
+        uint256 swapAmount = (multiplier * swapMultiplier * decimalsA) / 100;
 
         uint256 amountAgToken = transmuter.quoteIn(swapAmount, address(eurA), address(agToken));
         uint256 amountOut = transmuter.quoteIn(amountAgToken, address(agToken), address(eurB));
@@ -262,119 +257,107 @@ contract RebalancerTest is Fixture, FunctionUtils {
 
         assertEq(
             rebalancer.quoteIn(swapAmount, address(eurA), address(eurB)),
-            (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurB)).decimals()) / 100
+            (multiplier * swapMultiplier * decimalsB) / 100
         );
         assertEq(
             rebalancer.quoteIn(swapAmount, address(eurA), address(eurY)),
-            (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurY)).decimals()) / 100
+            (multiplier * swapMultiplier * decimalsY) / 100
         );
 
-        swapAmount = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurY)).decimals()) / 100;
+        swapAmount = (multiplier * swapMultiplier * decimalsY) / 100;
         assertEq(
             rebalancer.quoteIn(swapAmount, address(eurY), address(eurB)),
-            (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurB)).decimals()) / 100
+            (multiplier * swapMultiplier * decimalsB) / 100
         );
         assertEq(
             rebalancer.quoteIn(swapAmount, address(eurY), address(eurA)),
-            (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurA)).decimals()) / 100
+            (multiplier * swapMultiplier * decimalsA) / 100
         );
 
-        swapAmount = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurB)).decimals()) / 100;
+        swapAmount = (multiplier * swapMultiplier * decimalsB) / 100;
         assertEq(
             rebalancer.quoteIn(swapAmount, address(eurB), address(eurA)),
-            (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurA)).decimals()) / 100
+            (multiplier * swapMultiplier * decimalsA) / 100
         );
         assertEq(
             rebalancer.quoteIn(swapAmount, address(eurB), address(eurY)),
-            (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurY)).decimals()) / 100
+            (multiplier * swapMultiplier * decimalsY) / 100
         );
     }
 
-    function testFuzz_QuoteInWithSubsidyPartiallyFilled(
-        uint256 multiplier,
-        uint256 swapMultiplier,
-        uint256 premium
-    ) public {
+    function testFuzz_QuoteInWithSubsidy(uint256 multiplier, uint256 swapMultiplier, uint256 guaranteedRate) public {
         multiplier = bound(multiplier, 10, 10 ** 6);
         swapMultiplier = bound(swapMultiplier, 1, 100);
-        premium = bound(premium, 0, BASE_9);
+        guaranteedRate = bound(guaranteedRate, 10 ** 15, 10 ** 21);
         // let's first load the reserves of the protocol
         _loadReserves(charlie, multiplier);
         // Here there are no fees, and oracles are all constant -> so any mint and burn should be an onpar
         // conversion for both tokens
 
-        uint256 swapAmount = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurA)).decimals()) / 100;
-        // This is the amount we'd normally obtain after the swap
-        uint256 subsidyBudget = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurB)).decimals()) / 100;
-        uint256 amountSubsidized = (subsidyBudget * premium) / BASE_9;
+        uint256 swapAmount = (multiplier * swapMultiplier * decimalsA) / 100;
 
-        deal(address(eurB), address(rebalancer), subsidyBudget);
+        uint256 guaranteedAmountOut = (swapAmount * guaranteedRate * decimalsB) / (1e18 * decimalsA);
+
+        // This is the amount we'd normally obtain after the swap
+        uint256 subsidyBudget = multiplier * swapMultiplier * 1e18;
+
+        deal(address(agToken), address(rebalancer), subsidyBudget);
         vm.startPrank(governor);
-        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, premium);
+        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, guaranteedRate);
         vm.stopPrank();
+
+        assertEq(rebalancer.getGuaranteedAmountOut(address(eurA), address(eurB), swapAmount), guaranteedAmountOut);
 
         uint256 amountAgToken = transmuter.quoteIn(swapAmount, address(eurA), address(agToken));
+        uint256 amountAgTokenNeeded = transmuter.quoteOut(guaranteedAmountOut, address(agToken), address(eurB));
+        uint256 subsidy;
+        if (amountAgTokenNeeded > amountAgToken) {
+            subsidy = amountAgTokenNeeded - amountAgToken;
+            if (subsidy > subsidyBudget) subsidy = subsidyBudget;
+        }
+
+        amountAgToken += subsidy;
         uint256 amountOut = transmuter.quoteIn(amountAgToken, address(agToken), address(eurB));
-        assertEq(
-            rebalancer.quoteIn(swapAmount, address(eurA), address(eurB)),
-            amountOut + (amountOut * premium) / BASE_9
-        );
-
-        assertEq(rebalancer.quoteIn(swapAmount, address(eurA), address(eurB)), subsidyBudget + amountSubsidized);
-        assertEq(
-            rebalancer.quoteIn(swapAmount, address(eurA), address(eurY)),
-            (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurY)).decimals()) / 100
-        );
-
-        subsidyBudget = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurY)).decimals()) / 100;
-        deal(address(eurY), address(rebalancer), subsidyBudget);
-        vm.startPrank(governor);
-        rebalancer.setOrder(address(eurA), address(eurY), subsidyBudget, premium);
-        vm.stopPrank();
-        assertEq(
-            rebalancer.quoteIn(swapAmount, address(eurA), address(eurY)),
-            subsidyBudget + (subsidyBudget * premium) / BASE_9
-        );
+        assertEq(rebalancer.quoteIn(swapAmount, address(eurA), address(eurB)), amountOut);
     }
 
-    function testFuzz_QuoteInWithSubsidyBudgetFullyFilled(
-        uint256 multiplier,
-        uint256 swapMultiplier,
-        uint256 premium
-    ) public {
-        multiplier = bound(multiplier, 10, 10 ** 6);
-        swapMultiplier = bound(swapMultiplier, 1, 100);
-        premium = bound(premium, BASE_9, BASE_9 * 2);
+    function test_QuoteInWithSubsidy() public {
         // let's first load the reserves of the protocol
-        _loadReserves(charlie, multiplier);
+        _loadReserves(charlie, 100);
         // Here there are no fees, and oracles are all constant -> so any mint and burn should be an onpar
         // conversion for both tokens
+        uint256 swapAmount = decimalsA;
 
-        uint256 swapAmount = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurA)).decimals()) / 100;
+        // 1 eurB = 10^(-2)*eurA;
+        uint256 guaranteedRate = 10 ** 16;
+
+        uint256 guaranteedAmountOut = (swapAmount * guaranteedRate * decimalsB) / (1e18 * decimalsA);
+
         // This is the amount we'd normally obtain after the swap
-        uint256 subsidyBudget = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurB)).decimals()) / 100;
+        uint256 subsidyBudget = 1e19;
 
-        deal(address(eurB), address(rebalancer), subsidyBudget);
+        deal(address(agToken), address(rebalancer), 1000 * 10 ** 18);
         vm.startPrank(governor);
-        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, premium);
+        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, guaranteedRate);
         vm.stopPrank();
 
-        uint256 amountAgToken = transmuter.quoteIn(swapAmount, address(eurA), address(agToken));
-        uint256 amountOut = transmuter.quoteIn(amountAgToken, address(agToken), address(eurB));
-        assertEq(rebalancer.quoteIn(swapAmount, address(eurA), address(eurB)), amountOut + subsidyBudget);
+        assertEq(rebalancer.getGuaranteedAmountOut(address(eurA), address(eurB), swapAmount), guaranteedAmountOut);
 
-        assertEq(rebalancer.quoteIn(swapAmount, address(eurA), address(eurB)), subsidyBudget * 2);
-        assertEq(
-            rebalancer.quoteIn(swapAmount, address(eurA), address(eurY)),
-            (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurY)).decimals()) / 100
-        );
+        // Here we're better than the exchange rate -> so get normal value and does not consume the subsidy budget
+        assertEq(rebalancer.quoteIn(swapAmount, address(eurA), address(eurB)), decimalsB);
 
-        subsidyBudget = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurY)).decimals()) / 100;
-        deal(address(eurY), address(rebalancer), subsidyBudget);
+        guaranteedRate = 10 ** 19;
+        guaranteedAmountOut = (swapAmount * guaranteedRate * decimalsB) / (1e18 * decimalsA);
         vm.startPrank(governor);
-        rebalancer.setOrder(address(eurA), address(eurY), subsidyBudget, premium);
+        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, guaranteedRate);
         vm.stopPrank();
-        assertEq(rebalancer.quoteIn(swapAmount, address(eurA), address(eurY)), subsidyBudget * 2);
+
+        assertEq(rebalancer.quoteIn(swapAmount, address(eurA), address(eurB)), 10 * decimalsB);
+
+        assertEq(rebalancer.quoteIn(swapAmount / 2, address(eurA), address(eurB)), (10 * decimalsB) / 2);
+        // Now if the swap amount is too big and empties the reserves
+        // You need to put in the whole budget to cover for this but cannot get the guaranteed rate
+        assertEq(rebalancer.quoteIn(swapAmount * 2, address(eurA), address(eurB)), 10 * decimalsB + 2 * decimalsB);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -386,7 +369,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
         swapMultiplier = bound(swapMultiplier, 1, 100);
         // let's first load the reserves of the protocol
         _loadReserves(charlie, multiplier);
-        uint256 swapAmount = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurA)).decimals()) / 100;
+        uint256 swapAmount = (multiplier * swapMultiplier * decimalsA) / 100;
         deal(address(eurA), address(charlie), swapAmount);
         vm.startPrank(charlie);
         eurA.approve(address(rebalancer), swapAmount);
@@ -415,8 +398,8 @@ contract RebalancerTest is Fixture, FunctionUtils {
         // Here there are no fees, and oracles are all constant -> so any mint and burn should be an onpar
         // conversion for both tokens
 
-        uint256 swapAmount = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurA)).decimals()) / 100;
-        uint256 amountOut = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurB)).decimals()) / 100;
+        uint256 swapAmount = (multiplier * swapMultiplier * decimalsA) / 100;
+        uint256 amountOut = (multiplier * swapMultiplier * decimalsB) / 100;
         assertEq(rebalancer.quoteIn(swapAmount, address(eurA), address(eurB)), amountOut);
         deal(address(eurA), address(charlie), swapAmount * 2);
 
@@ -435,7 +418,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
         assertEq(eurB.balanceOf(address(bob)), amountOut);
         assertEq(eurA.allowance(address(rebalancer), address(transmuter)), type(uint256).max);
 
-        amountOut = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurY)).decimals()) / 100;
+        amountOut = (multiplier * swapMultiplier * decimalsY) / 100;
         vm.startPrank(charlie);
         amountOut2 = rebalancer.swapExactInput(
             swapAmount,
@@ -452,139 +435,46 @@ contract RebalancerTest is Fixture, FunctionUtils {
         assertEq(eurA.allowance(address(charlie), address(rebalancer)), 0);
     }
 
-    function testFuzz_SwapExactInputWithPartialSubsidy(
+    function testFuzz_SwapExactInputWithSubsidy(
         uint256 multiplier,
         uint256 swapMultiplier,
-        uint256 premium
+        uint256 guaranteedRate
     ) public {
         multiplier = bound(multiplier, 10, 10 ** 6);
         swapMultiplier = bound(swapMultiplier, 1, 100);
-        premium = bound(premium, 0, BASE_9);
+        guaranteedRate = bound(guaranteedRate, 10 ** 15, 10 ** 21);
         // let's first load the reserves of the protocol
         _loadReserves(charlie, multiplier);
         // Here there are no fees, and oracles are all constant -> so any mint and burn should be an onpar
         // conversion for both tokens
 
-        uint256 swapAmount = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurA)).decimals()) / 100;
-        uint256 amountOut = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurB)).decimals()) / 100;
+        uint256 swapAmount = (multiplier * swapMultiplier * decimalsA) / 100;
+
+        uint256 guaranteedAmountOut = (swapAmount * guaranteedRate * decimalsB) / (1e18 * decimalsA);
+
         deal(address(eurA), address(charlie), swapAmount * 2);
 
-        uint256 subsidyBudget = amountOut;
-        uint256 amountSubsidized = (subsidyBudget * premium) / BASE_9;
+        // This is the amount we'd normally obtain after the swap
+        uint256 subsidyBudget = multiplier * swapMultiplier * 1e18;
 
-        deal(address(eurB), address(rebalancer), subsidyBudget);
+        deal(address(agToken), address(rebalancer), subsidyBudget);
         vm.startPrank(governor);
-        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, premium);
+        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, guaranteedRate);
         vm.stopPrank();
 
-        assertEq(rebalancer.quoteIn(swapAmount, address(eurA), address(eurB)), amountOut + amountSubsidized);
+        assertEq(rebalancer.getGuaranteedAmountOut(address(eurA), address(eurB), swapAmount), guaranteedAmountOut);
 
-        vm.startPrank(charlie);
-        eurA.approve(address(rebalancer), swapAmount * 2);
-        uint256 amountOut2 = rebalancer.swapExactInput(
-            swapAmount,
-            0,
-            address(eurA),
-            address(eurB),
-            address(bob),
-            block.timestamp * 2
-        );
-        vm.stopPrank();
-        assertEq(amountOut2, amountOut + amountSubsidized);
-        assertEq(eurB.balanceOf(address(bob)), amountOut + amountSubsidized);
-        assertEq(eurA.allowance(address(rebalancer), address(transmuter)), type(uint256).max);
-        assertEq(eurB.balanceOf(address(rebalancer)), subsidyBudget - amountSubsidized);
-        assertEq(rebalancer.budget(address(eurB)), subsidyBudget - amountSubsidized);
-        (uint256 subsidyBudgetLeft, ) = rebalancer.orders(address(eurA), address(eurB));
-        assertEq(subsidyBudgetLeft, subsidyBudget - amountSubsidized);
-    }
-
-    function testFuzz_SwapExactInputWithMultiplePartialSubsidies(
-        uint256 multiplier,
-        uint256 swapMultiplier,
-        uint256 premium,
-        uint256[5] memory swapAmounts
-    ) public {
-        multiplier = bound(multiplier, 10, 10 ** 6);
-        swapMultiplier = bound(swapMultiplier, 1, 100);
-        premium = bound(premium, 0, BASE_9 / 5);
-        // let's first load the reserves of the protocol
-        _loadReserves(charlie, multiplier);
-        // Here there are no fees, and oracles are all constant -> so any mint and burn should be an onpar
-        // conversion for both tokens
-
-        uint256 swapAmount = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurA)).decimals()) / 100;
-        uint256 amountOut = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurB)).decimals()) / 100;
-        deal(address(eurA), address(charlie), swapAmount * 2);
-
-        uint256 subsidyBudget = amountOut;
-        uint256 amountSubsidized = (subsidyBudget * premium) / BASE_9;
-
-        deal(address(eurB), address(rebalancer), subsidyBudget);
-        vm.startPrank(governor);
-        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, premium);
-        vm.stopPrank();
-
-        assertEq(rebalancer.quoteIn(swapAmount, address(eurA), address(eurB)), amountOut + amountSubsidized);
-
-        vm.startPrank(charlie);
-        eurA.approve(address(rebalancer), swapAmount * 2);
-        vm.stopPrank();
-
-        uint256 totalAmountForBob;
-        uint256 totalSubsidyAmount;
-        for (uint256 i = 0; i < swapAmounts.length; ++i) {
-            swapAmounts[i] = bound(swapAmounts[i], 0, swapAmount / 5);
-            vm.startPrank(charlie);
-            uint256 amountOut2 = rebalancer.swapExactInput(
-                swapAmounts[i],
-                0,
-                address(eurA),
-                address(eurB),
-                address(bob),
-                block.timestamp * 2
-            );
-            vm.stopPrank();
-            uint256 amountWithoutSubsidy = swapAmounts[i] * 10 ** 6;
-            uint256 amountWithSubsidy = amountWithoutSubsidy + (amountWithoutSubsidy * premium) / BASE_9;
-            totalAmountForBob += amountWithSubsidy;
-            totalSubsidyAmount += (amountWithoutSubsidy * premium) / BASE_9;
-            // There are 6 decimals difference between eurA and eurB
-            assertEq(amountOut2, amountWithSubsidy);
-            assertEq(eurB.balanceOf(address(bob)), totalAmountForBob);
-            // assertEq(eurA.allowance(address(rebalancer), address(transmuter)), type(uint256).max);
-            assertEq(eurB.balanceOf(address(rebalancer)), subsidyBudget - totalSubsidyAmount);
-            assertEq(rebalancer.budget(address(eurB)), subsidyBudget - totalSubsidyAmount);
-            (uint256 subsidyBudgetLeft, ) = rebalancer.orders(address(eurA), address(eurB));
-            assertEq(subsidyBudgetLeft, subsidyBudget - totalSubsidyAmount);
+        uint256 amountAgToken = transmuter.quoteIn(swapAmount, address(eurA), address(agToken));
+        uint256 amountAgTokenNeeded = transmuter.quoteOut(guaranteedAmountOut, address(agToken), address(eurB));
+        uint256 subsidy;
+        if (amountAgTokenNeeded > amountAgToken) {
+            subsidy = amountAgTokenNeeded - amountAgToken;
+            if (subsidy > subsidyBudget) subsidy = subsidyBudget;
         }
-    }
 
-    function testFuzz_SwapExactInputWithFullSubsidy(
-        uint256 multiplier,
-        uint256 swapMultiplier,
-        uint256 premium
-    ) public {
-        multiplier = bound(multiplier, 10, 10 ** 6);
-        swapMultiplier = bound(swapMultiplier, 1, 100);
-        premium = bound(premium, BASE_9, BASE_9 * 2);
-        // let's first load the reserves of the protocol
-        _loadReserves(charlie, multiplier);
-        // Here there are no fees, and oracles are all constant -> so any mint and burn should be an onpar
-        // conversion for both tokens
-
-        uint256 swapAmount = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurA)).decimals()) / 100;
-        uint256 amountOut = (multiplier * swapMultiplier * 10 ** IERC20Metadata(address(eurB)).decimals()) / 100;
-        deal(address(eurA), address(charlie), swapAmount * 2);
-
-        uint256 subsidyBudget = amountOut;
-
-        deal(address(eurB), address(rebalancer), subsidyBudget);
-        vm.startPrank(governor);
-        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, premium);
-        vm.stopPrank();
-
-        assertEq(rebalancer.quoteIn(swapAmount, address(eurA), address(eurB)), amountOut + subsidyBudget);
+        amountAgToken += subsidy;
+        uint256 amountOut = transmuter.quoteIn(amountAgToken, address(agToken), address(eurB));
+        assertEq(rebalancer.quoteIn(swapAmount, address(eurA), address(eurB)), amountOut);
 
         vm.startPrank(charlie);
         eurA.approve(address(rebalancer), swapAmount * 2);
@@ -597,12 +487,121 @@ contract RebalancerTest is Fixture, FunctionUtils {
             block.timestamp * 2
         );
         vm.stopPrank();
-        assertEq(amountOut2, amountOut + subsidyBudget);
-        assertEq(eurB.balanceOf(address(bob)), amountOut + subsidyBudget);
+
+        assertEq(amountOut2, amountOut);
+        assertEq(eurB.balanceOf(address(bob)), amountOut);
         assertEq(eurA.allowance(address(rebalancer), address(transmuter)), type(uint256).max);
         assertEq(eurB.balanceOf(address(rebalancer)), 0);
-        assertEq(rebalancer.budget(address(eurB)), 0);
+        assertEq(IERC20(address(agToken)).balanceOf(address(rebalancer)), subsidyBudget - subsidy);
+        assertEq(rebalancer.budget(), subsidyBudget - subsidy);
         (uint256 subsidyBudgetLeft, ) = rebalancer.orders(address(eurA), address(eurB));
+        assertEq(subsidyBudgetLeft, subsidyBudget - subsidy);
+    }
+
+    function test_SwapExactInputWithMultiplePartialSubsidies() public {
+        // let's first load the reserves of the protocol
+        _loadReserves(charlie, 100);
+        // Here there are no fees, and oracles are all constant -> so any mint and burn should be an onpar
+        // conversion for both tokens
+        uint256 swapAmount = decimalsA;
+
+        // 1 eurB = 10^(-2)*eurA;
+        uint256 guaranteedRate = 10 ** 16;
+
+        uint256 guaranteedAmountOut = (swapAmount * guaranteedRate * decimalsB) / (1e18 * decimalsA);
+
+        // This is the amount we'd normally obtain after the swap
+        uint256 subsidyBudget = 1e19;
+
+        deal(address(eurA), address(charlie), swapAmount * 3);
+
+        deal(address(agToken), address(rebalancer), subsidyBudget);
+        vm.startPrank(governor);
+        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, guaranteedRate);
+        vm.stopPrank();
+
+        assertEq(rebalancer.getGuaranteedAmountOut(address(eurA), address(eurB), swapAmount), guaranteedAmountOut);
+
+        uint256 amountOut = decimalsB;
+
+        // Here we're better than the exchange rate -> so get normal value and does not consume the subsidy budget
+        assertEq(rebalancer.quoteIn(swapAmount, address(eurA), address(eurB)), decimalsB);
+        vm.startPrank(charlie);
+        eurA.approve(address(rebalancer), swapAmount * 4);
+        uint256 amountOut2 = rebalancer.swapExactInput(
+            swapAmount,
+            0,
+            address(eurA),
+            address(eurB),
+            address(bob),
+            block.timestamp * 2
+        );
+        vm.stopPrank();
+
+        assertEq(amountOut2, amountOut);
+        assertEq(eurA.allowance(address(rebalancer), address(transmuter)), type(uint256).max);
+        assertEq(eurA.balanceOf(address(charlie)), swapAmount * 2);
+        assertEq(eurB.balanceOf(address(bob)), amountOut);
+        assertEq(eurB.balanceOf(address(rebalancer)), 0);
+        assertEq(IERC20(address(agToken)).balanceOf(address(rebalancer)), subsidyBudget);
+        assertEq(rebalancer.budget(), subsidyBudget);
+        (uint256 subsidyBudgetLeft, ) = rebalancer.orders(address(eurA), address(eurB));
+        assertEq(subsidyBudgetLeft, subsidyBudget);
+
+        guaranteedRate = 10 ** 19;
+        guaranteedAmountOut = (swapAmount * guaranteedRate * decimalsB) / (1e18 * decimalsA);
+        vm.startPrank(governor);
+        rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, guaranteedRate);
+        vm.stopPrank();
+        amountOut = (10 * decimalsB) / 2;
+
+        assertEq(rebalancer.quoteIn(swapAmount / 2, address(eurA), address(eurB)), amountOut);
+        assertEq(rebalancer.quoteIn(swapAmount, address(eurA), address(eurB)), 10 * decimalsB);
+        assertEq(rebalancer.quoteIn(swapAmount * 2, address(eurA), address(eurB)), 10 * decimalsB + 2 * decimalsB);
+
+        vm.startPrank(charlie);
+        amountOut2 = rebalancer.swapExactInput(
+            swapAmount / 2,
+            0,
+            address(eurA),
+            address(eurB),
+            address(bob),
+            block.timestamp * 2
+        );
+        vm.stopPrank();
+        // This should yield decimalsB * 10 / 2, and sponsorship for this should be decimalsB * 9 / 2 because swap
+        // gives decimals / 2
+
+        assertEq(amountOut2, amountOut);
+        assertEq(eurA.allowance(address(rebalancer), address(transmuter)), type(uint256).max);
+        assertEq(eurA.balanceOf(address(charlie)), (swapAmount * 3) / 2);
+        assertEq(eurB.balanceOf(address(bob)), decimalsB + (10 * decimalsB) / 2);
+        assertEq(eurB.balanceOf(address(rebalancer)), 0);
+        assertEq(IERC20(address(agToken)).balanceOf(address(rebalancer)), (subsidyBudget * 55) / 100);
+        assertEq(rebalancer.budget(), (subsidyBudget * 55) / 100);
+        (subsidyBudgetLeft, ) = rebalancer.orders(address(eurA), address(eurB));
+        assertEq(subsidyBudgetLeft, (subsidyBudget * 55) / 100);
+
+        vm.startPrank(charlie);
+        amountOut2 = rebalancer.swapExactInput(
+            (swapAmount * 3) / 2,
+            0,
+            address(eurA),
+            address(eurB),
+            address(bob),
+            block.timestamp * 2
+        );
+        vm.stopPrank();
+        amountOut = (3 * decimalsB) / 2 + (decimalsB * 55) / 10;
+
+        assertEq(amountOut2, amountOut);
+        assertEq(eurA.allowance(address(rebalancer), address(transmuter)), type(uint256).max);
+        assertEq(eurA.balanceOf(address(charlie)), 0);
+        assertEq(eurB.balanceOf(address(bob)), decimalsB + (10 * decimalsB) / 2 + amountOut);
+        assertEq(eurB.balanceOf(address(rebalancer)), 0);
+        assertEq(IERC20(address(agToken)).balanceOf(address(rebalancer)), 0);
+        assertEq(rebalancer.budget(), 0);
+        (subsidyBudgetLeft, ) = rebalancer.orders(address(eurA), address(eurB));
         assertEq(subsidyBudgetLeft, 0);
     }
 
@@ -618,7 +617,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
 
         vm.startPrank(owner);
         for (uint256 i; i < _collaterals.length; i++) {
-            uint256 amount = multiplier * 10 ** IERC20Metadata(_collaterals[i]).decimals();
+            uint256 amount = multiplier * 100000 * 10 ** IERC20Metadata(_collaterals[i]).decimals();
             deal(_collaterals[i], owner, amount);
             IERC20(_collaterals[i]).approve(address(transmuter), amount);
 
