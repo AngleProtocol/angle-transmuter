@@ -91,6 +91,19 @@ contract RebalancerTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
+    function test_SetOrder_RevertWhen_NotCollateral() public {
+        vm.startPrank(governor);
+        vm.expectRevert(Errors.NotCollateral.selector);
+        rebalancer.setOrder(address(eurA), address(agToken), 100, 1);
+
+        vm.expectRevert(Errors.NotCollateral.selector);
+        rebalancer.setOrder(address(agToken), address(eurB), 100, 1);
+
+        vm.expectRevert(Errors.NotCollateral.selector);
+        rebalancer.setOrder(address(agToken), address(agToken), 100, 1);
+        vm.stopPrank();
+    }
+
     function testFuzz_SetOrder(
         uint256 subsidyBudget,
         uint256 guaranteedRate,

@@ -167,6 +167,9 @@ contract Rebalancer is AccessControl {
         uint256 subsidyBudget,
         uint256 guaranteedRate
     ) external onlyGuardian {
+        // If a token has 0 decimals on the Transmuter, then it's not an actual collateral
+        if (transmuter.getCollateralDecimals(tokenIn) == 0 || transmuter.getCollateralDecimals(tokenOut) == 0)
+            revert NotCollateral();
         Order storage order = orders[tokenIn][tokenOut];
         uint256 newBudget = budget + subsidyBudget - order.subsidyBudget;
         if (IERC20(agToken).balanceOf(address(this)) < newBudget) revert InvalidParam();
