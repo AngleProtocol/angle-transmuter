@@ -138,7 +138,7 @@ contract Rebalancer is AccessControl {
         uint256 amountAgToken,
         uint256 amountIn
     ) internal view returns (uint256 subsidy) {
-        Order storage order = orders[tokenIn][tokenOut];
+        Order memory order = orders[tokenIn][tokenOut];
         uint256 guaranteedAmountOut = _getGuaranteedAmountOut(tokenIn, tokenOut, amountIn, order.guaranteedRate);
         // Computing the amount of agToken that must be burnt to get the amountOut guaranteed
         if (guaranteedAmountOut > 0) {
