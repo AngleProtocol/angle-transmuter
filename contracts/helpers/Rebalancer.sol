@@ -2,11 +2,13 @@
 
 pragma solidity ^0.8.19;
 
-import "oz/interfaces/IERC20.sol";
-import "oz/interfaces/IERC20Metadata.sol";
-import "oz/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "oz/interfaces/IERC20.sol";
+import { IERC20Metadata } from "oz/interfaces/IERC20Metadata.sol";
+import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
+import { SafeCast } from "oz/utils/math/SafeCast.sol";
 
 import { ITransmuter } from "interfaces/ITransmuter.sol";
+import { Order, IRebalancer } from "interfaces/IRebalancer.sol";
 
 import { AccessControl, IAccessControlManager } from "../utils/AccessControl.sol";
 import "../utils/Constants.sol";
@@ -14,17 +16,16 @@ import "../utils/Errors.sol";
 
 /// @title Rebalancer
 /// @author Angle Labs, Inc.
-/// @notice Contract market makers building on top of Angle can use to rebalance the reserves of the protocol
-contract Rebalancer is AccessControl {
-    using SafeERC20 for IERC20;
+/// @notice Contract built to subsidize rebalances between collateral tokens
+/// @dev This contract is meant to "wrap" the Transmuter contract and provide a way for governance to
+/// subsidize rebalances between collateral tokens. Rebalances are done through 2 swaps collateral <> agToken.
+/// @dev This contract is not meant to hold any transient funds aside from the rebalancing budget
+contract Rebalancer is IRebalancer, AccessControl {
+    event OrderSet(address indexed tokenIn, address indexed tokenOut, uint256 subsidyBudget, uint256 guaranteedRate);
+    event SubsidyPaid(address indexed tokenIn, address indexed tokenOut, uint256 subsidy);
 
-    struct Order {
-        // Total agToken budget allocated to subsidize the swaps between the tokens associated to the order
-        uint256 subsidyBudget;
-        // Guaranteed exchange rate in `BASE_18` for the swaps between the `tokenIn` and `tokenOut` associated to
-        // the order. This rate is a minimum rate guaranteed up to when the subsidyBudget is fully consumed
-        uint256 guaranteedRate;
-    }
+    using SafeERC20 for IERC20;
+    using SafeCast for uint256;
 
     /// @notice Reference to the `transmuter` implementation this contract aims at rebalancing
     ITransmuter public immutable transmuter;
@@ -40,7 +41,7 @@ contract Rebalancer is AccessControl {
                                                     INITIALIZATION                                                  
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Initializes the immutable variables of the contract, namely `accessControlManager` and `transmuter`
+    /// @notice Initializes the immutable variables of the contract: `accessControlManager`, `transmuter` and `agToken`
     constructor(IAccessControlManager _accessControlManager, ITransmuter _transmuter) {
         if (address(_accessControlManager) == address(0)) revert ZeroAddress();
         accessControlManager = _accessControlManager;
@@ -52,16 +53,12 @@ contract Rebalancer is AccessControl {
                                                  REBALANCING FUNCTIONS                                              
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Swaps `tokenIn` for `tokenOut` through an intermediary agToken mint from `tokenIn` and
-    /// burn to `tokenOut`. Eventually, this transaction may be sponsored and yield an amount of `tokenOut`
-    /// higher than what would be obtained through a mint and burn directly on the `transmuter`
-    /// @param amountIn Amount of `tokenIn` to bring for the rebalancing
-    /// @param amountOutMin Minimum amount of `tokenOut` that must be obtained from the swap
-    /// @param to Address to which `tokenOut` must be sent
-    /// @param deadline Timestamp before which this transaction must be included
-    /// @return amountOut Amount of outToken obtained
+    /// @inheritdoc IRebalancer
     /// @dev Contrarily to what is done in the Transmuter contract, here neither of `tokenIn` or `tokenOut`
     /// should be an `agToken`
+    /// @dev Can be used even if the subsidy budget is 0, in which case it'll just do 2 transmuter swaps
+    /// @dev The invariants should be that `msg.sender` injects `amountIn` in the transmuter and either the
+    /// subsidy is 0 either he receives the guaranteed amount out from this contract + the transmuter
     function swapExactInput(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -88,15 +85,16 @@ contract Rebalancer is AccessControl {
         // Computing if a potential subsidy must be included in the agToken amount to burn
         uint256 subsidy = _getSubsidyAmount(tokenIn, tokenOut, amountAgToken, amountIn);
         if (subsidy > 0) {
-            orders[tokenIn][tokenOut].subsidyBudget -= subsidy;
+            orders[tokenIn][tokenOut].subsidyBudget -= subsidy.toUint112();
             budget -= subsidy;
             amountAgToken += subsidy;
+
+            emit SubsidyPaid(tokenIn, tokenOut, subsidy);
         }
         amountOut = transmuter.swapExactInput(amountAgToken, amountOutMin, agToken, tokenOut, to, deadline);
     }
 
-    /// @notice Approximates how much a call to `swapExactInput` with the same parameters would yield in terms
-    /// of `amountOut` and `subsidy`
+    /// @inheritdoc IRebalancer
     /// @dev This function returns an approximation and not an exact value as the first mint to compute `amountAgToken`
     /// might change the state of the fees slope within the Transmuter that will then be taken into account when
     /// burning the minted agToken.
@@ -106,8 +104,7 @@ contract Rebalancer is AccessControl {
         amountOut = transmuter.quoteIn(amountAgToken, agToken, tokenOut);
     }
 
-    /// @notice Helper to compute the minimum guaranteed amount out that would be obtained from a swap of `amountIn`
-    /// of `tokenIn` to `tokenOut`
+    /// @inheritdoc IRebalancer
     /// @dev Note that this minimum amount is guaranteed up to the subsidy budget, and if for a swap the subsidy budget
     /// is not big enough to provide this guaranteed amount out, then less will actually be obtained
     function getGuaranteedAmountOut(
@@ -115,19 +112,18 @@ contract Rebalancer is AccessControl {
         address tokenOut,
         uint256 amountIn
     ) external view returns (uint256) {
-        return _getGuaranteedAmountOut(tokenIn, tokenOut, amountIn, orders[tokenIn][tokenOut].guaranteedRate);
+        Order storage order = orders[tokenIn][tokenOut];
+        return _getGuaranteedAmountOut(amountIn, order.guaranteedRate, order.decimalsIn, order.decimalsOut);
     }
 
     /// @notice Internal version of `_getGuaranteedAmountOut`
     function _getGuaranteedAmountOut(
-        address tokenIn,
-        address tokenOut,
         uint256 amountIn,
-        uint256 guaranteedRate
+        uint256 guaranteedRate,
+        uint8 decimalsIn,
+        uint8 decimalsOut
     ) internal view returns (uint256 amountOut) {
-        return
-            (amountIn * guaranteedRate * (10 ** IERC20Metadata(tokenOut).decimals())) /
-            (1e18 * (10 ** IERC20Metadata(tokenIn).decimals()));
+        return (amountIn * guaranteedRate * (10 ** decimalsOut)) / (BASE_18 * (10 ** decimalsIn));
     }
 
     /// @notice Computes the additional subsidy amount in agToken that must be added during the process of a swap
@@ -139,7 +135,12 @@ contract Rebalancer is AccessControl {
         uint256 amountIn
     ) internal view returns (uint256 subsidy) {
         Order storage order = orders[tokenIn][tokenOut];
-        uint256 guaranteedAmountOut = _getGuaranteedAmountOut(tokenIn, tokenOut, amountIn, order.guaranteedRate);
+        uint256 guaranteedAmountOut = _getGuaranteedAmountOut(
+            amountIn,
+            order.guaranteedRate,
+            order.decimalsIn,
+            order.decimalsOut
+        );
         // Computing the amount of agToken that must be burnt to get the amountOut guaranteed
         if (guaranteedAmountOut > 0) {
             uint256 amountAgTokenNeeded = transmuter.quoteOut(guaranteedAmountOut, agToken, tokenOut);
@@ -147,6 +148,7 @@ contract Rebalancer is AccessControl {
             // guaranteed amountOut, we're taking it from the subsidy budget set
             if (amountAgToken < amountAgTokenNeeded) {
                 subsidy = amountAgTokenNeeded - amountAgToken;
+
                 // In the case where the subsidy budget is too small, we may not be able to provide the guaranteed
                 // amountOut to the user
                 if (subsidy > order.subsidyBudget) subsidy = order.subsidyBudget;
@@ -158,9 +160,10 @@ contract Rebalancer is AccessControl {
                                                       GOVERNANCE                                                    
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Lets governance set an order to subsidize rebalances between `tokenIn` and `tokenOut`
+    /// @inheritdoc IRebalancer
     /// @dev Before calling this function, governance must make sure that there are enough `agToken` idle
     /// in the contract to sponsor the swaps
+    /// @dev This function can be used to decrease an order by overriding it
     function setOrder(
         address tokenIn,
         address tokenOut,
@@ -174,11 +177,15 @@ contract Rebalancer is AccessControl {
         uint256 newBudget = budget + subsidyBudget - order.subsidyBudget;
         if (IERC20(agToken).balanceOf(address(this)) < newBudget) revert InvalidParam();
         budget = newBudget;
-        order.subsidyBudget = subsidyBudget;
-        order.guaranteedRate = guaranteedRate;
+        order.subsidyBudget = subsidyBudget.toUint112();
+        order.decimalsIn = IERC20Metadata(tokenIn).decimals();
+        order.decimalsOut = IERC20Metadata(tokenOut).decimals();
+        order.guaranteedRate = guaranteedRate.toUint128();
+
+        emit OrderSet(tokenIn, tokenOut, subsidyBudget, guaranteedRate);
     }
 
-    /// @notice Recovers `amount` of `token` to the `to` address
+    /// @inheritdoc IRebalancer
     /// @dev This function checks if too much is not being recovered with respect to currently available budgets
     function recover(address token, uint256 amount, address to) external onlyGuardian {
         if (token == address(agToken) && IERC20(token).balanceOf(address(this)) < budget + amount)

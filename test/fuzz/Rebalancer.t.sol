@@ -120,7 +120,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
         vm.startPrank(governor);
         rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, guaranteedRate);
         vm.stopPrank();
-        (a, b) = rebalancer.orders(address(eurA), address(eurB));
+        (a, , , b) = rebalancer.orders(address(eurA), address(eurB));
         assertEq(a, subsidyBudget);
         assertEq(b, guaranteedRate);
         assertEq(rebalancer.budget(), subsidyBudget);
@@ -137,7 +137,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
         vm.startPrank(governor);
         rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget / 3, guaranteedRate);
         vm.stopPrank();
-        (a, b) = rebalancer.orders(address(eurA), address(eurB));
+        (a, , , b) = rebalancer.orders(address(eurA), address(eurB));
         assertEq(a, subsidyBudget / 3);
         assertEq(b, guaranteedRate);
         assertEq(rebalancer.budget(), subsidyBudget / 3);
@@ -149,7 +149,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
         vm.startPrank(governor);
         rebalancer.setOrder(address(eurA), address(eurB), subsidyBudget, guaranteedRate / 2);
         vm.stopPrank();
-        (a, b) = rebalancer.orders(address(eurA), address(eurB));
+        (a, , , b) = rebalancer.orders(address(eurA), address(eurB));
         assertEq(a, subsidyBudget);
         assertEq(b, guaranteedRate / 2);
         assertEq(rebalancer.budget(), subsidyBudget);
@@ -173,7 +173,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
 
         rebalancer.setOrder(address(eurY), address(eurB), subsidyBudget1, guaranteedRate1);
         vm.stopPrank();
-        (a, b) = rebalancer.orders(address(eurY), address(eurB));
+        (a, b, , ) = rebalancer.orders(address(eurY), address(eurB));
         assertEq(a, subsidyBudget1);
         assertEq(b, guaranteedRate1);
         assertEq(rebalancer.budget(), subsidyBudget + subsidyBudget1);
@@ -189,7 +189,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
 
         rebalancer.setOrder(address(eurY), address(eurB), subsidyBudget1, guaranteedRate1 / 2);
         vm.stopPrank();
-        (a, b) = rebalancer.orders(address(eurY), address(eurB));
+        (a, , , b) = rebalancer.orders(address(eurY), address(eurB));
         assertEq(a, subsidyBudget1);
         assertEq(b, guaranteedRate1 / 2);
         assertEq(rebalancer.budget(), subsidyBudget + subsidyBudget1);
@@ -201,7 +201,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
         vm.startPrank(governor);
         rebalancer.setOrder(address(eurY), address(eurB), subsidyBudget1 / 3, guaranteedRate1);
         vm.stopPrank();
-        (a, b) = rebalancer.orders(address(eurY), address(eurB));
+        (a, , , b) = rebalancer.orders(address(eurY), address(eurB));
         assertEq(a, subsidyBudget1 / 3);
         assertEq(b, guaranteedRate1);
         assertEq(rebalancer.budget(), subsidyBudget + subsidyBudget1 / 3);
@@ -240,7 +240,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
         deal(address(agToken), address(rebalancer), amount);
         rebalancer.setOrder(address(eurA), address(eurB), amount / 2, BASE_18 / 100);
         vm.stopPrank();
-        (uint256 a, uint256 b) = rebalancer.orders(address(eurA), address(eurB));
+        (uint256 a, uint256 b, , ) = rebalancer.orders(address(eurA), address(eurB));
         assertEq(a, amount / 2);
         assertEq(b, BASE_18 / 100);
         vm.startPrank(governor);
@@ -507,7 +507,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
         assertEq(eurB.balanceOf(address(rebalancer)), 0);
         assertEq(IERC20(address(agToken)).balanceOf(address(rebalancer)), subsidyBudget - subsidy);
         assertEq(rebalancer.budget(), subsidyBudget - subsidy);
-        (uint256 subsidyBudgetLeft, ) = rebalancer.orders(address(eurA), address(eurB));
+        (uint112 subsidyBudgetLeft, , , ) = rebalancer.orders(address(eurA), address(eurB));
         assertEq(subsidyBudgetLeft, subsidyBudget - subsidy);
     }
 
@@ -558,7 +558,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
         assertEq(eurB.balanceOf(address(rebalancer)), 0);
         assertEq(IERC20(address(agToken)).balanceOf(address(rebalancer)), subsidyBudget);
         assertEq(rebalancer.budget(), subsidyBudget);
-        (uint256 subsidyBudgetLeft, ) = rebalancer.orders(address(eurA), address(eurB));
+        (uint112 subsidyBudgetLeft, , , ) = rebalancer.orders(address(eurA), address(eurB));
         assertEq(subsidyBudgetLeft, subsidyBudget);
 
         guaranteedRate = 10 ** 19;
@@ -592,7 +592,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
         assertEq(eurB.balanceOf(address(rebalancer)), 0);
         assertEq(IERC20(address(agToken)).balanceOf(address(rebalancer)), (subsidyBudget * 55) / 100);
         assertEq(rebalancer.budget(), (subsidyBudget * 55) / 100);
-        (subsidyBudgetLeft, ) = rebalancer.orders(address(eurA), address(eurB));
+        (subsidyBudgetLeft, , , ) = rebalancer.orders(address(eurA), address(eurB));
         assertEq(subsidyBudgetLeft, (subsidyBudget * 55) / 100);
 
         vm.startPrank(charlie);
@@ -614,7 +614,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
         assertEq(eurB.balanceOf(address(rebalancer)), 0);
         assertEq(IERC20(address(agToken)).balanceOf(address(rebalancer)), 0);
         assertEq(rebalancer.budget(), 0);
-        (subsidyBudgetLeft, ) = rebalancer.orders(address(eurA), address(eurB));
+        (subsidyBudgetLeft, , , ) = rebalancer.orders(address(eurA), address(eurB));
         assertEq(subsidyBudgetLeft, 0);
     }
 
