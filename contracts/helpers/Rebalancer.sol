@@ -56,9 +56,10 @@ contract Rebalancer is IRebalancer, AccessControl {
     /// @inheritdoc IRebalancer
     /// @dev Contrarily to what is done in the Transmuter contract, here neither of `tokenIn` or `tokenOut`
     /// should be an `agToken`
-    /// @dev Can be used even if the subsidy budget is 0, in which case it'll just do 2 transmuter swaps
-    /// @dev The invariants should be that `msg.sender` injects `amountIn` in the transmuter and either the
-    /// subsidy is 0 either they receive the guaranteed amount out from this contract + the transmuter
+    /// @dev Can be used even if the subsidy budget is 0, in which case it'll just do 2 Transmuter swaps
+    /// @dev The invariant should be that `msg.sender` injects `amountIn` in the transmuter and either the
+    /// subsidy is 0 either they receive a subsidy from this contract on top of the output Transmuter up to
+    /// the guaranteed amount out
     function swapExactInput(
         uint256 amountIn,
         uint256 amountOutMin,

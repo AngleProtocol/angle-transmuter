@@ -5,20 +5,17 @@ pragma solidity >=0.5.0;
 struct Order {
     // Total agToken budget allocated to subsidize the swaps between the tokens associated to the order
     uint112 subsidyBudget;
-    // Decimals of the `tokenIn` token
+    // Decimals of the `tokenIn` associated to the order
     uint8 decimalsIn;
-    // Decimals of the `tokenOut` token
+    // Decimals of the `tokenOut` associated to the order
     uint8 decimalsOut;
     // Guaranteed exchange rate in `BASE_18` for the swaps between the `tokenIn` and `tokenOut` associated to
-    // the order. This rate is a minimum rate guaranteed up to when the subsidyBudget is fully consumed
+    // the order. This rate is a minimum rate guaranteed up to when the `subsidyBudget` is fully consumed
     uint128 guaranteedRate;
 }
 
-/// @title Rebalancer
+/// @title IRebalancer
 /// @author Angle Labs, Inc.
-/// @notice Contract built to subsidize rebalances between collateral tokens
-/// @dev This contract is meant to "wrap" the Transmuter contract and provide a way for governance to
-/// subsidize rebalances between collateral tokens. Rebalances are done through 2 swaps collateral <> agToken.
 interface IRebalancer {
     /// @notice Swaps `tokenIn` for `tokenOut` through an intermediary agToken mint from `tokenIn` and
     /// burn to `tokenOut`. Eventually, this transaction may be sponsored and yield an amount of `tokenOut`
@@ -38,7 +35,7 @@ interface IRebalancer {
     ) external returns (uint256 amountOut);
 
     /// @notice Approximates how much a call to `swapExactInput` with the same parameters would yield in terms
-    /// of `amountOut` and `subsidy`
+    /// of `amountOut`
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256 amountOut);
 
     /// @notice Helper to compute the minimum guaranteed amount out that would be obtained from a swap of `amountIn`
