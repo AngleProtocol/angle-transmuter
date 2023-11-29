@@ -72,7 +72,7 @@ contract Production {
                 // pyth address
                 address pyth = 0x4305FB66699C3B2702D4d05CF36551390A4c69C6;
                 // EUROC/USD
-                feedIds[0] = 0xd052e6f54fe29355d6a3c06592fdefe49fae7840df6d8655bf6d6bfb789b56e4;
+                feedIds[0] = 0x76fa85158bf14ede77087fe3ae472f66213f6ea2f5b411cb2de472794990fa5c;
                 // USD/EUR
                 feedIds[1] = 0xa995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b;
                 stalePeriods[0] = 14 days;
