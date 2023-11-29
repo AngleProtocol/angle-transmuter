@@ -28,9 +28,9 @@ contract Rebalancer is IRebalancer, AccessControl {
     using SafeCast for uint256;
 
     /// @notice Reference to the `transmuter` implementation this contract aims at rebalancing
-    ITransmuter public immutable transmuter;
+    ITransmuter public immutable TRANSMUTER;
     /// @notice AgToken handled by the `transmuter` of interest
-    address public immutable agToken;
+    address public immutable AGTOKEN;
     /// @notice Maps a `(tokenIn,tokenOut)` pair to details about the subsidy potentially provided on
     /// `tokenIn` to `tokenOut` rebalances
     mapping(address tokenIn => mapping(address tokenOut => Order)) public orders;
@@ -45,8 +45,8 @@ contract Rebalancer is IRebalancer, AccessControl {
     constructor(IAccessControlManager _accessControlManager, ITransmuter _transmuter) {
         if (address(_accessControlManager) == address(0)) revert ZeroAddress();
         accessControlManager = _accessControlManager;
-        transmuter = _transmuter;
-        agToken = address(_transmuter.agToken());
+        TRANSMUTER = _transmuter;
+        AGTOKEN = address(_transmuter.agToken());
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -71,15 +71,15 @@ contract Rebalancer is IRebalancer, AccessControl {
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
         // First, dealing with the allowance of the rebalancer to the Transmuter: this allowance is made infinite
         // by default
-        uint256 allowance = IERC20(tokenIn).allowance(address(this), address(transmuter));
+        uint256 allowance = IERC20(tokenIn).allowance(address(this), address(TRANSMUTER));
         if (allowance < amountIn)
-            IERC20(tokenIn).safeIncreaseAllowance(address(transmuter), type(uint256).max - allowance);
+            IERC20(tokenIn).safeIncreaseAllowance(address(TRANSMUTER), type(uint256).max - allowance);
         // Mint agToken from `tokenIn`
-        uint256 amountAgToken = transmuter.swapExactInput(
+        uint256 amountAgToken = TRANSMUTER.swapExactInput(
             amountIn,
             0,
             tokenIn,
-            agToken,
+            AGTOKEN,
             address(this),
             block.timestamp
         );
@@ -92,7 +92,7 @@ contract Rebalancer is IRebalancer, AccessControl {
 
             emit SubsidyPaid(tokenIn, tokenOut, subsidy);
         }
-        amountOut = transmuter.swapExactInput(amountAgToken, amountOutMin, agToken, tokenOut, to, deadline);
+        amountOut = TRANSMUTER.swapExactInput(amountAgToken, amountOutMin, AGTOKEN, tokenOut, to, deadline);
     }
 
     /// @inheritdoc IRebalancer
@@ -100,9 +100,9 @@ contract Rebalancer is IRebalancer, AccessControl {
     /// might change the state of the fees slope within the Transmuter that will then be taken into account when
     /// burning the minted agToken.
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256 amountOut) {
-        uint256 amountAgToken = transmuter.quoteIn(amountIn, tokenIn, agToken);
+        uint256 amountAgToken = TRANSMUTER.quoteIn(amountIn, tokenIn, AGTOKEN);
         amountAgToken += _getSubsidyAmount(tokenIn, tokenOut, amountAgToken, amountIn);
-        amountOut = transmuter.quoteIn(amountAgToken, agToken, tokenOut);
+        amountOut = TRANSMUTER.quoteIn(amountAgToken, AGTOKEN, tokenOut);
     }
 
     /// @inheritdoc IRebalancer
@@ -144,7 +144,7 @@ contract Rebalancer is IRebalancer, AccessControl {
         );
         // Computing the amount of agToken that must be burnt to get the amountOut guaranteed
         if (guaranteedAmountOut > 0) {
-            uint256 amountAgTokenNeeded = transmuter.quoteOut(guaranteedAmountOut, agToken, tokenOut);
+            uint256 amountAgTokenNeeded = TRANSMUTER.quoteOut(guaranteedAmountOut, AGTOKEN, tokenOut);
             // If more agTokens than what has been obtained through the first mint must be burnt to get to the
             // guaranteed amountOut, we're taking it from the subsidy budget set
             if (amountAgToken < amountAgTokenNeeded) {
@@ -171,13 +171,13 @@ contract Rebalancer is IRebalancer, AccessControl {
         uint256 subsidyBudget,
         uint256 guaranteedRate
     ) external onlyGuardian {
-        uint8 decimalsIn = transmuter.getCollateralDecimals(tokenIn);
-        uint8 decimalsOut = transmuter.getCollateralDecimals(tokenOut);
+        uint8 decimalsIn = TRANSMUTER.getCollateralDecimals(tokenIn);
+        uint8 decimalsOut = TRANSMUTER.getCollateralDecimals(tokenOut);
         // If a token has 0 decimals on the Transmuter, then it's not an actual collateral
         if (decimalsIn == 0 || decimalsOut == 0) revert NotCollateral();
         Order storage order = orders[tokenIn][tokenOut];
         uint256 newBudget = budget + subsidyBudget - order.subsidyBudget;
-        if (IERC20(agToken).balanceOf(address(this)) < newBudget) revert InvalidParam();
+        if (IERC20(AGTOKEN).balanceOf(address(this)) < newBudget) revert InvalidParam();
         budget = newBudget;
         order.subsidyBudget = subsidyBudget.toUint112();
         order.decimalsIn = decimalsIn;
@@ -190,7 +190,7 @@ contract Rebalancer is IRebalancer, AccessControl {
     /// @inheritdoc IRebalancer
     /// @dev This function checks if too much is not being recovered with respect to currently available budgets
     function recover(address token, uint256 amount, address to) external onlyGuardian {
-        if (token == address(agToken) && IERC20(token).balanceOf(address(this)) < budget + amount)
+        if (token == address(AGTOKEN) && IERC20(token).balanceOf(address(this)) < budget + amount)
             revert InvalidParam();
         IERC20(token).safeTransfer(to, amount);
     }

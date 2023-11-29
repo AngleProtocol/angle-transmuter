@@ -63,8 +63,8 @@ contract RebalancerTest is Fixture, FunctionUtils {
 
     function test_RebalancerInitialization() public {
         assertEq(address(rebalancer.accessControlManager()), address(accessControlManager));
-        assertEq(address(rebalancer.agToken()), address(agToken));
-        assertEq(address(rebalancer.transmuter()), address(transmuter));
+        assertEq(address(rebalancer.AGTOKEN()), address(agToken));
+        assertEq(address(rebalancer.TRANSMUTER()), address(transmuter));
     }
 
     function test_Constructor_RevertWhen_ZeroAddress() public {
@@ -244,7 +244,7 @@ contract RebalancerTest is Fixture, FunctionUtils {
         deal(address(agToken), address(rebalancer), amount);
         rebalancer.setOrder(address(eurA), address(eurB), amount / 2, BASE_18 / 100);
         vm.stopPrank();
-        (uint256 a, uint256 b, , ) = rebalancer.orders(address(eurA), address(eurB));
+        (uint256 a, , , uint256 b) = rebalancer.orders(address(eurA), address(eurB));
         assertEq(a, amount / 2);
         assertEq(b, BASE_18 / 100);
         vm.startPrank(governor);
