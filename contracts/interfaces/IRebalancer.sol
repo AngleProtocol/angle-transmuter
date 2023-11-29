@@ -1,16 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity ^0.8.19;
-
-import "oz/interfaces/IERC20.sol";
-import "oz/interfaces/IERC20Metadata.sol";
-import "oz/token/ERC20/utils/SafeERC20.sol";
-
-import { ITransmuter } from "interfaces/ITransmuter.sol";
-
-import { AccessControl, IAccessControlManager } from "../utils/AccessControl.sol";
-import "../utils/Constants.sol";
-import "../utils/Errors.sol";
+pragma solidity >=0.5.0;
 
 struct Order {
     // Total agToken budget allocated to subsidize the swaps between the tokens associated to the order

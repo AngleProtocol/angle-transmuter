@@ -58,7 +58,7 @@ contract Rebalancer is IRebalancer, AccessControl {
     /// should be an `agToken`
     /// @dev Can be used even if the subsidy budget is 0, in which case it'll just do 2 transmuter swaps
     /// @dev The invariants should be that `msg.sender` injects `amountIn` in the transmuter and either the
-    /// subsidy is 0 either he receives the guaranteed amount out from this contract + the transmuter
+    /// subsidy is 0 either they receive the guaranteed amount out from this contract + the transmuter
     function swapExactInput(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -122,7 +122,7 @@ contract Rebalancer is IRebalancer, AccessControl {
         uint256 guaranteedRate,
         uint8 decimalsIn,
         uint8 decimalsOut
-    ) internal view returns (uint256 amountOut) {
+    ) internal pure returns (uint256 amountOut) {
         return (amountIn * guaranteedRate * (10 ** decimalsOut)) / (BASE_18 * (10 ** decimalsIn));
     }
 
