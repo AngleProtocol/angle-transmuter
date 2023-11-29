@@ -171,17 +171,23 @@ contract Rebalancer is IRebalancer, AccessControl {
         uint256 subsidyBudget,
         uint256 guaranteedRate
     ) external onlyGuardian {
-        uint8 decimalsIn = TRANSMUTER.getCollateralDecimals(tokenIn);
-        uint8 decimalsOut = TRANSMUTER.getCollateralDecimals(tokenOut);
-        // If a token has 0 decimals on the Transmuter, then it's not an actual collateral
-        if (decimalsIn == 0 || decimalsOut == 0) revert NotCollateral();
         Order storage order = orders[tokenIn][tokenOut];
+        uint8 decimalsIn = order.decimalsIn;
+        uint8 decimalsOut = order.decimalsOut;
+        if (decimalsIn == 0) {
+            decimalsIn = TRANSMUTER.getCollateralDecimals(tokenIn);
+            order.decimalsIn = decimalsIn;
+        }
+        if (decimalsOut == 0) {
+            decimalsOut = TRANSMUTER.getCollateralDecimals(tokenOut);
+            order.decimalsOut = decimalsOut;
+        }
+        // If a token has 0 decimals on the Transmuter, then it's not an actual collateral of the Transmuter
+        if (decimalsIn == 0 || decimalsOut == 0) revert NotCollateral();
         uint256 newBudget = budget + subsidyBudget - order.subsidyBudget;
         if (IERC20(AGTOKEN).balanceOf(address(this)) < newBudget) revert InvalidParam();
         budget = newBudget;
         order.subsidyBudget = subsidyBudget.toUint112();
-        order.decimalsIn = decimalsIn;
-        order.decimalsOut = decimalsOut;
         order.guaranteedRate = guaranteedRate.toUint128();
 
         emit OrderSet(tokenIn, tokenOut, subsidyBudget, guaranteedRate);
