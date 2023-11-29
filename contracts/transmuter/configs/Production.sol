@@ -14,8 +14,6 @@ import { DummyDiamondImplementation } from "../../../scripts/generated/DummyDiam
 import "../../utils/Constants.sol";
 import "../Storage.sol" as Storage;
 
-import { console } from "forge-std/console.sol";
-
 struct CollateralSetupProd {
     address token;
     bytes oracleConfig;
@@ -90,7 +88,6 @@ contract Production {
                     readData,
                     targetData
                 );
-                console.logBytes(oracleConfig);
             }
             collaterals[0] = CollateralSetupProd(
                 euroc,
