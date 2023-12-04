@@ -12,7 +12,7 @@ import "oz-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 
 contract DeployRebalancer is Utils {
     function run() external {
-        uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_FORK"), "m/44'/60'/0'/0/", 0);
+        uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_MAINNET"), "m/44'/60'/0'/0/", 0);
         vm.startBroadcast(deployerPrivateKey);
 
         address deployer = vm.addr(deployerPrivateKey);
