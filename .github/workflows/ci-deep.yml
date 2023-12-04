@@ -119,8 +119,8 @@ jobs:
       - name: Run Foundry tests
         run: yarn test:invariant
         env:
-          FOUNDRY_INVARIANT_RUNS: ${{ github.event.inputs.invariantRuns }}
-          FOUNDRY_INVARIANT_DEPTH: ${{ github.event.inputs.invariantDepth }}
+          FOUNDRY_INVARIANT_RUNS: ${{ github.event.inputs.invariantRuns || '300' }}
+          FOUNDRY_INVARIANT_DEPTH: ${{ github.event.inputs.invariantDepth || '50' }}
 
   test-fuzz:
     needs: ["build", "lint"]
@@ -146,4 +146,4 @@ jobs:
       - name: Run Foundry tests
         run: yarn test:fuzz
         env:
-          FOUNDRY_FUZZ_RUNS: ${{ github.event.inputs.fuzzRuns }}
+          FOUNDRY_FUZZ_RUNS: ${{ github.event.inputs.fuzzRuns || '100000' }}
