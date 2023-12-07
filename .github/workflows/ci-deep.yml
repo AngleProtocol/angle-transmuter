@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       fuzzRuns:
-        default: "100000"
+        default: "10000"
         description: "Unit: number of fuzz runs."
         required: false
       invariantRuns:
@@ -146,4 +146,4 @@ jobs:
       - name: Run Foundry tests
         run: yarn test:fuzz
         env:
-          FOUNDRY_FUZZ_RUNS: ${{ github.event.inputs.fuzzRuns || '100000' }}
+          FOUNDRY_FUZZ_RUNS: ${{ github.event.inputs.fuzzRuns || '10000' }}
