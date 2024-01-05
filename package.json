@@ -36,6 +36,7 @@
     "prettier": "prettier --write '**/*.sol'",
     "lint": "yarn lint:check --fix",
     "lint:check": "solhint --max-warnings 20 \"**/*.sol\"",
+    "vanity": "forge script --skip test --slow -vvvv --rpc-url mainnet ./scripts/utils/VanityAddress.s.sol",
     "verify:agEUR": "forge verify-contract --chain-id 100 --num-of-optimizations 1000 --watch --constructor-args $(cast abi-encode 'constructor(string memory,string memory,uint8)' 'Mock-AgEUR' 'Mock-AgEUR' 18) --compiler-version v0.8.19+commit.7dd6d40 --etherscan-api-key HQU42G9VWZ6KFNYTYKE6VFB7V48KMJ69HS 0x5fE0E497Ac676d8bA78598FC8016EBC1E6cE14a3 lib/borrow-contracts/contracts/mock/MockTokenPermit:MockTokenPermit.sol",
     "verify": "forge verify-contract --watch 0x8E669F6eF8485694196F32d568BA4Ac268b9FE8f Redeemer"
   },
