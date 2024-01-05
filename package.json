@@ -8,7 +8,7 @@
     "compile": "forge build",
     "compile:dev": "FOUNDRY_PROFILE=dev forge build",
     "deploy": "forge script --skip test --broadcast --verify --slow -vvvv --rpc-url polygonzkevm scripts/DeploySavings.s.sol",
-    "deploy:fork": "source .env && forge script --skip test  --slow --fork-url fork --broadcast scripts/DeployRebalancer.s.sol -vvvv",
+    "deploy:fork": "source .env && forge script --skip test  --slow --fork-url fork --broadcast scripts/DeployTransmuterWithoutFacets.s.sol -vvvv",
     "generate": "FOUNDRY_PROFILE=dev forge script scripts/utils/GenerateSelectors.s.sol",
     "deploy:check": "FOUNDRY_PROFILE=dev forge script --fork-url fork scripts/test/CheckTransmuter.s.sol",
     "gas": "yarn test --gas-report",

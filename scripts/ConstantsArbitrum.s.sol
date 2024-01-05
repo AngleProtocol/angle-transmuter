@@ -12,3 +12,9 @@ address constant GUARDIAN = 0x55F01DDaE74b60e3c255BD2f619FEbdFce560a9C;
 address constant IMMUTABLE_CREATE2_FACTORY_ADDRESS = 0x0000000000FFe8B47B3e2130213B802212439497;
 address constant PROXY_ADMIN = 0x9a5b060Bd7b8f86c4C0D720a17367729670AfB19;
 address constant PROXY_ADMIN_GUARDIAN = 0xf2eDa0829E8A9CF53EBCB8AFCBb558D2eABCEF64;
+
+/*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                    SAVINGS IMPLEM                                                  
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+address constant SAVINGS_IMPLEM = 0xadF56645e6796E32a805e5bC70267C656D0EaF7c;

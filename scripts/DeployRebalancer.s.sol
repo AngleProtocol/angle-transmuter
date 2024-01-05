@@ -17,7 +17,10 @@ contract DeployRebalancer is Utils {
 
         address deployer = vm.addr(deployerPrivateKey);
         console.log("Deployer address: ", deployer);
-        Rebalancer rebalancer = new Rebalancer(IAccessControlManager(ACCESS_CONTROL_MANAGER), ITransmuter(TRANSMUTER));
+        Rebalancer rebalancer = new Rebalancer(
+            IAccessControlManager(ACCESS_CONTROL_MANAGER),
+            ITransmuter(TRANSMUTER_EUR)
+        );
         console.log("Rebalancer deployed at: ", address(rebalancer));
 
         vm.stopBroadcast();
