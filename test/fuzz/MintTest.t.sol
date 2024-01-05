@@ -494,20 +494,22 @@ contract MintTest is Fixture, FunctionUtils {
         uint256 amountInSplit1 = transmuter.quoteOut(amountStableSplit1, _collaterals[fromToken], address(agToken));
         // do the swap to update the system
         _mintExactOutput(alice, _collaterals[fromToken], amountStableSplit1, amountInSplit1);
-        uint256 amountInSplit2 = transmuter.quoteOut(
-            stableAmount - amountStableSplit1,
-            _collaterals[fromToken],
-            address(agToken)
-        );
-        if (stableAmount > _minWallet) {
-            _assertApproxEqRelDecimalWithTolerance(
-                amountInSplit1 + amountInSplit2,
-                amountIn,
-                amountIn,
-                // 0.01%
-                _MAX_PERCENTAGE_DEVIATION * 100,
-                18
+        if (stableAmount > amountStableSplit1) {
+            uint256 amountInSplit2 = transmuter.quoteOut(
+                stableAmount - amountStableSplit1,
+                _collaterals[fromToken],
+                address(agToken)
             );
+            if (stableAmount > _minWallet) {
+                _assertApproxEqRelDecimalWithTolerance(
+                    amountInSplit1 + amountInSplit2,
+                    amountIn,
+                    amountIn,
+                    // 0.01%
+                    _MAX_PERCENTAGE_DEVIATION * 100,
+                    18
+                );
+            }
         }
     }
 
