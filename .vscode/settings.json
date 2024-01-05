@@ -15,5 +15,6 @@
   },
   "slither.solcPath": "",
   "slither.hiddenDetectors": [],
-  "solidity.compileUsingRemoteVersion": "v0.8.19+commit.7dd6d404"
+  "solidity.compileUsingRemoteVersion": "v0.8.19+commit.7dd6d404",
+  "solidity.defaultCompiler": "localNodeModule"
 }
