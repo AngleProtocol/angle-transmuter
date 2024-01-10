@@ -13,6 +13,8 @@ address constant IMMUTABLE_CREATE2_FACTORY_ADDRESS = 0x0000000000FFe8B47B3e21302
 address constant PROXY_ADMIN = 0x9a5b060Bd7b8f86c4C0D720a17367729670AfB19;
 address constant PROXY_ADMIN_GUARDIAN = 0xf2eDa0829E8A9CF53EBCB8AFCBb558D2eABCEF64;
 
+address constant TREASURY_USD = 0x79E4dF078A06AC31BfAA0f672f1f6E9B7F38113E;
+
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     SAVINGS IMPLEM                                                  
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/

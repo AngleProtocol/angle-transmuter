@@ -7,7 +7,7 @@ import { stdJson } from "forge-std/StdJson.sol";
 import "stringutils/strings.sol";
 import { Savings } from "contracts/savings/Savings.sol";
 import { IAccessControlManager } from "contracts/utils/AccessControl.sol";
-import "./ConstantsPolygonZkEVM.s.sol";
+import "./Constants.s.sol";
 import "oz/interfaces/IERC20.sol";
 import "oz-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import { TransparentUpgradeableProxy } from "oz/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -35,9 +35,9 @@ contract DeploySavingsNoImplem is Utils {
         console.log("Deployer address: ", deployer);
         // No need to deploy the implementation here
         // TODO: update addresses based on deployment
-        address agToken = CHAIN_AGEUR;
+        address agToken = 0x0000206329b97DB379d5E1Bf586BbDB969C63274;
         address accessControlManager = ACCESS_CONTROL_MANAGER;
-        address treasury = address(new MockTreasury());
+        address treasury = TREASURY_USD;
 
         // Then deploying the proxy.
         // To maintain chain consistency, we deploy with the deployer as a proxyAdmin before transferring
@@ -52,11 +52,12 @@ contract DeploySavingsNoImplem is Utils {
         );
         console.log("Proxy bytecode");
         console.logBytes(initCode);
+        console.logBytes(abi.encode(IMMUTABLE_CREATE2_FACTORY_ADDRESS, deployer, emptyData));
         console.log("");
 
         address computedAddress = create2Factory.findCreate2Address(salt, initCode);
         console.log("Supposed to deploy: %s", computedAddress);
-        if (computedAddress != 0x004626A008B1aCdC4c74ab51644093b155e59A23) revert();
+        if (computedAddress != 0x0022228a2cc5E7eF0274A7Baa600d44da5aB5776) revert();
         address saving = create2Factory.safeCreate2(salt, initCode);
         console.log("Savings deployed at: ", address(saving));
         TransparentUpgradeableProxy(payable(saving)).upgradeTo(address(SAVINGS_IMPLEM));
@@ -71,6 +72,7 @@ contract DeploySavingsNoImplem is Utils {
         );
 
         MockTreasury(treasury).addMinter(saving);
+
         vm.stopBroadcast();
     }
 }

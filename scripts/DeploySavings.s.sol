@@ -32,9 +32,7 @@ contract DeploySavings is Utils {
         address deployer = vm.addr(deployerPrivateKey);
         console.log("Deployer address: ", deployer);
 
-        // First deploying the implementation
-        Savings savingsImpl = new Savings();
-        // Then deploying the proxy.
+        // Deploying the proxy.
         // To maintain chain consistency, we deploy with the deployer as a proxyAdmin before transferring
         // to another address
         // We use a contract that is widely deployed across many chains as an implementation to make it resilient
@@ -48,12 +46,14 @@ contract DeploySavings is Utils {
         console.log("Proxy bytecode");
         console.logBytes(initCode);
         console.log("");
-
+        /*
         address computedAddress = create2Factory.findCreate2Address(salt, initCode);
         console.log("Supposed to deploy: %s", computedAddress);
         if (computedAddress != 0x004626A008B1aCdC4c74ab51644093b155e59A23) revert();
         address saving = create2Factory.safeCreate2(salt, initCode);
         console.log("Savings deployed at: ", address(saving));
+        // Deploying the implementation
+        Savings savingsImpl = new Savings();
         TransparentUpgradeableProxy(payable(saving)).upgradeTo(address(savingsImpl));
         TransparentUpgradeableProxy(payable(saving)).changeAdmin(PROXY_ADMIN);
         IERC20MetadataUpgradeable(CHAIN_AGEUR).approve(address(saving), 1e18);
@@ -64,6 +64,7 @@ contract DeploySavings is Utils {
             "stEUR",
             1
         );
+        */
         vm.stopBroadcast();
     }
 }

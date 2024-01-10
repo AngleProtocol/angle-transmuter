@@ -9,6 +9,8 @@ address constant CHAIN_AGEUR = 0xE0B52e49357Fd4DAf2c15e02058DCE6BC0057db4;
 address constant PROXY_ADMIN = 0xBFca293e17e067e8aBdca30A5D35ADDd0cBaE6D6;
 address constant ACCESS_CONTROL_MANAGER = 0x78754109cb73772d70A6560297037657C2AF51b8;
 
+address constant TREASURY_USD = 0x37ad97C08E3Ce8184aD30911bfb0BcEe443d5120;
+
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     SAVINGS IMPLEM                                                  
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
