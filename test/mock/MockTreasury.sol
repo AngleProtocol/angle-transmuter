@@ -7,7 +7,9 @@ interface IStablecoin {
 }
 
 contract MockTreasury {
-    function addMinter(address _agToken, address _minter) external {
-        IStablecoin(_agToken).addMinter(_minter);
+    uint256 public counter;
+
+    function addMinter(address) external {
+        counter += 1;
     }
 }

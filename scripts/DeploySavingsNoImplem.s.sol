@@ -70,7 +70,7 @@ contract DeploySavingsNoImplem is Utils {
             1
         );
 
-        MockTreasury(treasury).addMinter(agToken, saving);
+        MockTreasury(treasury).addMinter(saving);
         vm.stopBroadcast();
     }
 }

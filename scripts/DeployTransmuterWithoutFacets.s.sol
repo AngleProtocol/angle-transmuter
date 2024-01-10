@@ -39,13 +39,10 @@ contract DeployTransmuterWithoutFacets is TransmuterDeploymentHelper {
         // TODO change before actual deployment and replace with actual addresses inherited from other
         // deployment
 
-        address agToken = address(new MockToken("agUSD", "agUSD", 18));
-        address treasury = address(new MockTreasury());
-        address accessControlManager = ACCESS_CONTROL_MANAGER;
-        /*
-        address agToken = AGEUR;
-        address treasury = 0x5d34839A3d4051f630D36e26698d53c58DD39072;
-        */
+        address agToken = 0x0000206329b97DB379d5E1Bf586BbDB969C63274;
+        address treasury = 0xf8588520E760BB0b3bDD62Ecb25186A28b0830ee;
+        address accessControlManager = 0x3fc5a1bd4d0A435c55374208A6A81535A1923039;
+
         config = address(new ProductionUSD()); // Config
         // Already deployed
         address dummyImplementation = 0x5d34839A3d4051f630D36e26698d53c58DD39072;
@@ -61,7 +58,7 @@ contract DeployTransmuterWithoutFacets is TransmuterDeploymentHelper {
 
         console.log("Transmuter deployed at: %s", address(transmuter));
 
-        MockTreasury(treasury).addMinter(agToken, address(transmuter));
+        MockTreasury(treasury).addMinter(address(transmuter));
         vm.stopBroadcast();
         // TODO: test minting afterwards
     }
