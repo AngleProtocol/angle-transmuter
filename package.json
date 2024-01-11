@@ -7,12 +7,12 @@
     "coverage": "FOUNDRY_PROFILE=dev forge coverage --report lcov && yarn lcov:clean && yarn lcov:generate-html",
     "compile": "forge build",
     "compile:dev": "FOUNDRY_PROFILE=dev forge build",
-    "deploy": "forge script --skip test --broadcast --verify --slow -vvvv --rpc-url mainnet scripts/DeployTransmuterWithoutFacets.s.sol",
+    "deploy": "forge script --skip test --broadcast --verify --slow -vvvv scripts/DeploySavingsNoImplem.s.sol --rpc-url",
     "deploy:fork": "source .env && forge script --skip test  --slow --fork-url fork --broadcast scripts/DeploySavingsNoImplem.s.sol -vvvv",
     "generate": "FOUNDRY_PROFILE=dev forge script scripts/utils/GenerateSelectors.s.sol",
     "deploy:check": "FOUNDRY_PROFILE=dev forge script --fork-url fork scripts/test/CheckTransmuter.s.sol",
     "gas": "yarn test --gas-report",
-    "fork": "source .env && anvil --fork-url $ETH_NODE_URI_MAINNET",
+    "fork": "source .env && anvil --fork-url $ETH_NODE_URI_BASE",
     "fork:arbitrum": "source .env && anvil --fork-url $ETH_NODE_URI_ARBITRUM",
     "fork:polygon": "source .env && anvil --fork-url $ETH_NODE_URI_POLYGON",
     "fork:gnosis": "source .env && anvil --fork-url $ETH_NODE_URI_GNOSIS",
@@ -38,7 +38,7 @@
     "lint:check": "solhint --max-warnings 20 \"**/*.sol\"",
     "vanity": "forge script --skip test --slow -vvvv --rpc-url mainnet ./scripts/utils/VanityAddress.s.sol",
     "verify:agEUR": "forge verify-contract --chain-id 100 --num-of-optimizations 1000 --watch --constructor-args $(cast abi-encode 'constructor(string memory,string memory,uint8)' 'Mock-AgEUR' 'Mock-AgEUR' 18) --compiler-version v0.8.19+commit.7dd6d40 --etherscan-api-key HQU42G9VWZ6KFNYTYKE6VFB7V48KMJ69HS 0x5fE0E497Ac676d8bA78598FC8016EBC1E6cE14a3 lib/borrow-contracts/contracts/mock/MockTokenPermit:MockTokenPermit.sol",
-    "verify": "forge verify-contract --watch 0x8E669F6eF8485694196F32d568BA4Ac268b9FE8f Redeemer"
+    "verify": "forge verify-contract --num-of-optimizations 1000 --watch --constructor-args 0000000000000000000000000000000000ffe8b47b3e2130213b802212439497000000000000000000000000fda462548ce04282f4b6d6619823a7c64fdc018500000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000000 --compiler-version v0.8.19+commit.7dd6d404 0x0022228a2cc5E7eF0274A7Baa600d44da5aB5776 lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol:TransparentUpgradeableProxy --chain"
   },
   "keywords": [],
   "author": "Angle Labs, Inc.",
