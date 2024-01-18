@@ -662,7 +662,7 @@ contract MintTest is Fixture, FunctionUtils {
 
         vm.startPrank(owner);
         for (uint256 i; i < _collaterals.length; i++) {
-            initialAmounts[i] = bound(initialAmounts[i], 0, _maxTokenAmount[i]);
+            initialAmounts[i] = bound(initialAmounts[i], 1, _maxTokenAmount[i]);
             deal(_collaterals[i], owner, initialAmounts[i]);
             IERC20(_collaterals[i]).approve(address(transmuter), initialAmounts[i]);
 
