@@ -397,13 +397,7 @@ contract RedeemTest is Fixture, FunctionUtils {
             bool shouldReturn;
             {
                 uint256 totalCollateralization = _computeCollateralisation();
-                if (
-                    mintedStables > 0 &&
-                    (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
-                ) {
-                    vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
-                    shouldReturn = true;
-                } else if (amountBurnt > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
+                if (amountBurnt > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
                 else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
             }
             (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
@@ -448,13 +442,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                 bool shouldReturn;
                 {
                     uint256 totalCollateralization = _computeCollateralisation();
-                    if (
-                        mintedStables > 0 &&
-                        (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
-                    ) {
-                        vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
-                        shouldReturn = true;
-                    } else if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
+                    if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
                     else if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
                 }
                 (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurntBob);
