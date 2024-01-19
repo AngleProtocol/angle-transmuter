@@ -458,7 +458,7 @@ contract RedeemTest is Fixture, FunctionUtils {
                     ) {
                         vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
                         shouldReturn = true;
-                    } else if (amountBurnt > mintedStables) {
+                    } else if (amountBurntBob > mintedStables) {
                         vm.expectRevert(Errors.TooBigAmountIn.selector);
                     }
                 }
