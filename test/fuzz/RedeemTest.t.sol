@@ -403,7 +403,11 @@ contract RedeemTest is Fixture, FunctionUtils {
                 ) {
                     vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
                     shouldReturn = true;
-                } else if (amountBurntBob > mintedStables) vm.expectRevert(Errors.TooBigAmountIn.selector);
+                } else if (amountBurntBob > mintedStables) {
+                    vm.expectRevert(Errors.TooBigAmountIn.selector);
+                } else if (mintedStables == 0) {
+                    vm.expectRevert(stdError.divisionError);
+                }
             }
             (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurnt);
             if (shouldReturn) return;
@@ -440,8 +444,12 @@ contract RedeemTest is Fixture, FunctionUtils {
             }
 
             // Compute mintedStables while rounding up
-            uint128 normalizedStables = uint128(uint256(vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1))));
-            uint128 normalizer = uint128(uint256(vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1)) >> 128));
+            uint128 normalizedStables = uint128(
+                uint256(vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1)))
+            );
+            uint128 normalizer = uint128(
+                uint256(vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1)) >> 128)
+            );
             mintedStables = uint256(normalizedStables).mulDiv(normalizer, BASE_27, Math.Rounding.Up);
 
             // now do a second redeem to test with non trivial ts.normalizer and ts.normalizedStables
@@ -460,6 +468,8 @@ contract RedeemTest is Fixture, FunctionUtils {
                         shouldReturn = true;
                     } else if (amountBurntBob > mintedStables) {
                         vm.expectRevert(Errors.TooBigAmountIn.selector);
+                    } else if (mintedStables == 0) {
+                        vm.expectRevert(stdError.divisionError);
                     }
                 }
                 (, quoteAmounts) = transmuter.quoteRedemptionCurve(amountBurntBob);
@@ -1326,7 +1336,7 @@ contract RedeemTest is Fixture, FunctionUtils {
 
         vm.startPrank(alice);
         for (uint256 i; i < _collaterals.length; ++i) {
-            initialAmounts[i] = bound(initialAmounts[i], 0, _maxTokenAmount[i]);
+            initialAmounts[i] = bound(initialAmounts[i], 1e16, _maxTokenAmount[i]);
             deal(_collaterals[i], alice, initialAmounts[i]);
             IERC20(_collaterals[i]).approve(address(transmuter), initialAmounts[i]);
 
