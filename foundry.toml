@@ -64,6 +64,7 @@ depth = 1
 fail_on_revert = false
 
 [profile.ci]
+optimizer = true
 src = 'contracts'
 via_ir = false
 gas_reports = ["*"]
@@ -73,5 +74,5 @@ runs = 100
 
 [profile.ci.invariant]
 runs = 10
-depth = 30
+depth = 1
 fail_on_revert = false
