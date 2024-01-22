@@ -284,9 +284,7 @@ contract SavingsTest is Fixture, FunctionUtils {
         uint256 indexReceiver,
         uint256[2] memory elapseTimestamps
     ) public {
-        for (uint256 i; i < amounts.length; i++) {
-            amounts[i] = bound(amounts[i], 0, _maxAmount);
-        }
+        for (uint256 i; i < amounts.length; i++) amounts[i] = bound(amounts[i], 0, _maxAmount);
         rate = bound(rate, _minRate, _maxRate);
         // shorten the time otherwise the DL diverge too much from the actual formula (1+rate)**seconds
         elapseTimestamps[0] = bound(elapseTimestamps[0], 0, _maxElapseTime);
