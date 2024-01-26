@@ -31,8 +31,7 @@ contract Utils is Script, StdAssertions {
         }
     }
 
-    // return array of function selectors for given facet name
-    function _generateSelectors(string memory _facetName) internal returns (bytes4[] memory selectors) {
+    function _generateSelectors(string memory _facetName, uint256 retries) internal returns (bytes4[] memory selectors) {
         console.log("_generateSelectors ", _facetName);
         //get string of contract methods
         string[] memory cmd = new string[](5);
@@ -43,6 +42,13 @@ contract Utils is Script, StdAssertions {
         cmd[4] = "methods";
         bytes memory res = vm.ffi(cmd);
         string memory st = string(res);
+
+        // if empty, try again
+        if (bytes(st).length == 0) {
+            if (retries != 0) {
+                return _generateSelectors(_facetName, retries - 1);
+            }
+        }
 
         // extract function signatures and take first 4 bytes of keccak
         strings.slice memory s = st.toSlice();
@@ -55,6 +61,11 @@ contract Utils is Script, StdAssertions {
             s.split(delim2);
         }
         return selectors;
+    }
+
+    // return array of function selectors for given facet name
+    function _generateSelectors(string memory _facetName) internal returns (bytes4[] memory selectors) {
+        return _generateSelectors(_facetName, 3);
     }
 
     function _bytes4ToBytes32(bytes4 _in) internal pure returns (bytes32 out) {
