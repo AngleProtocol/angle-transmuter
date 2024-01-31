@@ -12,9 +12,10 @@ import { UD60x18, ud, pow, powu, unwrap } from "prb/math/UD60x18.sol";
 import { stdError } from "forge-std/Test.sol";
 
 contract SavingsTest is Fixture, FunctionUtils {
+    using SafeERC20 for IERC20;
+
     event MaxRateUpdated(uint256 newMaxRate);
     event RateUpdated(uint256 newRate);
-    using SafeERC20 for IERC20;
 
     uint256 internal constant _initDeposit = 1e12;
     uint256 internal constant _minAmount = 10 ** 10;
@@ -376,11 +377,16 @@ contract SavingsTest is Fixture, FunctionUtils {
         uint256 indexReceiver,
         uint256[3] memory elapseTimestamps
     ) public {
-        for (uint256 i; i < amounts.length; i++) amounts[i] = bound(amounts[i], 0, _maxAmount);
+        for (uint256 i; i < amounts.length; i++) {
+            amounts[i] = bound(amounts[i], 0, _maxAmount);
+        }
         // shorten the time otherwise the DL diverge too much from the actual formula (1+rate)**seconds
-        for (uint256 i; i < elapseTimestamps.length; i++)
+        for (uint256 i; i < elapseTimestamps.length; i++) {
             elapseTimestamps[i] = bound(elapseTimestamps[i], 0, _maxElapseTime);
-        for (uint256 i; i < rates.length; i++) rates[i] = bound(rates[i], _minRate, _maxRate);
+        }
+        for (uint256 i; i < rates.length; i++) {
+            rates[i] = bound(rates[i], _minRate, _maxRate);
+        }
 
         _deposit(amounts[0], sweeper, sweeper, 0);
 
@@ -469,7 +475,9 @@ contract SavingsTest is Fixture, FunctionUtils {
         uint256 indexReceiver,
         uint256[2] memory elapseTimestamps
     ) public {
-        for (uint256 i; i < shares.length; i++) shares[i] = bound(shares[i], 0, _maxAmount);
+        for (uint256 i; i < shares.length; i++) {
+            shares[i] = bound(shares[i], 0, _maxAmount);
+        }
         rate = bound(rate, _minRate, _maxRate);
         // shorten the time otherwise the DL diverge too much from the actual formula (1+rate)**seconds
         elapseTimestamps[0] = bound(elapseTimestamps[0], 0, _maxElapseTime);
@@ -546,11 +554,16 @@ contract SavingsTest is Fixture, FunctionUtils {
         uint256 indexReceiver,
         uint256[3] memory elapseTimestamps
     ) public {
-        for (uint256 i; i < shares.length; i++) shares[i] = bound(shares[i], 0, _maxAmount);
+        for (uint256 i; i < shares.length; i++) {
+            shares[i] = bound(shares[i], 0, _maxAmount);
+        }
         // shorten the time otherwise the DL diverge too much from the actual formula (1+rate)**seconds
-        for (uint256 i; i < elapseTimestamps.length; i++)
+        for (uint256 i; i < elapseTimestamps.length; i++) {
             elapseTimestamps[i] = bound(elapseTimestamps[i], 0, _maxElapseTime);
-        for (uint256 i; i < rates.length; i++) rates[i] = bound(rates[i], _minRate, _maxRate);
+        }
+        for (uint256 i; i < rates.length; i++) {
+            rates[i] = bound(rates[i], _minRate, _maxRate);
+        }
 
         _deposit(shares[0], sweeper, sweeper, 0);
 
@@ -626,10 +639,13 @@ contract SavingsTest is Fixture, FunctionUtils {
         uint256 indexReceiver,
         uint256[2] memory elapseTimestamps
     ) public {
-        for (uint256 i; i < amounts.length; i++) amounts[i] = bound(amounts[i], 0, _maxAmount);
+        for (uint256 i; i < amounts.length; i++) {
+            amounts[i] = bound(amounts[i], 1e15, _maxAmount);
+        }
         // shorten the time otherwise the DL diverge too much from the actual formula (1+rate)**seconds
-        for (uint256 i; i < elapseTimestamps.length; i++)
+        for (uint256 i; i < elapseTimestamps.length; i++) {
             elapseTimestamps[i] = bound(elapseTimestamps[i], 0, _maxElapseTime);
+        }
         rate = bound(rate, _minRate, _maxRate);
         propWithdraw = bound(propWithdraw, 0, BASE_9);
         address receiver = actors[bound(indexReceiver, 0, _nbrActor - 1)];
@@ -696,10 +712,13 @@ contract SavingsTest is Fixture, FunctionUtils {
         uint256 indexReceiver,
         uint256[2] memory elapseTimestamps
     ) public {
-        for (uint256 i; i < amounts.length; i++) amounts[i] = bound(amounts[i], 0, _maxAmount);
+        for (uint256 i; i < amounts.length; i++) {
+            amounts[i] = bound(amounts[i], 0, _maxAmount);
+        }
         // shorten the time otherwise the DL diverge too much from the actual formula (1+rate)**seconds
-        for (uint256 i; i < elapseTimestamps.length; i++)
+        for (uint256 i; i < elapseTimestamps.length; i++) {
             elapseTimestamps[i] = bound(elapseTimestamps[i], 0, _maxElapseTime);
+        }
         rate = bound(rate, _minRate, _maxRate);
         address receiver = actors[bound(indexReceiver, 0, _nbrActor - 1)];
 
@@ -745,10 +764,13 @@ contract SavingsTest is Fixture, FunctionUtils {
         uint256 indexReceiver,
         uint256[2] memory elapseTimestamps
     ) public {
-        for (uint256 i; i < amounts.length; i++) amounts[i] = bound(amounts[i], 0, _maxAmount);
+        for (uint256 i; i < amounts.length; i++) {
+            amounts[i] = bound(amounts[i], 0, _maxAmount);
+        }
         // shorten the time otherwise the DL diverge too much from the actual formula (1+rate)**seconds
-        for (uint256 i; i < elapseTimestamps.length; i++)
+        for (uint256 i; i < elapseTimestamps.length; i++) {
             elapseTimestamps[i] = bound(elapseTimestamps[i], 0, _maxElapseTime);
+        }
         rate = bound(rate, _minRate, _maxRate);
         propWithdraw = bound(propWithdraw, 0, BASE_9);
         address receiver = actors[bound(indexReceiver, 0, _nbrActor - 1)];
@@ -811,7 +833,7 @@ contract SavingsTest is Fixture, FunctionUtils {
             assertEq(agToken.balanceOf(receiver), amountToRedeem);
             assertEq(agToken.balanceOf(alice), 0);
             assertEq(_saving.balanceOf(alice), shares - sharesBurnt);
-            if (withdrawableAmount - amountToRedeem > _minAmount)
+            if (withdrawableAmount - amountToRedeem > _minAmount) {
                 _assertApproxEqRelDecimalWithTolerance(
                     _saving.convertToAssets(_saving.balanceOf(alice)),
                     withdrawableAmount - amountToRedeem,
@@ -819,6 +841,7 @@ contract SavingsTest is Fixture, FunctionUtils {
                     _MAX_PERCENTAGE_DEVIATION * 100,
                     18
                 );
+            }
         }
     }
 

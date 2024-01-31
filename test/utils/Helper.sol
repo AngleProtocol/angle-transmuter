@@ -19,7 +19,7 @@ abstract contract Helper is Test {
     using strings for *;
 
     // return array of function selectors for given facet name
-    function generateSelectors(string memory _facetName) internal returns (bytes4[] memory selectors) {
+    function generateSelectors(string memory _facetName, uint16 retries) internal returns (bytes4[] memory selectors) {
         //get string of contract methods
         string[] memory cmd = new string[](4);
         cmd[0] = "forge";
@@ -28,6 +28,13 @@ abstract contract Helper is Test {
         cmd[3] = "methods";
         bytes memory res = vm.ffi(cmd);
         string memory st = string(res);
+
+        // if empty, try again
+        if (bytes(st).length == 0) {
+            if (retries != 0) {
+                return generateSelectors(_facetName, retries - 1);
+            }
+        }
 
         // extract function signatures and take first 4 bytes of keccak
         strings.slice memory s = st.toSlice();
@@ -40,6 +47,10 @@ abstract contract Helper is Test {
             s.split(delim2);
         }
         return selectors;
+    }
+
+    function generateSelectors(string memory _facetName) internal returns (bytes4[] memory selectors) {
+        return generateSelectors(_facetName, 3);
     }
 
     // helper to remove index from bytes4[] array
