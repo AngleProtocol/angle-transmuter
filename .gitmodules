@@ -20,3 +20,6 @@
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "lib/utils"]
+	path = lib/utils
+	url = https://github.com/AngleProtocol/utils
