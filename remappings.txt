@@ -11,3 +11,4 @@ oz-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
 mock/=test/mock/
 prb/math/=lib/prb-math/src/
 borrow/=lib/borrow-contracts/contracts
+utils/=lib/utils

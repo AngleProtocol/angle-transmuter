@@ -28,7 +28,7 @@ contract Test_DiamondCut is Fixture {
     address writeFacet = address(new MockWriteFacet());
     address writeExpandedFacet = address(new MockWriteExpanded());
     address initializer = address(new MockInitializer());
-    bytes4[] selectors = generateSelectors("IMockFacet");
+    bytes4[] selectors = _generateSelectors("IMockFacet");
 
     function test_RevertWhen_NotGovernor() public {
         FacetCut[] memory facetCut = new FacetCut[](1);

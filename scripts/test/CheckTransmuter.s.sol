@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import { Utils } from "../utils/Utils.s.sol";
+import "../utils/Utils.s.sol";
 import { console } from "forge-std/console.sol";
 import { StdCheats } from "forge-std/Test.sol";
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
@@ -35,7 +35,7 @@ contract CheckTransmuter is Utils, StdCheats {
         }
         */
 
-        assertEq(address(transmuter.accessControlManager()), address(ACCESS_CONTROL_MANAGER));
+        assertEq(address(transmuter.accessControlManager()), address(_chainToContract(CHAIN_ETHEREUM, ContractType.CoreBorrow)));
         assertEq(address(transmuter.agToken()), address(AGEUR));
         assertEq(transmuter.getCollateralList(), collaterals);
         assertEq(transmuter.getCollateralDecimals(EUROC), 6);
@@ -191,8 +191,8 @@ contract CheckTransmuter is Utils, StdCheats {
 
         deal(BC3M, address(transmuter), BASE_18);
 
-        hoax(GOVERNOR);
-        IAgToken(address(TREASURY_EUR)).addMinter(address(transmuter));
+        hoax(_chainToContract(CHAIN_ETHEREUM, ContractType.GovernorMultisig));
+        IAgToken(address(_chainToContract(CHAIN_ETHEREUM, ContractType.TreasuryAgEUR))).addMinter(address(transmuter));
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_FORK"), "m/44'/60'/0'/0/", 0);
         address deployer = vm.addr(deployerPrivateKey);
 

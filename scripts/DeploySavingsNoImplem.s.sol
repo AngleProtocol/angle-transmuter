@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import { Utils } from "./utils/Utils.s.sol";
+import "./utils/Utils.s.sol";
 import { console } from "forge-std/console.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 import "stringutils/strings.sol";
@@ -16,15 +16,15 @@ import { ImmutableCreate2Factory } from "./utils/TransmuterDeploymentHelper.s.so
 
 import { MockTreasury } from "../test/mock/MockTreasury.sol";
 
-/// @dev To deploy on a different chain, just replace the import of the `Constants.s.sol` file by a file which has the
-/// constants defined for the chain of your choice.
+/// @dev To deploy on a different chain, just replace the chainId and be sure the sdk has the required addresses
 contract DeploySavingsNoImplem is Utils {
     using stdJson for string;
     using strings for *;
 
     function run() external {
         // TODO: make sure that deployer has a 1 stablecoin (=1e18) balance
-        // TODO: check the import of the constants file if it corresponds to the chain you're deploying on
+        // TODO: change the chainId
+        uint256 chainId = CHAIN_ETHEREUM;
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_MAINNET"), "m/44'/60'/0'/0/", 0);
         ImmutableCreate2Factory create2Factory = ImmutableCreate2Factory(IMMUTABLE_CREATE2_FACTORY_ADDRESS);
         string memory jsonVanity = vm.readFile(JSON_VANITY_PATH);
@@ -36,8 +36,8 @@ contract DeploySavingsNoImplem is Utils {
         // No need to deploy the implementation here
         // TODO: update addresses based on deployment
         address agToken = 0x0000206329b97DB379d5E1Bf586BbDB969C63274;
-        address accessControlManager = ACCESS_CONTROL_MANAGER;
-        address treasury = TREASURY_USD;
+        address accessControlManager = _chainToContract(chainId, ContractType.CoreBorrow);
+        address treasury = _chainToContract(chainId, ContractType.TreasuryAgUSD);
 
         // Then deploying the proxy.
         // To maintain chain consistency, we deploy with the deployer as a proxyAdmin before transferring
@@ -61,7 +61,7 @@ contract DeploySavingsNoImplem is Utils {
         address saving = create2Factory.safeCreate2(salt, initCode);
         console.log("Savings deployed at: ", address(saving));
         TransparentUpgradeableProxy(payable(saving)).upgradeTo(address(SAVINGS_IMPLEM));
-        TransparentUpgradeableProxy(payable(saving)).changeAdmin(PROXY_ADMIN);
+        TransparentUpgradeableProxy(payable(saving)).changeAdmin(_chainToContract(chainId, ContractType.ProxyAdmin));
         IERC20MetadataUpgradeable(agToken).approve(address(saving), 1e18);
         Savings(saving).initialize(
             IAccessControlManager(accessControlManager),

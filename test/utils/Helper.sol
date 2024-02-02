@@ -5,6 +5,7 @@ pragma solidity ^0.8.19;
 import "interfaces/IDiamondLoupe.sol";
 
 import { Test, stdError } from "forge-std/Test.sol";
+import { CommonUtils } from "utils/src/CommonUtils.sol";
 
 import "stringutils/strings.sol";
 
@@ -15,43 +16,8 @@ import "stringutils/strings.sol";
 * to solidity tests.
 /******************************************************************************/
 
-abstract contract Helper is Test {
+abstract contract Helper is Test, CommonUtils {
     using strings for *;
-
-    // return array of function selectors for given facet name
-    function generateSelectors(string memory _facetName, uint16 retries) internal returns (bytes4[] memory selectors) {
-        //get string of contract methods
-        string[] memory cmd = new string[](4);
-        cmd[0] = "forge";
-        cmd[1] = "inspect";
-        cmd[2] = _facetName;
-        cmd[3] = "methods";
-        bytes memory res = vm.ffi(cmd);
-        string memory st = string(res);
-
-        // if empty, try again
-        if (bytes(st).length == 0) {
-            if (retries != 0) {
-                return generateSelectors(_facetName, retries - 1);
-            }
-        }
-
-        // extract function signatures and take first 4 bytes of keccak
-        strings.slice memory s = st.toSlice();
-        strings.slice memory delim = ":".toSlice();
-        strings.slice memory delim2 = ",".toSlice();
-        selectors = new bytes4[]((s.count(delim)));
-        for (uint i = 0; i < selectors.length; ++i) {
-            s.split('"'.toSlice());
-            selectors[i] = bytes4(s.split(delim).until('"'.toSlice()).keccak());
-            s.split(delim2);
-        }
-        return selectors;
-    }
-
-    function generateSelectors(string memory _facetName) internal returns (bytes4[] memory selectors) {
-        return generateSelectors(_facetName, 3);
-    }
 
     // helper to remove index from bytes4[] array
     function removeElement(uint index, bytes4[] memory array) public pure returns (bytes4[] memory) {
@@ -107,24 +73,5 @@ abstract contract Helper is Test {
         }
 
         return false;
-    }
-
-    function getAllSelectors(address diamondAddress) public view returns (bytes4[] memory) {
-        Facet[] memory facetList = IDiamondLoupe(diamondAddress).facets();
-
-        uint len = 0;
-        for (uint i = 0; i < facetList.length; ++i) {
-            len += facetList[i].functionSelectors.length;
-        }
-
-        uint pos = 0;
-        bytes4[] memory selectors = new bytes4[](len);
-        for (uint i = 0; i < facetList.length; ++i) {
-            for (uint j = 0; j < facetList[i].functionSelectors.length; j++) {
-                selectors[pos] = facetList[i].functionSelectors[j];
-                pos += 1;
-            }
-        }
-        return selectors;
     }
 }

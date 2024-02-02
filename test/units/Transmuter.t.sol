@@ -24,14 +24,14 @@ contract TestTransmuter is Fixture {
     function test_FacetsHaveCorrectSelectors() public {
         for (uint i = 0; i < facetAddressList.length; ++i) {
             bytes4[] memory fromLoupeFacet = transmuter.facetFunctionSelectors(facetAddressList[i]);
-            bytes4[] memory fromGenSelectors = generateSelectors(facetNames[i]);
+            bytes4[] memory fromGenSelectors = _generateSelectors(facetNames[i]);
             assertTrue(sameMembers(fromLoupeFacet, fromGenSelectors));
         }
     }
 
     function test_SelectorsAssociatedWithCorrectFacet() public {
         for (uint i = 0; i < facetAddressList.length; ++i) {
-            bytes4[] memory fromGenSelectors = generateSelectors(facetNames[i]);
+            bytes4[] memory fromGenSelectors = _generateSelectors(facetNames[i]);
             for (uint j = 0; j < fromGenSelectors.length; j++) {
                 assertEq(facetAddressList[i], transmuter.facetAddress(fromGenSelectors[j]));
             }
@@ -39,7 +39,7 @@ contract TestTransmuter is Fixture {
     }
 
     function test_InterfaceCorrectlyImplemented() public {
-        bytes4[] memory selectors = generateSelectors("ITransmuter");
+        bytes4[] memory selectors = _generateSelectors("ITransmuter");
         for (uint i = 0; i < selectors.length; ++i) {
             assertEq(transmuter.isValidSelector(selectors[i]), true);
         }
@@ -47,7 +47,7 @@ contract TestTransmuter is Fixture {
 
     // Checks that all implemented selectors are in the interface
     function test_OnlyInterfaceIsImplemented() public {
-        bytes4[] memory interfaceSelectors = generateSelectors("ITransmuter");
+        bytes4[] memory interfaceSelectors = _generateSelectors("ITransmuter");
 
         Facet[] memory facets = transmuter.facets();
 

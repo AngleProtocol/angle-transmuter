@@ -21,7 +21,7 @@ contract DeployRedeemer is Utils {
     address oldRedeemer = 0x8E669F6eF8485694196F32d568BA4Ac268b9FE8f;
 
     function run() external {
-        // vm.startPrank(GOVERNOR);
+        // vm.startPrank(_chainToContract(CHAIN_ETHEREUM, ContractType.GovernorMultisig);
 
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_FORK"), 0);
         address deployer = vm.addr(deployerPrivateKey);

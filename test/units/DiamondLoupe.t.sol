@@ -21,7 +21,7 @@ contract Test_DiamondLoupe is Fixture {
         for (uint256 i; i < facetNames.length; ++i) {
             assertEq(facets[i].facetAddress, address(facetAddressList[i])); // Check address
 
-            bytes4[] memory selectors = generateSelectors(facetNames[i]);
+            bytes4[] memory selectors = _generateSelectors(facetNames[i]);
             assertEq(facets[i].functionSelectors.length, selectors.length); // Check selectors length
 
             for (uint256 j; j < selectors.length; ++j) {
@@ -32,7 +32,7 @@ contract Test_DiamondLoupe is Fixture {
 
     function test_FacetFunctionSelectors() public {
         // Create a facet added in 2 phases to test the robustness
-        bytes4[] memory selectors = generateSelectors("IMockFacet");
+        bytes4[] memory selectors = _generateSelectors("IMockFacet");
 
         bytes4[] memory auxSelectors = new bytes4[](1);
         auxSelectors[0] = selectors[0];
@@ -78,7 +78,7 @@ contract Test_DiamondLoupe is Fixture {
 
     function test_FacetAddress() public {
         for (uint256 i; i < facetNames.length; ++i) {
-            bytes4[] memory selectors = generateSelectors(facetNames[i]);
+            bytes4[] memory selectors = _generateSelectors(facetNames[i]);
 
             for (uint256 j; j < selectors.length; ++j) {
                 assertEq(transmuter.facetAddress(selectors[j]), facetAddressList[i]); // Check all selectors are present

@@ -19,6 +19,7 @@ import "contracts/utils/Constants.sol";
 import "contracts/utils/Errors.sol";
 
 import { ITransmuter, Transmuter } from "./utils/Transmuter.sol";
+import { ContractType, CHAIN_ETHEREUM } from "utils/src/Constants.sol";
 
 import { console } from "forge-std/console.sol";
 
@@ -40,9 +41,9 @@ contract Fixture is Transmuter {
     uint256 internal constant _MAX_PERCENTAGE_DEVIATION = 1e12;
     uint256 internal constant _MAX_SUB_COLLATERALS = 10;
 
-    address public constant governor = 0xdC4e6DFe07EFCa50a197DF15D9200883eF4Eb1c8;
-    address public constant guardian = 0x0C2553e4B9dFA9f83b1A6D3EAB96c4bAaB42d430;
-    address public constant angle = 0x31429d1856aD1377A8A0079410B297e1a9e214c2;
+    address public guardian;
+    address public angle;
+    address public governor;
 
     address public alice;
     address public bob;
@@ -56,6 +57,10 @@ contract Fixture is Transmuter {
         charlie = vm.addr(3);
         dylan = vm.addr(4);
         sweeper = address(uint160(uint256(keccak256(abi.encodePacked("sweeper")))));
+
+        governor = _chainToContract(CHAIN_ETHEREUM, ContractType.GovernorMultisig);
+        guardian = _chainToContract(CHAIN_ETHEREUM, ContractType.GuardianMultisig);
+        angle = _chainToContract(CHAIN_ETHEREUM, ContractType.Angle);
 
         vm.label(governor, "Governor");
         vm.label(guardian, "Guardian");
@@ -107,14 +112,6 @@ contract Fixture is Transmuter {
         vm.label(address(eurA), "eurA");
         vm.label(address(eurB), "eurB");
         vm.label(address(eurY), "eurY");
-    }
-
-    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                         UTILS                                                      
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    function deployUpgradeable(address implementation, bytes memory data) public returns (address) {
-        return address(new TransparentUpgradeableProxy(implementation, address(proxyAdmin), data));
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
