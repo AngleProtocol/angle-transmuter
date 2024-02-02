@@ -14,7 +14,7 @@ import "oz-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 contract DeploySavingsNoCreate2 is Utils {
     function run() external {
         // TODO: make sure that deployer has a 1 agEUR (=1e18) balance
-       // TODO: change the chainId
+        // TODO: change the chainId
         uint256 chainId = CHAIN_ETHEREUM;
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_FORK"), "m/44'/60'/0'/0/", 0);
         vm.startBroadcast(deployerPrivateKey);
@@ -24,7 +24,9 @@ contract DeploySavingsNoCreate2 is Utils {
 
         Savings savingsImpl = new Savings();
         bytes memory emptyData;
-        Savings saving = Savings(_deployUpgradeable(address(savingsImpl), _chainToContract(chainId, ContractType.ProxyAdmin), emptyData));
+        Savings saving = Savings(
+            _deployUpgradeable(address(savingsImpl), _chainToContract(chainId, ContractType.ProxyAdmin), emptyData)
+        );
         console.log("Savings deployed at: ", address(saving));
         IERC20MetadataUpgradeable(_chainToContract(chainId, ContractType.AgEUR)).approve(address(saving), 1e18);
         saving.initialize(

@@ -79,8 +79,12 @@ contract SavingsTest is Fixture, FunctionUtils {
         assert(accessControlManager.isGovernorOrGuardian(guardian));
         assert(accessControlManager.isGovernorOrGuardian(governor));
         bytes memory data;
-        Savings savingsContract = Savings(_deployUpgradeable(address(proxyAdmin), address(_savingImplementation), data));
-        Savings savingsContract2 = Savings(_deployUpgradeable(address(proxyAdmin), address(_savingImplementation), data));
+        Savings savingsContract = Savings(
+            _deployUpgradeable(address(proxyAdmin), address(_savingImplementation), data)
+        );
+        Savings savingsContract2 = Savings(
+            _deployUpgradeable(address(proxyAdmin), address(_savingImplementation), data)
+        );
 
         vm.startPrank(governor);
         agToken.addMinter(address(savingsContract));

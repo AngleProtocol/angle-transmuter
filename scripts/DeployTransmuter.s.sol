@@ -39,7 +39,12 @@ contract DeployTransmuter is TransmuterDeploymentHelper {
         address dummyImplementation = address(new DummyDiamondImplementation());
         ITransmuter transmuter = _deployTransmuter(
             config,
-            abi.encodeWithSelector(Production.initialize.selector, _chainToContract(CHAIN_ETHEREUM, ContractType.CoreBorrow), AGEUR, dummyImplementation)
+            abi.encodeWithSelector(
+                Production.initialize.selector,
+                _chainToContract(CHAIN_ETHEREUM, ContractType.CoreBorrow),
+                AGEUR,
+                dummyImplementation
+            )
         );
 
         console.log("Transmuter deployed at: %s", address(transmuter));

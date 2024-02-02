@@ -35,7 +35,8 @@ contract DeploySavingsNoImplem is Utils {
         console.log("Deployer address: ", deployer);
         // No need to deploy the implementation here
         // TODO: update addresses based on deployment
-        address agToken = 0x0000206329b97DB379d5E1Bf586BbDB969C63274;
+        // address agToken = _chainToContract(chainId, ContractType.AgUSD);
+        address agToken = _chainToContract(chainId, ContractType.AgEUR);
         address accessControlManager = _chainToContract(chainId, ContractType.CoreBorrow);
         address treasury = _chainToContract(chainId, ContractType.TreasuryAgUSD);
 
