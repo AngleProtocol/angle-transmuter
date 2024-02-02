@@ -44,6 +44,9 @@ jobs:
         with:
           version: nightly
 
+      - name: Install node_modules
+        run: yarn install
+
       - name: Compile foundry
         run: yarn compile --sizes
 
@@ -54,6 +57,7 @@ jobs:
           path: |
             cache-forge
             out
+            node_modules
 
       - name: "Add build summary"
         run: |
@@ -74,6 +78,7 @@ jobs:
           path: |
             cache-forge
             out
+            node_modules
           key: "build-${{ github.sha }}"
 
       - name: Install Foundry
@@ -98,6 +103,7 @@ jobs:
           path: |
             cache-forge
             out
+            node_modules
           key: "build-${{ github.sha }}"
 
       - name: Install Foundry
@@ -125,6 +131,7 @@ jobs:
           path: |
             cache-forge
             out
+            node_modules
           key: "build-${{ github.sha }}"
 
       - name: Install Foundry
@@ -144,6 +151,15 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: "recursive"
+
+      - uses: actions/cache/restore@v3
+        with:
+          fail-on-cache-miss: true
+          path: |
+            cache-forge
+            out
+            node_modules
+          key: "build-${{ github.sha }}"
 
       - name: "Install Foundry"
         uses: "foundry-rs/foundry-toolchain@v1"

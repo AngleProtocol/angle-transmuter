@@ -52,5 +52,7 @@
     "solhint": "^3.5.1",
     "solhint-plugin-prettier": "^0.0.5"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@angleprotocol/sdk": "^3.0.129"
+  }
 }

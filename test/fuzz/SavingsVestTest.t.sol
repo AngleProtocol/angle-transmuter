@@ -73,7 +73,7 @@ contract SavingsVestTest is Fixture, FunctionUtils {
 
         _savingImplementation = new SavingsVest();
         bytes memory data;
-        _saving = SavingsVest(deployUpgradeable(address(_savingImplementation), data));
+        _saving = SavingsVest(_deployUpgradeable(address(proxyAdmin), address(_savingImplementation), data));
         _name = "savingAgEUR";
         _symbol = "SAGEUR";
 
@@ -123,8 +123,12 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         assert(accessControlManager.isGovernorOrGuardian(guardian));
         assert(accessControlManager.isGovernorOrGuardian(governor));
         bytes memory data;
-        SavingsVest savingsContract = SavingsVest(deployUpgradeable(address(_savingImplementation), data));
-        SavingsVest savingsContract2 = SavingsVest(deployUpgradeable(address(_savingImplementation), data));
+        SavingsVest savingsContract = SavingsVest(
+            _deployUpgradeable(address(proxyAdmin), address(_savingImplementation), data)
+        );
+        SavingsVest savingsContract2 = SavingsVest(
+            _deployUpgradeable(address(proxyAdmin), address(_savingImplementation), data)
+        );
 
         vm.startPrank(governor);
         agToken.addMinter(address(savingsContract));

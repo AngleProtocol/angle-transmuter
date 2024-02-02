@@ -79,7 +79,7 @@ contract Test_Layout is Fixture {
         assertEq(layout.isTrusted(bob), 0);
         assertEq(layout.isSellerTrusted(bob), 0);
 
-        bytes4[] memory selectors = generateSelectors("ITransmuter");
+        bytes4[] memory selectors = _generateSelectors("ITransmuter");
         for (uint i = 0; i < selectors.length; ++i) {
             (address facetAddress, uint16 selectorPosition) = layout.selectorInfo(selectors[i]);
             assertNotEq(facetAddress, address(0));

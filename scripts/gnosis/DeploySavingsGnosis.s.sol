@@ -43,7 +43,7 @@ contract DeploySavingsGnosis is Utils {
 
         Savings savingsImpl = new Savings();
         Savings saving = Savings(
-            deployUpgradeable(
+            _deployUpgradeable(
                 address(savingsImpl),
                 address(proxy),
                 abi.encodeWithSelector(Savings.initialize.selector, coreBorrow, agEUR, "Mock-sagEUR", "Mock-sagEUR", 1)

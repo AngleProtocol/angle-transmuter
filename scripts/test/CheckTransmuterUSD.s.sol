@@ -35,7 +35,7 @@ contract CheckTransmuterUSD is Utils, StdCheats {
         }
         */
         /*
-        assertEq(address(transmuter.accessControlManager()), address(ACCESS_CONTROL_MANAGER));
+        assertEq(address(transmuter.accessControlManager()), address(_chainToContract(CHAIN_SOURCE, ContractType.CoreBorrow)));
         assertEq(address(transmuter.agToken()), address(AGEUR));
         */
         assertEq(transmuter.getCollateralList(), collaterals);

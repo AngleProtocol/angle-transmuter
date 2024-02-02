@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import { Utils } from "./utils/Utils.s.sol";
+import "./utils/Utils.s.sol";
 import { console } from "forge-std/console.sol";
 import { Rebalancer } from "contracts/helpers/Rebalancer.sol";
 import { IAccessControlManager } from "contracts/utils/AccessControl.sol";
@@ -18,8 +18,8 @@ contract DeployRebalancer is Utils {
         address deployer = vm.addr(deployerPrivateKey);
         console.log("Deployer address: ", deployer);
         Rebalancer rebalancer = new Rebalancer(
-            IAccessControlManager(ACCESS_CONTROL_MANAGER),
-            ITransmuter(TRANSMUTER_EUR)
+            IAccessControlManager(_chainToContract(CHAIN_SOURCE, ContractType.CoreBorrow)),
+            ITransmuter(_chainToContract(CHAIN_SOURCE, ContractType.TransmuterAgEUR))
         );
         console.log("Rebalancer deployed at: ", address(rebalancer));
 

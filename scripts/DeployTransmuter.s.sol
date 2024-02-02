@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import { Utils } from "./utils/Utils.s.sol";
+import "./utils/Utils.s.sol";
 import { TransmuterDeploymentHelper } from "./utils/TransmuterDeploymentHelper.s.sol";
 import { console } from "forge-std/console.sol";
 import { stdJson } from "forge-std/StdJson.sol";
@@ -39,7 +39,12 @@ contract DeployTransmuter is TransmuterDeploymentHelper {
         address dummyImplementation = address(new DummyDiamondImplementation());
         ITransmuter transmuter = _deployTransmuter(
             config,
-            abi.encodeWithSelector(Production.initialize.selector, ACCESS_CONTROL_MANAGER, AGEUR, dummyImplementation)
+            abi.encodeWithSelector(
+                Production.initialize.selector,
+                _chainToContract(CHAIN_SOURCE, ContractType.CoreBorrow),
+                AGEUR,
+                dummyImplementation
+            )
         );
 
         console.log("Transmuter deployed at: %s", address(transmuter));

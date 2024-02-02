@@ -64,7 +64,7 @@ abstract contract Transmuter is Helper {
             cut[i] = FacetCut({
                 facetAddress: facetAddressList[i],
                 action: FacetCutAction.Add,
-                functionSelectors: generateSelectors(facetNames[i])
+                functionSelectors: _generateSelectors(facetNames[i])
             });
         }
 
@@ -84,7 +84,7 @@ abstract contract Transmuter is Helper {
             cut[i] = FacetCut({
                 facetAddress: facetAddressList[i],
                 action: FacetCutAction.Add,
-                functionSelectors: generateSelectors(facetNames[i])
+                functionSelectors: _generateSelectors(facetNames[i])
             });
         }
 

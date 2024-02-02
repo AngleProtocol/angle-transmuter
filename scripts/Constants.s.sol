@@ -2,23 +2,16 @@
 pragma solidity ^0.8.19;
 
 import "contracts/utils/Constants.sol";
+import { CHAIN_ETHEREUM } from "utils/src/Constants.sol";
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                    MAINNET CONSTANTS                                                
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-address constant ACCESS_CONTROL_MANAGER = 0x5bc6BEf80DA563EBf6Df6D6913513fa9A7ec89BE;
-address constant CHAIN_AGEUR = 0x1a7e4e63778B4f12a199C062f3eFdD288afCBce8;
-address constant GOVERNOR = 0xdC4e6DFe07EFCa50a197DF15D9200883eF4Eb1c8;
-address constant GUARDIAN = 0x0C2553e4B9dFA9f83b1A6D3EAB96c4bAaB42d430;
-address constant PROXY_ADMIN = 0x1D941EF0D3Bba4ad67DBfBCeE5262F4CEE53A32b;
-address constant PROXY_ADMIN_GUARDIAN = 0xD9F1A8e00b0EEbeDddd9aFEaB55019D55fcec017;
-address constant TREASURY_EUR = 0x8667DBEBf68B0BFa6Db54f550f41Be16c4067d60;
-address constant TREASURY_USD = 0xf8588520E760BB0b3bDD62Ecb25186A28b0830ee;
+uint256 constant CHAIN_SOURCE = CHAIN_ETHEREUM;
+
 address constant IMMUTABLE_CREATE2_FACTORY_ADDRESS = 0x0000000000FFe8B47B3e2130213B802212439497;
 address constant DEPLOYER = 0xfdA462548Ce04282f4B6D6619823a7C64Fdc0185;
-address constant TRANSMUTER_EUR = 0x00253582b2a3FE112feEC532221d9708c64cEFAb;
-address constant TRANSMUTER_USD = 0x222222fD79264BBE280b4986F6FEfBC3524d0137;
 
 address constant EUROC = 0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c;
 address constant EUROE = 0x820802Fa8a99901F52e39acD21177b0BE6EE2974;
