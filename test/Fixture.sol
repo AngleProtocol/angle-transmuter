@@ -17,8 +17,8 @@ import { MockTokenPermit } from "mock/MockTokenPermit.sol";
 import { CollateralSetup, Test } from "contracts/transmuter/configs/Test.sol";
 import "contracts/utils/Constants.sol";
 import "contracts/utils/Errors.sol";
-
-import { ITransmuter, Transmuter, CHAIN_SOURCE } from "./utils/Transmuter.sol";
+import { CHAIN_SOURCE } from "../scripts/Constants.s.sol";
+import { ITransmuter, Transmuter } from "./utils/Transmuter.sol";
 import { ContractType } from "utils/src/Constants.sol";
 
 import { console } from "forge-std/console.sol";

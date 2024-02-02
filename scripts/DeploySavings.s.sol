@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "./utils/Utils.s.sol";
 import "utils/src/Constants.sol";
 import { console } from "forge-std/console.sol";
+import { CHAIN_SOURCE } from "./Constants.s.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 import "stringutils/strings.sol";
 import { Savings } from "contracts/savings/Savings.sol";
@@ -22,7 +23,7 @@ contract DeploySavings is Utils {
     function run() external {
         // TODO: make sure that deployer has a 1 agEUR (=1e18) balance
         // TODO: change the chainId
-        uint256 chainId = CHAIN_ETHEREUM;
+        uint256 chainId = CHAIN_SOURCE;
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_MAINNET"), "m/44'/60'/0'/0/", 0);
         ImmutableCreate2Factory create2Factory = ImmutableCreate2Factory(IMMUTABLE_CREATE2_FACTORY_ADDRESS);
         string memory jsonVanity = vm.readFile(JSON_VANITY_PATH);

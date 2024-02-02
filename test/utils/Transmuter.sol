@@ -18,8 +18,6 @@ import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import "contracts/utils/Errors.sol";
 import { DummyDiamondImplementation } from "../../scripts/generated/DummyDiamondImplementation.sol";
 
-import { CHAIN_SOURCE } from "../../scripts/Constants.s.sol";
-
 import "./Helper.sol";
 
 abstract contract Transmuter is Helper {

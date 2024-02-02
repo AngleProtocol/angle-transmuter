@@ -5,6 +5,7 @@ import "./utils/Utils.s.sol";
 import { console } from "forge-std/console.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 import "stringutils/strings.sol";
+import { CHAIN_SOURCE } from "./Constants.s.sol";
 import { Savings } from "contracts/savings/Savings.sol";
 import { IAccessControlManager } from "contracts/utils/AccessControl.sol";
 import "./Constants.s.sol";
@@ -24,7 +25,7 @@ contract DeploySavingsNoImplem is Utils {
     function run() external {
         // TODO: make sure that deployer has a 1 stablecoin (=1e18) balance
         // TODO: change the chainId
-        uint256 chainId = CHAIN_ETHEREUM;
+        uint256 chainId = CHAIN_SOURCE;
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_MAINNET"), "m/44'/60'/0'/0/", 0);
         ImmutableCreate2Factory create2Factory = ImmutableCreate2Factory(IMMUTABLE_CREATE2_FACTORY_ADDRESS);
         string memory jsonVanity = vm.readFile(JSON_VANITY_PATH);

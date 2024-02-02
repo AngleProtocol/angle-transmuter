@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "./utils/Utils.s.sol";
 import { console } from "forge-std/console.sol";
 import { Savings } from "contracts/savings/Savings.sol";
+import { CHAIN_SOURCE } from "./Constants.s.sol";
 import { IAccessControlManager } from "contracts/utils/AccessControl.sol";
 import "./Constants.s.sol";
 import "oz/interfaces/IERC20.sol";
@@ -15,7 +16,7 @@ contract DeploySavingsNoCreate2 is Utils {
     function run() external {
         // TODO: make sure that deployer has a 1 agEUR (=1e18) balance
         // TODO: change the chainId
-        uint256 chainId = CHAIN_ETHEREUM;
+        uint256 chainId = CHAIN_SOURCE;
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_FORK"), "m/44'/60'/0'/0/", 0);
         vm.startBroadcast(deployerPrivateKey);
 
