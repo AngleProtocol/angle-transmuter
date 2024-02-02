@@ -55,6 +55,9 @@ jobs:
         with:
           version: nightly
 
+      - name: Install node_modules
+        run: yarn install
+
       - name: Compile foundry
         run: yarn compile --sizes
 
@@ -65,6 +68,7 @@ jobs:
           path: |
             cache-forge
             out
+            node_modules
 
       - name: "Add build summary"
         run: |
@@ -85,6 +89,7 @@ jobs:
           path: |
             cache-forge
             out
+            node_modules
           key: "build-${{ github.sha }}"
 
       - name: Install Foundry
@@ -109,6 +114,7 @@ jobs:
           path: |
             cache-forge
             out
+            node_modules
           key: "build-${{ github.sha }}"
 
       - name: Install Foundry
@@ -136,6 +142,7 @@ jobs:
           path: |
             cache-forge
             out
+            node_modules
           key: "build-${{ github.sha }}"
 
       - name: Install Foundry
