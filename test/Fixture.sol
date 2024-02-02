@@ -18,8 +18,8 @@ import { CollateralSetup, Test } from "contracts/transmuter/configs/Test.sol";
 import "contracts/utils/Constants.sol";
 import "contracts/utils/Errors.sol";
 
-import { ITransmuter, Transmuter } from "./utils/Transmuter.sol";
-import { ContractType, CHAIN_ETHEREUM } from "utils/src/Constants.sol";
+import { ITransmuter, Transmuter, CHAIN_SOURCE } from "./utils/Transmuter.sol";
+import { ContractType } from "utils/src/Constants.sol";
 
 import { console } from "forge-std/console.sol";
 
@@ -58,9 +58,9 @@ contract Fixture is Transmuter {
         dylan = vm.addr(4);
         sweeper = address(uint160(uint256(keccak256(abi.encodePacked("sweeper")))));
 
-        governor = _chainToContract(CHAIN_ETHEREUM, ContractType.GovernorMultisig);
-        guardian = _chainToContract(CHAIN_ETHEREUM, ContractType.GuardianMultisig);
-        angle = _chainToContract(CHAIN_ETHEREUM, ContractType.Angle);
+        governor = _chainToContract(CHAIN_SOURCE, ContractType.GovernorMultisig);
+        guardian = _chainToContract(CHAIN_SOURCE, ContractType.GuardianMultisig);
+        angle = _chainToContract(CHAIN_SOURCE, ContractType.Angle);
 
         vm.label(governor, "Governor");
         vm.label(guardian, "Guardian");

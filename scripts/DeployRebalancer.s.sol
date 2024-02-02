@@ -18,8 +18,8 @@ contract DeployRebalancer is Utils {
         address deployer = vm.addr(deployerPrivateKey);
         console.log("Deployer address: ", deployer);
         Rebalancer rebalancer = new Rebalancer(
-            IAccessControlManager(_chainToContract(CHAIN_ETHEREUM, ContractType.CoreBorrow)),
-            ITransmuter(_chainToContract(CHAIN_ETHEREUM, ContractType.TransmuterAgEUR))
+            IAccessControlManager(_chainToContract(CHAIN_SOURCE, ContractType.CoreBorrow)),
+            ITransmuter(_chainToContract(CHAIN_SOURCE, ContractType.TransmuterAgEUR))
         );
         console.log("Rebalancer deployed at: ", address(rebalancer));
 

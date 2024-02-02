@@ -7,7 +7,7 @@ import "stringutils/strings.sol";
 
 import { TransparentUpgradeableProxy } from "oz/proxy/transparent/TransparentUpgradeableProxy.sol";
 import { CommonUtils } from "utils/src/CommonUtils.sol";
-import { CHAIN_ETHEREUM, ContractType } from "utils/src/Constants.sol";
+import { ContractType } from "utils/src/Constants.sol";
 
 contract Utils is Script, StdAssertions, CommonUtils {
     using strings for *;

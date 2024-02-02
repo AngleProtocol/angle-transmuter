@@ -41,7 +41,7 @@ contract DeployTransmuter is TransmuterDeploymentHelper {
             config,
             abi.encodeWithSelector(
                 Production.initialize.selector,
-                _chainToContract(CHAIN_ETHEREUM, ContractType.CoreBorrow),
+                _chainToContract(CHAIN_SOURCE, ContractType.CoreBorrow),
                 AGEUR,
                 dummyImplementation
             )

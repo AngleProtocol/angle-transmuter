@@ -37,7 +37,7 @@ contract CheckTransmuter is Utils, StdCheats {
 
         assertEq(
             address(transmuter.accessControlManager()),
-            address(_chainToContract(CHAIN_ETHEREUM, ContractType.CoreBorrow))
+            address(_chainToContract(CHAIN_SOURCE, ContractType.CoreBorrow))
         );
         assertEq(address(transmuter.agToken()), address(AGEUR));
         assertEq(transmuter.getCollateralList(), collaterals);
@@ -194,8 +194,8 @@ contract CheckTransmuter is Utils, StdCheats {
 
         deal(BC3M, address(transmuter), BASE_18);
 
-        hoax(_chainToContract(CHAIN_ETHEREUM, ContractType.GovernorMultisig));
-        IAgToken(address(_chainToContract(CHAIN_ETHEREUM, ContractType.TreasuryAgEUR))).addMinter(address(transmuter));
+        hoax(_chainToContract(CHAIN_SOURCE, ContractType.GovernorMultisig));
+        IAgToken(address(_chainToContract(CHAIN_SOURCE, ContractType.TreasuryAgEUR))).addMinter(address(transmuter));
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_FORK"), "m/44'/60'/0'/0/", 0);
         address deployer = vm.addr(deployerPrivateKey);
 
