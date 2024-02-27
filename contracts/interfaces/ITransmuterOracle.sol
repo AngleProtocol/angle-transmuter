@@ -15,4 +15,7 @@ interface ITransmuterOracle {
     /// @notice Reads the oracle value for asset to use in a burn transaction as well as the ratio
     /// between the current price and the target price for the asset
     function readBurn() external view returns (uint256 oracleValue, uint256 ratio);
+
+    /// @notice Reads the oracle value for asset
+    function read() external view returns (uint256);
 }

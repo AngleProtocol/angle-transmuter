@@ -26,12 +26,21 @@ library LibOracle {
             OracleReadType oracleType,
             OracleReadType targetType,
             bytes memory oracleData,
-            bytes memory targetData
+            bytes memory targetData,
+            uint256 acceptedDeviatonMint,
+
         ) = _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readRedemption();
-        } else return read(oracleType, read(targetType, BASE_18, targetData), oracleData);
+        } else {
+            uint256 _targetPrice = read(targetType, BASE_18, targetData);
+            uint256 oracleValue = read(oracleType, _targetPrice, oracleData);
+            // We only consider the mint firewall as the burn one is less relevant for redemptions
+            // as there is already a surplus buffer to circumvent small deviations
+            oracleValue = _firewallMint(_targetPrice, oracleValue, acceptedDeviatonMint);
+            return oracleValue;
+        }
     }
 
     /// @notice Reads the oracle value used during mint operations for an asset with `oracleConfig`
@@ -42,7 +51,9 @@ library LibOracle {
             OracleReadType oracleType,
             OracleReadType targetType,
             bytes memory oracleData,
-            bytes memory targetData
+            bytes memory targetData,
+            uint256 acceptedDeviatonMint,
+
         ) = _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
@@ -50,7 +61,7 @@ library LibOracle {
         }
         uint256 _targetPrice = read(targetType, BASE_18, targetData);
         oracleValue = read(oracleType, _targetPrice, oracleData);
-        if (_targetPrice < oracleValue) oracleValue = _targetPrice;
+        return _firewallMint(_targetPrice, oracleValue, acceptedDeviatonMint);
     }
 
     /// @notice Reads the oracle value that will be used for a burn operation for an asset with `oracleConfig`
@@ -62,7 +73,9 @@ library LibOracle {
             OracleReadType oracleType,
             OracleReadType targetType,
             bytes memory oracleData,
-            bytes memory targetData
+            bytes memory targetData,
+            ,
+            uint256 acceptedDeviatonBurn
         ) = _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
@@ -70,8 +83,7 @@ library LibOracle {
         }
         uint256 _targetPrice = read(targetType, BASE_18, targetData);
         oracleValue = read(oracleType, _targetPrice, oracleData);
-        ratio = BASE_18;
-        if (oracleValue < _targetPrice) ratio = (oracleValue * BASE_18) / _targetPrice;
+        ratio = _firewallBurn(_targetPrice, oracleValue, acceptedDeviatonBurn);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -81,7 +93,7 @@ library LibOracle {
     /// @notice Internal version of the `getOracle` function
     function getOracle(
         address collateral
-    ) internal view returns (OracleReadType, OracleReadType, bytes memory, bytes memory) {
+    ) internal view returns (OracleReadType, OracleReadType, bytes memory, bytes memory, uint256, uint256) {
         return _parseOracleConfig(s.transmuterStorage().collaterals[collateral].oracleConfig);
     }
 
@@ -155,6 +167,9 @@ library LibOracle {
                 quotePrice = readPythFeed(quotePrice, feedIds[i], pyth, isMultiplied[i], stalePeriods[i]);
             }
             return quotePrice;
+        } else if (readType == OracleReadType.EXTERNAL) {
+            ITransmuterOracle externalOracle = abi.decode(data, (ITransmuterOracle));
+            return externalOracle.read();
         }
         // If the `OracleReadType` is `EXTERNAL`, it means that this function is called to compute a
         // `targetPrice` in which case the `baseValue` is returned here
@@ -207,7 +222,25 @@ library LibOracle {
     /// @notice Parses an `oracleConfig` into several sub fields
     function _parseOracleConfig(
         bytes memory oracleConfig
-    ) private pure returns (OracleReadType, OracleReadType, bytes memory, bytes memory) {
-        return abi.decode(oracleConfig, (OracleReadType, OracleReadType, bytes, bytes));
+    ) private pure returns (OracleReadType, OracleReadType, bytes memory, bytes memory, uint256, uint256) {
+        return abi.decode(oracleConfig, (OracleReadType, OracleReadType, bytes, bytes, uint256, uint256));
+    }
+
+    /// @notice Firewall in case the oracle value reported is too high compared to the target
+    /// --> disregard the oracle value and return the target price
+    function _firewallMint(uint256 targetPrice, uint256 oracleValue, uint256 deviation) private pure returns (uint256) {
+        if (targetPrice * (BASE_18 + deviation) < oracleValue * BASE_18) oracleValue = targetPrice;
+        return oracleValue;
+    }
+
+    /// @notice Firewall in case the oracle value reported is low compared to the target
+    /// --> disregard if in acceptable bounds of the target price
+    function _firewallBurn(
+        uint256 targetPrice,
+        uint256 oracleValue,
+        uint256 deviation
+    ) private pure returns (uint256 ratio) {
+        ratio = BASE_18;
+        if (oracleValue * BASE_18 < targetPrice * (BASE_18 - deviation)) ratio = (oracleValue * BASE_18) / targetPrice;
     }
 }

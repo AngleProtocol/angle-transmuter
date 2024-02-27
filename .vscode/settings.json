@@ -7,7 +7,7 @@
     "editor.defaultFormatter": "JuanBlanco.solidity"
   },
   "editor.codeActionsOnSave": {
-    "source.fixAll": true
+    "source.fixAll": "explicit"
   },
   "workbench.colorCustomizations": {
     "diffEditor.insertedTextBackground": "#00bb0044",
