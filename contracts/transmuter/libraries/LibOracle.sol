@@ -28,13 +28,25 @@ library LibOracle {
             OracleReadType targetType,
             bytes memory oracleData,
             bytes memory targetData,
+<<<<<<< HEAD
+=======
+            uint256 acceptedDeviatonMint,
+>>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
 
         ) = _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readRedemption();
         } else {
+<<<<<<< HEAD
             (oracleValue, ) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, 0);
+=======
+            uint256 _targetPrice = read(targetType, BASE_18, targetData);
+            uint256 oracleValue = read(oracleType, _targetPrice, oracleData);
+            // We only consider the mint firewall as the burn one is less relevant for redemptions
+            // as there is already a surplus buffer to circumvent small deviations
+            oracleValue = _firewallMint(_targetPrice, oracleValue, acceptedDeviatonMint);
+>>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
             return oracleValue;
         }
     }
@@ -48,17 +60,28 @@ library LibOracle {
             OracleReadType targetType,
             bytes memory oracleData,
             bytes memory targetData,
+<<<<<<< HEAD
             bytes memory hyperparameters
+=======
+            uint256 acceptedDeviatonMint,
+
+>>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
         ) = _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readMint();
         }
+<<<<<<< HEAD
 
         (uint128 userDeviation, ) = abi.decode(hyperparameters, (uint128, uint128));
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, userDeviation);
         if (targetPrice < oracleValue) oracleValue = targetPrice;
+=======
+        uint256 _targetPrice = read(targetType, BASE_18, targetData);
+        oracleValue = read(oracleType, _targetPrice, oracleData);
+        return _firewallMint(_targetPrice, oracleValue, acceptedDeviatonMint);
+>>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
     }
 
     /// @notice Reads the oracle value used for a burn operation for an asset with `oracleConfig`
@@ -71,12 +94,18 @@ library LibOracle {
             OracleReadType targetType,
             bytes memory oracleData,
             bytes memory targetData,
+<<<<<<< HEAD
             bytes memory hyperparameters
+=======
+            ,
+            uint256 acceptedDeviatonBurn
+>>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
         ) = _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readBurn();
         }
+<<<<<<< HEAD
         (uint128 userDeviation, uint128 burnRatioDeviation) = abi.decode(hyperparameters, (uint128, uint128));
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, userDeviation);
@@ -88,6 +117,11 @@ library LibOracle {
         if (oracleValue * BASE_18 < targetPrice * (BASE_18 - burnRatioDeviation))
             ratio = (oracleValue * BASE_18) / targetPrice;
         else if (oracleValue < targetPrice) oracleValue = targetPrice;
+=======
+        uint256 _targetPrice = read(targetType, BASE_18, targetData);
+        oracleValue = read(oracleType, _targetPrice, oracleData);
+        ratio = _firewallBurn(_targetPrice, oracleValue, acceptedDeviatonBurn);
+>>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +131,11 @@ library LibOracle {
     /// @notice Internal version of the `getOracle` function
     function getOracle(
         address collateral
+<<<<<<< HEAD
     ) internal view returns (OracleReadType, OracleReadType, bytes memory, bytes memory, bytes memory) {
+=======
+    ) internal view returns (OracleReadType, OracleReadType, bytes memory, bytes memory, uint256, uint256) {
+>>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
         return _parseOracleConfig(s.transmuterStorage().collaterals[collateral].oracleConfig);
     }
 
@@ -257,6 +295,7 @@ library LibOracle {
     /// @notice Parses an `oracleConfig` into several sub fields
     function _parseOracleConfig(
         bytes memory oracleConfig
+<<<<<<< HEAD
     ) private pure returns (OracleReadType, OracleReadType, bytes memory, bytes memory, bytes memory) {
         return abi.decode(oracleConfig, (OracleReadType, OracleReadType, bytes, bytes, bytes));
     }
@@ -287,5 +326,27 @@ library LibOracle {
                 hyperparameters
             );
         else revert OracleUpdateFailed();
+=======
+    ) private pure returns (OracleReadType, OracleReadType, bytes memory, bytes memory, uint256, uint256) {
+        return abi.decode(oracleConfig, (OracleReadType, OracleReadType, bytes, bytes, uint256, uint256));
+    }
+
+    /// @notice Firewall in case the oracle value reported is too high compared to the target
+    /// --> disregard the oracle value and return the target price
+    function _firewallMint(uint256 targetPrice, uint256 oracleValue, uint256 deviation) private pure returns (uint256) {
+        if (targetPrice * (BASE_18 + deviation) < oracleValue * BASE_18) oracleValue = targetPrice;
+        return oracleValue;
+    }
+
+    /// @notice Firewall in case the oracle value reported is low compared to the target
+    /// --> disregard if in acceptable bounds of the target price
+    function _firewallBurn(
+        uint256 targetPrice,
+        uint256 oracleValue,
+        uint256 deviation
+    ) private pure returns (uint256 ratio) {
+        ratio = BASE_18;
+        if (oracleValue * BASE_18 < targetPrice * (BASE_18 - deviation)) ratio = (oracleValue * BASE_18) / targetPrice;
+>>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
     }
 }

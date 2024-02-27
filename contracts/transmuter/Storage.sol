@@ -129,7 +129,11 @@ struct TransmuterStorage {
     int64[] yRedemptionCurve; // Value of the redemption fees at `xRedemptionCurve`
     mapping(address => Collateral) collaterals; // Maps a collateral asset to its parameters
     mapping(address => uint256) isTrusted; // If an address is trusted to update the normalizer value
+<<<<<<< HEAD
     mapping(address => uint256) isSellerTrusted; // If an address is trusted to sell accruing reward tokens or to run keeper jobs on oracles
+=======
+    mapping(address => uint256) isSellerTrusted; // If an address is trusted to sell accruing reward tokens
+>>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
     mapping(WhitelistType => mapping(address => uint256)) isWhitelistedForType;
     // Whether an address is whitelisted for a specific whitelist type
 }
