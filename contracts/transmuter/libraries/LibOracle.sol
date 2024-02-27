@@ -27,8 +27,7 @@ library LibOracle {
             OracleReadType targetType,
             bytes memory oracleData,
             bytes memory targetData,
-            uint256 acceptedDeviatonMint,
-
+            bytes memory hyperparameters
         ) = _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
@@ -38,7 +37,8 @@ library LibOracle {
             uint256 oracleValue = read(oracleType, _targetPrice, oracleData);
             // We only consider the mint firewall as the burn one is less relevant for redemptions
             // as there is already a surplus buffer to circumvent small deviations
-            oracleValue = _firewallMint(_targetPrice, oracleValue, acceptedDeviatonMint);
+            (uint128 mintDeviation, ) = abi.decode(hyperparameters, (uint128, uint128));
+            oracleValue = _firewallMint(_targetPrice, oracleValue, mintDeviation);
             return oracleValue;
         }
     }
@@ -52,8 +52,7 @@ library LibOracle {
             OracleReadType targetType,
             bytes memory oracleData,
             bytes memory targetData,
-            uint256 acceptedDeviatonMint,
-
+            bytes memory hyperparameters
         ) = _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
@@ -61,7 +60,8 @@ library LibOracle {
         }
         uint256 _targetPrice = read(targetType, BASE_18, targetData);
         oracleValue = read(oracleType, _targetPrice, oracleData);
-        return _firewallMint(_targetPrice, oracleValue, acceptedDeviatonMint);
+        (uint128 mintDeviation, ) = abi.decode(hyperparameters, (uint128, uint128));
+        oracleValue = _firewallMint(_targetPrice, oracleValue, mintDeviation);
     }
 
     /// @notice Reads the oracle value that will be used for a burn operation for an asset with `oracleConfig`
@@ -74,8 +74,7 @@ library LibOracle {
             OracleReadType targetType,
             bytes memory oracleData,
             bytes memory targetData,
-            ,
-            uint256 acceptedDeviatonBurn
+            bytes memory hyperparameters
         ) = _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
@@ -83,7 +82,8 @@ library LibOracle {
         }
         uint256 _targetPrice = read(targetType, BASE_18, targetData);
         oracleValue = read(oracleType, _targetPrice, oracleData);
-        ratio = _firewallBurn(_targetPrice, oracleValue, acceptedDeviatonBurn);
+        (, uint128 burnDeviation) = abi.decode(hyperparameters, (uint128, uint128));
+        ratio = _firewallBurn(_targetPrice, oracleValue, burnDeviation);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -93,7 +93,7 @@ library LibOracle {
     /// @notice Internal version of the `getOracle` function
     function getOracle(
         address collateral
-    ) internal view returns (OracleReadType, OracleReadType, bytes memory, bytes memory, uint256, uint256) {
+    ) internal view returns (OracleReadType, OracleReadType, bytes memory, bytes memory, bytes memory) {
         return _parseOracleConfig(s.transmuterStorage().collaterals[collateral].oracleConfig);
     }
 
@@ -170,6 +170,9 @@ library LibOracle {
         } else if (readType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(data, (ITransmuterOracle));
             return externalOracle.read();
+        } else if (readType == OracleReadType.MAX) {
+            (uint256 maxValue, , , ) = abi.decode(data, (uint256, uint96, uint96, uint32));
+            return maxValue;
         }
         // If the `OracleReadType` is `EXTERNAL`, it means that this function is called to compute a
         // `targetPrice` in which case the `baseValue` is returned here
@@ -222,8 +225,8 @@ library LibOracle {
     /// @notice Parses an `oracleConfig` into several sub fields
     function _parseOracleConfig(
         bytes memory oracleConfig
-    ) private pure returns (OracleReadType, OracleReadType, bytes memory, bytes memory, uint256, uint256) {
-        return abi.decode(oracleConfig, (OracleReadType, OracleReadType, bytes, bytes, uint256, uint256));
+    ) private pure returns (OracleReadType, OracleReadType, bytes memory, bytes memory, bytes memory) {
+        return abi.decode(oracleConfig, (OracleReadType, OracleReadType, bytes, bytes, bytes));
     }
 
     /// @notice Firewall in case the oracle value reported is too high compared to the target
@@ -242,5 +245,36 @@ library LibOracle {
     ) private pure returns (uint256 ratio) {
         ratio = BASE_18;
         if (oracleValue * BASE_18 < targetPrice * (BASE_18 - deviation)) ratio = (oracleValue * BASE_18) / targetPrice;
+    }
+
+    function updateOracle(address collateral) internal {
+        TransmuterStorage storage ts = s.transmuterStorage();
+        (
+            OracleReadType oracleType,
+            OracleReadType targetType,
+            bytes memory oracleData,
+            bytes memory targetData,
+            bytes memory hyperparameters
+        ) = _parseOracleConfig(ts.collaterals[collateral].oracleConfig);
+
+        if (targetType != OracleReadType.MAX) return;
+
+        uint256 oracleValue = read(oracleType, BASE_18, oracleData);
+        (uint256 maxValue, uint96 lastUpdateTimestamp, uint96 deviationThreshold, uint32 heartbeat) = abi.decode(
+            targetData,
+            (uint256, uint96, uint96, uint32)
+        );
+        if (
+            (oracleValue >= (maxValue * (BASE_18 + deviationThreshold)) / BASE_18) ||
+            (block.timestamp - lastUpdateTimestamp > heartbeat)
+        ) {
+            ts.collaterals[collateral].oracleConfig = abi.encode(
+                oracleType,
+                targetType,
+                oracleData,
+                abi.encode(oracleValue, block.timestamp, deviationThreshold, heartbeat),
+                hyperparameters
+            );
+        } else revert OracleUpdateFailed();
     }
 }

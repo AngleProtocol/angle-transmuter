@@ -89,7 +89,8 @@ interface IGetters {
             OracleReadType oracleType,
             OracleReadType targetType,
             bytes memory oracleData,
-            bytes memory targetData
+            bytes memory targetData,
+            bytes memory hyperparameters
         );
 
     /// @notice Returns if the associated functionality is paused or not

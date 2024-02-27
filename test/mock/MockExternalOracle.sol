@@ -26,4 +26,9 @@ contract MockExternalOracle is ITransmuterOracle {
         (, int256 ratio, , , ) = feed.latestRoundData();
         return (uint256(ratio) * 1e12, 1e18);
     }
+
+    function read() external view returns (uint256) {
+        (, int256 ratio, , , ) = feed.latestRoundData();
+        return uint256(ratio) * 1e12;
+    }
 }

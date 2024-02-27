@@ -132,7 +132,13 @@ contract Getters is IGetters {
     )
         external
         view
-        returns (OracleReadType oracleType, OracleReadType targetType, bytes memory oracleData, bytes memory targetData)
+        returns (
+            OracleReadType oracleType,
+            OracleReadType targetType,
+            bytes memory oracleData,
+            bytes memory targetData,
+            bytes memory hyperparameters
+        )
     {
         return LibOracle.getOracle(collateral);
     }

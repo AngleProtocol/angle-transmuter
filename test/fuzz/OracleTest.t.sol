@@ -176,7 +176,7 @@ contract OracleTest is Fixture, FunctionUtils {
             {
                 Storage.OracleReadType readType;
                 Storage.OracleReadType targetType;
-                (readType, targetType, oracleData, targetData) = transmuter.getOracle(address(_collaterals[i]));
+                (readType, targetType, oracleData, targetData, ) = transmuter.getOracle(address(_collaterals[i]));
 
                 assertEq(uint(readType), uint(Storage.OracleReadType.CHAINLINK_FEEDS));
                 assertEq(uint(targetType), uint(Storage.OracleReadType.STABLE));
@@ -214,7 +214,7 @@ contract OracleTest is Fixture, FunctionUtils {
                     bytes memory targetData;
                     Storage.OracleReadType readType;
                     Storage.OracleReadType targetType;
-                    (readType, targetType, data, targetData) = transmuter.getOracle(address(_collaterals[i]));
+                    (readType, targetType, data, targetData, ) = transmuter.getOracle(address(_collaterals[i]));
 
                     assertEq(uint8(readType), newReadType[i]);
                     assertEq(uint8(targetType), newTargetType[i]);
@@ -246,7 +246,7 @@ contract OracleTest is Fixture, FunctionUtils {
 
             if (newTargetType[i] == 0) {
                 bytes memory targetData;
-                (, , , targetData) = transmuter.getOracle(address(_collaterals[i]));
+                (, , , targetData, ) = transmuter.getOracle(address(_collaterals[i]));
                 (
                     AggregatorV3Interface[] memory circuitChainlink,
                     uint32[] memory stalePeriods,
@@ -546,19 +546,21 @@ contract OracleTest is Fixture, FunctionUtils {
     }
 
     function _getReadType(uint8 newReadType) internal pure returns (Storage.OracleReadType readType) {
-        readType = newReadType == 0 ? Storage.OracleReadType.CHAINLINK_FEEDS : newReadType == 1
-            ? Storage.OracleReadType.EXTERNAL
-            : newReadType == 2
-            ? Storage.OracleReadType.NO_ORACLE
-            : newReadType == 3
-            ? Storage.OracleReadType.STABLE
-            : newReadType == 4
-            ? Storage.OracleReadType.WSTETH
-            : newReadType == 5
-            ? Storage.OracleReadType.CBETH
-            : newReadType == 6
-            ? Storage.OracleReadType.RETH
-            : Storage.OracleReadType.SFRXETH;
+        readType = newReadType == 0
+            ? Storage.OracleReadType.CHAINLINK_FEEDS
+            : newReadType == 1
+                ? Storage.OracleReadType.EXTERNAL
+                : newReadType == 2
+                    ? Storage.OracleReadType.NO_ORACLE
+                    : newReadType == 3
+                        ? Storage.OracleReadType.STABLE
+                        : newReadType == 4
+                            ? Storage.OracleReadType.WSTETH
+                            : newReadType == 5
+                                ? Storage.OracleReadType.CBETH
+                                : newReadType == 6
+                                    ? Storage.OracleReadType.RETH
+                                    : Storage.OracleReadType.SFRXETH;
     }
 
     function _updateOracles(
