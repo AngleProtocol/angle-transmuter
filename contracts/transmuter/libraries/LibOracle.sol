@@ -29,10 +29,14 @@ library LibOracle {
             bytes memory oracleData,
             bytes memory targetData,
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
             uint256 acceptedDeviatonMint,
 >>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
 
+=======
+            bytes memory hyperparameters
+>>>>>>> 55cb6d5 (feat: oracles with target value as max)
         ) = _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
@@ -45,8 +49,13 @@ library LibOracle {
             uint256 oracleValue = read(oracleType, _targetPrice, oracleData);
             // We only consider the mint firewall as the burn one is less relevant for redemptions
             // as there is already a surplus buffer to circumvent small deviations
+<<<<<<< HEAD
             oracleValue = _firewallMint(_targetPrice, oracleValue, acceptedDeviatonMint);
 >>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
+=======
+            (uint128 mintDeviation, ) = abi.decode(hyperparameters, (uint128, uint128));
+            oracleValue = _firewallMint(_targetPrice, oracleValue, mintDeviation);
+>>>>>>> 55cb6d5 (feat: oracles with target value as max)
             return oracleValue;
         }
     }
@@ -61,11 +70,15 @@ library LibOracle {
             bytes memory oracleData,
             bytes memory targetData,
 <<<<<<< HEAD
+<<<<<<< HEAD
             bytes memory hyperparameters
 =======
             uint256 acceptedDeviatonMint,
 
 >>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
+=======
+            bytes memory hyperparameters
+>>>>>>> 55cb6d5 (feat: oracles with target value as max)
         ) = _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
@@ -80,8 +93,13 @@ library LibOracle {
 =======
         uint256 _targetPrice = read(targetType, BASE_18, targetData);
         oracleValue = read(oracleType, _targetPrice, oracleData);
+<<<<<<< HEAD
         return _firewallMint(_targetPrice, oracleValue, acceptedDeviatonMint);
 >>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
+=======
+        (uint128 mintDeviation, ) = abi.decode(hyperparameters, (uint128, uint128));
+        oracleValue = _firewallMint(_targetPrice, oracleValue, mintDeviation);
+>>>>>>> 55cb6d5 (feat: oracles with target value as max)
     }
 
     /// @notice Reads the oracle value used for a burn operation for an asset with `oracleConfig`
@@ -95,11 +113,15 @@ library LibOracle {
             bytes memory oracleData,
             bytes memory targetData,
 <<<<<<< HEAD
+<<<<<<< HEAD
             bytes memory hyperparameters
 =======
             ,
             uint256 acceptedDeviatonBurn
 >>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
+=======
+            bytes memory hyperparameters
+>>>>>>> 55cb6d5 (feat: oracles with target value as max)
         ) = _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
@@ -120,8 +142,13 @@ library LibOracle {
 =======
         uint256 _targetPrice = read(targetType, BASE_18, targetData);
         oracleValue = read(oracleType, _targetPrice, oracleData);
+<<<<<<< HEAD
         ratio = _firewallBurn(_targetPrice, oracleValue, acceptedDeviatonBurn);
 >>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
+=======
+        (, uint128 burnDeviation) = abi.decode(hyperparameters, (uint128, uint128));
+        ratio = _firewallBurn(_targetPrice, oracleValue, burnDeviation);
+>>>>>>> 55cb6d5 (feat: oracles with target value as max)
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -132,10 +159,14 @@ library LibOracle {
     function getOracle(
         address collateral
 <<<<<<< HEAD
+<<<<<<< HEAD
     ) internal view returns (OracleReadType, OracleReadType, bytes memory, bytes memory, bytes memory) {
 =======
     ) internal view returns (OracleReadType, OracleReadType, bytes memory, bytes memory, uint256, uint256) {
 >>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
+=======
+    ) internal view returns (OracleReadType, OracleReadType, bytes memory, bytes memory, bytes memory) {
+>>>>>>> 55cb6d5 (feat: oracles with target value as max)
         return _parseOracleConfig(s.transmuterStorage().collaterals[collateral].oracleConfig);
     }
 
@@ -235,12 +266,21 @@ library LibOracle {
                 quotePrice = readPythFeed(quotePrice, feedIds[i], pyth, isMultiplied[i], stalePeriods[i]);
             }
             return quotePrice;
+<<<<<<< HEAD
         } else if (readType == OracleReadType.MAX) {
             uint256 maxValue = abi.decode(data, (uint256));
             return maxValue;
         } else if (readType == OracleReadType.MORPHO_ORACLE) {
             (address contractAddress, uint256 normalizationFactor) = abi.decode(data, (address, uint256));
             return IMorphoOracle(contractAddress).price() / normalizationFactor;
+=======
+        } else if (readType == OracleReadType.EXTERNAL) {
+            ITransmuterOracle externalOracle = abi.decode(data, (ITransmuterOracle));
+            return externalOracle.read();
+        } else if (readType == OracleReadType.MAX) {
+            (uint256 maxValue, , , ) = abi.decode(data, (uint256, uint96, uint96, uint32));
+            return maxValue;
+>>>>>>> 55cb6d5 (feat: oracles with target value as max)
         }
         // If the `OracleReadType` is `EXTERNAL`, it means that this function is called to compute a
         // `targetPrice` in which case the `baseValue` is returned here
@@ -296,6 +336,7 @@ library LibOracle {
     function _parseOracleConfig(
         bytes memory oracleConfig
 <<<<<<< HEAD
+<<<<<<< HEAD
     ) private pure returns (OracleReadType, OracleReadType, bytes memory, bytes memory, bytes memory) {
         return abi.decode(oracleConfig, (OracleReadType, OracleReadType, bytes, bytes, bytes));
     }
@@ -329,6 +370,10 @@ library LibOracle {
 =======
     ) private pure returns (OracleReadType, OracleReadType, bytes memory, bytes memory, uint256, uint256) {
         return abi.decode(oracleConfig, (OracleReadType, OracleReadType, bytes, bytes, uint256, uint256));
+=======
+    ) private pure returns (OracleReadType, OracleReadType, bytes memory, bytes memory, bytes memory) {
+        return abi.decode(oracleConfig, (OracleReadType, OracleReadType, bytes, bytes, bytes));
+>>>>>>> 55cb6d5 (feat: oracles with target value as max)
     }
 
     /// @notice Firewall in case the oracle value reported is too high compared to the target
@@ -348,5 +393,36 @@ library LibOracle {
         ratio = BASE_18;
         if (oracleValue * BASE_18 < targetPrice * (BASE_18 - deviation)) ratio = (oracleValue * BASE_18) / targetPrice;
 >>>>>>> 66eb024 (feat: oracles with firewalls on mint and burn)
+    }
+
+    function updateOracle(address collateral) internal {
+        TransmuterStorage storage ts = s.transmuterStorage();
+        (
+            OracleReadType oracleType,
+            OracleReadType targetType,
+            bytes memory oracleData,
+            bytes memory targetData,
+            bytes memory hyperparameters
+        ) = _parseOracleConfig(ts.collaterals[collateral].oracleConfig);
+
+        if (targetType != OracleReadType.MAX) return;
+
+        uint256 oracleValue = read(oracleType, BASE_18, oracleData);
+        (uint256 maxValue, uint96 lastUpdateTimestamp, uint96 deviationThreshold, uint32 heartbeat) = abi.decode(
+            targetData,
+            (uint256, uint96, uint96, uint32)
+        );
+        if (
+            (oracleValue >= (maxValue * (BASE_18 + deviationThreshold)) / BASE_18) ||
+            (block.timestamp - lastUpdateTimestamp > heartbeat)
+        ) {
+            ts.collaterals[collateral].oracleConfig = abi.encode(
+                oracleType,
+                targetType,
+                oracleData,
+                abi.encode(oracleValue, block.timestamp, deviationThreshold, heartbeat),
+                hyperparameters
+            );
+        } else revert OracleUpdateFailed();
     }
 }
