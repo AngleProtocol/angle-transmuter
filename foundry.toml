@@ -1,5 +1,5 @@
 [profile.default]
-src = 'contracts'
+src = 'contract'
 out = 'out'
 test = 'test'
 libs = ['node_modules', 'lib']

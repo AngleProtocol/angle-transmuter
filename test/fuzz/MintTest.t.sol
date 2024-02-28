@@ -6,6 +6,7 @@ import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { stdError } from "forge-std/Test.sol";
 
 import "contracts/utils/Errors.sol" as Errors;
+import "contracts/transmuter/Storage.sol" as Storage;
 
 import "../Fixture.sol";
 import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
@@ -465,6 +466,127 @@ contract MintTest is Fixture, FunctionUtils {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                       FIREWALL                                                     
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testFuzz_QuoteMintExactOutput_WithFirewall_FixPiecewiseFees(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint256[3] memory latestOracleValue,
+        uint128[6] memory mintBurnFirewall,
+        int64 upperFees,
+        uint256 stableAmount,
+        uint256 fromToken
+    ) public {
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            charlie,
+            sweeper,
+            initialAmounts,
+            transferProportion
+        );
+        if (mintedStables == 0) return;
+        _updateOracles(latestOracleValue);
+        _updateOracleFirewalls(mintBurnFirewall);
+
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        stableAmount = bound(stableAmount, 1, _maxAmountWithoutDecimals * BASE_18);
+        upperFees = int64(bound(int256(upperFees), 0, int256(BASE_12) - 1));
+        uint64[] memory xFeeMint = new uint64[](2);
+        xFeeMint[0] = uint64(0);
+        xFeeMint[1] = uint64(BASE_9 / 2);
+        int64[] memory yFeeMint = new int64[](2);
+        yFeeMint[0] = int64(0);
+        yFeeMint[1] = upperFees;
+        vm.prank(governor);
+        transmuter.setFees(_collaterals[fromToken], xFeeMint, yFeeMint, true);
+
+        uint256 amountFromPrevBreakpoint;
+        uint256 amountToNextBreakpoint;
+        uint256 lowerIndex;
+        {
+            uint256[] memory exposures = _getExposures(mintedStables, collateralMintedStables);
+            (amountFromPrevBreakpoint, amountToNextBreakpoint, lowerIndex) = _amountToPrevAndNextExposure(
+                mintedStables,
+                fromToken,
+                collateralMintedStables,
+                exposures[fromToken],
+                xFeeMint
+            );
+        }
+        // this is to handle in easy tests
+        if (lowerIndex == type(uint256).max) return;
+
+        uint256 supposedAmountIn;
+        if (stableAmount <= amountToNextBreakpoint) {
+            collateralMintedStables[fromToken] += stableAmount;
+
+            int256 midFees;
+            {
+                int256 currentFees;
+                uint256 slope = (uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_36) /
+                    (amountToNextBreakpoint + amountFromPrevBreakpoint);
+                currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_36);
+                int256 endFees = yFeeMint[lowerIndex] +
+                    int256((slope * (amountFromPrevBreakpoint + stableAmount)) / BASE_36);
+                midFees = (currentFees + endFees) / 2;
+            }
+            supposedAmountIn = (stableAmount * (BASE_9 + uint256(midFees)));
+            uint256 mintOracleValue;
+            {
+                (, int256 oracleValue, , , ) = _oracles[fromToken].latestRoundData();
+                mintOracleValue = BASE_8 * (BASE_18 + mintBurnFirewall[fromToken]) < uint256(oracleValue) * BASE_18
+                    ? BASE_8
+                    : uint256(oracleValue);
+            }
+            supposedAmountIn = _convertDecimalTo(
+                supposedAmountIn / (10 * mintOracleValue),
+                18,
+                IERC20Metadata(_collaterals[fromToken]).decimals()
+            );
+        } else {
+            collateralMintedStables[fromToken] += amountToNextBreakpoint;
+            int256 midFees;
+            {
+                uint256 slope = ((uint256(uint64(yFeeMint[lowerIndex + 1] - yFeeMint[lowerIndex])) * BASE_36) /
+                    (amountToNextBreakpoint + amountFromPrevBreakpoint));
+                int256 currentFees = yFeeMint[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_36);
+                int256 endFees = yFeeMint[lowerIndex + 1];
+                midFees = (currentFees + endFees) / 2;
+            }
+            supposedAmountIn = (amountToNextBreakpoint * (BASE_9 + uint256(midFees)));
+
+            // next part is just with end fees
+            supposedAmountIn += (stableAmount - amountToNextBreakpoint) * (BASE_9 + uint64(yFeeMint[lowerIndex + 1]));
+            uint256 mintOracleValue;
+            {
+                (, int256 oracleValue, , , ) = _oracles[fromToken].latestRoundData();
+                mintOracleValue = BASE_8 * (BASE_18 + mintBurnFirewall[fromToken]) < uint256(oracleValue) * BASE_18
+                    ? BASE_8
+                    : uint256(oracleValue);
+            }
+            supposedAmountIn = _convertDecimalTo(
+                supposedAmountIn / (10 * mintOracleValue),
+                18,
+                IERC20Metadata(_collaterals[fromToken]).decimals()
+            );
+        }
+
+        uint256 amountIn = transmuter.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
+
+        if (stableAmount > _minWallet) {
+            _assertApproxEqRelDecimalWithTolerance(
+                supposedAmountIn,
+                amountIn,
+                amountIn,
+                // precision of 0.1%
+                _MAX_PERCENTAGE_DEVIATION * 100,
+                18
+            );
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                    INDEPENDANT PATH                                                 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
@@ -743,5 +865,38 @@ contract MintTest is Fixture, FunctionUtils {
             IERC20(tokens[i]).transfer(sweeper, IERC20(tokens[i]).balanceOf(owner));
         }
         vm.stopPrank();
+    }
+
+    function _updateOracleFirewalls(uint128[6] memory mintBurnFirewall) internal returns (uint128[6] memory) {
+        uint128[] memory mintFirewall = new uint128[](3);
+        uint128[] memory burnFirewall = new uint128[](3);
+        for (uint256 i; i < _collaterals.length; i++) {
+            mintFirewall[i] = mintBurnFirewall[i];
+            burnFirewall[i] = uint128(bound(mintBurnFirewall[i + 3], 0, BASE_18));
+            mintBurnFirewall[i + 3] = burnFirewall[i];
+        }
+
+        vm.startPrank(governor);
+        for (uint256 i; i < _collaterals.length; i++) {
+            (
+                Storage.OracleReadType readType,
+                Storage.OracleReadType targetType,
+                bytes memory data,
+                bytes memory targetData,
+
+            ) = transmuter.getOracle(address(_collaterals[i]));
+            transmuter.setOracle(
+                _collaterals[i],
+                abi.encode(
+                    readType,
+                    targetType,
+                    data,
+                    targetData,
+                    abi.encode(uint128(mintFirewall[i]), uint128(burnFirewall[i]))
+                )
+            );
+        }
+        vm.stopPrank();
+        return mintBurnFirewall;
     }
 }

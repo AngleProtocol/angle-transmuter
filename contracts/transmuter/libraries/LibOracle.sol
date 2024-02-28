@@ -27,7 +27,7 @@ library LibOracle {
             OracleReadType targetType,
             bytes memory oracleData,
             bytes memory targetData,
-            bytes memory hyperparameters
+
         ) = _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
@@ -35,10 +35,15 @@ library LibOracle {
         } else {
             uint256 _targetPrice = read(targetType, BASE_18, targetData);
             uint256 oracleValue = read(oracleType, _targetPrice, oracleData);
-            // We only consider the mint firewall as the burn one is less relevant for redemptions
+            // We don't consider the mint firewall as `readRedemption` is only used to compute the collateral ratio
+            // `getCollateralRatio` is only used in `_quoteRedemptionCurve` and `accrue` on the savingsVest
+            // `_quoteRedemptionCurve` use the collateral ratio to compute the penalty factor. Artificially increase the
+            // oracle rate will just allow you to navigate through the penalty factor curve and when
+            // the collateral ratio > 100% the penalty factor curve is decreasing such that there is no incentives
+            // for upward manipulation
+            // `accrue` would be impacted by an inflated oracle value, but only governors can call this function
+            // We don't consider the burn firewall is less relevant for redemptions
             // as there is already a surplus buffer to circumvent small deviations
-            (uint128 mintDeviation, ) = abi.decode(hyperparameters, (uint128, uint128));
-            oracleValue = _firewallMint(_targetPrice, oracleValue, mintDeviation);
             return oracleValue;
         }
     }
@@ -167,9 +172,6 @@ library LibOracle {
                 quotePrice = readPythFeed(quotePrice, feedIds[i], pyth, isMultiplied[i], stalePeriods[i]);
             }
             return quotePrice;
-        } else if (readType == OracleReadType.EXTERNAL) {
-            ITransmuterOracle externalOracle = abi.decode(data, (ITransmuterOracle));
-            return externalOracle.read();
         } else if (readType == OracleReadType.MAX) {
             (uint256 maxValue, , , ) = abi.decode(data, (uint256, uint96, uint96, uint32));
             return maxValue;

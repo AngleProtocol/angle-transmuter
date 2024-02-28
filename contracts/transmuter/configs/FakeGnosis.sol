@@ -28,6 +28,7 @@ contract FakeGnosis {
         address[] memory _collateralAddresses,
         address[] memory _oracleAddresses
     ) external {
+        uint256 BPS = 1e14;
         // Fee structure
 
         uint64[] memory xMintFee = new uint64[](4);
@@ -85,7 +86,8 @@ contract FakeGnosis {
                 Storage.OracleReadType.CHAINLINK_FEEDS,
                 Storage.OracleReadType.STABLE,
                 readData,
-                targetData
+                targetData,
+                abi.encode(uint128(0), uint128(50 * BPS))
             );
             collaterals[i] = CollateralSetupProd(
                 _collateralAddresses[i],

@@ -548,27 +548,28 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
 
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-            initialAmounts,
-            transferProportion
-        );
-
-        // airdrop amounts in the subcollaterals
-        for (uint256 i; i < _collaterals.length; ++i) {
-            if (_subCollaterals[_collaterals[i]].subCollaterals.length > 0) {
-                _loadSubCollaterals(address(_collaterals[i]), airdropAmounts, i * _MAX_SUB_COLLATERALS);
-            }
-        }
+        uint256 mintedStables;
         uint64 collatRatio;
         {
-            bool reverted;
-            (collatRatio, reverted) = _updateOraclesWithSubCollaterals(
-                latestOracleValue,
-                mintedStables,
-                collateralMintedStables,
-                airdropAmounts
-            );
-            if (reverted) return;
+            uint256[] memory collateralMintedStables;
+            (mintedStables, collateralMintedStables) = _loadReserves(initialAmounts, transferProportion);
+
+            // airdrop amounts in the subcollaterals
+            for (uint256 i; i < _collaterals.length; ++i) {
+                if (_subCollaterals[_collaterals[i]].subCollaterals.length > 0) {
+                    _loadSubCollaterals(address(_collaterals[i]), airdropAmounts, i * _MAX_SUB_COLLATERALS);
+                }
+            }
+
+            {
+                bool reverted;
+                (collatRatio, reverted) = _updateOraclesWithSubCollaterals(
+                    latestOracleValue,
+                    abi.encode(mintedStables, collateralMintedStables),
+                    airdropAmounts
+                );
+                if (reverted) return;
+            }
         }
 
         (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) = _randomRedeemptionFees(
@@ -616,8 +617,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256[3 * _MAX_SUB_COLLATERALS] memory airdropAmounts,
         uint256[3 * _MAX_SUB_COLLATERALS] memory latestSubCollatOracleValue,
         uint256[3 * _MAX_SUB_COLLATERALS] memory subCollatDecimals,
-        uint256 transferProportion,
-        uint256 redeemProportion,
+        uint256[2] memory transferRedeemProportion,
         uint256[3] memory latestOracleValue,
         uint64[10] memory xFeeRedeemUnbounded,
         int64[10] memory yFeeRedeemUnbounded
@@ -638,7 +638,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         // let's first load the reserves of the protocol
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
             initialAmounts,
-            transferProportion
+            transferRedeemProportion[0]
         );
         // airdrop amounts in the subcollaterals
         for (uint256 i; i < _collaterals.length; ++i) {
@@ -646,7 +646,11 @@ contract RedeemTest is Fixture, FunctionUtils {
                 _loadSubCollaterals(address(_collaterals[i]), airdropAmounts, i * _MAX_SUB_COLLATERALS);
             }
         }
-        _updateOraclesWithSubCollaterals(latestOracleValue, mintedStables, collateralMintedStables, airdropAmounts);
+        _updateOraclesWithSubCollaterals(
+            latestOracleValue,
+            abi.encode(mintedStables, collateralMintedStables),
+            airdropAmounts
+        );
         _randomRedeemptionFees(xFeeRedeemUnbounded, yFeeRedeemUnbounded);
         _sweepBalancesWithManager(alice, _collaterals);
         _sweepBalancesWithManager(bob, _collaterals);
@@ -708,8 +712,8 @@ contract RedeemTest is Fixture, FunctionUtils {
 
             // now do a second redeem to test with non trivial ts.normalizer and ts.normalizedStables
             vm.startPrank(bob);
-            redeemProportion = bound(redeemProportion, 0, BASE_9);
-            amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
+            transferRedeemProportion[1] = bound(transferRedeemProportion[1], 0, BASE_9);
+            amountBurntBob = (agToken.balanceOf(bob) * transferRedeemProportion[1]) / BASE_9;
             {
                 bool shouldReturn;
                 {
@@ -815,8 +819,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256[3 * _MAX_SUB_COLLATERALS] memory latestSubCollatOracleValue,
         uint256[3 * _MAX_SUB_COLLATERALS] memory subCollatDecimals,
         bool[3 * (_MAX_SUB_COLLATERALS + 1)] memory areForfeit,
-        uint256 transferProportion,
-        uint256 redeemProportion,
+        uint256[2] memory transferRedeemProportion,
         uint256[3] memory latestOracleValue,
         uint64[10] memory xFeeRedeemUnbounded, // X and Y arrays of length 10 each
         int64[10] memory yFeeRedeemUnbounded // X and Y arrays of length 10 each
@@ -837,7 +840,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         // let's first load the reserves of the protocol
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
             [initialValue[0], initialValue[1], initialValue[2]],
-            transferProportion
+            transferRedeemProportion[0]
         );
         // airdrop amounts in the subcollaterals
         for (uint256 i; i < _collaterals.length; ++i) {
@@ -845,7 +848,11 @@ contract RedeemTest is Fixture, FunctionUtils {
                 _loadSubCollaterals(address(_collaterals[i]), airdropAmounts, i * _MAX_SUB_COLLATERALS);
             }
         }
-        _updateOraclesWithSubCollaterals(latestOracleValue, mintedStables, collateralMintedStables, airdropAmounts);
+        _updateOraclesWithSubCollaterals(
+            latestOracleValue,
+            abi.encode(mintedStables, collateralMintedStables),
+            airdropAmounts
+        );
         _randomRedeemptionFees(xFeeRedeemUnbounded, yFeeRedeemUnbounded);
         _sweepBalancesWithManager(alice, _collaterals);
         _sweepBalancesWithManager(bob, _collaterals);
@@ -912,8 +919,8 @@ contract RedeemTest is Fixture, FunctionUtils {
 
             // now do a second redeem to test with non trivial ts.normalizer and ts.normalizedStables
             vm.startPrank(bob);
-            redeemProportion = bound(redeemProportion, 0, BASE_9);
-            amountBurntBob = (agToken.balanceOf(bob) * redeemProportion) / BASE_9;
+            transferRedeemProportion[1] = bound(transferRedeemProportion[1], 0, BASE_9);
+            amountBurntBob = (agToken.balanceOf(bob) * transferRedeemProportion[1]) / BASE_9;
             {
                 bool shouldReturn;
                 uint256 totalCollateralization = _computeCollateralisation();
@@ -1293,25 +1300,30 @@ contract RedeemTest is Fixture, FunctionUtils {
                 vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
             }
         }
-        (uint256 collatRatio, uint256 mintedStables) = transmuter.getCollateralRatio();
-        if (reverted) return;
 
-        for (uint256 i; i < _oracles.length; ++i) {
-            IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
-            for (uint256 k = 0; k < listSubCollaterals.length; ++k) {
-                uint256 expect;
-                uint256 subCollateralBalance;
-                if (address(_managers[_collaterals[i]]) == address(0)) {
-                    subCollateralBalance = listSubCollaterals[k].balanceOf(address(transmuter));
-                } else {
-                    subCollateralBalance = listSubCollaterals[k].balanceOf(address(_managers[_collaterals[i]]));
+        uint256 collatRatio;
+        {
+            uint256 mintedStables;
+            (collatRatio, mintedStables) = transmuter.getCollateralRatio();
+            if (reverted) return;
+
+            for (uint256 i; i < _oracles.length; ++i) {
+                IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
+                for (uint256 k = 0; k < listSubCollaterals.length; ++k) {
+                    uint256 expect;
+                    uint256 subCollateralBalance;
+                    if (address(_managers[_collaterals[i]]) == address(0)) {
+                        subCollateralBalance = listSubCollaterals[k].balanceOf(address(transmuter));
+                    } else {
+                        subCollateralBalance = listSubCollaterals[k].balanceOf(address(_managers[_collaterals[i]]));
+                    }
+                    if (collatRatio < BASE_9) {
+                        expect = (subCollateralBalance * amountBurnt * fee) / (mintedStables * BASE_9);
+                    } else {
+                        expect = (subCollateralBalance * amountBurnt * fee) / (mintedStables * collatRatio);
+                    }
+                    assertEq(amounts[count2++], expect);
                 }
-                if (collatRatio < BASE_9) {
-                    expect = (subCollateralBalance * amountBurnt * fee) / (mintedStables * BASE_9);
-                } else {
-                    expect = (subCollateralBalance * amountBurnt * fee) / (mintedStables * collatRatio);
-                }
-                assertEq(amounts[count2++], expect);
             }
         }
         uint256 valueCheck = (amountBurnt * fee) / BASE_9;
@@ -1416,8 +1428,7 @@ contract RedeemTest is Fixture, FunctionUtils {
 
     function _updateOraclesWithSubCollaterals(
         uint256[3] memory latestOracleValue,
-        uint256 mintedStables,
-        uint256[] memory collateralMintedStables,
+        bytes memory collateralStablesAndMintedStables,
         uint256[3 * _MAX_SUB_COLLATERALS] memory airdropAmounts
     ) internal returns (uint64 collatRatio, bool reverted) {
         uint256 collateralisation;
@@ -1425,10 +1436,14 @@ contract RedeemTest is Fixture, FunctionUtils {
             latestOracleValue[i] = bound(latestOracleValue[i], _minOracleValue, BASE_18);
             MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(int256(latestOracleValue[i]));
 
-            IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
-            if (listSubCollaterals.length <= 1) {
+            if (_subCollaterals[_collaterals[i]].subCollaterals.length <= 1) {
+                (, uint256[] memory collateralMintedStables) = abi.decode(
+                    collateralStablesAndMintedStables,
+                    (uint256, uint256[])
+                );
                 collateralisation += (latestOracleValue[i] * collateralMintedStables[i]) / BASE_8;
             } else {
+                IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
                 // we don't double count the real collaterals
                 uint256 subCollateralValue = IERC20Metadata(address(listSubCollaterals[0])).balanceOf(
                     address(_managers[_collaterals[i]])
@@ -1457,14 +1472,17 @@ contract RedeemTest is Fixture, FunctionUtils {
             }
         }
 
+        (uint256 mintedStables, ) = abi.decode(collateralStablesAndMintedStables, (uint256, uint256[]));
         {
-            uint256 trueMintedStables = transmuter.getTotalIssued();
-            if (
-                trueMintedStables > 0 &&
-                _computeCollateralisation().mulDiv(BASE_9, trueMintedStables, Math.Rounding.Up) > type(uint64).max
-            ) {
-                reverted = true;
-                vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
+            {
+                uint256 trueMintedStables = transmuter.getTotalIssued();
+                if (
+                    trueMintedStables > 0 &&
+                    _computeCollateralisation().mulDiv(BASE_9, trueMintedStables, Math.Rounding.Up) > type(uint64).max
+                ) {
+                    reverted = true;
+                    vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
+                }
             }
             uint256 stablecoinsIssued;
             (collatRatio, stablecoinsIssued) = transmuter.getCollateralRatio();

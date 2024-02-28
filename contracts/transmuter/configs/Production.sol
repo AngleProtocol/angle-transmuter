@@ -6,11 +6,14 @@ import "./ProductionTypes.sol";
 
 /// @dev This contract is used only once to initialize the diamond proxy.
 contract Production {
+    error WrongSetup();
+
     function initialize(
         IAccessControlManager _accessControlManager,
         address _agToken,
         address dummyImplementation
     ) external {
+        uint256 BPS = 1e14;
         address euroc = 0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c;
         address bc3m = 0x2F123cF3F37CE3328CC9B5b8415f9EC5109b45e7;
         require(address(_accessControlManager) == 0x5bc6BEf80DA563EBf6Df6D6913513fa9A7ec89BE);
@@ -47,27 +50,31 @@ contract Production {
             bytes memory oracleConfig;
             {
                 // Pyth oracle for EUROC
-                bytes32[] memory feedIds = new bytes32[](2);
-                uint32[] memory stalePeriods = new uint32[](2);
-                uint8[] memory isMultiplied = new uint8[](2);
-                // pyth address
-                address pyth = 0x4305FB66699C3B2702D4d05CF36551390A4c69C6;
-                // EUROC/USD
-                feedIds[0] = 0x76fa85158bf14ede77087fe3ae472f66213f6ea2f5b411cb2de472794990fa5c;
-                // USD/EUR
-                feedIds[1] = 0xa995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b;
-                stalePeriods[0] = 14 days;
-                stalePeriods[1] = 14 days;
-                isMultiplied[0] = 1;
-                isMultiplied[1] = 0;
-                OracleQuoteType quoteType = OracleQuoteType.UNIT;
-                bytes memory readData = abi.encode(pyth, feedIds, stalePeriods, isMultiplied, quoteType);
+                bytes memory readData;
+                {
+                    bytes32[] memory feedIds = new bytes32[](2);
+                    uint32[] memory stalePeriods = new uint32[](2);
+                    uint8[] memory isMultiplied = new uint8[](2);
+                    // pyth address
+                    address pyth = 0x4305FB66699C3B2702D4d05CF36551390A4c69C6;
+                    // EUROC/USD
+                    feedIds[0] = 0x76fa85158bf14ede77087fe3ae472f66213f6ea2f5b411cb2de472794990fa5c;
+                    // USD/EUR
+                    feedIds[1] = 0xa995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b;
+                    stalePeriods[0] = 14 days;
+                    stalePeriods[1] = 14 days;
+                    isMultiplied[0] = 1;
+                    isMultiplied[1] = 0;
+                    OracleQuoteType quoteType = OracleQuoteType.UNIT;
+                    readData = abi.encode(pyth, feedIds, stalePeriods, isMultiplied, quoteType);
+                }
                 bytes memory targetData;
                 oracleConfig = abi.encode(
                     Storage.OracleReadType.PYTH,
                     Storage.OracleReadType.STABLE,
                     readData,
-                    targetData
+                    targetData,
+                    abi.encode(uint128(0), uint128(50 * BPS))
                 );
             }
             collaterals[0] = CollateralSetupProd(
@@ -102,41 +109,49 @@ contract Production {
             yBurnFeeC3M[1] = int64(uint64((5 * BASE_9) / 1000));
             yBurnFeeC3M[2] = int64(uint64(MAX_BURN_FEE));
 
-            AggregatorV3Interface[] memory circuitChainlink = new AggregatorV3Interface[](1);
-            uint32[] memory stalePeriods = new uint32[](1);
-            uint8[] memory circuitChainIsMultiplied = new uint8[](1);
-            uint8[] memory chainlinkDecimals = new uint8[](1);
+            bytes memory readData;
+            {
+                AggregatorV3Interface[] memory circuitChainlink = new AggregatorV3Interface[](1);
+                uint32[] memory stalePeriods = new uint32[](1);
+                uint8[] memory circuitChainIsMultiplied = new uint8[](1);
+                uint8[] memory chainlinkDecimals = new uint8[](1);
 
-            // bC3M: Redstone as a current price (more accurate for redemptions), and Backed as a target
+                // bC3M: Redstone as a current price (more accurate for redemptions), and Backed as a target
 
-            // Redstone C3M Oracle
-            circuitChainlink[0] = AggregatorV3Interface(0x6E27A25999B3C665E44D903B2139F5a4Be2B6C26);
-            stalePeriods[0] = 3 days;
-            circuitChainIsMultiplied[0] = 1;
-            chainlinkDecimals[0] = 8;
-            OracleQuoteType quoteType = OracleQuoteType.UNIT;
-            bytes memory readData = abi.encode(
-                circuitChainlink,
-                stalePeriods,
-                circuitChainIsMultiplied,
-                chainlinkDecimals,
-                quoteType
-            );
+                // Redstone C3M Oracle
+                circuitChainlink[0] = AggregatorV3Interface(0x6E27A25999B3C665E44D903B2139F5a4Be2B6C26);
+                stalePeriods[0] = 3 days;
+                circuitChainIsMultiplied[0] = 1;
+                chainlinkDecimals[0] = 8;
+                OracleQuoteType quoteType = OracleQuoteType.UNIT;
+                readData = abi.encode(
+                    circuitChainlink,
+                    stalePeriods,
+                    circuitChainIsMultiplied,
+                    chainlinkDecimals,
+                    quoteType
+                );
+            }
 
             // Backed C3M Oracle
-            circuitChainlink[0] = AggregatorV3Interface(0x83Ec02059F686E747392A22ddfED7833bA0d7cE3);
-            bytes memory targetData = abi.encode(
-                circuitChainlink,
-                stalePeriods,
-                circuitChainIsMultiplied,
-                chainlinkDecimals,
-                quoteType
-            );
+            bytes memory targetData;
+            {
+                uint256 initialValue;
+
+                {
+                    (, int256 ratio, , , ) = AggregatorV3Interface(0x83Ec02059F686E747392A22ddfED7833bA0d7cE3)
+                        .latestRoundData();
+                    if (ratio <= 0) revert WrongSetup();
+                    initialValue = (BASE_18 * uint256(ratio)) / 1e8;
+                }
+                targetData = abi.encode(initialValue, block.timestamp, 50 * BPS, 1 days);
+            }
             bytes memory oracleConfig = abi.encode(
                 Storage.OracleReadType.CHAINLINK_FEEDS,
-                Storage.OracleReadType.CHAINLINK_FEEDS,
+                Storage.OracleReadType.MAX,
                 readData,
-                targetData
+                targetData,
+                abi.encode(uint128(20000 * BPS), uint128(100 * BPS))
             );
 
             collaterals[1] = CollateralSetupProd(
