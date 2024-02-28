@@ -28,6 +28,7 @@ contract FakeGnosis {
         address[] memory _collateralAddresses,
         address[] memory _oracleAddresses
     ) external {
+        uint256 BPS = 1e14;
         // Fee structure
 
         uint64[] memory xMintFee = new uint64[](4);

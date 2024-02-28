@@ -1203,4 +1203,37 @@ contract OracleTest is Fixture, FunctionUtils {
         vm.stopPrank();
         return userAndBurnFirewall;
     }
+
+    function _updateOracleFirewalls(uint128[6] memory mintBurnFirewall) internal returns (uint128[6] memory) {
+        uint128[] memory mintFirewall = new uint128[](3);
+        uint128[] memory burnFirewall = new uint128[](3);
+        for (uint256 i; i < _collaterals.length; i++) {
+            mintFirewall[i] = mintBurnFirewall[i];
+            burnFirewall[i] = uint128(bound(mintBurnFirewall[i + 3], 0, BASE_18));
+            mintBurnFirewall[i + 3] = burnFirewall[i];
+        }
+
+        vm.startPrank(governor);
+        for (uint256 i; i < _collaterals.length; i++) {
+            (
+                Storage.OracleReadType readType,
+                Storage.OracleReadType targetType,
+                bytes memory data,
+                bytes memory targetData,
+
+            ) = transmuter.getOracle(address(_collaterals[i]));
+            transmuter.setOracle(
+                _collaterals[i],
+                abi.encode(
+                    readType,
+                    targetType,
+                    data,
+                    targetData,
+                    abi.encode(uint128(mintFirewall[i]), uint128(burnFirewall[i]))
+                )
+            );
+        }
+        vm.stopPrank();
+        return mintBurnFirewall;
+    }
 }
