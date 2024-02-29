@@ -12,7 +12,20 @@
     "generate": "FOUNDRY_PROFILE=dev forge script scripts/utils/GenerateSelectors.s.sol",
     "deploy:check": "FOUNDRY_PROFILE=dev forge script --fork-url fork scripts/test/CheckTransmuter.s.sol",
     "gas": "FOUNDRY_PROFILE=dev yarn test --gas-report",
+<<<<<<< HEAD
     "fork": "bash helpers/fork.sh",
+=======
+    "fork": "source .env && anvil --fork-url $ETH_NODE_URI_BASE",
+    "fork:arbitrum": "source .env && anvil --fork-url $ETH_NODE_URI_ARBITRUM",
+    "fork:polygon": "source .env && anvil --fork-url $ETH_NODE_URI_POLYGON",
+    "fork:gnosis": "source .env && anvil --fork-url $ETH_NODE_URI_GNOSIS",
+    "fork:avalanche": "source .env && anvil --fork-url $ETH_NODE_URI_AVALANCHE",
+    "fork:base": "source .env && anvil --fork-url $ETH_NODE_URI_BASE",
+    "fork:bsc": "source .env && anvil --fork-url $ETH_NODE_URI_BSC",
+    "fork:celo": "source .env && anvil --fork-url $ETH_NODE_URI_CELO",
+    "fork:zkevm": "source .env && anvil --fork-url $ETH_NODE_URI_POLYGONZKEVM",
+    "fork:optimism": "source .env && anvil --fork-url $ETH_NODE_URI_OPTIMISM",
+>>>>>>> 9b7f422 (test updateOracle)
     "run": "docker run -it --rm -v $(pwd):/app -w /app ghcr.io/foundry-rs/foundry sh",
     "script:fork": "FOUNDRY_PROFILE=dev forge script --skip test --fork-url fork --broadcast -vvvv",
     "test:unit": "forge test -vvvv --gas-report --match-path \"test/units/**/*.sol\"",

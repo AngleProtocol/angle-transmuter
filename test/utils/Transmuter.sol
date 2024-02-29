@@ -10,6 +10,7 @@ import { DiamondCut } from "contracts/transmuter/facets/DiamondCut.sol";
 import { DiamondEtherscan } from "contracts/transmuter/facets/DiamondEtherscan.sol";
 import { DiamondLoupe } from "contracts/transmuter/facets/DiamondLoupe.sol";
 import { Getters } from "contracts/transmuter/facets/Getters.sol";
+import { Oracle } from "contracts/transmuter/facets/Oracle.sol";
 import { Redeemer } from "contracts/transmuter/facets/Redeemer.sol";
 import { RewardHandler } from "contracts/transmuter/facets/RewardHandler.sol";
 import { SettersGovernor } from "contracts/transmuter/facets/SettersGovernor.sol";
@@ -42,6 +43,9 @@ abstract contract Transmuter is Helper {
         facetNames.push("Getters");
         facetAddressList.push(address(new Getters()));
 
+        facetNames.push("Oracle");
+        facetAddressList.push(address(new Oracle()));
+
         facetNames.push("Redeemer");
         facetAddressList.push(address(new Redeemer()));
 
@@ -73,10 +77,11 @@ abstract contract Transmuter is Helper {
     }
 
     // @dev Deploys diamond and connects facets
-    function deployReplicaTransmuter(
-        address _init,
-        bytes memory _calldata
-    ) public virtual returns (ITransmuter _transmuter) {
+    function deployReplicaTransmuter(address _init, bytes memory _calldata)
+        public
+        virtual
+        returns (ITransmuter _transmuter)
+    {
         // Build appropriate payload
         uint256 n = facetNames.length;
         FacetCut[] memory cut = new FacetCut[](n);
