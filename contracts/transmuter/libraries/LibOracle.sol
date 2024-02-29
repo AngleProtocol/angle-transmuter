@@ -21,7 +21,7 @@ library LibOracle {
 
     /// @notice Reads the oracle value used during a redemption to compute collateral ratio for `oracleConfig`
     /// @dev This value is only sensitive to compute the collateral ratio and deduce a penalty factor
-    function readRedemption(bytes memory oracleConfig) internal view returns (uint256) {
+    function readRedemption(bytes memory oracleConfig) internal view returns (uint256 oracleValue) {
         (
             OracleReadType oracleType,
             OracleReadType targetType,
@@ -33,8 +33,7 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readRedemption();
         } else {
-            uint256 _targetPrice = read(targetType, BASE_18, targetData);
-            uint256 oracleValue = read(oracleType, _targetPrice, oracleData);
+            (oracleValue, ) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
             // We don't consider the mint firewall as `readRedemption` is only used to compute the collateral ratio
             // `getCollateralRatio` is only used in `_quoteRedemptionCurve` and `accrue` on the savingsVest
             // `_quoteRedemptionCurve` use the collateral ratio to compute the penalty factor. Artificially increase the
@@ -63,10 +62,10 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readMint();
         }
-        uint256 _targetPrice = read(targetType, BASE_18, targetData);
-        oracleValue = read(oracleType, _targetPrice, oracleData);
+        uint256 targetPrice;
+        (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
         (uint128 mintDeviation, ) = abi.decode(hyperparameters, (uint128, uint128));
-        oracleValue = _firewallMint(_targetPrice, oracleValue, mintDeviation);
+        oracleValue = _firewallMint(targetPrice, oracleValue, mintDeviation);
     }
 
     /// @notice Reads the oracle value that will be used for a burn operation for an asset with `oracleConfig`
@@ -85,10 +84,10 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readBurn();
         }
-        uint256 _targetPrice = read(targetType, BASE_18, targetData);
-        oracleValue = read(oracleType, _targetPrice, oracleData);
+        uint256 targetPrice;
+        (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
         (, uint128 burnDeviation) = abi.decode(hyperparameters, (uint128, uint128));
-        ratio = _firewallBurn(_targetPrice, oracleValue, burnDeviation);
+        ratio = _firewallBurn(targetPrice, oracleValue, burnDeviation);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -96,18 +95,27 @@ library LibOracle {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Internal version of the `getOracle` function
-    function getOracle(
-        address collateral
-    ) internal view returns (OracleReadType, OracleReadType, bytes memory, bytes memory, bytes memory) {
+    function getOracle(address collateral)
+        internal
+        view
+        returns (
+            OracleReadType,
+            OracleReadType,
+            bytes memory,
+            bytes memory,
+            bytes memory
+        )
+    {
         return _parseOracleConfig(s.transmuterStorage().collaterals[collateral].oracleConfig);
     }
 
     /// @notice Gets the oracle value and the ratio with respect to the target price when it comes to
     /// burning for `collateral`
-    function getBurnOracle(
-        address collateral,
-        bytes memory oracleConfig
-    ) internal view returns (uint256 minRatio, uint256 oracleValue) {
+    function getBurnOracle(address collateral, bytes memory oracleConfig)
+        internal
+        view
+        returns (uint256 minRatio, uint256 oracleValue)
+    {
         TransmuterStorage storage ts = s.transmuterStorage();
         minRatio = BASE_18;
         address[] memory collateralList = ts.collateralList;
@@ -130,8 +138,22 @@ library LibOracle {
         else return baseValue;
     }
 
+    function readSpotAndTarget(
+        OracleReadType oracleType,
+        OracleReadType targetType,
+        bytes memory oracleData,
+        bytes memory targetData
+    ) internal view returns (uint256 oracleValue, uint256 targetPrice) {
+        targetPrice = read(targetType, BASE_18, targetData);
+        oracleValue = read(oracleType, targetPrice, oracleData);
+    }
+
     /// @notice Reads an oracle value (or a target oracle value) for an asset based on its data parsed `oracleConfig`
-    function read(OracleReadType readType, uint256 baseValue, bytes memory data) internal view returns (uint256) {
+    function read(
+        OracleReadType readType,
+        uint256 baseValue,
+        bytes memory data
+    ) internal view returns (uint256) {
         if (readType == OracleReadType.CHAINLINK_FEEDS) {
             (
                 AggregatorV3Interface[] memory circuitChainlink,
@@ -201,8 +223,8 @@ library LibOracle {
         (, int256 ratio, , uint256 updatedAt, ) = feed.latestRoundData();
         if (ratio <= 0 || block.timestamp - updatedAt > stalePeriod) revert InvalidChainlinkRate();
         // Checking whether we should multiply or divide by the ratio computed
-        if (multiplied == 1) return (_quoteAmount * uint256(ratio)) / (10 ** decimals);
-        else return (_quoteAmount * (10 ** decimals)) / uint256(ratio);
+        if (multiplied == 1) return (_quoteAmount * uint256(ratio)) / (10**decimals);
+        else return (_quoteAmount * (10**decimals)) / uint256(ratio);
     }
 
     /// @notice Reads a Pyth fee using a quote amount and converts the quote amount to the `out-currency`
@@ -217,7 +239,7 @@ library LibOracle {
         if (pythData.price <= 0) revert InvalidRate();
         uint256 normalizedPrice = uint64(pythData.price);
         bool isNormalizerExpoNeg = pythData.expo < 0;
-        uint256 normalizer = isNormalizerExpoNeg ? 10 ** uint32(-pythData.expo) : 10 ** uint32(pythData.expo);
+        uint256 normalizer = isNormalizerExpoNeg ? 10**uint32(-pythData.expo) : 10**uint32(pythData.expo);
         if (multiplied == 1 && isNormalizerExpoNeg) return (_quoteAmount * normalizedPrice) / normalizer;
         else if (multiplied == 1 && !isNormalizerExpoNeg) return _quoteAmount * normalizedPrice * normalizer;
         else if (multiplied == 0 && isNormalizerExpoNeg) return (_quoteAmount * normalizer) / normalizedPrice;
@@ -225,15 +247,27 @@ library LibOracle {
     }
 
     /// @notice Parses an `oracleConfig` into several sub fields
-    function _parseOracleConfig(
-        bytes memory oracleConfig
-    ) private pure returns (OracleReadType, OracleReadType, bytes memory, bytes memory, bytes memory) {
+    function _parseOracleConfig(bytes memory oracleConfig)
+        private
+        pure
+        returns (
+            OracleReadType,
+            OracleReadType,
+            bytes memory,
+            bytes memory,
+            bytes memory
+        )
+    {
         return abi.decode(oracleConfig, (OracleReadType, OracleReadType, bytes, bytes, bytes));
     }
 
     /// @notice Firewall in case the oracle value reported is too high compared to the target
     /// --> disregard the oracle value and return the target price
-    function _firewallMint(uint256 targetPrice, uint256 oracleValue, uint256 deviation) private pure returns (uint256) {
+    function _firewallMint(
+        uint256 targetPrice,
+        uint256 oracleValue,
+        uint256 deviation
+    ) private pure returns (uint256) {
         if (targetPrice * (BASE_18 + deviation) < oracleValue * BASE_18) oracleValue = targetPrice;
         return oracleValue;
     }
@@ -251,6 +285,8 @@ library LibOracle {
 
     function updateOracle(address collateral) internal {
         TransmuterStorage storage ts = s.transmuterStorage();
+        if (ts.collaterals[collateral].decimals == 0) revert NotCollateral();
+
         (
             OracleReadType oracleType,
             OracleReadType targetType,
@@ -259,22 +295,23 @@ library LibOracle {
             bytes memory hyperparameters
         ) = _parseOracleConfig(ts.collaterals[collateral].oracleConfig);
 
-        if (targetType != OracleReadType.MAX) return;
+        if (targetType != OracleReadType.MAX) revert OracleUpdateFailed();
 
         uint256 oracleValue = read(oracleType, BASE_18, oracleData);
-        (uint256 maxValue, uint96 lastUpdateTimestamp, uint96 deviationThreshold, uint32 heartbeat) = abi.decode(
+        (uint256 maxValue, uint96 deviationThreshold, uint96 lastUpdateTimestamp, uint32 heartbeat) = abi.decode(
             targetData,
             (uint256, uint96, uint96, uint32)
         );
+
         if (
-            (oracleValue >= (maxValue * (BASE_18 + deviationThreshold)) / BASE_18) ||
+            (oracleValue * BASE_18 >= maxValue * (BASE_18 + deviationThreshold)) ||
             (block.timestamp - lastUpdateTimestamp > heartbeat)
         ) {
             ts.collaterals[collateral].oracleConfig = abi.encode(
                 oracleType,
                 targetType,
                 oracleData,
-                abi.encode(oracleValue, block.timestamp, deviationThreshold, heartbeat),
+                abi.encode(oracleValue, deviationThreshold, block.timestamp, heartbeat),
                 hyperparameters
             );
         } else revert OracleUpdateFailed();

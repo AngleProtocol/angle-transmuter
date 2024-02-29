@@ -66,7 +66,7 @@ contract CheckFakeTransmuter is Utils {
 
         // Checks all valid selectors are here
         bytes4[] memory selectors = _generateSelectors("ITransmuter");
-        for (uint i = 0; i < selectors.length; ++i) {
+        for (uint256 i = 0; i < selectors.length; ++i) {
             assertEq(transmuter.isValidSelector(selectors[i]), true);
         }
         assertEq(address(transmuter.accessControlManager()), address(CORE_BORROW));

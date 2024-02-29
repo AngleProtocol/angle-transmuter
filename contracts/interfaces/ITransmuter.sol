@@ -39,6 +39,7 @@ import { IDiamondCut } from "./IDiamondCut.sol";
 import { IDiamondEtherscan } from "./IDiamondEtherscan.sol";
 import { IDiamondLoupe } from "./IDiamondLoupe.sol";
 import { IGetters } from "./IGetters.sol";
+import { IOracle } from "./IOracle.sol";
 import { IRedeemer } from "./IRedeemer.sol";
 import { IRewardHandler } from "./IRewardHandler.sol";
 import { ISettersGovernor, ISettersGuardian } from "./ISetters.sol";
@@ -51,6 +52,7 @@ interface ITransmuter is
     IDiamondEtherscan,
     IDiamondLoupe,
     IGetters,
+    IOracle,
     IRedeemer,
     IRewardHandler,
     ISettersGovernor,

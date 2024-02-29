@@ -49,17 +49,21 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
-    function getCollateralMintFees(
-        address collateral
-    ) external view returns (uint64[] memory xFeeMint, int64[] memory yFeeMint) {
+    function getCollateralMintFees(address collateral)
+        external
+        view
+        returns (uint64[] memory xFeeMint, int64[] memory yFeeMint)
+    {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
         return (collatInfo.xFeeMint, collatInfo.yFeeMint);
     }
 
     /// @inheritdoc IGetters
-    function getCollateralBurnFees(
-        address collateral
-    ) external view returns (uint64[] memory xFeeBurn, int64[] memory yFeeBurn) {
+    function getCollateralBurnFees(address collateral)
+        external
+        view
+        returns (uint64[] memory xFeeBurn, int64[] memory yFeeBurn)
+    {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
         return (collatInfo.xFeeBurn, collatInfo.yFeeBurn);
     }
@@ -88,9 +92,11 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
-    function getIssuedByCollateral(
-        address collateral
-    ) external view returns (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) {
+    function getIssuedByCollateral(address collateral)
+        external
+        view
+        returns (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued)
+    {
         TransmuterStorage storage ts = s.transmuterStorage();
         uint256 _normalizer = ts.normalizer;
         return (
@@ -106,7 +112,15 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
-    function getManagerData(address collateral) external view returns (bool, IERC20[] memory, bytes memory) {
+    function getManagerData(address collateral)
+        external
+        view
+        returns (
+            bool,
+            IERC20[] memory,
+            bytes memory
+        )
+    {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
         if (collatInfo.isManaged > 0) {
             return (true, collatInfo.managerData.subCollaterals, collatInfo.managerData.config);
@@ -117,9 +131,17 @@ contract Getters is IGetters {
     /// @inheritdoc IGetters
     /// @dev This function is not optimized for gas consumption as for instance the `burn` value for collateral
     /// is computed twice: once in `readBurn` and once in `getBurnOracle`
-    function getOracleValues(
-        address collateral
-    ) external view returns (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) {
+    function getOracleValues(address collateral)
+        external
+        view
+        returns (
+            uint256 mint,
+            uint256 burn,
+            uint256 ratio,
+            uint256 minRatio,
+            uint256 redemption
+        )
+    {
         bytes memory oracleConfig = s.transmuterStorage().collaterals[collateral].oracleConfig;
         (burn, ratio) = LibOracle.readBurn(oracleConfig);
         (minRatio, ) = LibOracle.getBurnOracle(collateral, oracleConfig);
@@ -127,9 +149,7 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
-    function getOracle(
-        address collateral
-    )
+    function getOracle(address collateral)
         external
         view
         returns (
