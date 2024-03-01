@@ -3,7 +3,7 @@
     "editor.defaultFormatter": "rvest.vs-code-prettier-eslint"
   },
   "[solidity]": {
-    "editor.defaultFormatter": "JuanBlanco.solidity"
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {

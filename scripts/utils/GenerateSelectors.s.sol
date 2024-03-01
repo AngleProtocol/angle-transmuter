@@ -14,6 +14,7 @@ contract GenerateSelectors is Utils {
         facetNames.push("DiamondCut");
         facetNames.push("DiamondLoupe");
         facetNames.push("Getters");
+        facetNames.push("Oracle");
         facetNames.push("Redeemer");
         facetNames.push("RewardHandler");
         facetNames.push("SettersGovernor");

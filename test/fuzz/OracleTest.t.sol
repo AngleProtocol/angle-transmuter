@@ -20,19 +20,11 @@ import { stdError } from "forge-std/Test.sol";
 contract OracleTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
 
-<<<<<<< HEAD
     uint256 internal _maxAmountWithoutDecimals = 10 ** 15;
     uint256 internal _minOracleValue = 10 ** 3; // 10**(-5)
     uint256 internal _maxOracleValue = BASE_18 / 100;
     uint256 internal _minWallet = 10 ** 18; // in base 18
     uint256 internal _maxWallet = 10 ** (18 + 12); // in base 18
-=======
-    uint256 internal _maxAmountWithoutDecimals = 10**15;
-    uint256 internal _minOracleValue = 10**3; // 10**(-5)
-    uint256 internal _maxOracleValue = BASE_18 / 100;
-    uint256 internal _minWallet = 10**18; // in base 18
-    uint256 internal _maxWallet = 10**(18 + 12); // in base 18
->>>>>>> 9b7f422 (test updateOracle)
 
     address[] internal _collaterals;
     AggregatorV3Interface[] internal _oracles;
@@ -198,11 +190,7 @@ contract OracleTest is Fixture, FunctionUtils {
 
                 assertEq(uint256(readType), uint256(Storage.OracleReadType.CHAINLINK_FEEDS));
                 assertEq(uint256(targetType), uint256(Storage.OracleReadType.STABLE));
-<<<<<<< HEAD
                 assertEq(userFirewall, 0);
-=======
-                assertEq(mintFirewall, 0);
->>>>>>> 9b7f422 (test updateOracle)
                 assertEq(burnFirewall, 0);
             }
 
