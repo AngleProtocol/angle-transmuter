@@ -15,12 +15,12 @@ contract SavingsNameable is Savings {
     uint256[48] private __gapNameable;
 
     /// @inheritdoc ERC20Upgradeable
-    function name() public view override returns (string memory) {
+    function name() public view override(ERC20Upgradeable, IERC20MetadataUpgradeable) returns (string memory) {
         return __name;
     }
 
     /// @inheritdoc ERC20Upgradeable
-    function symbol() public view override returns (string memory) {
+    function symbol() public view override(ERC20Upgradeable, IERC20MetadataUpgradeable) returns (string memory) {
         return __symbol;
     }
 

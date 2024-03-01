@@ -12,7 +12,6 @@ import { SavingsNameable } from "contracts/savings/nameable/SavingsNameable.sol"
 /// @dev To deploy on a different chain, just replace the chainId and be sure the sdk has the required addresses
 contract DeploySavingsNameable is Utils {
     function run() external {
-        uint256 chainId = CHAIN_SOURCE;
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_MAINNET"), "m/44'/60'/0'/0/", 0);
 
         vm.startBroadcast(deployerPrivateKey);
