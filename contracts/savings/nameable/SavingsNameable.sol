@@ -7,7 +7,6 @@ import "../Savings.sol";
 /// @title SavingsNameable
 /// @author Angle Labs, Inc.
 contract SavingsNameable is Savings {
-
     string internal __name;
 
     string internal __symbol;
@@ -29,6 +28,4 @@ contract SavingsNameable is Savings {
         __name = newName;
         __symbol = newSymbol;
     }
-
-
 }
