@@ -42,7 +42,7 @@ contract DeployTransmuter is TransmuterDeploymentHelper {
             abi.encodeWithSelector(
                 Production.initialize.selector,
                 _chainToContract(CHAIN_SOURCE, ContractType.CoreBorrow),
-                AGEUR,
+                _chainToContract(CHAIN_SOURCE, ContractType.AgEUR),
                 dummyImplementation
             )
         );

@@ -1,24 +1,25 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import "contracts/utils/Constants.sol";
-import { CHAIN_ETHEREUM } from "utils/src/Constants.sol";
+import {MAX_MINT_FEE,MAX_BURN_FEE,BASE_6} from "contracts/utils/Constants.sol";
+import "utils/src/Constants.sol";
 
+
+uint256 constant BPS = 1e14;
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                    MAINNET CONSTANTS                                                
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
 uint256 constant CHAIN_SOURCE = CHAIN_ETHEREUM;
 
-address constant IMMUTABLE_CREATE2_FACTORY_ADDRESS = 0x0000000000FFe8B47B3e2130213B802212439497;
 address constant DEPLOYER = 0xfdA462548Ce04282f4B6D6619823a7C64Fdc0185;
 
 address constant EUROC = 0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c;
 address constant EUROE = 0x820802Fa8a99901F52e39acD21177b0BE6EE2974;
 address constant EURE = 0x3231Cb76718CDeF2155FC47b5286d82e6eDA273f;
 address constant BC3M = 0x2F123cF3F37CE3328CC9B5b8415f9EC5109b45e7;
-
 address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     FACET ADDRESSES                                                 

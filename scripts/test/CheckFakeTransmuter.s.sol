@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import { Utils } from "../utils/Utils.s.sol";
+import { Utils, AssertUtils } from "../utils/Utils.s.sol";
 import { console } from "forge-std/console.sol";
 import { StdAssertions } from "forge-std/Test.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 import "stringutils/strings.sol";
 import "contracts/transmuter/Storage.sol" as Storage;
 
-contract CheckFakeTransmuter is Utils {
+contract CheckFakeTransmuter is Utils, AssertUtils {
     using strings for *;
 
     ITransmuter public constant transmuter = ITransmuter(0x4A44f77978Daa3E92Eb3D97210bd11645cF935Ab);
