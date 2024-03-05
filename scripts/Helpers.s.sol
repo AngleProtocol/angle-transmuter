@@ -20,6 +20,12 @@ contract Helpers is Utils {
     uint256 public baseFork;
     uint256 public lineaFork;
 
+    address public alice;
+    address public bob;
+    address public charlie;
+    address public dylan;
+    address public sweeper;
+
     function setUp() public virtual {
         arbitrumFork = vm.createFork(vm.envString("ETH_NODE_URI_ARBITRUM"));
         avalancheFork = vm.createFork(vm.envString("ETH_NODE_URI_AVALANCHE"));
@@ -44,5 +50,11 @@ contract Helpers is Utils {
         forkIdentifier[CHAIN_POLYGONZKEVM] = polygonZkEVMFork;
         forkIdentifier[CHAIN_BASE] = baseFork;
         forkIdentifier[CHAIN_LINEA] = lineaFork;
+
+        alice = vm.addr(1);
+        bob = vm.addr(2);
+        charlie = vm.addr(3);
+        dylan = vm.addr(4);
+        sweeper = address(uint160(uint256(keccak256(abi.encodePacked("sweeper")))));
     }
 }

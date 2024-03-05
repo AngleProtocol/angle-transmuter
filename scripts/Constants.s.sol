@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import {MAX_MINT_FEE,MAX_BURN_FEE,BASE_6} from "contracts/utils/Constants.sol";
+import { MAX_MINT_FEE, MAX_BURN_FEE, BASE_6, BPS } from "contracts/utils/Constants.sol";
 import "utils/src/Constants.sol";
 
-
-uint256 constant BPS = 1e14;
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                    MAINNET CONSTANTS                                                
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
@@ -19,7 +17,6 @@ address constant EUROE = 0x820802Fa8a99901F52e39acD21177b0BE6EE2974;
 address constant EURE = 0x3231Cb76718CDeF2155FC47b5286d82e6eDA273f;
 address constant BC3M = 0x2F123cF3F37CE3328CC9B5b8415f9EC5109b45e7;
 address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     FACET ADDRESSES                                                 
