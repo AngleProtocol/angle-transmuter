@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.19;
 
-import { ITransmuterOracle } from "interfaces/ITransmuterOracle.sol";
-import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
-import { IPyth, PythStructs } from "interfaces/external/pyth/IPyth.sol";
+import {ITransmuterOracle} from "interfaces/ITransmuterOracle.sol";
+import {AggregatorV3Interface} from "interfaces/external/chainlink/AggregatorV3Interface.sol";
+import {IPyth, PythStructs} from "interfaces/external/pyth/IPyth.sol";
 
-import { LibStorage as s } from "./LibStorage.sol";
+import {LibStorage as s} from "./LibStorage.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -22,18 +22,13 @@ library LibOracle {
     /// @notice Reads the oracle value used during a redemption to compute collateral ratio for `oracleConfig`
     /// @dev This value is only sensitive to compute the collateral ratio and deduce a penalty factor
     function readRedemption(bytes memory oracleConfig) internal view returns (uint256 oracleValue) {
-        (
-            OracleReadType oracleType,
-            OracleReadType targetType,
-            bytes memory oracleData,
-            bytes memory targetData,
-
-        ) = _parseOracleConfig(oracleConfig);
+        (OracleReadType oracleType, OracleReadType targetType, bytes memory oracleData, bytes memory targetData,) =
+            _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readRedemption();
         } else {
-            (oracleValue, ) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
+            (oracleValue,) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
             // We don't consider the mint firewall as `readRedemption` is only used to compute the collateral ratio
             // `getCollateralRatio` is only used in `_quoteRedemptionCurve` and `accrue` on the savingsVest
             // `_quoteRedemptionCurve` use the collateral ratio to compute the penalty factor. Artificially increase the
@@ -64,7 +59,7 @@ library LibOracle {
         }
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
-        (uint128 mintDeviation, ) = abi.decode(hyperparameters, (uint128, uint128));
+        (uint128 mintDeviation,) = abi.decode(hyperparameters, (uint128, uint128));
         oracleValue = _firewallMint(targetPrice, oracleValue, mintDeviation);
     }
 
@@ -98,13 +93,7 @@ library LibOracle {
     function getOracle(address collateral)
         internal
         view
-        returns (
-            OracleReadType,
-            OracleReadType,
-            bytes memory,
-            bytes memory,
-            bytes memory
-        )
+        returns (OracleReadType, OracleReadType, bytes memory, bytes memory, bytes memory)
     {
         return _parseOracleConfig(s.transmuterStorage().collaterals[collateral].oracleConfig);
     }
@@ -124,7 +113,9 @@ library LibOracle {
             uint256 ratioObserved = BASE_18;
             if (collateralList[i] != collateral) {
                 (, ratioObserved) = readBurn(ts.collaterals[collateralList[i]].oracleConfig);
-            } else (oracleValue, ratioObserved) = readBurn(oracleConfig);
+            } else {
+                (oracleValue, ratioObserved) = readBurn(oracleConfig);
+            }
             if (ratioObserved < minRatio) minRatio = ratioObserved;
         }
     }
@@ -149,11 +140,7 @@ library LibOracle {
     }
 
     /// @notice Reads an oracle value (or a target oracle value) for an asset based on its data parsed `oracleConfig`
-    function read(
-        OracleReadType readType,
-        uint256 baseValue,
-        bytes memory data
-    ) internal view returns (uint256) {
+    function read(OracleReadType readType, uint256 baseValue, bytes memory data) internal view returns (uint256) {
         if (readType == OracleReadType.CHAINLINK_FEEDS) {
             (
                 AggregatorV3Interface[] memory circuitChainlink,
@@ -166,21 +153,23 @@ library LibOracle {
             uint256 listLength = circuitChainlink.length;
             for (uint256 i; i < listLength; ++i) {
                 quotePrice = readChainlinkFeed(
-                    quotePrice,
-                    circuitChainlink[i],
-                    circuitChainIsMultiplied[i],
-                    chainlinkDecimals[i],
-                    stalePeriods[i]
+                    quotePrice, circuitChainlink[i], circuitChainIsMultiplied[i], chainlinkDecimals[i], stalePeriods[i]
                 );
             }
             return quotePrice;
-        } else if (readType == OracleReadType.STABLE) return BASE_18;
-        else if (readType == OracleReadType.NO_ORACLE) return baseValue;
-        else if (readType == OracleReadType.WSTETH) return STETH.getPooledEthByShares(1 ether);
-        else if (readType == OracleReadType.CBETH) return CBETH.exchangeRate();
-        else if (readType == OracleReadType.RETH) return RETH.getExchangeRate();
-        else if (readType == OracleReadType.SFRXETH) return SFRXETH.pricePerShare();
-        else if (readType == OracleReadType.PYTH) {
+        } else if (readType == OracleReadType.STABLE) {
+            return BASE_18;
+        } else if (readType == OracleReadType.NO_ORACLE) {
+            return baseValue;
+        } else if (readType == OracleReadType.WSTETH) {
+            return STETH.getPooledEthByShares(1 ether);
+        } else if (readType == OracleReadType.CBETH) {
+            return CBETH.exchangeRate();
+        } else if (readType == OracleReadType.RETH) {
+            return RETH.getExchangeRate();
+        } else if (readType == OracleReadType.SFRXETH) {
+            return SFRXETH.pricePerShare();
+        } else if (readType == OracleReadType.PYTH) {
             (
                 address pyth,
                 bytes32[] memory feedIds,
@@ -195,12 +184,14 @@ library LibOracle {
             }
             return quotePrice;
         } else if (readType == OracleReadType.MAX) {
-            (uint256 maxValue, , , ) = abi.decode(data, (uint256, uint96, uint96, uint32));
+            (uint256 maxValue,,,) = abi.decode(data, (uint256, uint96, uint96, uint32));
             return maxValue;
         }
         // If the `OracleReadType` is `EXTERNAL`, it means that this function is called to compute a
         // `targetPrice` in which case the `baseValue` is returned here
-        else return baseValue;
+        else {
+            return baseValue;
+        }
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -220,26 +211,24 @@ library LibOracle {
         uint256 decimals,
         uint32 stalePeriod
     ) internal view returns (uint256) {
-        (, int256 ratio, , uint256 updatedAt, ) = feed.latestRoundData();
+        (, int256 ratio,, uint256 updatedAt,) = feed.latestRoundData();
         if (ratio <= 0 || block.timestamp - updatedAt > stalePeriod) revert InvalidChainlinkRate();
         // Checking whether we should multiply or divide by the ratio computed
-        if (multiplied == 1) return (_quoteAmount * uint256(ratio)) / (10**decimals);
-        else return (_quoteAmount * (10**decimals)) / uint256(ratio);
+        if (multiplied == 1) return (_quoteAmount * uint256(ratio)) / (10 ** decimals);
+        else return (_quoteAmount * (10 ** decimals)) / uint256(ratio);
     }
 
     /// @notice Reads a Pyth fee using a quote amount and converts the quote amount to the `out-currency`
-    function readPythFeed(
-        uint256 _quoteAmount,
-        bytes32 feedId,
-        address pyth,
-        uint8 multiplied,
-        uint32 stalePeriod
-    ) internal view returns (uint256) {
+    function readPythFeed(uint256 _quoteAmount, bytes32 feedId, address pyth, uint8 multiplied, uint32 stalePeriod)
+        internal
+        view
+        returns (uint256)
+    {
         PythStructs.Price memory pythData = IPyth(pyth).getPriceNoOlderThan(feedId, stalePeriod);
         if (pythData.price <= 0) revert InvalidRate();
         uint256 normalizedPrice = uint64(pythData.price);
         bool isNormalizerExpoNeg = pythData.expo < 0;
-        uint256 normalizer = isNormalizerExpoNeg ? 10**uint32(-pythData.expo) : 10**uint32(pythData.expo);
+        uint256 normalizer = isNormalizerExpoNeg ? 10 ** uint32(-pythData.expo) : 10 ** uint32(pythData.expo);
         if (multiplied == 1 && isNormalizerExpoNeg) return (_quoteAmount * normalizedPrice) / normalizer;
         else if (multiplied == 1 && !isNormalizerExpoNeg) return _quoteAmount * normalizedPrice * normalizer;
         else if (multiplied == 0 && isNormalizerExpoNeg) return (_quoteAmount * normalizer) / normalizedPrice;
@@ -250,35 +239,29 @@ library LibOracle {
     function _parseOracleConfig(bytes memory oracleConfig)
         private
         pure
-        returns (
-            OracleReadType,
-            OracleReadType,
-            bytes memory,
-            bytes memory,
-            bytes memory
-        )
+        returns (OracleReadType, OracleReadType, bytes memory, bytes memory, bytes memory)
     {
         return abi.decode(oracleConfig, (OracleReadType, OracleReadType, bytes, bytes, bytes));
     }
 
     /// @notice Firewall in case the oracle value reported is too high compared to the target
     /// --> disregard the oracle value and return the target price
-    function _firewallMint(
-        uint256 targetPrice,
-        uint256 oracleValue,
-        uint256 deviation
-    ) private pure returns (uint256) {
+    function _firewallMint(uint256 targetPrice, uint256 oracleValue, uint256 deviation)
+        private
+        pure
+        returns (uint256)
+    {
         if (targetPrice * (BASE_18 + deviation) < oracleValue * BASE_18) oracleValue = targetPrice;
         return oracleValue;
     }
 
     /// @notice Firewall in case the oracle value reported is low compared to the target
     /// --> disregard if in acceptable bounds of the target price
-    function _firewallBurn(
-        uint256 targetPrice,
-        uint256 oracleValue,
-        uint256 deviation
-    ) private pure returns (uint256 ratio) {
+    function _firewallBurn(uint256 targetPrice, uint256 oracleValue, uint256 deviation)
+        private
+        pure
+        returns (uint256 ratio)
+    {
         ratio = BASE_18;
         if (oracleValue * BASE_18 < targetPrice * (BASE_18 - deviation)) ratio = (oracleValue * BASE_18) / targetPrice;
     }
@@ -298,14 +281,12 @@ library LibOracle {
         if (targetType != OracleReadType.MAX) revert OracleUpdateFailed();
 
         uint256 oracleValue = read(oracleType, BASE_18, oracleData);
-        (uint256 maxValue, uint96 deviationThreshold, uint96 lastUpdateTimestamp, uint32 heartbeat) = abi.decode(
-            targetData,
-            (uint256, uint96, uint96, uint32)
-        );
+        (uint256 maxValue, uint96 deviationThreshold, uint96 lastUpdateTimestamp, uint32 heartbeat) =
+            abi.decode(targetData, (uint256, uint96, uint96, uint32));
 
         if (
-            (oracleValue * BASE_18 >= maxValue * (BASE_18 + deviationThreshold)) ||
-            (block.timestamp - lastUpdateTimestamp > heartbeat)
+            (oracleValue * BASE_18 >= maxValue * (BASE_18 + deviationThreshold))
+                || (block.timestamp - lastUpdateTimestamp > heartbeat)
         ) {
             ts.collaterals[collateral].oracleConfig = abi.encode(
                 oracleType,
@@ -314,6 +295,8 @@ library LibOracle {
                 abi.encode(oracleValue, deviationThreshold, block.timestamp, heartbeat),
                 hyperparameters
             );
-        } else revert OracleUpdateFailed();
+        } else {
+            revert OracleUpdateFailed();
+        }
     }
 }

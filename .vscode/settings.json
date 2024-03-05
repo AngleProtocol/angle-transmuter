@@ -1,14 +1,12 @@
 {
-  "solidity.formatter": "prettier",
+  "solidity.formatter": "forge",
   "[typescript]": {
     "editor.defaultFormatter": "rvest.vs-code-prettier-eslint"
   },
   "[solidity]": {
     "editor.defaultFormatter": "JuanBlanco.solidity"
   },
-  "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit"
-  },
+  "editor.formatOnSave": true,
   "workbench.colorCustomizations": {
     "diffEditor.insertedTextBackground": "#00bb0044",
     "diffEditor.removedTextBackground": "#ff000044"
