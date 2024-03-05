@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.19;
 
-import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
-import { IGetters } from "interfaces/IGetters.sol";
+import {IAccessControlManager} from "interfaces/IAccessControlManager.sol";
+import {IGetters} from "interfaces/IGetters.sol";
 
-import { LibOracle } from "../libraries/LibOracle.sol";
-import { LibGetters } from "../libraries/LibGetters.sol";
-import { LibStorage as s } from "../libraries/LibStorage.sol";
-import { LibWhitelist } from "../libraries/LibWhitelist.sol";
+import {LibOracle} from "../libraries/LibOracle.sol";
+import {LibGetters} from "../libraries/LibGetters.sol";
+import {LibStorage as s} from "../libraries/LibStorage.sol";
+import {LibWhitelist} from "../libraries/LibWhitelist.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -88,7 +88,7 @@ contract Getters is IGetters {
         // Reentrant protection
         if (ts.statusReentrant == ENTERED) revert ReentrantCall();
 
-        (collatRatio, stablecoinsIssued, , , ) = LibGetters.getCollateralRatio();
+        (collatRatio, stablecoinsIssued,,,) = LibGetters.getCollateralRatio();
     }
 
     /// @inheritdoc IGetters
@@ -112,15 +112,7 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
-    function getManagerData(address collateral)
-        external
-        view
-        returns (
-            bool,
-            IERC20[] memory,
-            bytes memory
-        )
-    {
+    function getManagerData(address collateral) external view returns (bool, IERC20[] memory, bytes memory) {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
         if (collatInfo.isManaged > 0) {
             return (true, collatInfo.managerData.subCollaterals, collatInfo.managerData.config);
@@ -134,17 +126,11 @@ contract Getters is IGetters {
     function getOracleValues(address collateral)
         external
         view
-        returns (
-            uint256 mint,
-            uint256 burn,
-            uint256 ratio,
-            uint256 minRatio,
-            uint256 redemption
-        )
+        returns (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption)
     {
         bytes memory oracleConfig = s.transmuterStorage().collaterals[collateral].oracleConfig;
         (burn, ratio) = LibOracle.readBurn(oracleConfig);
-        (minRatio, ) = LibOracle.getBurnOracle(collateral, oracleConfig);
+        (minRatio,) = LibOracle.getBurnOracle(collateral, oracleConfig);
         return (LibOracle.readMint(oracleConfig), burn, ratio, minRatio, LibOracle.readRedemption(oracleConfig));
     }
 
