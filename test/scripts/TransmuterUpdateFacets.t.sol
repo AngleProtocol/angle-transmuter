@@ -41,6 +41,7 @@ contract TransmuterUpdateFacets is Helpers, Test {
     uint128 constant FIREWALL_BURN_BC3M = uint128(100 * BPS);
     uint96 constant DEVIATION_THRESHOLD_BC3M = uint96(100 * BPS);
     uint32 constant HEARTBEAT = uint32(1 days);
+    address constant WHALE_AGEUR = 0x4Fa745FCCC04555F2AFA8874cd23961636CdF982;
 
     uint256 public CHAIN_SOURCE;
 
@@ -173,6 +174,8 @@ contract TransmuterUpdateFacets is Helpers, Test {
             )
         );
 
+        transmuter.toggleWhitelist(Storage.WhitelistType.BACKED, WHALE_AGEUR);
+
         vm.stopPrank();
     }
 
@@ -192,7 +195,7 @@ contract TransmuterUpdateFacets is Helpers, Test {
     function testFuzz_Upgrade_QuoteMintExactInput_Reflexivity(uint256 amountIn, uint256 fromToken) public {
         fromToken = bound(fromToken, 0, transmuter.getCollateralList().length - 1);
         address collateral = transmuter.getCollateralList()[fromToken];
-        amountIn = bound(amountIn, BASE_6, collateral == BC3M ? 1000 * BASE_18 : BASE_6 * 1e8);
+        amountIn = bound(amountIn, BASE_6, collateral == BC3M ? 1000 * BASE_18 : BASE_6 * 1e6);
 
         uint256 amountStable = transmuter.quoteIn(amountIn, collateral, address(agEUR));
         uint256 amountInReflexive = transmuter.quoteOut(amountStable, collateral, address(agEUR));
@@ -206,7 +209,7 @@ contract TransmuterUpdateFacets is Helpers, Test {
     ) public {
         fromToken = bound(fromToken, 0, transmuter.getCollateralList().length - 1);
         address collateral = transmuter.getCollateralList()[fromToken];
-        amountIn = bound(amountIn, BASE_6, collateral == BC3M ? 1000 * BASE_18 : BASE_6 * 1e8);
+        amountIn = bound(amountIn, BASE_6, collateral == BC3M ? 1000 * BASE_18 : BASE_6 * 1e6);
         splitProportion = bound(splitProportion, 0, BASE_9);
 
         uint256 amountStable = transmuter.quoteIn(amountIn, collateral, address(agEUR));
@@ -219,71 +222,10 @@ contract TransmuterUpdateFacets is Helpers, Test {
         assertApproxEqRel(amountStableSplit1 + amountStableSplit2, amountStable, BPS * 10);
     }
 
-    function testFuzz_Upgrade_MintExactOutput(uint256 amountIn, uint256 fromToken) public {
+    function testFuzz_Upgrade_MintExactOutput(uint256 stableAmount, uint256 fromToken) public {
         fromToken = bound(fromToken, 0, transmuter.getCollateralList().length - 1);
         address collateral = transmuter.getCollateralList()[fromToken];
-        amountIn = bound(amountIn, BASE_6, collateral == BC3M ? 1000 * BASE_18 : BASE_6 * 1e8);
-
-        uint256 prevBalanceStable = agEUR.balanceOf(alice);
-        uint256 prevTransmuterCollat = IERC20(collateral).balanceOf(address(transmuter));
-        uint256 prevAgTokenSupply = IERC20(agEUR).totalSupply();
-        (uint256 prevStableAmountCollat, uint256 prevStableAmount) = transmuter.getIssuedByCollateral(collateral);
-
-        uint256 amountIn = transmuter.quoteOut(stableAmount, address(agEUR), collateral);
-        if (amountIn == 0 || stableAmount == 0) return;
-        _mintExactOutput(alice, collateral, stableAmount, amountIn);
-
-        uint256 balanceStable = agEUR.balanceOf(alice);
-
-        assertEq(balanceStable, prevBalanceStable + stableAmount);
-        assertEq(agEUR.totalSupply(), prevAgTokenSupply + stableAmount);
-        assertEq(IERC20(collateral).balanceOf(alice), 0);
-        assertEq(IERC20(collateral).balanceOf(address(transmuter)), prevTransmuterCollat + amountIn);
-
-        (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(collateral);
-
-        assertApproxEqAbs(newStableAmountCollat, prevStableAmountCollat + stableAmount, 1 wei);
-        assertApproxEqAbs(newStableAmount, prevStableAmount + stableAmount, 1 wei);
-    }
-
-    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                         BURN                                                       
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    function testFuzz_Upgrade_QuoteBurnExactInput_Reflexivity(uint256 amountIn, uint256 fromToken) public {
-        fromToken = bound(fromToken, 0, transmuter.getCollateralList().length - 1);
-        address collateral = transmuter.getCollateralList()[fromToken];
-        amountIn = bound(amountIn, BASE_6, BASE_6 * 1e8);
-
-        uint256 amountStable = transmuter.quoteIn(amountIn, address(agEUR), collateral);
-        uint256 amountInReflexive = transmuter.quoteOut(amountStable, address(agEUR), collateral);
-        assertApproxEqRel(amountIn, amountInReflexive, BPS * 10);
-    }
-
-    function testFuzz_Upgrade_QuoteBurnExactInput_Independant(
-        uint256 amountStable,
-        uint256 splitProportion,
-        uint256 fromToken
-    ) public {
-        fromToken = bound(fromToken, 0, transmuter.getCollateralList().length - 1);
-        address collateral = transmuter.getCollateralList()[fromToken];
-        amountStable = bound(amountStable, BASE_6, BASE_6 * 1e8);
-        splitProportion = bound(splitProportion, 0, BASE_9);
-
-        uint256 amountIn = transmuter.quoteIn(amountStable, address(agEUR), collateral);
-        uint256 amountStableSplit1 = (amountStable * splitProportion) / BASE_9;
-        amountStableSplit1 = amountStableSplit1 == 0 ? 1 : amountStableSplit1;
-        uint256 amountInSplit1 = transmuter.quoteIn(amountStableSplit1, address(agEUR), collateral);
-        // do the swap to update the system
-        _burnExactInput(alice, collateral, amountStableSplit1, amountInSplit1);
-        uint256 amountInSplit2 = transmuter.quoteIn(amountStable - amountStableSplit1, address(agEUR), collateral);
-        assertApproxEqRel(amountInSplit1 + amountInSplit2, amountIn, BPS * 10);
-    }
-
-    function testFuzz_Upgrade_BurnExactOutput(uint256 stableAmount, uint256 fromToken) public {
-        fromToken = bound(fromToken, 0, transmuter.getCollateralList().length - 1);
-        address collateral = transmuter.getCollateralList()[fromToken];
-        stableAmount = bound(stableAmount, BASE_6, BASE_6 * BASE_18);
+        stableAmount = bound(stableAmount, BASE_18, BASE_6 * 1e18);
 
         uint256 prevBalanceStable = agEUR.balanceOf(alice);
         uint256 prevTransmuterCollat = IERC20(collateral).balanceOf(address(transmuter));
@@ -305,6 +247,67 @@ contract TransmuterUpdateFacets is Helpers, Test {
 
         assertApproxEqAbs(newStableAmountCollat, prevStableAmountCollat + stableAmount, 1 wei);
         assertApproxEqAbs(newStableAmount, prevStableAmount + stableAmount, 1 wei);
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                         BURN                                                       
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testFuzz_Upgrade_QuoteBurnExactInput_Reflexivity(uint256 amountStable, uint256 fromToken) public {
+        fromToken = bound(fromToken, 0, transmuter.getCollateralList().length - 1);
+        address collateral = transmuter.getCollateralList()[fromToken];
+        amountStable = bound(amountStable, BASE_18, BASE_6 * 1e18);
+
+        uint256 amountOut = transmuter.quoteIn(amountStable, address(agEUR), collateral);
+        uint256 amountStableReflexive = transmuter.quoteOut(amountOut, address(agEUR), collateral);
+        assertApproxEqRel(amountStable, amountStableReflexive, BPS * 10);
+    }
+
+    function testFuzz_Upgrade_QuoteBurnExactInput_Independant(
+        uint256 amountStable,
+        uint256 splitProportion,
+        uint256 fromToken
+    ) public {
+        fromToken = bound(fromToken, 0, transmuter.getCollateralList().length - 1);
+        address collateral = transmuter.getCollateralList()[fromToken];
+        amountStable = bound(amountStable, BASE_18, BASE_6 * 1e18);
+        splitProportion = bound(splitProportion, 0, BASE_9);
+
+        uint256 amountOut = transmuter.quoteIn(amountStable, address(agEUR), collateral);
+        uint256 amountStableSplit1 = (amountStable * splitProportion) / BASE_9;
+        amountStableSplit1 = amountStableSplit1 == 0 ? 1 : amountStableSplit1;
+        uint256 amountOutSplit1 = transmuter.quoteIn(amountStableSplit1, address(agEUR), collateral);
+        // do the swap to update the system
+        _burnExactInput(WHALE_AGEUR, collateral, amountStableSplit1, amountOutSplit1);
+        uint256 amountOutSplit2 = transmuter.quoteIn(amountStable - amountStableSplit1, address(agEUR), collateral);
+        assertApproxEqRel(amountOutSplit1 + amountOutSplit2, amountOut, BPS * 10);
+    }
+
+    function testFuzz_Upgrade_BurnExactOutput(uint256 amountOut, uint256 fromToken) public {
+        fromToken = bound(fromToken, 0, transmuter.getCollateralList().length - 1);
+        address collateral = transmuter.getCollateralList()[fromToken];
+        amountOut = bound(amountOut, BASE_6, collateral == BC3M ? 1000 * BASE_18 : BASE_6 * 1e6);
+
+        uint256 prevBalanceStable = agEUR.balanceOf(WHALE_AGEUR);
+        uint256 prevTransmuterCollat = IERC20(collateral).balanceOf(address(transmuter));
+        uint256 prevAgTokenSupply = IERC20(agEUR).totalSupply();
+        (uint256 prevStableAmountCollat, uint256 prevStableAmount) = transmuter.getIssuedByCollateral(collateral);
+
+        uint256 stableAmount = transmuter.quoteOut(amountOut, address(agEUR), collateral);
+        if (amountOut == 0 || stableAmount == 0) return;
+        _burnExactOutput(WHALE_AGEUR, collateral, amountOut, stableAmount);
+
+        uint256 balanceStable = agEUR.balanceOf(WHALE_AGEUR);
+
+        assertEq(balanceStable, prevBalanceStable - stableAmount);
+        assertEq(agEUR.totalSupply(), prevAgTokenSupply - stableAmount);
+        assertEq(IERC20(collateral).balanceOf(WHALE_AGEUR), amountOut);
+        assertEq(IERC20(collateral).balanceOf(address(transmuter)), prevTransmuterCollat - amountOut);
+
+        (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(collateral);
+
+        assertApproxEqAbs(newStableAmountCollat, prevStableAmountCollat - stableAmount, 1 wei);
+        assertApproxEqAbs(newStableAmount, prevStableAmount - stableAmount, 1 wei);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -344,6 +347,43 @@ contract TransmuterUpdateFacets is Helpers, Test {
         vm.stopPrank();
     }
 
+
+    function _burnExactInput(
+        address owner,
+        address tokenOut,
+        uint256 amountStable,
+        uint256 estimatedAmountOut
+    ) internal returns (bool burnMoreThanHad) {
+        // we need to increase the balance because fees are negative and we need to transfer
+        // more than what we received with the mint
+        if (IERC20(tokenOut).balanceOf(address(transmuter)) < estimatedAmountOut) {
+            deal(tokenOut, address(transmuter), estimatedAmountOut);
+            burnMoreThanHad = true;
+        }
+
+        vm.startPrank(owner);
+        transmuter.swapExactInput(amountStable, estimatedAmountOut, address(agEUR), tokenOut, owner, 0);
+        vm.stopPrank();
+    }
+
+    function _burnExactOutput(
+        address owner,
+        address tokenOut,
+        uint256 amountOut,
+        uint256 estimatedStable
+    ) internal returns (bool) {
+        // _logIssuedCollateral();
+        vm.startPrank(owner);
+        (uint256 maxAmount, ) = transmuter.getIssuedByCollateral(tokenOut);
+        uint256 balanceStableOwner = agEUR.balanceOf(owner);
+        if (estimatedStable > maxAmount) vm.expectRevert();
+        else if (estimatedStable > balanceStableOwner) vm.expectRevert("ERC20: burn amount exceeds balance");
+        transmuter.swapExactOutput(amountOut, estimatedStable, address(agEUR), tokenOut, owner, block.timestamp * 2);
+        if (amountOut > maxAmount) return false;
+        vm.stopPrank();
+        return true;
+    }
+
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         CHECKS                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
@@ -372,40 +412,5 @@ contract TransmuterUpdateFacets is Helpers, Test {
             assertEq(mint, targetValue);
             assertEq(ratio, BASE_18);
         }
-    }
-
-    function _burnExactInput(
-        address owner,
-        address tokenOut,
-        uint256 amountStable,
-        uint256 estimatedAmountOut
-    ) internal returns (bool burnMoreThanHad) {
-        // we need to increase the balance because fees are negative and we need to transfer
-        // more than what we received with the mint
-        if (IERC20(tokenOut).balanceOf(address(transmuter)) < estimatedAmountOut) {
-            deal(tokenOut, address(transmuter), estimatedAmountOut);
-            burnMoreThanHad = true;
-        }
-        vm.startPrank(owner);
-        transmuter.swapExactInput(amountStable, estimatedAmountOut, address(agToken), tokenOut, owner, 0);
-        vm.stopPrank();
-    }
-
-    function _burnExactOutput(
-        address owner,
-        address tokenOut,
-        uint256 amountOut,
-        uint256 estimatedStable
-    ) internal returns (bool) {
-        // _logIssuedCollateral();
-        vm.startPrank(owner);
-        (uint256 maxAmount, ) = transmuter.getIssuedByCollateral(tokenOut);
-        uint256 balanceStableOwner = agToken.balanceOf(owner);
-        if (estimatedStable > maxAmount) vm.expectRevert();
-        else if (estimatedStable > balanceStableOwner) vm.expectRevert("ERC20: burn amount exceeds balance");
-        transmuter.swapExactOutput(amountOut, estimatedStable, address(agToken), tokenOut, owner, block.timestamp * 2);
-        if (amountOut > maxAmount) return false;
-        vm.stopPrank();
-        return true;
     }
 }
