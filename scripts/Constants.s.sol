@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import { MAX_MINT_FEE, MAX_BURN_FEE, BASE_6, BPS } from "contracts/utils/Constants.sol";
+import {MAX_MINT_FEE, MAX_BURN_FEE, BASE_6, BPS} from "contracts/utils/Constants.sol";
 import "utils/src/Constants.sol";
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -11,6 +11,9 @@ import "utils/src/Constants.sol";
 uint256 constant CHAIN_SOURCE = CHAIN_ETHEREUM;
 
 address constant DEPLOYER = 0xfdA462548Ce04282f4B6D6619823a7C64Fdc0185;
+address constant KEEPER = 0xcC617C6f9725eACC993ac626C7efC6B96476916E;
+address constant NEW_DEPLOYER = 0xA9DdD91249DFdd450E81E1c56Ab60E1A62651701;
+address constant NEW_KEEPER = 0xa9bbbDDe822789F123667044443dc7001fb43C01;
 
 address constant EUROC = 0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c;
 address constant EUROE = 0x820802Fa8a99901F52e39acD21177b0BE6EE2974;
