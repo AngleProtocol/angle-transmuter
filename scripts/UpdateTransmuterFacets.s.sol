@@ -20,7 +20,7 @@ import "contracts/transmuter/libraries/LibHelpers.sol";
 import {ITransmuter} from "interfaces/ITransmuter.sol";
 import "utils/src/Constants.sol";
 import {IERC20} from "oz/interfaces/IERC20.sol";
-import {OldTransmuter} from "../test/scripts/UpdateTransmuterFacets.t.sol";
+import {OldTransmuter} from "test/scripts/UpdateTransmuterFacets.t.sol";
 
 contract UpdateTransmuterFacets is Helpers {
     string[] replaceFacetNames;

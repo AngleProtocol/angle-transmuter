@@ -2,20 +2,20 @@
 pragma solidity ^0.8.19;
 
 import "./utils/Utils.s.sol";
-import { console } from "forge-std/console.sol";
-import { stdJson } from "forge-std/StdJson.sol";
+import {console} from "forge-std/console.sol";
+import {stdJson} from "forge-std/StdJson.sol";
 import "stringutils/strings.sol";
-import { CHAIN_SOURCE } from "./Constants.s.sol";
-import { Savings } from "contracts/savings/Savings.sol";
-import { IAccessControlManager } from "contracts/utils/AccessControl.sol";
+import {CHAIN_SOURCE} from "./Constants.s.sol";
+import {Savings} from "contracts/savings/Savings.sol";
+import {IAccessControlManager} from "contracts/utils/AccessControl.sol";
 import "./Constants.s.sol";
 import "oz/interfaces/IERC20.sol";
 import "oz-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-import { TransparentUpgradeableProxy } from "oz/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "oz/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-import { ImmutableCreate2Factory } from "./utils/TransmuterDeploymentHelper.s.sol";
+import {ImmutableCreate2Factory} from "./utils/TransmuterDeploymentHelper.s.sol";
 
-import { MockTreasury } from "../test/mock/MockTreasury.sol";
+import {MockTreasury} from "test/mock/MockTreasury.sol";
 
 /// @dev To deploy on a different chain, just replace the chainId and be sure the sdk has the required addresses
 contract DeploySavingsNoImplem is Utils {
@@ -66,11 +66,7 @@ contract DeploySavingsNoImplem is Utils {
         TransparentUpgradeableProxy(payable(saving)).changeAdmin(_chainToContract(chainId, ContractType.ProxyAdmin));
         IERC20MetadataUpgradeable(agToken).approve(address(saving), 1e18);
         Savings(saving).initialize(
-            IAccessControlManager(accessControlManager),
-            IERC20MetadataUpgradeable(agToken),
-            "Staked agUSD",
-            "stUSD",
-            1
+            IAccessControlManager(accessControlManager), IERC20MetadataUpgradeable(agToken), "Staked agUSD", "stUSD", 1
         );
 
         MockTreasury(treasury).addMinter(saving);
