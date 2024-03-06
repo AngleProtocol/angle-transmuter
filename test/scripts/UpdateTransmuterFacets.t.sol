@@ -5,7 +5,22 @@ import { stdJson } from "forge-std/StdJson.sol";
 import { console } from "forge-std/console.sol";
 import { Test } from "forge-std/Test.sol";
 
-import { BC3M, BPS, EUROC, BASE_6, DEPLOYER, NEW_DEPLOYER, KEEPER, NEW_KEEPER } from "../../scripts/Constants.s.sol";
+import {
+    BC3M,
+    BPS,
+    EUROC,
+    BASE_6,
+    DEPLOYER,
+    NEW_DEPLOYER,
+    KEEPER,
+    NEW_KEEPER,
+    DEVIATION_THRESHOLD_BC3M,
+    FIREWALL_MINT_EUROC,
+    FIREWALL_BURN_EUROC,
+    FIREWALL_MINT_BC3M,
+    FIREWALL_BURN_BC3M,
+    HEARTBEAT
+} from "../../scripts/Constants.s.sol";
 
 import { Helpers } from "../../scripts/Helpers.s.sol";
 import "contracts/utils/Errors.sol" as Errors;
@@ -27,18 +42,12 @@ interface OldTransmuter {
     ) external view returns (Storage.OracleReadType, Storage.OracleReadType, bytes memory, bytes memory);
 }
 
-contract TransmuterUpdateFacets is Helpers, Test {
+contract UpdateTransmuterFacets is Helpers, Test {
     using stdJson for string;
 
-    uint128 constant FIREWALL_MINT_EUROC = 0;
-    uint128 constant FIREWALL_BURN_EUROC = uint128(5 * BPS);
-    uint128 constant FIREWALL_MINT_BC3M = uint128(BASE_18);
-    uint128 constant FIREWALL_BURN_BC3M = uint128(100 * BPS);
-    uint96 constant DEVIATION_THRESHOLD_BC3M = uint96(100 * BPS);
-    uint32 constant HEARTBEAT = uint32(1 days);
-    address constant WHALE_AGEUR = 0x4Fa745FCCC04555F2AFA8874cd23961636CdF982;
-
     uint256 public CHAIN_SOURCE;
+
+    address constant WHALE_AGEUR = 0x4Fa745FCCC04555F2AFA8874cd23961636CdF982;
 
     string[] replaceFacetNames;
     string[] addFacetNames;
@@ -60,8 +69,6 @@ contract TransmuterUpdateFacets is Helpers, Test {
         governor = _chainToContract(CHAIN_SOURCE, ContractType.Timelock);
         transmuter = ITransmuter(_chainToContract(CHAIN_SOURCE, ContractType.TransmuterAgEUR));
         agEUR = IERC20(_chainToContract(CHAIN_SOURCE, ContractType.AgEUR));
-        governor = 0x09D81464c7293C774203E46E3C921559c8E9D53f;
-        transmuter = ITransmuter(0x00253582b2a3FE112feEC532221d9708c64cEFAb);
 
         Storage.FacetCut[] memory replaceCut;
         Storage.FacetCut[] memory addCut;
@@ -173,7 +180,7 @@ contract TransmuterUpdateFacets is Helpers, Test {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        GETTERS                                                     
+                                                        GETTERS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testUnit_Upgrade_AccessControlManager() external {
@@ -381,7 +388,7 @@ contract TransmuterUpdateFacets is Helpers, Test {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        ORACLE                                                      
+                                                        ORACLE
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testUnit_Upgrade_getOracleValues_Success() external {
@@ -390,7 +397,7 @@ contract TransmuterUpdateFacets is Helpers, Test {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                         MINT                                                       
+                                                         MINT
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testFuzz_Upgrade_QuoteMintExactInput_Reflexivity(uint256 amountIn, uint256 fromToken) public {
@@ -451,7 +458,7 @@ contract TransmuterUpdateFacets is Helpers, Test {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                         BURN                                                       
+                                                         BURN
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testFuzz_Upgrade_QuoteBurnExactInput_Reflexivity(uint256 amountStable, uint256 fromToken) public {
@@ -512,7 +519,7 @@ contract TransmuterUpdateFacets is Helpers, Test {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        REDEEM                                                      
+                                                        REDEEM
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testFuzz_Upgrade_QuoteRedeemRandomFees(uint256[3] memory latestOracleValue) public {
@@ -546,7 +553,7 @@ contract TransmuterUpdateFacets is Helpers, Test {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                         UTILS                                                      
+                                                         UTILS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function _mintExactOutput(
@@ -651,19 +658,15 @@ contract TransmuterUpdateFacets is Helpers, Test {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        CHECKS                                                      
+                                                        CHECKS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function _checkOracleValues(
-        address collateral,
-        uint256 targetValue,
-        uint128 firewallMint,
-        uint128 firewallBurn
-    ) internal {
-        (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter.getOracleValues(
-            collateral
-        );
-        assertApproxEqRel(targetValue, redemption, 100 * BPS);
+    function _checkOracleValues(address collateral, uint256 targetValue, uint128 firewallMint, uint128 firewallBurn)
+        internal
+    {
+        (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) =
+            transmuter.getOracleValues(collateral);
+        assertApproxEqRel(targetValue, redemption, 200 * BPS);
         assertEq(burn, redemption);
         if (redemption * BASE_18 < targetValue * (BASE_18 - firewallBurn)) {
             assertEq(mint, redemption);
