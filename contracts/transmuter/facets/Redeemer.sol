@@ -2,21 +2,21 @@
 
 pragma solidity ^0.8.19;
 
-import { IERC20 } from "oz/token/ERC20/IERC20.sol";
-import { SafeCast } from "oz/utils/math/SafeCast.sol";
-import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
-import { Math } from "oz/utils/math/Math.sol";
+import {IERC20} from "oz/token/ERC20/IERC20.sol";
+import {SafeCast} from "oz/utils/math/SafeCast.sol";
+import {SafeERC20} from "oz/token/ERC20/utils/SafeERC20.sol";
+import {Math} from "oz/utils/math/Math.sol";
 
-import { IAgToken } from "interfaces/IAgToken.sol";
-import { IRedeemer } from "interfaces/IRedeemer.sol";
+import {IAgToken} from "interfaces/IAgToken.sol";
+import {IRedeemer} from "interfaces/IRedeemer.sol";
 
-import { AccessControlModifiers } from "./AccessControlModifiers.sol";
-import { LibDiamond } from "../libraries/LibDiamond.sol";
-import { LibHelpers } from "../libraries/LibHelpers.sol";
-import { LibGetters } from "../libraries/LibGetters.sol";
-import { LibManager } from "../libraries/LibManager.sol";
-import { LibStorage as s } from "../libraries/LibStorage.sol";
-import { LibWhitelist } from "../libraries/LibWhitelist.sol";
+import {AccessControlModifiers} from "./AccessControlModifiers.sol";
+import {LibDiamond} from "../libraries/LibDiamond.sol";
+import {LibHelpers} from "../libraries/LibHelpers.sol";
+import {LibGetters} from "../libraries/LibGetters.sol";
+import {LibManager} from "../libraries/LibManager.sol";
+import {LibStorage as s} from "../libraries/LibStorage.sol";
+import {LibWhitelist} from "../libraries/LibWhitelist.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -58,12 +58,10 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
     /// @dev Tokens requiring a whitelist must be forfeited if the redemption is to an address that is not in the
     /// whitelist, otherwise this function reverts
     /// @dev No approval is needed before calling this function
-    function redeem(
-        uint256 amount,
-        address receiver,
-        uint256 deadline,
-        uint256[] memory minAmountOuts
-    ) external returns (address[] memory tokens, uint256[] memory amounts) {
+    function redeem(uint256 amount, address receiver, uint256 deadline, uint256[] memory minAmountOuts)
+        external
+        returns (address[] memory tokens, uint256[] memory amounts)
+    {
         return _redeem(amount, receiver, deadline, minAmountOuts, new address[](0));
     }
 
@@ -89,10 +87,12 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
     }
 
     /// @inheritdoc IRedeemer
-    function quoteRedemptionCurve(
-        uint256 amount
-    ) external view returns (address[] memory tokens, uint256[] memory amounts) {
-        (tokens, amounts, ) = _quoteRedemptionCurve(amount);
+    function quoteRedemptionCurve(uint256 amount)
+        external
+        view
+        returns (address[] memory tokens, uint256[] memory amounts)
+    {
+        (tokens, amounts,) = _quoteRedemptionCurve(amount);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -149,9 +149,7 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
 
     /// @dev This function reverts if `stablecoinsIssued==0`, which is expected behavior as there is nothing to redeem
     /// anyway in this case, or if the `amountBurnt` is greater than `stablecoinsIssued`
-    function _quoteRedemptionCurve(
-        uint256 amountBurnt
-    )
+    function _quoteRedemptionCurve(uint256 amountBurnt)
         internal
         view
         returns (address[] memory tokens, uint256[] memory balances, uint256[] memory subCollateralsTracker)
@@ -176,8 +174,8 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
             // If the protocol is over-collateralized, the amount of each token given is inversely proportional
             // to the collateral ratio.
             balances[i] = collatRatio >= BASE_9
-                ? (amountBurnt * balances[i] * (uint64(yRedemptionCurveMem[yRedemptionCurveMem.length - 1]))) /
-                    (stablecoinsIssued * collatRatio)
+                ? (amountBurnt * balances[i] * (uint64(yRedemptionCurveMem[yRedemptionCurveMem.length - 1])))
+                    / (stablecoinsIssued * collatRatio)
                 : (amountBurnt * balances[i] * penaltyFactor) / (stablecoinsIssued * BASE_9);
         }
     }
@@ -209,9 +207,9 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
             // We ensure to preserve the invariant `sum(collateralNewNormalizedStables) = normalizedStables`
             uint128 newNormalizedStables;
             for (uint256 i; i < collateralListLength; ++i) {
-                uint128 newCollateralNormalizedStable = ((uint256(
-                    ts.collaterals[collateralListMem[i]].normalizedStables
-                ) * newNormalizerValue) / BASE_27).toUint128();
+                uint128 newCollateralNormalizedStable = (
+                    (uint256(ts.collaterals[collateralListMem[i]].normalizedStables) * newNormalizerValue) / BASE_27
+                ).toUint128();
                 newNormalizedStables += newCollateralNormalizedStable;
                 ts.collaterals[collateralListMem[i]].normalizedStables = uint216(newCollateralNormalizedStable);
             }
