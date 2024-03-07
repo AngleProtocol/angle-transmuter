@@ -1,6 +1,6 @@
 {
   "detectors_to_exclude": "naming-convention,solc-version",
-  "filter_paths": "(lib|test|external)",
+  "filter_paths": "(lib|test|external|scripts)",
   "solc_remaps": [
     "ds-test/=lib/forge-std/lib/ds-test/src/",
     "forge-std/=lib/forge-std/src/",
