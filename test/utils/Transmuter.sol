@@ -77,11 +77,10 @@ abstract contract Transmuter is Helper {
     }
 
     // @dev Deploys diamond and connects facets
-    function deployReplicaTransmuter(address _init, bytes memory _calldata)
-        public
-        virtual
-        returns (ITransmuter _transmuter)
-    {
+    function deployReplicaTransmuter(
+        address _init,
+        bytes memory _calldata
+    ) public virtual returns (ITransmuter _transmuter) {
         // Build appropriate payload
         uint256 n = facetNames.length;
         FacetCut[] memory cut = new FacetCut[](n);

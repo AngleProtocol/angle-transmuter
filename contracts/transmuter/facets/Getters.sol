@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.19;
 
-import {IAccessControlManager} from "interfaces/IAccessControlManager.sol";
-import {IGetters} from "interfaces/IGetters.sol";
+import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
+import { IGetters } from "interfaces/IGetters.sol";
 
-import {LibOracle} from "../libraries/LibOracle.sol";
-import {LibGetters} from "../libraries/LibGetters.sol";
-import {LibStorage as s} from "../libraries/LibStorage.sol";
-import {LibWhitelist} from "../libraries/LibWhitelist.sol";
+import { LibOracle } from "../libraries/LibOracle.sol";
+import { LibGetters } from "../libraries/LibGetters.sol";
+import { LibStorage as s } from "../libraries/LibStorage.sol";
+import { LibWhitelist } from "../libraries/LibWhitelist.sol";
 
 import "../../utils/Constants.sol";
 import "../../utils/Errors.sol";
@@ -49,21 +49,17 @@ contract Getters is IGetters {
     }
 
     /// @inheritdoc IGetters
-    function getCollateralMintFees(address collateral)
-        external
-        view
-        returns (uint64[] memory xFeeMint, int64[] memory yFeeMint)
-    {
+    function getCollateralMintFees(
+        address collateral
+    ) external view returns (uint64[] memory xFeeMint, int64[] memory yFeeMint) {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
         return (collatInfo.xFeeMint, collatInfo.yFeeMint);
     }
 
     /// @inheritdoc IGetters
-    function getCollateralBurnFees(address collateral)
-        external
-        view
-        returns (uint64[] memory xFeeBurn, int64[] memory yFeeBurn)
-    {
+    function getCollateralBurnFees(
+        address collateral
+    ) external view returns (uint64[] memory xFeeBurn, int64[] memory yFeeBurn) {
         Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
         return (collatInfo.xFeeBurn, collatInfo.yFeeBurn);
     }
@@ -88,15 +84,13 @@ contract Getters is IGetters {
         // Reentrant protection
         if (ts.statusReentrant == ENTERED) revert ReentrantCall();
 
-        (collatRatio, stablecoinsIssued,,,) = LibGetters.getCollateralRatio();
+        (collatRatio, stablecoinsIssued, , , ) = LibGetters.getCollateralRatio();
     }
 
     /// @inheritdoc IGetters
-    function getIssuedByCollateral(address collateral)
-        external
-        view
-        returns (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued)
-    {
+    function getIssuedByCollateral(
+        address collateral
+    ) external view returns (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) {
         TransmuterStorage storage ts = s.transmuterStorage();
         uint256 _normalizer = ts.normalizer;
         return (
@@ -123,19 +117,19 @@ contract Getters is IGetters {
     /// @inheritdoc IGetters
     /// @dev This function is not optimized for gas consumption as for instance the `burn` value for collateral
     /// is computed twice: once in `readBurn` and once in `getBurnOracle`
-    function getOracleValues(address collateral)
-        external
-        view
-        returns (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption)
-    {
+    function getOracleValues(
+        address collateral
+    ) external view returns (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) {
         bytes memory oracleConfig = s.transmuterStorage().collaterals[collateral].oracleConfig;
         (burn, ratio) = LibOracle.readBurn(oracleConfig);
-        (minRatio,) = LibOracle.getBurnOracle(collateral, oracleConfig);
+        (minRatio, ) = LibOracle.getBurnOracle(collateral, oracleConfig);
         return (LibOracle.readMint(oracleConfig), burn, ratio, minRatio, LibOracle.readRedemption(oracleConfig));
     }
 
     /// @inheritdoc IGetters
-    function getOracle(address collateral)
+    function getOracle(
+        address collateral
+    )
         external
         view
         returns (

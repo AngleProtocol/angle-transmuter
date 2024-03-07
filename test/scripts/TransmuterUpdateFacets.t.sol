@@ -1,31 +1,30 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import {stdJson} from "forge-std/StdJson.sol";
-import {console} from "forge-std/console.sol";
-import {Test} from "forge-std/Test.sol";
+import { stdJson } from "forge-std/StdJson.sol";
+import { console } from "forge-std/console.sol";
+import { Test } from "forge-std/Test.sol";
 
-import {BC3M, BPS, EUROC, BASE_6, DEPLOYER, NEW_DEPLOYER, KEEPER, NEW_KEEPER} from "../../scripts/Constants.s.sol";
+import { BC3M, BPS, EUROC, BASE_6, DEPLOYER, NEW_DEPLOYER, KEEPER, NEW_KEEPER } from "../../scripts/Constants.s.sol";
 
-import {Helpers} from "../../scripts/Helpers.s.sol";
+import { Helpers } from "../../scripts/Helpers.s.sol";
 import "contracts/utils/Errors.sol" as Errors;
 import "contracts/transmuter/Storage.sol" as Storage;
-import {Getters} from "contracts/transmuter/facets/Getters.sol";
-import {Oracle} from "contracts/transmuter/facets/Oracle.sol";
-import {Redeemer} from "contracts/transmuter/facets/Redeemer.sol";
-import {SettersGovernor} from "contracts/transmuter/facets/SettersGovernor.sol";
-import {SettersGuardian} from "contracts/transmuter/facets/SettersGuardian.sol";
-import {Swapper} from "contracts/transmuter/facets/Swapper.sol";
+import { Getters } from "contracts/transmuter/facets/Getters.sol";
+import { Oracle } from "contracts/transmuter/facets/Oracle.sol";
+import { Redeemer } from "contracts/transmuter/facets/Redeemer.sol";
+import { SettersGovernor } from "contracts/transmuter/facets/SettersGovernor.sol";
+import { SettersGuardian } from "contracts/transmuter/facets/SettersGuardian.sol";
+import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import "contracts/transmuter/libraries/LibHelpers.sol";
-import {ITransmuter} from "interfaces/ITransmuter.sol";
+import { ITransmuter } from "interfaces/ITransmuter.sol";
 import "utils/src/Constants.sol";
-import {IERC20} from "oz/interfaces/IERC20.sol";
+import { IERC20 } from "oz/interfaces/IERC20.sol";
 
 interface OldTransmuter {
-    function getOracle(address)
-        external
-        view
-        returns (Storage.OracleReadType, Storage.OracleReadType, bytes memory, bytes memory);
+    function getOracle(
+        address
+    ) external view returns (Storage.OracleReadType, Storage.OracleReadType, bytes memory, bytes memory);
 }
 
 contract TransmuterUpdateFacets is Helpers, Test {
@@ -99,8 +98,9 @@ contract TransmuterUpdateFacets is Helpers, Test {
             replaceCut = new Storage.FacetCut[](n);
             for (uint256 i = 0; i < n; ++i) {
                 // Get Selectors from json
-                bytes4[] memory selectors =
-                    _arrayBytes32ToBytes4(json.readBytes32Array(string.concat("$.", replaceFacetNames[i])));
+                bytes4[] memory selectors = _arrayBytes32ToBytes4(
+                    json.readBytes32Array(string.concat("$.", replaceFacetNames[i]))
+                );
 
                 replaceCut[i] = Storage.FacetCut({
                     facetAddress: facetAddressList[i],
@@ -117,8 +117,9 @@ contract TransmuterUpdateFacets is Helpers, Test {
             addCut = new Storage.FacetCut[](n);
             for (uint256 i = 0; i < n; ++i) {
                 // Get Selectors from json
-                bytes4[] memory selectors =
-                    _arrayBytes32ToBytes4(json.readBytes32Array(string.concat("$.", addFacetNames[i])));
+                bytes4[] memory selectors = _arrayBytes32ToBytes4(
+                    json.readBytes32Array(string.concat("$.", addFacetNames[i]))
+                );
                 addCut[i] = Storage.FacetCut({
                     facetAddress: facetAddressList[r + i],
                     action: Storage.FacetCutAction.Add,
@@ -137,10 +138,10 @@ contract TransmuterUpdateFacets is Helpers, Test {
             bytes memory targetDataEUROC
         ) = OldTransmuter(address(transmuter)).getOracle(address(EUROC));
 
-        (Storage.OracleReadType oracleTypeBC3M,, bytes memory oracleDataBC3M,) =
-            OldTransmuter(address(transmuter)).getOracle(address(BC3M));
+        (Storage.OracleReadType oracleTypeBC3M, , bytes memory oracleDataBC3M, ) = OldTransmuter(address(transmuter))
+            .getOracle(address(BC3M));
 
-        (,,,, uint256 currentBC3MPrice) = transmuter.getOracleValues(address(BC3M));
+        (, , , , uint256 currentBC3MPrice) = transmuter.getOracleValues(address(BC3M));
 
         bytes memory callData;
         // set the right implementations
@@ -244,8 +245,10 @@ contract TransmuterUpdateFacets is Helpers, Test {
             assertApproxEqRel(collatInfoBC3M.normalizedStables, 6236650 * BASE_18, 100 * BPS);
             assertEq(collatInfoBC3M.oracleConfig, oracleConfigBC3M);
             {
-                (Storage.WhitelistType whitelist, bytes memory data) =
-                    abi.decode(collatInfoBC3M.whitelistData, (Storage.WhitelistType, bytes));
+                (Storage.WhitelistType whitelist, bytes memory data) = abi.decode(
+                    collatInfoBC3M.whitelistData,
+                    (Storage.WhitelistType, bytes)
+                );
                 address keyringGuard = abi.decode(data, (address));
                 assertEq(uint8(whitelist), uint8(Storage.WhitelistType.BACKED));
                 assertEq(keyringGuard, 0x9391B14dB2d43687Ea1f6E546390ED4b20766c46);
@@ -368,9 +371,13 @@ contract TransmuterUpdateFacets is Helpers, Test {
         assertEq(transmuter.isWhitelistedForCollateral(address(EUROC), WHALE_AGEUR), true);
         assertEq(transmuter.isWhitelistedForCollateral(address(BC3M), WHALE_AGEUR), true);
         assertEq(
-            transmuter.isWhitelistedForCollateral(address(EUROC), 0xB00b1E53909F8253783D8e54AEe462f99bAcb435), true
+            transmuter.isWhitelistedForCollateral(address(EUROC), 0xB00b1E53909F8253783D8e54AEe462f99bAcb435),
+            true
         );
-        assertEq(transmuter.isWhitelistedForCollateral(address(BC3M), 0xB00b1E53909F8253783D8e54AEe462f99bAcb435), true);
+        assertEq(
+            transmuter.isWhitelistedForCollateral(address(BC3M), 0xB00b1E53909F8253783D8e54AEe462f99bAcb435),
+            true
+        );
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -509,7 +516,7 @@ contract TransmuterUpdateFacets is Helpers, Test {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testFuzz_Upgrade_QuoteRedeemRandomFees(uint256[3] memory latestOracleValue) public {
-        (uint64 collatRatio,) = transmuter.getCollateralRatio();
+        (uint64 collatRatio, ) = transmuter.getCollateralRatio();
         uint256 amountBurnt = agEUR.balanceOf(WHALE_AGEUR);
         vm.prank(WHALE_AGEUR);
         (address[] memory tokens, uint256[] memory amounts) = transmuter.quoteRedemptionCurve(amountBurnt);
@@ -542,13 +549,23 @@ contract TransmuterUpdateFacets is Helpers, Test {
                                                          UTILS                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function _mintExactOutput(address owner, address tokenIn, uint256 amountStable, uint256 estimatedAmountIn)
-        internal
-    {
+    function _mintExactOutput(
+        address owner,
+        address tokenIn,
+        uint256 amountStable,
+        uint256 estimatedAmountIn
+    ) internal {
         vm.startPrank(owner);
         deal(tokenIn, owner, estimatedAmountIn);
         IERC20(tokenIn).approve(address(transmuter), type(uint256).max);
-        transmuter.swapExactOutput(amountStable, estimatedAmountIn, tokenIn, address(agEUR), owner, block.timestamp * 2);
+        transmuter.swapExactOutput(
+            amountStable,
+            estimatedAmountIn,
+            tokenIn,
+            address(agEUR),
+            owner,
+            block.timestamp * 2
+        );
         vm.stopPrank();
     }
 
@@ -560,10 +577,12 @@ contract TransmuterUpdateFacets is Helpers, Test {
         vm.stopPrank();
     }
 
-    function _burnExactInput(address owner, address tokenOut, uint256 amountStable, uint256 estimatedAmountOut)
-        internal
-        returns (bool burnMoreThanHad)
-    {
+    function _burnExactInput(
+        address owner,
+        address tokenOut,
+        uint256 amountStable,
+        uint256 estimatedAmountOut
+    ) internal returns (bool burnMoreThanHad) {
         // we need to increase the balance because fees are negative and we need to transfer
         // more than what we received with the mint
         if (IERC20(tokenOut).balanceOf(address(transmuter)) < estimatedAmountOut) {
@@ -576,13 +595,15 @@ contract TransmuterUpdateFacets is Helpers, Test {
         vm.stopPrank();
     }
 
-    function _burnExactOutput(address owner, address tokenOut, uint256 amountOut, uint256 estimatedStable)
-        internal
-        returns (bool)
-    {
+    function _burnExactOutput(
+        address owner,
+        address tokenOut,
+        uint256 amountOut,
+        uint256 estimatedStable
+    ) internal returns (bool) {
         // _logIssuedCollateral();
         vm.startPrank(owner);
-        (uint256 maxAmount,) = transmuter.getIssuedByCollateral(tokenOut);
+        (uint256 maxAmount, ) = transmuter.getIssuedByCollateral(tokenOut);
         uint256 balanceStableOwner = agEUR.balanceOf(owner);
         if (estimatedStable > maxAmount) vm.expectRevert();
         else if (estimatedStable > balanceStableOwner) vm.expectRevert("ERC20: burn amount exceeds balance");
@@ -601,12 +622,12 @@ contract TransmuterUpdateFacets is Helpers, Test {
     ) internal {
         uint256 amountInValueReceived;
         {
-            (,,,, uint256 redemptionPrice) = transmuter.getOracleValues(address(EUROC));
-            amountInValueReceived += redemptionPrice * amounts[0] / 10 ** 6;
+            (, , , , uint256 redemptionPrice) = transmuter.getOracleValues(address(EUROC));
+            amountInValueReceived += (redemptionPrice * amounts[0]) / 10 ** 6;
         }
         {
-            (,,,, uint256 redemptionPrice) = transmuter.getOracleValues(address(BC3M));
-            amountInValueReceived += redemptionPrice * amounts[1] / 10 ** 18;
+            (, , , , uint256 redemptionPrice) = transmuter.getOracleValues(address(BC3M));
+            amountInValueReceived += (redemptionPrice * amounts[1]) / 10 ** 18;
         }
 
         uint256 denom = (mintedStables * BASE_9);
@@ -617,7 +638,11 @@ contract TransmuterUpdateFacets is Helpers, Test {
             assertLe(amountInValueReceived, amountBurnt + 1);
             valueCheck = (amountBurnt * fee) / BASE_9;
         }
-        assertApproxEqAbs(amounts[0], (IERC20(EUROC).balanceOf(address(transmuter)) * amountBurnt * fee) / denom, 1 wei);
+        assertApproxEqAbs(
+            amounts[0],
+            (IERC20(EUROC).balanceOf(address(transmuter)) * amountBurnt * fee) / denom,
+            1 wei
+        );
         assertApproxEqAbs(amounts[1], (IERC20(BC3M).balanceOf(address(transmuter)) * amountBurnt * fee) / denom, 1 wei);
         if (collatRatio < BASE_9) {
             assertLe(amountInValueReceived, (collatRatio * amountBurnt) / BASE_9 + 1);
@@ -629,11 +654,15 @@ contract TransmuterUpdateFacets is Helpers, Test {
                                                         CHECKS                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function _checkOracleValues(address collateral, uint256 targetValue, uint128 firewallMint, uint128 firewallBurn)
-        internal
-    {
-        (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) =
-            transmuter.getOracleValues(collateral);
+    function _checkOracleValues(
+        address collateral,
+        uint256 targetValue,
+        uint128 firewallMint,
+        uint128 firewallBurn
+    ) internal {
+        (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter.getOracleValues(
+            collateral
+        );
         assertApproxEqRel(targetValue, redemption, 100 * BPS);
         assertEq(burn, redemption);
         if (redemption * BASE_18 < targetValue * (BASE_18 - firewallBurn)) {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import {MAX_MINT_FEE, MAX_BURN_FEE, BASE_6, BPS} from "contracts/utils/Constants.sol";
+import { MAX_MINT_FEE, MAX_BURN_FEE, BASE_6, BPS } from "contracts/utils/Constants.sol";
 import "utils/src/Constants.sol";
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

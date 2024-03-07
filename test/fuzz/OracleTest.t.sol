@@ -19,11 +19,11 @@ import { stdError } from "forge-std/Test.sol";
 contract OracleTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
 
-    uint256 internal _maxAmountWithoutDecimals = 10**15;
-    uint256 internal _minOracleValue = 10**3; // 10**(-5)
+    uint256 internal _maxAmountWithoutDecimals = 10 ** 15;
+    uint256 internal _minOracleValue = 10 ** 3; // 10**(-5)
     uint256 internal _maxOracleValue = BASE_18 / 100;
-    uint256 internal _minWallet = 10**18; // in base 18
-    uint256 internal _maxWallet = 10**(18 + 12); // in base 18
+    uint256 internal _minWallet = 10 ** 18; // in base 18
+    uint256 internal _maxWallet = 10 ** (18 + 12); // in base 18
 
     address[] internal _collaterals;
     AggregatorV3Interface[] internal _oracles;
@@ -58,9 +58,9 @@ contract OracleTest is Fixture, FunctionUtils {
         _oracles.push(oracleB);
         _oracles.push(oracleY);
 
-        _maxTokenAmount.push(_maxAmountWithoutDecimals * 10**IERC20Metadata(_collaterals[0]).decimals());
-        _maxTokenAmount.push(_maxAmountWithoutDecimals * 10**IERC20Metadata(_collaterals[1]).decimals());
-        _maxTokenAmount.push(_maxAmountWithoutDecimals * 10**IERC20Metadata(_collaterals[2]).decimals());
+        _maxTokenAmount.push(_maxAmountWithoutDecimals * 10 ** IERC20Metadata(_collaterals[0]).decimals());
+        _maxTokenAmount.push(_maxAmountWithoutDecimals * 10 ** IERC20Metadata(_collaterals[1]).decimals());
+        _maxTokenAmount.push(_maxAmountWithoutDecimals * 10 ** IERC20Metadata(_collaterals[2]).decimals());
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -305,8 +305,8 @@ contract OracleTest is Fixture, FunctionUtils {
             if (newTargetType[i] == 0) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 targetPrice = newCircuitChainIsMultiplied[i] == 1
-                    ? (BASE_18 * uint256(value)) / 10**(newChainlinkDecimals[i])
-                    : (BASE_18 * 10**(newChainlinkDecimals[i])) / uint256(value);
+                    ? (BASE_18 * uint256(value)) / 10 ** (newChainlinkDecimals[i])
+                    : (BASE_18 * 10 ** (newChainlinkDecimals[i])) / uint256(value);
             } else if (newTargetType[i] == 1 || newTargetType[i] == 2 || newTargetType[i] == 3) targetPrice = BASE_18;
             else targetPrice = latestExchangeRateStakeETH[newTargetType[i] - 4];
 
@@ -315,8 +315,8 @@ contract OracleTest is Fixture, FunctionUtils {
             if (newReadType[i] == 0) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 oracleRedemption = newCircuitChainIsMultiplied[i] == 1
-                    ? (quoteAmount * uint256(value)) / 10**(newChainlinkDecimals[i])
-                    : (quoteAmount * 10**(newChainlinkDecimals[i])) / uint256(value);
+                    ? (quoteAmount * uint256(value)) / 10 ** (newChainlinkDecimals[i])
+                    : (quoteAmount * 10 ** (newChainlinkDecimals[i])) / uint256(value);
             } else if (newReadType[i] == 1) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 oracleRedemption = uint256(value) * 1e12;
@@ -351,8 +351,8 @@ contract OracleTest is Fixture, FunctionUtils {
             if (newTargetType[i] == 0) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 targetPrice = newCircuitChainIsMultiplied[i] == 1
-                    ? (BASE_18 * uint256(value)) / 10**(newChainlinkDecimals[i])
-                    : (BASE_18 * 10**(newChainlinkDecimals[i])) / uint256(value);
+                    ? (BASE_18 * uint256(value)) / 10 ** (newChainlinkDecimals[i])
+                    : (BASE_18 * 10 ** (newChainlinkDecimals[i])) / uint256(value);
             } else if (newTargetType[i] == 1 || newTargetType[i] == 2 || newTargetType[i] == 3) targetPrice = BASE_18;
             else targetPrice = latestExchangeRateStakeETH[newTargetType[i] - 4];
 
@@ -361,8 +361,8 @@ contract OracleTest is Fixture, FunctionUtils {
             if (newReadType[i] == 0) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 oracleMint = newCircuitChainIsMultiplied[i] == 1
-                    ? (quoteAmount * uint256(value)) / 10**(newChainlinkDecimals[i])
-                    : (quoteAmount * 10**(newChainlinkDecimals[i])) / uint256(value);
+                    ? (quoteAmount * uint256(value)) / 10 ** (newChainlinkDecimals[i])
+                    : (quoteAmount * 10 ** (newChainlinkDecimals[i])) / uint256(value);
             } else if (newReadType[i] == 1) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 oracleMint = uint256(value) * 1e12;
@@ -405,8 +405,8 @@ contract OracleTest is Fixture, FunctionUtils {
             if (newTargetType[i] == 0) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 targetPrice = newCircuitChainIsMultiplied[i] == 1
-                    ? (BASE_18 * uint256(value)) / 10**(newChainlinkDecimals[i])
-                    : (BASE_18 * 10**(newChainlinkDecimals[i])) / uint256(value);
+                    ? (BASE_18 * uint256(value)) / 10 ** (newChainlinkDecimals[i])
+                    : (BASE_18 * 10 ** (newChainlinkDecimals[i])) / uint256(value);
             } else if (newTargetType[i] == 1 || newTargetType[i] == 2 || newTargetType[i] == 3) targetPrice = BASE_18;
             else targetPrice = latestExchangeRateStakeETH[newTargetType[i] - 4];
 
@@ -415,15 +415,15 @@ contract OracleTest is Fixture, FunctionUtils {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 if (newQuoteType[i] == 0) {
                     if (newCircuitChainIsMultiplied[i] == 1) {
-                        oracleBurn = (BASE_18 * uint256(value)) / 10**(newChainlinkDecimals[i]);
+                        oracleBurn = (BASE_18 * uint256(value)) / 10 ** (newChainlinkDecimals[i]);
                     } else {
-                        oracleBurn = (BASE_18 * 10**(newChainlinkDecimals[i])) / uint256(value);
+                        oracleBurn = (BASE_18 * 10 ** (newChainlinkDecimals[i])) / uint256(value);
                     }
                 } else {
                     if (newCircuitChainIsMultiplied[i] == 1) {
-                        oracleBurn = (targetPrice * uint256(value)) / 10**(newChainlinkDecimals[i]);
+                        oracleBurn = (targetPrice * uint256(value)) / 10 ** (newChainlinkDecimals[i]);
                     } else {
-                        oracleBurn = (targetPrice * 10**(newChainlinkDecimals[i])) / uint256(value);
+                        oracleBurn = (targetPrice * 10 ** (newChainlinkDecimals[i])) / uint256(value);
                     }
                 }
             } else if (newReadType[i] == 1) {
@@ -514,7 +514,7 @@ contract OracleTest is Fixture, FunctionUtils {
             if (price <= 0) vm.expectRevert(Errors.InvalidRate.selector);
             (, , , , uint256 redemption2) = transmuter.getOracleValues(address(_collaterals[i]));
             if (price <= 0) return;
-            uint256 normalizer = expos[i] < 0 ? 10**uint32(-expo) : 10**uint32(expo);
+            uint256 normalizer = expos[i] < 0 ? 10 ** uint32(-expo) : 10 ** uint32(expo);
             prices[i] = uint64(price);
             if (circuitIsMultiplied[i] == 1 && expos[i] < 0) assertEq(redemption2, (BASE_18 * prices[i]) / normalizer);
             else if (circuitIsMultiplied[i] == 1 && expos[i] >= 0)
@@ -554,8 +554,8 @@ contract OracleTest is Fixture, FunctionUtils {
             if (newTargetType[i] == 0) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 targetPrice = newCircuitChainIsMultiplied[i] == 1
-                    ? (BASE_18 * uint256(value)) / 10**(newChainlinkDecimals[i])
-                    : (BASE_18 * 10**(newChainlinkDecimals[i])) / uint256(value);
+                    ? (BASE_18 * uint256(value)) / 10 ** (newChainlinkDecimals[i])
+                    : (BASE_18 * 10 ** (newChainlinkDecimals[i])) / uint256(value);
             } else if (newTargetType[i] == 1 || newTargetType[i] == 2 || newTargetType[i] == 3) targetPrice = BASE_18;
             else targetPrice = latestExchangeRateStakeETH[newTargetType[i] - 4];
 
@@ -564,8 +564,8 @@ contract OracleTest is Fixture, FunctionUtils {
             if (newReadType[i] == 0) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 oracleMint = newCircuitChainIsMultiplied[i] == 1
-                    ? (quoteAmount * uint256(value)) / 10**(newChainlinkDecimals[i])
-                    : (quoteAmount * 10**(newChainlinkDecimals[i])) / uint256(value);
+                    ? (quoteAmount * uint256(value)) / 10 ** (newChainlinkDecimals[i])
+                    : (quoteAmount * 10 ** (newChainlinkDecimals[i])) / uint256(value);
             } else if (newReadType[i] == 1) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 oracleMint = uint256(value) * 1e12;
@@ -609,8 +609,8 @@ contract OracleTest is Fixture, FunctionUtils {
             if (newTargetType[i] == 0) {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 targetPrice = newCircuitChainIsMultiplied[i] == 1
-                    ? (BASE_18 * uint256(value)) / 10**8
-                    : (BASE_18 * 10**8) / uint256(value);
+                    ? (BASE_18 * uint256(value)) / 10 ** 8
+                    : (BASE_18 * 10 ** 8) / uint256(value);
             } else if (newTargetType[i] == 1 || newTargetType[i] == 2 || newTargetType[i] == 3) targetPrice = BASE_18;
             else targetPrice = latestExchangeRateStakeETH[newTargetType[i] - 4];
 
@@ -619,15 +619,15 @@ contract OracleTest is Fixture, FunctionUtils {
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
                 if (newQuoteType[i] == 0) {
                     if (newCircuitChainIsMultiplied[i] == 1) {
-                        oracleBurn = (BASE_18 * uint256(value)) / 10**8;
+                        oracleBurn = (BASE_18 * uint256(value)) / 10 ** 8;
                     } else {
-                        oracleBurn = (BASE_18 * 10**8) / uint256(value);
+                        oracleBurn = (BASE_18 * 10 ** 8) / uint256(value);
                     }
                 } else {
                     if (newCircuitChainIsMultiplied[i] == 1) {
-                        oracleBurn = (targetPrice * uint256(value)) / 10**8;
+                        oracleBurn = (targetPrice * uint256(value)) / 10 ** 8;
                     } else {
-                        oracleBurn = (targetPrice * 10**8) / uint256(value);
+                        oracleBurn = (targetPrice * 10 ** 8) / uint256(value);
                     }
                 }
             } else if (newReadType[i] == 1) {
@@ -765,9 +765,7 @@ contract OracleTest is Fixture, FunctionUtils {
         assertEq(heartbeatContract, heartbeat);
     }
 
-    function testFuzz_updateOracle_Deviation_Success(uint96 deviationThreshold, uint256 newOracleValue)
-        public
-    {
+    function testFuzz_updateOracle_Deviation_Success(uint96 deviationThreshold, uint256 newOracleValue) public {
         vm.prank(governor);
         transmuter.toggleTrusted(alice, Storage.TrustedType.Updater);
 
@@ -820,9 +818,7 @@ contract OracleTest is Fixture, FunctionUtils {
         assertEq(lastUpdateTimestamp, block.timestamp);
     }
 
-    function testFuzz_updateOracle_BothConditions_Success(uint96 deviationThreshold, uint32 heartbeat)
-        public
-    {
+    function testFuzz_updateOracle_BothConditions_Success(uint96 deviationThreshold, uint32 heartbeat) public {
         vm.prank(governor);
         transmuter.toggleTrusted(alice, Storage.TrustedType.Updater);
 
@@ -1056,10 +1052,9 @@ contract OracleTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function _updateTargetOracleStalePeriods(uint32[3] memory newStalePeriods)
-        internal
-        returns (uint256 minStalePeriod)
-    {
+    function _updateTargetOracleStalePeriods(
+        uint32[3] memory newStalePeriods
+    ) internal returns (uint256 minStalePeriod) {
         minStalePeriod = type(uint256).max;
         vm.startPrank(governor);
         for (uint256 i; i < _collaterals.length; i++) {
