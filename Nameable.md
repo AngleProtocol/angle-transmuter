@@ -18,7 +18,7 @@ You can then compare the two files to see for possible storage collisions.
 To deploy the contracts, you can run the following command:
 
 ```bash
-CHAIN_ID=ID forge script UpgradeAgTokenNameableScript
+CHAIN_ID=ID forge script DeploySavingsNameable
 ```
 
 ## Foundry

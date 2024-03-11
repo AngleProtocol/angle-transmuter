@@ -10,6 +10,10 @@ import { IERC20Metadata } from "oz/interfaces/IERC20Metadata.sol";
 import { TransparentUpgradeableProxy } from "oz/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 contract SavingsNameablesTest is Test, Helper {
+    // EUR: base:ProxyAdminGuardian, polygonZKEVM:ProxyAdminGuardian
+    // USD: gnosis: name and symbol inversed
+    uint256 constant CHAIN = CHAIN_ETHEREUM;
+    string constant CHAIN_NAME = "mainnet";
 
     address public savings;
     address public savingsImpl;
@@ -26,12 +30,12 @@ contract SavingsNameablesTest is Test, Helper {
     uint256 public previewRedeem;
 
     function setUp() public {
-        vm.createSelectFork("mainnet");
+        vm.createSelectFork(CHAIN_NAME);
 
-        savings = _chainToContract(CHAIN_ETHEREUM, ContractType.StEUR);
+        savings = _chainToContract(CHAIN, ContractType.StUSD);
 
-        assertEq(IERC20Metadata(savings).name(), "Staked agEUR");
-        assertEq(IERC20Metadata(savings).symbol(), "stEUR");
+        assertEq(IERC20Metadata(savings).name(), "Staked agUSD");
+        assertEq(IERC20Metadata(savings).symbol(), "stUSD");
         rate = SavingsNameable(savings).rate();
         lastUpdate = SavingsNameable(savings).lastUpdate();
         paused = SavingsNameable(savings).paused();
@@ -44,23 +48,31 @@ contract SavingsNameablesTest is Test, Helper {
         previewRedeem = SavingsNameable(savings).previewRedeem(BASE_18);
 
         savingsImpl = address(new SavingsNameable());
-        _upgradeContract("Staked EURA", "stEUR");
     }
 
     function _upgradeContract(string memory name, string memory symbol) internal {
-        ProxyAdmin proxyAdmin = ProxyAdmin(_chainToContract(CHAIN_ETHEREUM, ContractType.ProxyAdmin));
+        ProxyAdmin proxyAdmin;
+        if(CHAIN == CHAIN_BASE || CHAIN == CHAIN_POLYGONZKEVM) proxyAdmin = ProxyAdmin(_chainToContract(CHAIN, ContractType.ProxyAdminGuardian));
+        else proxyAdmin = ProxyAdmin(_chainToContract(CHAIN, ContractType.ProxyAdmin));
 
-        address governor = _chainToContract(CHAIN_ETHEREUM, ContractType.GovernorMultisig);
-        vm.startPrank(governor, governor);
-
+        address governor = _chainToContract(CHAIN, ContractType.GovernorMultisig);
+        address guardian = _chainToContract(CHAIN, ContractType.GuardianMultisig);
+        
+        // vm.prank(guardian, guardian);
+        if(CHAIN == CHAIN_BASE || CHAIN == CHAIN_POLYGONZKEVM) vm.prank(guardian, guardian);
+        else vm.prank(governor, governor);
         proxyAdmin.upgrade(TransparentUpgradeableProxy(payable(savings)), savingsImpl);
+        
+        vm.prank(governor, governor);
         SavingsNameable(savings).setNameAndSymbol(name, symbol);
     }
 
 
     function test_NameAndSymbol() public {
-        assertEq(IERC20Metadata(savings).name(), "Staked EURA");
-        assertEq(IERC20Metadata(savings).symbol(), "stEUR");
+        _upgradeContract("Staked USDA", "stUSD");
+
+        assertEq(IERC20Metadata(savings).name(), "Staked USDA");
+        assertEq(IERC20Metadata(savings).symbol(), "stUSD");
     }
 
     function test_Rate() public {

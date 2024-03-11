@@ -10,7 +10,7 @@ via_ir = true
 sizes = true
 optimizer = true
 optimizer_runs=1000
-solc_version = '0.8.19'
+solc_version = '0.8.22'
 ffi = true
 fs_permissions = [{ access = "read-write", path = "./scripts/selectors.json"}, { access = "read-write", path = "./scripts/vanity.json"}]
 memory_limit = 1000043554432
@@ -31,7 +31,7 @@ polygon = "${ETH_NODE_URI_POLYGON}"
 fork = "${ETH_NODE_URI_FORK}"
 avalanche = "${ETH_NODE_URI_AVALANCHE}"
 celo = "${ETH_NODE_URI_CELO}"
-polygonzkevm = "${ETH_NODE_URI_POLYGONZKEVM}"
+polygonzkevm = "${ETH_NODE_URI_POLYGON_ZKEVM}"
 bsc = "${ETH_NODE_URI_BSC}"
 base = "${ETH_NODE_URI_BASE}"
 linea = "${ETH_NODE_URI_LINEA}"
@@ -45,7 +45,7 @@ polygon = { key = "${POLYGON_ETHERSCAN_API_KEY}" }
 avalanche = { key = "${AVALANCHE_ETHERSCAN_API_KEY}" }
 celo = { key = "${CELO_ETHERSCAN_API_KEY}", url = "https://api.celoscan.io/api" }
 base = { key = "${BASE_ETHERSCAN_API_KEY}", url = "https://api.basescan.org/api" }
-polygon-zkevm = { key = "${POLYGONZKEVM_ETHERSCAN_API_KEY}", url = "https://api-zkevm.polygonscan.com/api" }
+polygon-zkevm = { key = "${POLYGON_ZKEVM_ETHERSCAN_API_KEY}", url = "https://api-zkevm.polygonscan.com/api" }
 bsc = { key = "${BSC_ETHERSCAN_API_KEY}"}
 linea = { key = "${LINEA_ETHERSCAN_API_KEY}"}
 
