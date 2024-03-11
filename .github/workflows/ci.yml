@@ -21,6 +21,11 @@ jobs:
           node-version: 18
           cache: "yarn"
 
+      - name: Setup repo
+        uses: ./.github/actions/setup-repo
+        with:
+          registry-token: ${{ secrets.GH_REGISTRY_ACCESS_TOKEN }}
+
       - name: Install dependencies
         run: yarn install
 
@@ -44,8 +49,13 @@ jobs:
         with:
           version: nightly
 
-      - name: Install node_modules
-        run: yarn install
+      - name: Setup repo
+        uses: ./.github/actions/setup-repo
+        with:
+          registry-token: ${{ secrets.GH_REGISTRY_ACCESS_TOKEN }}
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
 
       - name: Compile foundry
         run: yarn compile --sizes
