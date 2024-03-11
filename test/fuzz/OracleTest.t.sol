@@ -1068,17 +1068,14 @@ contract OracleTest is Fixture, FunctionUtils {
         vm.prank(governor);
         transmuter.toggleTrusted(alice, Storage.TrustedType.Updater);
 
-        uint256 indexCollat = 0;
-        address collateral = _collaterals[indexCollat];
-
         {
             (Storage.OracleReadType readType, , bytes memory data, , bytes memory hyperparameters) = transmuter
-                .getOracle(address(collateral));
-            (uint256 oracleValue, , , , ) = transmuter.getOracleValues(collateral);
+                .getOracle(address(_collaterals[0]));
+            (uint256 oracleValue, , , , ) = transmuter.getOracleValues(_collaterals[0]);
 
             vm.prank(governor);
             transmuter.setOracle(
-                collateral,
+                _collaterals[0],
                 abi.encode(
                     readType,
                     Storage.OracleReadType.MAX,
@@ -1091,7 +1088,7 @@ contract OracleTest is Fixture, FunctionUtils {
 
         // Update the oracles
         {
-            (, int256 oracleValueTmp, , , ) = _oracles[indexCollat].latestRoundData();
+            (, int256 oracleValueTmp, , , ) = _oracles[0].latestRoundData();
             uint256 updateOracleValue = (uint256(oracleValueTmp) * (BASE_18 + uint256(deviationThreshold))) /
                 BASE_18 +
                 1;
@@ -1100,13 +1097,13 @@ contract OracleTest is Fixture, FunctionUtils {
             newOracleValue = bound(newOracleValue, updateOracleValue, _maxOracleValue);
             uint256[3] memory latestOracleValue = [newOracleValue, BASE_8, BASE_8];
             latestOracleValue = _updateOracleValues(latestOracleValue);
-            newOracleValue = latestOracleValue[indexCollat];
+            newOracleValue = latestOracleValue[0];
         }
 
         vm.prank(alice);
-        transmuter.updateOracle(collateral);
+        transmuter.updateOracle(_collaterals[0]);
 
-        (, , , bytes memory targetData, ) = transmuter.getOracle(address(collateral));
+        (, , , bytes memory targetData, ) = transmuter.getOracle(address(_collaterals[0]));
         (uint256 maxValue, uint96 deviationThresholdContract, uint96 lastUpdateTimestamp, ) = abi.decode(
             targetData,
             (uint256, uint96, uint96, uint32)
