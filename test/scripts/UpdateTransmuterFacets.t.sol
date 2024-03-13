@@ -79,7 +79,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
 
         replaceFacetNames.push("Swapper");
         facetAddressList.push(address(new Swapper()));
-        console.log("Swapper deployed at: ", facetAddressList[facetAddressList.length - 1]);
+        console.log("Swapper deployed at: ", facetAddressList[facetAddressList.length - 1]);        
 
         addFacetNames.push("SettersGovernor");
         addFacetAddressList.push(settersGovernor);
@@ -117,7 +117,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
                     facetAddress: addFacetAddressList[i],
                     action: Storage.FacetCutAction.Add,
                     functionSelectors: selectors
-                });
+                });   
             }
         }
 

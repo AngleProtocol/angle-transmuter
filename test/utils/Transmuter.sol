@@ -10,7 +10,6 @@ import { DiamondCut } from "contracts/transmuter/facets/DiamondCut.sol";
 import { DiamondEtherscan } from "contracts/transmuter/facets/DiamondEtherscan.sol";
 import { DiamondLoupe } from "contracts/transmuter/facets/DiamondLoupe.sol";
 import { Getters } from "contracts/transmuter/facets/Getters.sol";
-import { Oracle } from "contracts/transmuter/facets/Oracle.sol";
 import { Redeemer } from "contracts/transmuter/facets/Redeemer.sol";
 import { RewardHandler } from "contracts/transmuter/facets/RewardHandler.sol";
 import { SettersGovernor } from "contracts/transmuter/facets/SettersGovernor.sol";
@@ -42,9 +41,6 @@ abstract contract Transmuter is Helper {
 
         facetNames.push("Getters");
         facetAddressList.push(address(new Getters()));
-
-        facetNames.push("Oracle");
-        facetAddressList.push(address(new Oracle()));
 
         facetNames.push("Redeemer");
         facetAddressList.push(address(new Redeemer()));

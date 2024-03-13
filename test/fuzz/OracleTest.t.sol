@@ -701,6 +701,7 @@ contract OracleTest is Fixture, FunctionUtils {
                     assertEq(deviation, oracleDeviation);
                 }
             }
+            if (newReadType[i] != 1 && targetPrice < oracleBurn && oracleBurn * BASE_18 < targetPrice * (BASE_18 + mintBurnFirewall[i])) oracleBurn = targetPrice;
             assertEq(burn, oracleBurn);
         }
         assertEq(minDeviation, minRatio);
