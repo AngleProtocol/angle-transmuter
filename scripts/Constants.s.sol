@@ -22,9 +22,9 @@ address constant BC3M = 0x2F123cF3F37CE3328CC9B5b8415f9EC5109b45e7;
 address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
 uint128 constant FIREWALL_MINT_EUROC = 0;
-uint128 constant FIREWALL_BURN_EUROC = uint128(5 * BPS);
+uint128 constant USER_PROTECTION_EUROC = uint128(5 * BPS);
 uint128 constant FIREWALL_MINT_BC3M = uint128(BASE_18);
-uint128 constant FIREWALL_BURN_BC3M = uint128(100 * BPS);
+uint128 constant USER_PROTECTION_BC3M = uint128(10 * BPS);
 uint96 constant DEVIATION_THRESHOLD_BC3M = uint96(100 * BPS);
 uint32 constant HEARTBEAT = uint32(1 days);
 

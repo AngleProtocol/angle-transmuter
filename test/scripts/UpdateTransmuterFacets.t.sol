@@ -16,9 +16,9 @@ import {
     NEW_KEEPER,
     DEVIATION_THRESHOLD_BC3M,
     FIREWALL_MINT_EUROC,
-    FIREWALL_BURN_EUROC,
+    USER_PROTECTION_EUROC,
     FIREWALL_MINT_BC3M,
-    FIREWALL_BURN_BC3M,
+    USER_PROTECTION_BC3M,
     HEARTBEAT
 } from "../../scripts/Constants.s.sol";
 
@@ -162,7 +162,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
             targetTypeEUROC,
             oracleDataEUROC,
             targetDataEUROC,
-            abi.encode(FIREWALL_MINT_EUROC, FIREWALL_BURN_EUROC)
+            abi.encode(FIREWALL_MINT_EUROC, USER_PROTECTION_EUROC)
         );
         transmuter.setOracle(EUROC, oracleConfigEUROC);
 
@@ -171,7 +171,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
             Storage.OracleReadType.MAX,
             oracleDataBC3M,
             abi.encode(currentBC3MPrice, DEVIATION_THRESHOLD_BC3M, uint96(block.timestamp), HEARTBEAT),
-            abi.encode(FIREWALL_MINT_BC3M, FIREWALL_BURN_BC3M)
+            abi.encode(FIREWALL_MINT_BC3M, USER_PROTECTION_BC3M)
         );
         transmuter.setOracle(BC3M, oracleConfigBC3M);
 
@@ -393,8 +393,8 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testUnit_Upgrade_getOracleValues_Success() external {
-        _checkOracleValues(address(EUROC), BASE_18, FIREWALL_MINT_EUROC, FIREWALL_BURN_EUROC);
-        _checkOracleValues(address(BC3M), (11944 * BASE_18) / 100, FIREWALL_MINT_BC3M, FIREWALL_BURN_BC3M);
+        _checkOracleValues(address(EUROC), BASE_18, FIREWALL_MINT_EUROC, USER_PROTECTION_EUROC);
+        _checkOracleValues(address(BC3M), (11949 * BASE_18) / 100, FIREWALL_MINT_BC3M, USER_PROTECTION_BC3M);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -662,25 +662,27 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
                                                         CHECKS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function _checkOracleValues(address collateral, uint256 targetValue, uint128 firewallMint, uint128 firewallBurn)
+    function _checkOracleValues(address collateral, uint256 targetValue, uint128 firewallMint, uint128 userProtection)
         internal
     {
         (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) =
             transmuter.getOracleValues(collateral);
         assertApproxEqRel(targetValue, redemption, 200 * BPS);
-        if (targetValue < redemption && redemption * BASE_18 < targetValue * (BASE_18 + firewallMint) ) assertEq(burn, targetValue);
+
+        if (targetValue * (BASE_18 - userProtection) < redemption * BASE_18 && redemption * BASE_18 < targetValue * (BASE_18 + userProtection) ) assertEq(burn, targetValue);
         else assertEq(burn, redemption);
-        if (redemption * BASE_18 < targetValue * (BASE_18 - firewallBurn)) {
+        
+        if(targetValue * (BASE_18 - userProtection) < redemption * BASE_18 && redemption * BASE_18 < targetValue * (BASE_18 + userProtection)){
+            assertEq(mint,targetValue);
+            assertEq(ratio,BASE_18);
+        } else if (redemption * BASE_18 > targetValue * (BASE_18 + firewallMint)) {
+            assertEq(mint, targetValue);
+            assertEq(ratio, BASE_18);
+        } else if(redemption < targetValue){
             assertEq(mint, redemption);
             assertEq(ratio, (redemption * BASE_18) / targetValue);
-        } else if (redemption < targetValue) {
+        } else{
             assertEq(mint, redemption);
-            assertEq(ratio, BASE_18);
-        } else if (redemption * BASE_18 < targetValue * ((BASE_18 + firewallMint))) {
-            assertEq(mint, redemption);
-            assertEq(ratio, BASE_18);
-        } else {
-            assertEq(mint, targetValue);
             assertEq(ratio, BASE_18);
         }
     }

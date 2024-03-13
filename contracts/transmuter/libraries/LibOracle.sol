@@ -27,13 +27,13 @@ library LibOracle {
             OracleReadType targetType,
             bytes memory oracleData,
             bytes memory targetData,
-
         ) = _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readRedemption();
         } else {
-            (oracleValue, ) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
+            // We consider the actual oracle value and not the processed one as it doesn't impact directly the redemption process
+            (oracleValue, ) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, 0);
             // We don't consider the mint firewall as `readRedemption` is only used to compute the collateral ratio
             // `getCollateralRatio` is only used in `_quoteRedemptionCurve` and `accrue` on the savingsVest
             // `_quoteRedemptionCurve` use the collateral ratio to compute the penalty factor. Artificially increase the
@@ -62,9 +62,9 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readMint();
         }
+        (uint128 mintDeviation, uint128 userDeviation ) = abi.decode(hyperparameters, (uint128, uint128));
         uint256 targetPrice;
-        (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
-        (uint128 mintDeviation, ) = abi.decode(hyperparameters, (uint128, uint128));
+        (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, userDeviation);
         oracleValue = _firewallMint(targetPrice, oracleValue, mintDeviation);
     }
 
@@ -84,12 +84,10 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readBurn();
         }
+        (, uint128 userDeviation) = abi.decode(hyperparameters, (uint128, uint128));
         uint256 targetPrice;
-        (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
-        (uint128 mintDeviation, uint128 burnDeviation) = abi.decode(hyperparameters, (uint128, uint128));
-        ratio = _firewallBurnRatio(targetPrice, oracleValue, burnDeviation);
-        // oracle value is set afterwards to not impact the ratio
-        oracleValue = _firewallBurn(targetPrice, oracleValue, mintDeviation);
+        (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, userDeviation);
+        ratio = _burnRatio(targetPrice, oracleValue);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -137,10 +135,13 @@ library LibOracle {
         OracleReadType oracleType,
         OracleReadType targetType,
         bytes memory oracleData,
-        bytes memory targetData
+        bytes memory targetData,
+        uint256 deviation
     ) internal view returns (uint256 oracleValue, uint256 targetPrice) {
         targetPrice = read(targetType, BASE_18, targetData);
         oracleValue = read(oracleType, targetPrice, oracleData);
+        // Post process of the oracle value, it tolerates small deviation from target 
+        oracleValue = _userOracleProtection(targetPrice, oracleValue, deviation);
     }
 
     /// @notice Reads an oracle value (or a target oracle value) for an asset based on its data parsed `oracleConfig`
@@ -261,22 +262,24 @@ library LibOracle {
         return oracleValue;
     }
 
-    /// @notice  in case the oracle value reported is under a reasonable threshold to the target
-    /// --> disregard the oracle value and return the target price
-    function _firewallBurn(uint256 targetPrice, uint256 oracleValue, uint256 deviation) private pure returns (uint256) {
-        if (oracleValue > targetPrice && oracleValue * BASE_18 < targetPrice * (BASE_18 + deviation)) oracleValue = targetPrice;
-        return oracleValue;
+    /// @notice Firewall in case the oracle value reported is low compared to the target
+    function _burnRatio(
+        uint256 targetPrice,
+        uint256 oracleValue
+    ) private pure returns (uint256 ratio) {
+        ratio = BASE_18;
+        if (oracleValue < targetPrice) ratio = (oracleValue * BASE_18) / targetPrice;
     }
 
-    /// @notice Firewall in case the oracle value reported is low compared to the target
-    /// --> disregard if in acceptable bounds of the target price
-    function _firewallBurnRatio(
+    /// @notice Firewall in case the oracle value reported is under a reasonable threshold to the target
+    /// --> disregard the oracle value and return the target price
+    function _userOracleProtection(
         uint256 targetPrice,
         uint256 oracleValue,
         uint256 deviation
-    ) private pure returns (uint256 ratio) {
-        ratio = BASE_18;
-        if (oracleValue * BASE_18 < targetPrice * (BASE_18 - deviation)) ratio = (oracleValue * BASE_18) / targetPrice;
+    ) private pure returns (uint256) {
+        if (targetPrice * (BASE_18 - deviation) < oracleValue * BASE_18 && oracleValue * BASE_18 < targetPrice * (BASE_18 + deviation)) oracleValue = targetPrice;
+        return oracleValue;
     }
 
     function updateOracle(address collateral) internal {
