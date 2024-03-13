@@ -86,8 +86,10 @@ library LibOracle {
         }
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
-        (, uint128 burnDeviation) = abi.decode(hyperparameters, (uint128, uint128));
-        ratio = _firewallBurn(targetPrice, oracleValue, burnDeviation);
+        (uint128 mintDeviation, uint128 burnDeviation) = abi.decode(hyperparameters, (uint128, uint128));
+        ratio = _firewallBurnRatio(targetPrice, oracleValue, burnDeviation);
+        // oracle value is set afterwards to not impact the ratio
+        oracleValue = _firewallBurn(targetPrice, oracleValue, mintDeviation);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -252,14 +254,23 @@ library LibOracle {
 
     /// @notice Firewall in case the oracle value reported is too high compared to the target
     /// --> disregard the oracle value and return the target price
+    /// TODO we may want something continuous ans therefore set 
+    /// `oracleValue = targetPrice * (BASE_18 + deviation) / BASE_18`
     function _firewallMint(uint256 targetPrice, uint256 oracleValue, uint256 deviation) private pure returns (uint256) {
         if (targetPrice * (BASE_18 + deviation) < oracleValue * BASE_18) oracleValue = targetPrice;
         return oracleValue;
     }
 
+    /// @notice  in case the oracle value reported is under a reasonable threshold to the target
+    /// --> disregard the oracle value and return the target price
+    function _firewallBurn(uint256 targetPrice, uint256 oracleValue, uint256 deviation) private pure returns (uint256) {
+        if (oracleValue > targetPrice && oracleValue * BASE_18 < targetPrice * (BASE_18 + deviation)) oracleValue = targetPrice;
+        return oracleValue;
+    }
+
     /// @notice Firewall in case the oracle value reported is low compared to the target
     /// --> disregard if in acceptable bounds of the target price
-    function _firewallBurn(
+    function _firewallBurnRatio(
         uint256 targetPrice,
         uint256 oracleValue,
         uint256 deviation

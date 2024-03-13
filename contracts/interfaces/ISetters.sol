@@ -40,6 +40,9 @@ interface ISettersGovernor {
     /// @notice Sets the `oracleConfig` used to read the value of `collateral` for the mint, burn and redemption
     /// operations
     function setOracle(address collateral, bytes memory oracleConfig) external;
+
+    /// @notice Update oracle data for a given `collateral`
+    function updateOracle(address collateral) external;
 }
 
 /// @title ISettersGovernor

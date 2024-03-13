@@ -12,6 +12,8 @@ contract Utils is Script, CommonUtils {
     using strings for *;
 
     string constant JSON_SELECTOR_PATH = "./scripts/selectors.json";
+    string constant JSON_SELECTOR_PATH_REPLACE = "./scripts/selectors_replace.json";
+    string constant JSON_SELECTOR_PATH_ADD = "./scripts/selectors_add.json";
     string constant JSON_VANITY_PATH = "./scripts/vanity.json";
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

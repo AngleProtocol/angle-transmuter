@@ -1394,17 +1394,21 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256 minDeviation = BASE_8;
         uint256 oracleValue;
         for (uint256 i; i < _oracles.length; i++) {
+            uint128 mintFirewall;
             uint128 burnFirewall;
             {
                 (, , , , bytes memory hyperparameters) = transmuter.getOracle(address(_collaterals[i]));
-                (, burnFirewall) = abi.decode(hyperparameters, (uint128, uint128));
+                (mintFirewall, burnFirewall) = abi.decode(hyperparameters, (uint128, uint128));
             }
             (, int256 oracleValueTmp, , , ) = _oracles[i].latestRoundData();
             if (
                 BASE_8 * (BASE_18 - burnFirewall) > uint256(oracleValueTmp) * BASE_18 &&
                 minDeviation > uint256(oracleValueTmp)
             ) minDeviation = uint256(oracleValueTmp);
-            if (i == fromToken) oracleValue = uint256(oracleValueTmp);
+            if (i == fromToken) {
+                oracleValue = uint256(oracleValueTmp);
+                if (BASE_8 < oracleValue && oracleValue * BASE_18 < BASE_8 * (BASE_18 + mintFirewall)) oracleValue = BASE_8;
+            }
         }
         return (amount * minDeviation) / oracleValue;
     }

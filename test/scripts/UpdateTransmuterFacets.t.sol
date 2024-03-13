@@ -26,7 +26,6 @@ import { Helpers } from "../../scripts/Helpers.s.sol";
 import "contracts/utils/Errors.sol" as Errors;
 import "contracts/transmuter/Storage.sol" as Storage;
 import { Getters } from "contracts/transmuter/facets/Getters.sol";
-import { Oracle } from "contracts/transmuter/facets/Oracle.sol";
 import { Redeemer } from "contracts/transmuter/facets/Redeemer.sol";
 import { SettersGovernor } from "contracts/transmuter/facets/SettersGovernor.sol";
 import { SettersGuardian } from "contracts/transmuter/facets/SettersGuardian.sol";
@@ -42,7 +41,7 @@ interface OldTransmuter {
     ) external view returns (Storage.OracleReadType, Storage.OracleReadType, bytes memory, bytes memory);
 }
 
-contract UpdateTransmuterFacets is Helpers, Test {
+contract UpdateTransmuterFacetsTest is Helpers, Test {
     using stdJson for string;
 
     uint256 public CHAIN_SOURCE;
@@ -52,6 +51,7 @@ contract UpdateTransmuterFacets is Helpers, Test {
     string[] replaceFacetNames;
     string[] addFacetNames;
     address[] facetAddressList;
+    address[] addFacetAddressList;
 
     ITransmuter transmuter;
     IERC20 agEUR;
@@ -64,6 +64,7 @@ contract UpdateTransmuterFacets is Helpers, Test {
 
         CHAIN_SOURCE = CHAIN_ETHEREUM;
 
+        ethereumFork = vm.createFork(vm.envString("ETH_NODE_URI_MAINNET"),19425035);
         vm.selectFork(forkIdentifier[CHAIN_SOURCE]);
 
         governor = _chainToContract(CHAIN_SOURCE, ContractType.Timelock);
@@ -82,23 +83,23 @@ contract UpdateTransmuterFacets is Helpers, Test {
         console.log("Redeemer deployed at: ", facetAddressList[facetAddressList.length - 1]);
 
         replaceFacetNames.push("SettersGovernor");
-        facetAddressList.push(address(new SettersGovernor()));
+        address settersGovernor = address(new SettersGovernor());
+        facetAddressList.push(settersGovernor);
         console.log("SettersGovernor deployed at: ", facetAddressList[facetAddressList.length - 1]);
 
         replaceFacetNames.push("Swapper");
         facetAddressList.push(address(new Swapper()));
-        console.log("Swapper deployed at: ", facetAddressList[facetAddressList.length - 1]);
+        console.log("Swapper deployed at: ", facetAddressList[facetAddressList.length - 1]);        
 
         // // TODO This one should be useless
         // replaceFacetNames.push("SettersGuardian");
         // facetAddressList.push(address(new SettersGuardian()));
         // console.log("SettersGuardian deployed at: ", facetAddressList[facetAddressList.length-1]);
 
-        addFacetNames.push("Oracle");
-        facetAddressList.push(address(new Oracle()));
-        console.log("Oracle deployed at: ", facetAddressList[facetAddressList.length - 1]);
+        addFacetNames.push("SettersGovernor");
+        addFacetAddressList.push(settersGovernor);
 
-        string memory json = vm.readFile(JSON_SELECTOR_PATH);
+        string memory jsonReplace = vm.readFile(JSON_SELECTOR_PATH_REPLACE);
         {
             // Build appropriate payload
             uint256 n = replaceFacetNames.length;
@@ -106,7 +107,7 @@ contract UpdateTransmuterFacets is Helpers, Test {
             for (uint256 i = 0; i < n; ++i) {
                 // Get Selectors from json
                 bytes4[] memory selectors = _arrayBytes32ToBytes4(
-                    json.readBytes32Array(string.concat("$.", replaceFacetNames[i]))
+                    jsonReplace.readBytes32Array(string.concat("$.", replaceFacetNames[i]))
                 );
 
                 replaceCut[i] = Storage.FacetCut({
@@ -117,21 +118,21 @@ contract UpdateTransmuterFacets is Helpers, Test {
             }
         }
 
+        string memory jsonAdd = vm.readFile(JSON_SELECTOR_PATH_ADD);
         {
             // Build appropriate payload
-            uint256 r = replaceFacetNames.length;
             uint256 n = addFacetNames.length;
             addCut = new Storage.FacetCut[](n);
             for (uint256 i = 0; i < n; ++i) {
                 // Get Selectors from json
                 bytes4[] memory selectors = _arrayBytes32ToBytes4(
-                    json.readBytes32Array(string.concat("$.", addFacetNames[i]))
+                    jsonAdd.readBytes32Array(string.concat("$.", addFacetNames[i]))
                 );
                 addCut[i] = Storage.FacetCut({
-                    facetAddress: facetAddressList[r + i],
+                    facetAddress: addFacetAddressList[i],
                     action: Storage.FacetCutAction.Add,
                     functionSelectors: selectors
-                });
+                });   
             }
         }
 
@@ -206,7 +207,7 @@ contract UpdateTransmuterFacets is Helpers, Test {
             assertEq(collatInfoEUROC.isBurnLive, 1);
             assertEq(collatInfoEUROC.decimals, 6);
             assertEq(collatInfoEUROC.onlyWhitelisted, 0);
-            assertApproxEqRel(collatInfoEUROC.normalizedStables, 10893124 * BASE_18, 100 * BPS);
+            assertApproxEqRel(collatInfoEUROC.normalizedStables, 10593543 * BASE_18, 100 * BPS);
             assertEq(collatInfoEUROC.oracleConfig, oracleConfigEUROC);
             assertEq(collatInfoEUROC.whitelistData.length, 0);
             assertEq(collatInfoEUROC.managerData.subCollaterals.length, 0);
@@ -356,7 +357,7 @@ contract UpdateTransmuterFacets is Helpers, Test {
     function testUnit_Upgrade_GetCollateralRatio() external {
         (uint64 collatRatio, uint256 stablecoinIssued) = transmuter.getCollateralRatio();
         assertApproxEqRel(collatRatio, 1065 * 10 ** 6, BPS * 100);
-        assertApproxEqRel(stablecoinIssued, 17129775 * BASE_18, 100 * BPS);
+        assertApproxEqRel(stablecoinIssued, 16830193 * BASE_18, 100 * BPS);
     }
 
     function testUnit_Upgrade_isTrusted() external {
@@ -667,7 +668,8 @@ contract UpdateTransmuterFacets is Helpers, Test {
         (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) =
             transmuter.getOracleValues(collateral);
         assertApproxEqRel(targetValue, redemption, 200 * BPS);
-        assertEq(burn, redemption);
+        if (targetValue < redemption && redemption * BASE_18 < targetValue * (BASE_18 + firewallMint) ) assertEq(burn, targetValue);
+        else assertEq(burn, redemption);
         if (redemption * BASE_18 < targetValue * (BASE_18 - firewallBurn)) {
             assertEq(mint, redemption);
             assertEq(ratio, (redemption * BASE_18) / targetValue);
