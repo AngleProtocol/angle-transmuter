@@ -701,7 +701,6 @@ contract OracleTest is Fixture, FunctionUtils {
                     assertEq(deviation, oracleDeviation);
                 }
             }
-            if (newReadType[i] != 1 && targetPrice < oracleBurn && oracleBurn * BASE_18 < targetPrice * (BASE_18 + mintBurnFirewall[i])) oracleBurn = targetPrice;
             assertEq(burn, oracleBurn);
         }
         assertEq(minDeviation, minRatio);
@@ -755,7 +754,7 @@ contract OracleTest is Fixture, FunctionUtils {
                     assertEq(ratio, (BASE_18 * 10) / 11);
                     assertEq(redemption, (BASE_18 * 10) / 11);
                 } else {
-                    assertEq(mint, BASE_18);
+                    assertEq(mint, BASE_18*11/10);
                     assertEq(burn, (BASE_18 * 11) / 10);
                     assertEq(ratio, BASE_18);
                     assertEq(redemption, (BASE_18 * 11) / 10);
@@ -1425,11 +1424,11 @@ contract OracleTest is Fixture, FunctionUtils {
 
     function _updateOracleFirewalls(uint128[6] memory mintBurnFirewall) internal returns (uint128[6] memory) {
         uint128[] memory mintFirewall = new uint128[](3);
-        uint128[] memory burnFirewall = new uint128[](3);
+        uint128[] memory userFirewall = new uint128[](3);
         for (uint256 i; i < _collaterals.length; i++) {
-            mintFirewall[i] = mintBurnFirewall[i];
-            burnFirewall[i] = uint128(bound(mintBurnFirewall[i + 3], 0, BASE_18));
-            mintBurnFirewall[i + 3] = burnFirewall[i];
+            mintFirewall[i] = mintAndUserFirewall[i];
+            userFirewall[i] = uint128(bound(mintAndUserFirewall[i + 3], 0, BASE_18));
+            mintAndUserFirewall[i + 3] = userFirewall[i];
         }
 
         vm.startPrank(governor);
@@ -1448,11 +1447,11 @@ contract OracleTest is Fixture, FunctionUtils {
                     targetType,
                     data,
                     targetData,
-                    abi.encode(uint128(mintFirewall[i]), uint128(burnFirewall[i]))
+                    abi.encode(uint128(mintFirewall[i]), uint128(userFirewall[i]))
                 )
             );
         }
         vm.stopPrank();
-        return mintBurnFirewall;
+        return mintAndUserFirewall;
     }
 }

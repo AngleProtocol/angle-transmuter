@@ -49,9 +49,9 @@ uint128 constant USER_PROTECTION_IB01 = uint128(0);
 uint32 constant HEARTBEAT = uint32(7 days);
 
 uint128 constant FIREWALL_MINT_EUROC = 0;
-uint128 constant FIREWALL_BURN_EUROC = uint128(5 * BPS);
+uint128 constant USER_PROTECTION_EUROC = uint128(5 * BPS);
 uint128 constant FIREWALL_MINT_BC3M = uint128(BASE_18);
-uint128 constant FIREWALL_BURN_BC3M = uint128(100 * BPS);
+uint128 constant USER_PROTECTION_BC3M = uint128(10 * BPS);
 uint96 constant DEVIATION_THRESHOLD_BC3M = uint96(100 * BPS);
 uint32 constant HEARTBEAT = uint32(1 days);
 
