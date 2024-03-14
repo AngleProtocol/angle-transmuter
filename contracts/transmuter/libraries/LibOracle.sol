@@ -274,7 +274,7 @@ library LibOracle {
     ) private pure returns (uint256 ratio) {
         ratio = BASE_18;
         if (oracleValue * BASE_18 < targetPrice * (BASE_18 - deviation)) ratio = (oracleValue * BASE_18) / targetPrice;
-        return oracleValue;
+        return ratio;
     }
 
     /// @notice Firewall in case the oracle value reported is under a reasonable threshold to the target
