@@ -49,8 +49,8 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readMint();
         }
-        (uint128 mintDownwardTolerance, uint128 mintUpwardTolerance,,) =
-            abi.decode(hyperparameters, (uint128, uint128, uint128, uint128));
+        (uint64 mintDownwardTolerance, uint64 mintUpwardTolerance,,) =
+            abi.decode(hyperparameters, (uint64, uint64, uint64, uint64));
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
         // If oracle is slightly below `targetPrice` (as per `mintDownwardTolerance`), the protocol buys at `targetPrice`
@@ -82,8 +82,7 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readBurn();
         }
-        (,, uint128 ratioFlattener, uint128 burnTolerance) =
-            abi.decode(hyperparameters, (uint128, uint128, uint128, uint128));
+        (,, uint64 ratioFlattener, uint64 burnTolerance) = abi.decode(hyperparameters, (uint64, uint64, uint64, uint64));
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
         ratio = BASE_18;
