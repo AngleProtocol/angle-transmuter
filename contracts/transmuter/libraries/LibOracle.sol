@@ -49,10 +49,16 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readMint();
         }
-        (uint64 mintDownwardTolerance, uint64 mintUpwardTolerance,,) =
-            abi.decode(hyperparameters, (uint64, uint64, uint64, uint64));
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
+
+        // Post processing the mint oracle value
+
+        (uint64 mintDownwardTolerance, uint64 mintUpwardTolerance,,) =
+            abi.decode(hyperparameters, (uint64, uint64, uint64, uint64));
+
+        // In practice, if `mintDownwardTolerance` is non null, then `mintUpwardTolerance` must be null and conversely
+
         // If oracle is slightly below `targetPrice` (as per `mintDownwardTolerance`), the protocol buys at `targetPrice`
         if (oracleValue < targetPrice && targetPrice * (BASE_18 - mintDownwardTolerance) < oracleValue * BASE_18) {
             return targetPrice;
@@ -62,8 +68,6 @@ library LibOracle {
         if (targetPrice * BASE_18 < oracleValue * (BASE_18 - mintUpwardTolerance)) {
             return targetPrice;
         }
-
-        // In practice, if `mintDownwardTolerance` is non null, then `mintUpwardTolerance` must be null and conversely
     }
 
     /// @notice Reads the oracle value that will be used for a burn operation for an asset with `oracleConfig`
@@ -82,10 +86,14 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readBurn();
         }
-        (,, uint64 ratioFlattener, uint64 burnTolerance) = abi.decode(hyperparameters, (uint64, uint64, uint64, uint64));
+
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
         ratio = BASE_18;
+
+        // Post processing the burn oracle value
+
+        (,, uint64 ratioFlattener, uint64 burnTolerance) = abi.decode(hyperparameters, (uint64, uint64, uint64, uint64));
 
         // If the oracle value is slightly above targetPrice (as per `burnTolerance`), the protocol sells at
         // `targetPrice`
