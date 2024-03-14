@@ -34,12 +34,8 @@ contract UpdateTransmuterFacets is Helpers {
     function run() external {
         // TODO: make sure that selectors are well generated `yarn generate` before running this script
         // Here the `selectors.json` file is normally up to date
-        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("KEEPER_PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
-
-        governor = _chainToContract(CHAIN_SOURCE, ContractType.Timelock);
-        transmuter = ITransmuter(_chainToContract(CHAIN_SOURCE, ContractType.TransmuterAgEUR));
-        agEUR = IERC20(_chainToContract(CHAIN_SOURCE, ContractType.AgEUR));
 
         Storage.FacetCut[] memory replaceCut;
         Storage.FacetCut[] memory addCut;

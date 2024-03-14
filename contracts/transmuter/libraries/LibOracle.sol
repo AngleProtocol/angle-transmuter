@@ -27,6 +27,7 @@ library LibOracle {
             OracleReadType targetType,
             bytes memory oracleData,
             bytes memory targetData,
+
         ) = _parseOracleConfig(oracleConfig);
         if (oracleType == OracleReadType.EXTERNAL) {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
@@ -62,7 +63,7 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readMint();
         }
-        (uint128 mintDeviation, uint128 userDeviation ) = abi.decode(hyperparameters, (uint128, uint128));
+        (uint128 mintDeviation, uint128 userDeviation, ) = abi.decode(hyperparameters, (uint128, uint128, uint128));
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, userDeviation);
         oracleValue = _firewallMint(targetPrice, oracleValue, mintDeviation);
@@ -84,7 +85,10 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readBurn();
         }
-        (, uint128 userDeviation) = abi.decode(hyperparameters, (uint128, uint128));
+        (, uint128 userDeviation, uint128 burnRatioDeviation) = abi.decode(
+            hyperparameters,
+            (uint128, uint128, uint128)
+        );
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, userDeviation);
         ratio = _burnRatio(targetPrice, oracleValue);
@@ -140,7 +144,7 @@ library LibOracle {
     ) internal view returns (uint256 oracleValue, uint256 targetPrice) {
         targetPrice = read(targetType, BASE_18, targetData);
         oracleValue = read(oracleType, targetPrice, oracleData);
-        // Post process of the oracle value, it tolerates small deviation from target 
+        // Post process of the oracle value, it tolerates small deviation from target
         oracleValue = _userOracleProtection(targetPrice, oracleValue, deviation);
     }
 
@@ -255,7 +259,7 @@ library LibOracle {
 
     /// @notice Firewall in case the oracle value reported is too high compared to the target
     /// --> disregard the oracle value and return the target price
-    /// TODO we may want something continuous ans therefore set 
+    /// TODO we may want something continuous ans therefore set
     /// `oracleValue = targetPrice * (BASE_18 + deviation) / BASE_18`
     function _firewallMint(uint256 targetPrice, uint256 oracleValue, uint256 deviation) private pure returns (uint256) {
         if (targetPrice * (BASE_18 + deviation) < oracleValue * BASE_18) oracleValue = targetPrice;
@@ -265,10 +269,13 @@ library LibOracle {
     /// @notice Firewall in case the oracle value reported is low compared to the target
     function _burnRatio(
         uint256 targetPrice,
-        uint256 oracleValue
+        uint256 oracleValue,
+        uint256 burnDeviation
     ) private pure returns (uint256 ratio) {
         ratio = BASE_18;
-        if (oracleValue < targetPrice) ratio = (oracleValue * BASE_18) / targetPrice;
+        if (oracleValue > targetPrice && oracleValue * BASE_18 < targetPrice * (BASE_18 + deviation))
+            oracleValue = targetPrice;
+        return oracleValue;
     }
 
     /// @notice Firewall in case the oracle value reported is under a reasonable threshold to the target
@@ -278,7 +285,10 @@ library LibOracle {
         uint256 oracleValue,
         uint256 deviation
     ) private pure returns (uint256) {
-        if (targetPrice * (BASE_18 - deviation) < oracleValue * BASE_18 && oracleValue * BASE_18 < targetPrice * (BASE_18 + deviation)) oracleValue = targetPrice;
+        if (
+            targetPrice * (BASE_18 - deviation) < oracleValue * BASE_18 &&
+            oracleValue * BASE_18 < targetPrice * (BASE_18 + deviation)
+        ) oracleValue = targetPrice;
         return oracleValue;
     }
 

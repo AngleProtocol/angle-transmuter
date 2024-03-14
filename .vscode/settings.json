@@ -1,5 +1,4 @@
 {
-  "solidity.formatter": "forge",
   "[typescript]": {
     "editor.defaultFormatter": "rvest.vs-code-prettier-eslint"
   },
