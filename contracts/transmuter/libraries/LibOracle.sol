@@ -86,7 +86,6 @@ library LibOracle {
             abi.decode(hyperparameters, (uint128, uint128, uint128, uint128));
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
-        ratio = _burnRatio(targetPrice, oracleValue);
         ratio = BASE_18;
 
         // If the oracle value is slightly above targetPrice (as per `burnTolerance`), the protocol sells at
