@@ -34,7 +34,7 @@ contract UpdateTransmuterFacets is Helpers {
     function run() external {
         // TODO: make sure that selectors are well generated `yarn generate` before running this script
         // Here the `selectors.json` file is normally up to date
-        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("KEEPER_PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
         Storage.FacetCut[] memory replaceCut;
