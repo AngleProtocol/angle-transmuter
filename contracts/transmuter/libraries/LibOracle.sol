@@ -59,11 +59,11 @@ library LibOracle {
         }
         // If oracle is far above `targetPrice` (as per `mintUpwardTolerance`), the protocol buys at `targetPrice`
         // This means that for small deviations of the oracle above target, we may still use the oracle value
-
-        // In practice, if `mintDownwardTolerance` is non null, then `mintUpwardTolerance` must be null and conversely
         if (targetPrice * BASE_18 < oracleValue * (BASE_18 - mintUpwardTolerance)) {
             return targetPrice;
         }
+
+        // In practice, if `mintDownwardTolerance` is non null, then `mintUpwardTolerance` must be null and conversely
     }
 
     /// @notice Reads the oracle value that will be used for a burn operation for an asset with `oracleConfig`
@@ -82,7 +82,7 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readBurn();
         }
-        (, uint128 ratioFlattener, uint128 burnTolerance) =
+        (,, uint128 ratioFlattener, uint128 burnTolerance) =
             abi.decode(hyperparameters, (uint128, uint128, uint128, uint128));
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData);
