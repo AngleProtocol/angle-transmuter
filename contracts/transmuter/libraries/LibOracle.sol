@@ -91,7 +91,7 @@ library LibOracle {
         );
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, userDeviation);
-        ratio = _burnRatio(targetPrice, oracleValue);
+        ratio = _burnRatio(targetPrice, oracleValue, burnRatioDeviation);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -270,11 +270,10 @@ library LibOracle {
     function _burnRatio(
         uint256 targetPrice,
         uint256 oracleValue,
-        uint256 burnDeviation
+        uint256 deviation
     ) private pure returns (uint256 ratio) {
         ratio = BASE_18;
-        if (oracleValue > targetPrice && oracleValue * BASE_18 < targetPrice * (BASE_18 + deviation))
-            oracleValue = targetPrice;
+        if (oracleValue * BASE_18 < targetPrice * (BASE_18 - deviation)) ratio = (oracleValue * BASE_18) / targetPrice;
         return oracleValue;
     }
 
