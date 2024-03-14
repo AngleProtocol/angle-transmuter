@@ -93,18 +93,19 @@ library LibOracle {
 
         // Post processing the burn oracle value
 
-        (,, uint64 ratioFlattener, uint64 burnTolerance) = abi.decode(hyperparameters, (uint64, uint64, uint64, uint64));
+        (,, uint64 burnDownardTolerance, uint64 burnUpwardTolerance) =
+            abi.decode(hyperparameters, (uint64, uint64, uint64, uint64));
 
-        // If the oracle value is slightly above targetPrice (as per `burnTolerance`), the protocol sells at
+        // If the oracle value is slightly above targetPrice (as per `burnUpwardTolerance`), the protocol sells at
         // `targetPrice`
-        if (targetPrice < oracleValue && oracleValue * (BASE_18 - burnTolerance) < targetPrice * BASE_18) {
+        if (targetPrice < oracleValue && oracleValue * (BASE_18 - burnUpwardTolerance) < targetPrice * BASE_18) {
             oracleValue = targetPrice;
         }
 
         if (oracleValue < targetPrice) {
-            // If the oracleValue is within `ratioFlattener` of `targetPrice`, then burn takes place at targetPrice
+            // If the oracleValue is within `burnDownardTolerance` of `targetPrice`, then burn takes place at targetPrice
             // and no deviation is reported
-            if (oracleValue * BASE_18 > targetPrice * (BASE_18 - ratioFlattener)) {
+            if (oracleValue * BASE_18 > targetPrice * (BASE_18 - burnDownardTolerance)) {
                 oracleValue = targetPrice;
             } else {
                 ratio = (oracleValue * BASE_18) / targetPrice;
