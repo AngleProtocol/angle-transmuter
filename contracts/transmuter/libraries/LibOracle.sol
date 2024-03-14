@@ -94,10 +94,15 @@ library LibOracle {
         if (targetPrice < oracleValue && oracleValue * (BASE_18 - burnTolerance) < targetPrice * BASE_18) {
             oracleValue = targetPrice;
         }
-        // If the oracleValue is below the targetPrice (with a `ratioFlattener` tolerance), then a deviation
-        // is reported. If the oracleValue is slightly below the `targetPrice`, then no deviation is reported
-        if (oracleValue * BASE_18 < targetPrice * (BASE_18 - ratioFlattener)) {
-            ratio = (oracleValue * BASE_18) / targetPrice;
+
+        if (oracleValue < targetPrice) {
+            // If the oracleValue is within `ratioFlattener` of `targetPrice`, then burn takes place at targetPrice
+            // and no deviation is reported
+            if (oracleValue * BASE_18 > targetPrice * (BASE_18 - ratioFlattener)) {
+                oracleValue = targetPrice;
+            } else {
+                ratio = (oracleValue * BASE_18) / targetPrice;
+            }
         }
     }
 
