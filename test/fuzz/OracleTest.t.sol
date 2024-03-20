@@ -485,13 +485,13 @@ contract OracleTest is Fixture, FunctionUtils {
                 vm.expectRevert(Errors.InvalidRate.selector);
                 transmuter.setOracle(
                     _collaterals[i],
-                    abi.encode(readType, targetType, readData, targetData, abi.encode(uint128(0), uint128(0)))
+                    abi.encode(readType, targetType, readData, targetData, abi.encode(uint80(0), uint80(0), uint80(0)))
                 );
 
                 pyth.setParams(110000000, -8);
                 transmuter.setOracle(
                     _collaterals[i],
-                    abi.encode(readType, targetType, readData, targetData, abi.encode(uint128(0), uint128(0)))
+                    abi.encode(readType, targetType, readData, targetData, abi.encode(uint80(0), uint80(0), uint80(0)))
                 );
             }
             if (i == 0) {
@@ -754,7 +754,7 @@ contract OracleTest is Fixture, FunctionUtils {
                     assertEq(ratio, (BASE_18 * 10) / 11);
                     assertEq(redemption, (BASE_18 * 10) / 11);
                 } else {
-                    assertEq(mint, BASE_18*11/10);
+                    assertEq(mint, (BASE_18 * 11) / 10);
                     assertEq(burn, (BASE_18 * 11) / 10);
                     assertEq(ratio, BASE_18);
                     assertEq(redemption, (BASE_18 * 11) / 10);
@@ -1133,7 +1133,7 @@ contract OracleTest is Fixture, FunctionUtils {
                     Storage.OracleReadType.MAX,
                     data,
                     abi.encode(oracleValue, deviationThreshold, uint96(block.timestamp), heartbeat),
-                    abi.encode(uint128(0), uint128(0))
+                    abi.encode(uint80(0), uint80(0), uint80(0))
                 )
             );
         }
@@ -1203,19 +1203,21 @@ contract OracleTest is Fixture, FunctionUtils {
     }
 
     function _getReadType(uint8 newReadType) internal pure returns (Storage.OracleReadType readType) {
-        readType = newReadType == 0 ? Storage.OracleReadType.CHAINLINK_FEEDS : newReadType == 1
-            ? Storage.OracleReadType.EXTERNAL
-            : newReadType == 2
-            ? Storage.OracleReadType.NO_ORACLE
-            : newReadType == 3
-            ? Storage.OracleReadType.STABLE
-            : newReadType == 4
-            ? Storage.OracleReadType.WSTETH
-            : newReadType == 5
-            ? Storage.OracleReadType.CBETH
-            : newReadType == 6
-            ? Storage.OracleReadType.RETH
-            : Storage.OracleReadType.SFRXETH;
+        readType = newReadType == 0
+            ? Storage.OracleReadType.CHAINLINK_FEEDS
+            : newReadType == 1
+                ? Storage.OracleReadType.EXTERNAL
+                : newReadType == 2
+                    ? Storage.OracleReadType.NO_ORACLE
+                    : newReadType == 3
+                        ? Storage.OracleReadType.STABLE
+                        : newReadType == 4
+                            ? Storage.OracleReadType.WSTETH
+                            : newReadType == 5
+                                ? Storage.OracleReadType.CBETH
+                                : newReadType == 6
+                                    ? Storage.OracleReadType.RETH
+                                    : Storage.OracleReadType.SFRXETH;
     }
 
     function _updateOracles(
@@ -1269,7 +1271,7 @@ contract OracleTest is Fixture, FunctionUtils {
             }
             transmuter.setOracle(
                 _collaterals[i],
-                abi.encode(readType, targetType, readData, targetData, abi.encode(uint128(0), uint128(0)))
+                abi.encode(readType, targetType, readData, targetData, abi.encode(uint80(0), uint80(0), uint80(0)))
             );
         }
         vm.stopPrank();
@@ -1426,9 +1428,11 @@ contract OracleTest is Fixture, FunctionUtils {
         uint128[] memory mintFirewall = new uint128[](3);
         uint128[] memory userFirewall = new uint128[](3);
         for (uint256 i; i < _collaterals.length; i++) {
-            mintFirewall[i] = mintAndUserFirewall[i];
-            userFirewall[i] = uint128(bound(mintAndUserFirewall[i + 3], 0, BASE_18));
-            mintAndUserFirewall[i + 3] = userFirewall[i];
+            userFirewall[i] = uint80(bound(userAndMintBurnFirewall[i], 0, BASE_18));
+            mintFirewall[i] = userAndMintBurnFirewall[i + 3];
+            burnFirewall[i] = uint80(bound(userAndMintBurnFirewall[i + 6], 0, BASE_18));
+            userAndMintBurnFirewall[i] = userFirewall[i];
+            userAndMintBurnFirewall[i + 6] = burnFirewall[i];
         }
 
         vm.startPrank(governor);
@@ -1447,11 +1451,11 @@ contract OracleTest is Fixture, FunctionUtils {
                     targetType,
                     data,
                     targetData,
-                    abi.encode(uint128(mintFirewall[i]), uint128(userFirewall[i]))
+                    abi.encode(uint80(userFirewall[i]), uint80(mintFirewall[i]), uint80(burnFirewall[i]))
                 )
             );
         }
         vm.stopPrank();
-        return mintAndUserFirewall;
+        return userAndMintBurnFirewall;
     }
 }

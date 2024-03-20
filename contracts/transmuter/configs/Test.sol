@@ -58,7 +58,7 @@ contract Test {
                 OracleReadType.STABLE,
                 readData,
                 targetData,
-                abi.encode(uint128(0), uint128(0))
+                abi.encode(uint80(0), uint80(0), uint80(0))
             )
         );
 
@@ -114,7 +114,7 @@ contract Test {
                 OracleReadType.STABLE,
                 readData,
                 targetData,
-                abi.encode(uint128(0), uint128(0))
+                abi.encode(uint80(0), uint80(0), uint80(0))
             )
         );
 
@@ -170,7 +170,7 @@ contract Test {
                 OracleReadType.STABLE,
                 readData,
                 targetData,
-                abi.encode(uint128(0), uint128(0))
+                abi.encode(uint80(0), uint80(0), uint80(0))
             )
         );
 
