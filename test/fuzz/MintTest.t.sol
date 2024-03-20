@@ -473,11 +473,12 @@ contract MintTest is Fixture, FunctionUtils {
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
-        uint128[6] memory mintAndUserFirewall,
+        uint80[9] memory userAndMintBurnFirewall,
         int64 upperFees,
         uint256 stableAmount,
         uint256 fromToken
     ) public {
+        _updateOracleFirewalls(userAndMintBurnFirewall);
         // let's first load the reserves of the protocol
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
             charlie,
@@ -487,7 +488,6 @@ contract MintTest is Fixture, FunctionUtils {
         );
         if (mintedStables == 0) return;
         _updateOracles(latestOracleValue);
-        _updateOracleFirewalls(mintAndUserFirewall);
 
         fromToken = bound(fromToken, 0, _collaterals.length - 1);
         stableAmount = bound(stableAmount, 1, _maxAmountWithoutDecimals * BASE_18);
@@ -538,7 +538,7 @@ contract MintTest is Fixture, FunctionUtils {
             uint256 mintOracleValue;
             {
                 (, int256 oracleValue, , , ) = _oracles[fromToken].latestRoundData();
-                mintOracleValue = _getMintOracle(oracleValue,fromToken,mintAndUserFirewall);
+                mintOracleValue = _getMintOracle(oracleValue, fromToken, userAndMintBurnFirewall);
             }
             supposedAmountIn = _convertDecimalTo(
                 supposedAmountIn / (10 * mintOracleValue),
@@ -563,7 +563,7 @@ contract MintTest is Fixture, FunctionUtils {
             uint256 mintOracleValue;
             {
                 (, int256 oracleValue, , , ) = _oracles[fromToken].latestRoundData();
-                mintOracleValue = _getMintOracle(oracleValue,fromToken,mintAndUserFirewall);
+                mintOracleValue = _getMintOracle(oracleValue, fromToken, userAndMintBurnFirewall);
             }
             supposedAmountIn = _convertDecimalTo(
                 supposedAmountIn / (10 * mintOracleValue),
@@ -867,24 +867,33 @@ contract MintTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function _getMintOracle(int256 oracleValue, uint256 fromToken, uint128[6] memory mintAndUserFirewall) internal view returns (uint256 mintOracleValue) {
+    function _getMintOracle(
+        int256 oracleValue,
+        uint256 fromToken,
+        uint80[9] memory userAndMintBurnFirewall
+    ) internal view returns (uint256 mintOracleValue) {
         mintOracleValue = uint256(oracleValue);
-        if(BASE_8 * (BASE_18 - mintAndUserFirewall[fromToken+3]) < uint256(oracleValue) * BASE_18 && 
-            BASE_8 * (BASE_18 + mintAndUserFirewall[fromToken+3]) > uint256(oracleValue) * BASE_18){
+        if (
+            BASE_8 * (BASE_18 - userAndMintBurnFirewall[fromToken]) < uint256(oracleValue) * BASE_18 &&
+            BASE_8 * (BASE_18 + userAndMintBurnFirewall[fromToken]) > uint256(oracleValue) * BASE_18
+        ) {
             mintOracleValue = BASE_8;
         }
-        if(BASE_8 * (BASE_18 + mintAndUserFirewall[fromToken]) < uint256(oracleValue) * BASE_18){
+        if (BASE_8 * (BASE_18 + userAndMintBurnFirewall[fromToken + 3]) < uint256(oracleValue) * BASE_18) {
             mintOracleValue = BASE_8;
         }
     }
 
-    function _updateOracleFirewalls(uint128[6] memory mintAndUserFirewall) internal returns (uint128[6] memory) {
-        uint128[] memory mintFirewall = new uint128[](3);
-        uint128[] memory userFirewall = new uint128[](3);
+    function _updateOracleFirewalls(uint80[9] memory userAndMintBurnFirewall) internal returns (uint80[9] memory) {
+        uint80[] memory userFirewall = new uint80[](3);
+        uint80[] memory mintFirewall = new uint80[](3);
+        uint80[] memory burnFirewall = new uint80[](3);
         for (uint256 i; i < _collaterals.length; i++) {
-            mintFirewall[i] = mintAndUserFirewall[i];
-            userFirewall[i] = uint128(bound(mintAndUserFirewall[i + 3], 0, BASE_18));
-            mintAndUserFirewall[i + 3] = userFirewall[i];
+            userFirewall[i] = uint80(bound(userAndMintBurnFirewall[i], 0, BASE_18));
+            mintFirewall[i] = userAndMintBurnFirewall[i + 3];
+            burnFirewall[i] = uint80(bound(userAndMintBurnFirewall[i + 6], 0, BASE_18));
+            userAndMintBurnFirewall[i] = userFirewall[i];
+            userAndMintBurnFirewall[i + 6] = burnFirewall[i];
         }
 
         vm.startPrank(governor);
@@ -903,11 +912,11 @@ contract MintTest is Fixture, FunctionUtils {
                     targetType,
                     data,
                     targetData,
-                    abi.encode(uint128(mintFirewall[i]), uint128(userFirewall[i]))
+                    abi.encode(uint80(userFirewall[i]), uint80(mintFirewall[i]), uint80(burnFirewall[i]))
                 )
             );
         }
         vm.stopPrank();
-        return mintAndUserFirewall;
+        return userAndMintBurnFirewall;
     }
 }

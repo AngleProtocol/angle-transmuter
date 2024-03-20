@@ -5,22 +5,7 @@ import { stdJson } from "forge-std/StdJson.sol";
 import { console } from "forge-std/console.sol";
 import { Test } from "forge-std/Test.sol";
 
-import {
-    BC3M,
-    BPS,
-    EUROC,
-    BASE_6,
-    DEPLOYER,
-    NEW_DEPLOYER,
-    KEEPER,
-    NEW_KEEPER,
-    DEVIATION_THRESHOLD_BC3M,
-    FIREWALL_MINT_EUROC,
-    USER_PROTECTION_EUROC,
-    FIREWALL_MINT_BC3M,
-    USER_PROTECTION_BC3M,
-    HEARTBEAT
-} from "../../scripts/Constants.s.sol";
+import { BC3M, BPS, EUROC, BASE_6, DEPLOYER, NEW_DEPLOYER, KEEPER, NEW_KEEPER, DEVIATION_THRESHOLD_BC3M, FIREWALL_MINT_EUROC, FIREWALL_BURN_RATIO_EUROC, USER_PROTECTION_EUROC, FIREWALL_MINT_BC3M, FIREWALL_BURN_RATIO_BC3M, USER_PROTECTION_BC3M, HEARTBEAT } from "../../scripts/Constants.s.sol";
 
 import { Helpers } from "../../scripts/Helpers.s.sol";
 import "contracts/utils/Errors.sol" as Errors;
@@ -64,7 +49,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
 
         CHAIN_SOURCE = CHAIN_ETHEREUM;
 
-        ethereumFork = vm.createFork(vm.envString("ETH_NODE_URI_MAINNET"),19425035);
+        ethereumFork = vm.createFork(vm.envString("ETH_NODE_URI_MAINNET"), 19425035);
         vm.selectFork(forkIdentifier[CHAIN_SOURCE]);
 
         governor = _chainToContract(CHAIN_SOURCE, ContractType.Timelock);
@@ -89,7 +74,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
 
         replaceFacetNames.push("Swapper");
         facetAddressList.push(address(new Swapper()));
-        console.log("Swapper deployed at: ", facetAddressList[facetAddressList.length - 1]);        
+        console.log("Swapper deployed at: ", facetAddressList[facetAddressList.length - 1]);
 
         // // TODO This one should be useless
         // replaceFacetNames.push("SettersGuardian");
@@ -132,7 +117,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
                     facetAddress: addFacetAddressList[i],
                     action: Storage.FacetCutAction.Add,
                     functionSelectors: selectors
-                });   
+                });
             }
         }
 
@@ -162,7 +147,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
             targetTypeEUROC,
             oracleDataEUROC,
             targetDataEUROC,
-            abi.encode(FIREWALL_MINT_EUROC, USER_PROTECTION_EUROC)
+            abi.encode(USER_PROTECTION_EUROC, FIREWALL_MINT_EUROC, FIREWALL_BURN_RATIO_EUROC)
         );
         transmuter.setOracle(EUROC, oracleConfigEUROC);
 
@@ -171,7 +156,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
             Storage.OracleReadType.MAX,
             oracleDataBC3M,
             abi.encode(currentBC3MPrice, DEVIATION_THRESHOLD_BC3M, uint96(block.timestamp), HEARTBEAT),
-            abi.encode(FIREWALL_MINT_BC3M, USER_PROTECTION_BC3M)
+            abi.encode(USER_PROTECTION_BC3M, FIREWALL_MINT_BC3M, FIREWALL_BURN_RATIO_BC3M)
         );
         transmuter.setOracle(BC3M, oracleConfigBC3M);
 
@@ -207,7 +192,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
             assertEq(collatInfoEUROC.isBurnLive, 1);
             assertEq(collatInfoEUROC.decimals, 6);
             assertEq(collatInfoEUROC.onlyWhitelisted, 0);
-            assertApproxEqRel(collatInfoEUROC.normalizedStables, 10593543 * BASE_18, 100 * BPS);
+            assertApproxEqRel(collatInfoEUROC.normalizedStables, 99816322 * BASE_18, 100 * BPS);
             assertEq(collatInfoEUROC.oracleConfig, oracleConfigEUROC);
             assertEq(collatInfoEUROC.whitelistData.length, 0);
             assertEq(collatInfoEUROC.managerData.subCollaterals.length, 0);
@@ -357,7 +342,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
     function testUnit_Upgrade_GetCollateralRatio() external {
         (uint64 collatRatio, uint256 stablecoinIssued) = transmuter.getCollateralRatio();
         assertApproxEqRel(collatRatio, 1065 * 10 ** 6, BPS * 100);
-        assertApproxEqRel(stablecoinIssued, 16830193 * BASE_18, 100 * BPS);
+        assertApproxEqRel(stablecoinIssued, 16218282 * BASE_18, 100 * BPS);
     }
 
     function testUnit_Upgrade_isTrusted() external {
@@ -393,8 +378,20 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testUnit_Upgrade_getOracleValues_Success() external {
-        _checkOracleValues(address(EUROC), BASE_18, FIREWALL_MINT_EUROC, USER_PROTECTION_EUROC);
-        _checkOracleValues(address(BC3M), (11949 * BASE_18) / 100, FIREWALL_MINT_BC3M, USER_PROTECTION_BC3M);
+        _checkOracleValues(
+            address(EUROC),
+            BASE_18,
+            USER_PROTECTION_EUROC,
+            FIREWALL_MINT_EUROC,
+            FIREWALL_BURN_RATIO_EUROC
+        );
+        _checkOracleValues(
+            address(BC3M),
+            (11949 * BASE_18) / 100,
+            USER_PROTECTION_EUROC,
+            FIREWALL_MINT_BC3M,
+            FIREWALL_BURN_RATIO_BC3M
+        );
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -662,26 +659,37 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
                                                         CHECKS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function _checkOracleValues(address collateral, uint256 targetValue, uint128 firewallMint, uint128 userProtection)
-        internal
-    {
-        (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) =
-            transmuter.getOracleValues(collateral);
+    function _checkOracleValues(
+        address collateral,
+        uint256 targetValue,
+        uint80 userProtection,
+        uint80 firewallMint,
+        uint80 firewallBurn
+    ) internal {
+        (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter.getOracleValues(
+            collateral
+        );
         assertApproxEqRel(targetValue, redemption, 200 * BPS);
 
-        if (targetValue * (BASE_18 - userProtection) < redemption * BASE_18 && redemption * BASE_18 < targetValue * (BASE_18 + userProtection) ) assertEq(burn, targetValue);
+        if (
+            targetValue * (BASE_18 - userProtection) < redemption * BASE_18 &&
+            redemption * BASE_18 < targetValue * (BASE_18 + userProtection)
+        ) assertEq(burn, targetValue);
         else assertEq(burn, redemption);
-        
-        if(targetValue * (BASE_18 - userProtection) < redemption * BASE_18 && redemption * BASE_18 < targetValue * (BASE_18 + userProtection)){
-            assertEq(mint,targetValue);
-            assertEq(ratio,BASE_18);
+
+        if (
+            targetValue * (BASE_18 - userProtection) < redemption * BASE_18 &&
+            redemption * BASE_18 < targetValue * (BASE_18 + userProtection)
+        ) {
+            assertEq(mint, targetValue);
+            assertEq(ratio, BASE_18);
         } else if (redemption * BASE_18 > targetValue * (BASE_18 + firewallMint)) {
             assertEq(mint, targetValue);
             assertEq(ratio, BASE_18);
-        } else if(redemption < targetValue){
+        } else if (redemption * BASE_18 < targetValue * (BASE_18 - firewallBurn)) {
             assertEq(mint, redemption);
             assertEq(ratio, (redemption * BASE_18) / targetValue);
-        } else{
+        } else {
             assertEq(mint, redemption);
             assertEq(ratio, BASE_18);
         }

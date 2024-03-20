@@ -273,6 +273,7 @@ contract SwapTest is Fixture, FunctionUtils {
         uint256 fromTokenMint,
         uint256 fromTokenBurn
     ) public {
+        uint256 curTimestamp = block.timestamp;
         // fr the stale periods in Chainlink
         elapseTimestamp = bound(elapseTimestamp, 1, 1 hours - 1);
         fromTokenMint = bound(fromTokenMint, 0, _collaterals.length - 1);
@@ -297,7 +298,6 @@ contract SwapTest is Fixture, FunctionUtils {
 
         uint256 amountIn = transmuter.quoteOut(stableAmount, _collaterals[fromTokenMint], address(agToken));
         uint256 amountOut = transmuter.quoteIn(burnAmount, address(agToken), _collaterals[fromTokenBurn]);
-        uint256 curTimestamp = block.timestamp;
         skip(elapseTimestamp);
 
         vm.startPrank(alice);
@@ -309,11 +309,11 @@ contract SwapTest is Fixture, FunctionUtils {
                 _collaterals[fromTokenMint],
                 address(agToken),
                 alice,
-                curTimestamp
+                curTimestamp - 1
             );
         }
         vm.expectRevert(Errors.TooLate.selector);
-        transmuter.swapExactInput(amountIn, 0, _collaterals[fromTokenMint], address(agToken), alice, curTimestamp);
+        transmuter.swapExactInput(amountIn, 0, _collaterals[fromTokenMint], address(agToken), alice, curTimestamp - 1);
         vm.stopPrank();
 
         vm.startPrank(charlie);
@@ -324,7 +324,7 @@ contract SwapTest is Fixture, FunctionUtils {
             address(agToken),
             _collaterals[fromTokenBurn],
             alice,
-            curTimestamp
+            curTimestamp - 1
         );
         if (burnAmount > 0) {
             vm.expectRevert(Errors.TooLate.selector);
@@ -334,7 +334,7 @@ contract SwapTest is Fixture, FunctionUtils {
                 address(agToken),
                 _collaterals[fromTokenBurn],
                 alice,
-                curTimestamp
+                curTimestamp - 1
             );
         }
         vm.stopPrank();
