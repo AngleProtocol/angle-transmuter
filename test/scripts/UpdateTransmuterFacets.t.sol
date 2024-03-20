@@ -192,7 +192,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
             assertEq(collatInfoEUROC.isBurnLive, 1);
             assertEq(collatInfoEUROC.decimals, 6);
             assertEq(collatInfoEUROC.onlyWhitelisted, 0);
-            assertApproxEqRel(collatInfoEUROC.normalizedStables, 99816322 * BASE_18, 100 * BPS);
+            assertApproxEqRel(collatInfoEUROC.normalizedStables, 998163227 * BASE_18, 100 * BPS);
             assertEq(collatInfoEUROC.oracleConfig, oracleConfigEUROC);
             assertEq(collatInfoEUROC.whitelistData.length, 0);
             assertEq(collatInfoEUROC.managerData.subCollaterals.length, 0);
