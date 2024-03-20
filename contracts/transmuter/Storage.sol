@@ -48,7 +48,8 @@ enum OracleReadType {
     RETH,
     SFRXETH,
     PYTH,
-    MAX
+    MAX,
+    ERC4626
 }
 
 enum OracleQuoteType {

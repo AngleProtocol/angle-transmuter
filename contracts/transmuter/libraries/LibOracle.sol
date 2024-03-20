@@ -197,6 +197,9 @@ library LibOracle {
         } else if (readType == OracleReadType.MAX) {
             (uint256 maxValue, , , ) = abi.decode(data, (uint256, uint96, uint96, uint32));
             return maxValue;
+        } else if (readType == OracleReadType.ERC4626) {
+            (address contractAddress, uint256 baseValue) = abi.decode(data, (address, uint256));
+            return IERC4626(contractAddress).previewRedeem(baseValue);
         }
         // If the `OracleReadType` is `EXTERNAL`, it means that this function is called to compute a
         // `targetPrice` in which case the `baseValue` is returned here

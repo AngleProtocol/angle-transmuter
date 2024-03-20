@@ -882,9 +882,14 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
     function _checkOracleValues(
         address collateral,
         uint256 targetValue,
+<<<<<<< HEAD
         uint80 userProtection,
         uint80 firewallMint,
         uint80 firewallBurn
+=======
+        uint128 firewallMint,
+        uint128 userProtection
+>>>>>>> 416dfed (feat: usda setup)
     ) internal {
         (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter.getOracleValues(
             collateral
@@ -906,7 +911,11 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
         } else if (redemption * BASE_18 > targetValue * (BASE_18 + firewallMint)) {
             assertEq(mint, targetValue);
             assertEq(ratio, BASE_18);
+<<<<<<< HEAD
         } else if (redemption * BASE_18 < targetValue * (BASE_18 - firewallBurn)) {
+=======
+        } else if (redemption < targetValue) {
+>>>>>>> 416dfed (feat: usda setup)
             assertEq(mint, redemption);
             assertEq(ratio, (redemption * BASE_18) / targetValue);
         } else {
