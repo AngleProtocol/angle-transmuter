@@ -1033,7 +1033,17 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
         ) {
             assertEq(mint, targetValue);
             assertEq(ratio, BASE_18);
+<<<<<<< HEAD
+=======
+        } else if (redemption > targetValue) {
+            assertEq(mint, targetValue);
+            assertEq(ratio, BASE_18);
+<<<<<<< HEAD
+>>>>>>> d224565 (feat: usda setup)
         } else if (redemption * BASE_18 < targetValue * (BASE_18 - firewallBurn)) {
+=======
+        } else if (redemption < targetValue) {
+>>>>>>> 416dfed (feat: usda setup)
             assertEq(mint, redemption);
             assertEq(ratio, (redemption * BASE_18) / targetValue);
         } else {
