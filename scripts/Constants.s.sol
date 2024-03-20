@@ -48,6 +48,7 @@ uint128 constant USER_PROTECTION_IB01 = uint128(0);
 
 uint32 constant HEARTBEAT = uint32(7 days);
 
+<<<<<<< HEAD
 // EUROC
 uint80 constant FIREWALL_MINT_EUROC = uint80(0);
 uint80 constant FIREWALL_BURN_RATIO_EUROC = uint80(0);
@@ -72,6 +73,28 @@ uint128 constant USER_PROTECTION_IB01 = uint128(0);
 
 uint32 constant HEARTBEAT = uint32(7 days);
 
+=======
+<<<<<<< HEAD
+=======
+uint80 constant FIREWALL_MINT_USDC = uint80(0);
+uint80 constant FIREWALL_BURN_RATIO_USDC = uint80(0);
+uint80 constant USER_PROTECTION_USDC = uint80(5 * BPS);
+
+uint80 constant FIREWALL_MINT_STEAK_USDC = uint80(0);
+uint80 constant FIREWALL_BURN_RATIO_STEAK_USDC = uint80(50 * BPS);
+uint80 constant USER_PROTECTION_STEAK_USDC = uint80(0);
+uint256 constant DEVIATION_THRESHOLD_STEAKUSDC = 50 * BPS;
+
+uint80 constant FIREWALL_MINT_IB01 = uint80(70 * BPS);
+uint80 constant FIREWALL_BURN_RATIO_IB01 = uint80(50 * BPS);
+uint80 constant USER_PROTECTION_IB01 = uint80(0);
+uint256 constant DEVIATION_THRESHOLD_IB01 = 50 * BPS;
+
+uint256 constant DEVIATION_THRESHOLD_IB01 = 50 * BPS;
+uint256 constant DEVIATION_THRESHOLD_STEAKUSDC = 50 * BPS;
+
+>>>>>>> db78197 (feat: setup  script for USDA transmuter)
+>>>>>>> 70915c9 (feat: setup  script for USDA transmuter)
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     FACET ADDRESSES                                                 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
