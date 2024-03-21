@@ -785,7 +785,6 @@ contract BurnTest is Fixture, FunctionUtils {
             18,
             IERC20Metadata(_collaterals[fromToken]).decimals()
         );
-        console.log("supposedAmountOut ", supposedAmountOut);
         uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
         if (amountOut == 0) return;
 
