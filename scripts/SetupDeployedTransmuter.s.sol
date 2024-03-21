@@ -21,7 +21,8 @@ contract SetupDeployedTransmuter is Utils {
         console.log(deployer.balance);
         vm.startBroadcast(deployerPrivateKey);
 
-        ITransmuter usdaTransmuter = ITransmuter(0x222222fD79264BBE280b4986F6FEfBC3524d0137);
+        ITransmuter usdaTransmuter = ITransmuter(_chainToContract(CHAIN_SOURCE, ContractType.TransmuterAgUSD));
+        console.log(usdaTransmuter);
 
         // TODO Run this script after facet upgrade script otherwise it won't work due to oracles calibrated
         // in a different manner
@@ -39,7 +40,7 @@ contract SetupDeployedTransmuter is Utils {
 
                 // Chainlink USDC/USD oracle
                 circuitChainlink[0] = AggregatorV3Interface(0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6);
-                stalePeriods[0] = 1 days;
+                stalePeriods[0] = ((1 days) * 3) / 2;
                 circuitChainIsMultiplied[0] = 1;
                 chainlinkDecimals[0] = 8;
                 Storage.OracleQuoteType quoteType = Storage.OracleQuoteType.UNIT;
@@ -95,10 +96,9 @@ contract SetupDeployedTransmuter is Utils {
                     uint32[] memory stalePeriods = new uint32[](1);
                     uint8[] memory circuitChainIsMultiplied = new uint8[](1);
                     uint8[] memory chainlinkDecimals = new uint8[](1);
-
                     // Chainlink IB01/USD oracle
                     circuitChainlink[0] = AggregatorV3Interface(0x32d1463EB53b73C095625719Afa544D5426354cB);
-                    stalePeriods[0] = 1 days;
+                    stalePeriods[0] = ((1 days) * 3) / 2;
                     circuitChainIsMultiplied[0] = 1;
                     chainlinkDecimals[0] = 8;
                     Storage.OracleQuoteType quoteType = Storage.OracleQuoteType.UNIT;
@@ -113,8 +113,10 @@ contract SetupDeployedTransmuter is Utils {
 
                 // Current value is 109.43, but we need to update it now otherwise we'll have to wait for a week
                 // before we can update it
+                uint256 initTarget = AggregatorV3Interface(0x32d1463EB53b73C095625719Afa544D5426354cB).latestAnswer() *
+                    1e10;
                 bytes memory targetData = abi.encode(
-                    109500000000000000000,
+                    initTarget,
                     uint96(DEVIATION_THRESHOLD_IB01),
                     uint96(block.timestamp),
                     HEARTBEAT
