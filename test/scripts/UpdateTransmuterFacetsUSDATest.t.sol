@@ -564,58 +564,57 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
                                                          BURN
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testFuzz_UpgradeUSDA_QuoteBurnExactInput_Reflexivity(uint256 amountStable, uint256 fromToken) public {
-        fromToken = bound(fromToken, 0, transmuter.getCollateralList().length - 1);
-        address collateral = transmuter.getCollateralList()[fromToken];
+    function testFuzz_UpgradeUSDA_QuoteBurnExactInput_Reflexivity(uint256 amountStable) public {
         amountStable = bound(amountStable, BASE_18, BASE_6 * 1e18);
-
-        uint256 amountOut = transmuter.quoteIn(amountStable, address(USDA), collateral);
-        uint256 amountStableReflexive = transmuter.quoteOut(amountOut, address(USDA), collateral);
+        uint256 amountOut = transmuter.quoteIn(amountStable, address(USDA), USDC);
+        uint256 amountStableReflexive = transmuter.quoteOut(amountOut, address(USDA), USDC);
         assertApproxEqRel(amountStable, amountStableReflexive, BPS * 10);
+
+        // No minted stables from the others
+        vm.expectRevert(Errors.InvalidSwap.selector);
+        transmuter.quoteIn(amountStable, address(USDA), BIB01);
+
+        vm.expectRevert(Errors.InvalidSwap.selector);
+        transmuter.quoteIn(amountStable, address(USDA), STEAK_USDC);
     }
 
     function testFuzz_UpgradeUSDA_QuoteBurnExactInput_Independent(
         uint256 amountStable,
-        uint256 splitProportion,
-        uint256 fromToken
+        uint256 splitProportion
     ) public {
-        fromToken = bound(fromToken, 0, transmuter.getCollateralList().length - 1);
-        address collateral = transmuter.getCollateralList()[fromToken];
         amountStable = bound(amountStable, BASE_18, BASE_6 * 1e18);
         splitProportion = bound(splitProportion, 0, BASE_9);
 
-        uint256 amountOut = transmuter.quoteIn(amountStable, address(USDA), collateral);
+        uint256 amountOut = transmuter.quoteIn(amountStable, address(USDA), USDC);
         uint256 amountStableSplit1 = (amountStable * splitProportion) / BASE_9;
         amountStableSplit1 = amountStableSplit1 == 0 ? 1 : amountStableSplit1;
-        uint256 amountOutSplit1 = transmuter.quoteIn(amountStableSplit1, address(USDA), collateral);
+        uint256 amountOutSplit1 = transmuter.quoteIn(amountStableSplit1, address(USDA), USDC);
         // do the swap to update the system
         _burnExactInput(WHALE_USDA, collateral, amountStableSplit1, amountOutSplit1);
-        uint256 amountOutSplit2 = transmuter.quoteIn(amountStable - amountStableSplit1, address(USDA), collateral);
+        uint256 amountOutSplit2 = transmuter.quoteIn(amountStable - amountStableSplit1, address(USDA), USDC);
         assertApproxEqRel(amountOutSplit1 + amountOutSplit2, amountOut, BPS * 10);
     }
 
-    function testFuzz_UpgradeUSDA_BurnExactOutput(uint256 amountOut, uint256 fromToken) public {
-        fromToken = bound(fromToken, 0, transmuter.getCollateralList().length - 1);
-        address collateral = transmuter.getCollateralList()[fromToken];
+    function testFuzz_UpgradeUSDA_BurnExactOutput(uint256 amountOut) public {
         amountOut = bound(amountOut, BASE_6, collateral != USDC ? 1000 * BASE_18 : BASE_6 * 1e6);
 
         uint256 prevBalanceStable = USDA.balanceOf(WHALE_USDA);
-        uint256 prevTransmuterCollat = IERC20(collateral).balanceOf(address(transmuter));
+        uint256 prevTransmuterCollat = IERC20(USDC).balanceOf(address(transmuter));
         uint256 prevAgTokenSupply = IERC20(USDA).totalSupply();
-        (uint256 prevStableAmountCollat, uint256 prevStableAmount) = transmuter.getIssuedByCollateral(collateral);
+        (uint256 prevStableAmountCollat, uint256 prevStableAmount) = transmuter.getIssuedByCollateral(USDC);
 
-        uint256 stableAmount = transmuter.quoteOut(amountOut, address(USDA), collateral);
+        uint256 stableAmount = transmuter.quoteOut(amountOut, address(USDA), USDC);
         if (amountOut == 0 || stableAmount == 0) return;
-        _burnExactOutput(WHALE_USDA, collateral, amountOut, stableAmount);
+        _burnExactOutput(WHALE_USDA, USDC, amountOut, stableAmount);
 
         uint256 balanceStable = USDA.balanceOf(WHALE_USDA);
 
         assertEq(balanceStable, prevBalanceStable - stableAmount);
         assertEq(USDA.totalSupply(), prevAgTokenSupply - stableAmount);
-        assertEq(IERC20(collateral).balanceOf(WHALE_USDA), amountOut);
-        assertEq(IERC20(collateral).balanceOf(address(transmuter)), prevTransmuterCollat - amountOut);
+        assertEq(IERC20(USDC).balanceOf(WHALE_USDA), amountOut);
+        assertEq(IERC20(USDC).balanceOf(address(transmuter)), prevTransmuterCollat - amountOut);
 
-        (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(collateral);
+        (uint256 newStableAmountCollat, uint256 newStableAmount) = transmuter.getIssuedByCollateral(USDC);
 
         assertApproxEqAbs(newStableAmountCollat, prevStableAmountCollat - stableAmount, 1 wei);
         assertApproxEqAbs(newStableAmount, prevStableAmount - stableAmount, 1 wei);
