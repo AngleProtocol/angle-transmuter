@@ -127,7 +127,7 @@ contract SetupDeployedTransmuter is Utils {
                     Storage.OracleReadType.MAX,
                     readData,
                     targetData,
-                    abi.encode(uint80(0), uint80(50 * BPS), uint80(50 * BPS))
+                    abi.encode(USER_PROTECTION_IB01, FIREWALL_MINT_IB01, FIREWALL_BURN_RATIO_IB01)
                 );
             }
             collaterals[0] = CollateralSetupProd(
@@ -178,7 +178,7 @@ contract SetupDeployedTransmuter is Utils {
                     Storage.OracleReadType.MAX,
                     readData,
                     targetData,
-                    abi.encode(uint80(0), uint80(50 * BPS), uint80(50 * BPS))
+                    abi.encode(USER_PROTECTION_STEAK_USDC, FIREWALL_MINT_STEAK_USDC, FIREWALL_BURN_RATIO_STEAK_USDC)
                 );
             }
             collaterals[1] = CollateralSetupProd(
