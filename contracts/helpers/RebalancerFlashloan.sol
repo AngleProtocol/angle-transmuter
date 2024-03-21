@@ -9,8 +9,9 @@ import { IERC3156FlashLender } from "oz/interfaces/IERC3156FlashLender.sol";
 
 /// @title RebalancerFlashloan
 /// @author Angle Labs, Inc.
-/// @notice Contract built to subsidize rebalances between collateral tokens
 contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
+    using SafeERC20 for IERC20;
+    using SafeCast for uint256;
     bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
     IERC4626 public immutable VAULT;
@@ -19,14 +20,6 @@ contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
 
     IERC3156FlashLender public immutable FLASHLOAN;
 
-    using SafeERC20 for IERC20;
-    using SafeCast for uint256;
-
-    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                    INITIALIZATION                                                  
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    /// @notice Initializes the immutable variables of the contract: `accessControlManager`, `transmuter` and `agToken`
     constructor(
         IAccessControlManager _accessControlManager,
         ITransmuter _transmuter,
