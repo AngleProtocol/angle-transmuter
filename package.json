@@ -19,7 +19,7 @@
     "test:invariant": "forge test -vvv --gas-report --match-path \"test/invariants/**/*.sol\"",
     "test:fuzz": "forge test -vvv --gas-report --match-path \"test/fuzz/**/*.sol\"",
     "slither": "chmod +x ./slither.sh && ./slither.sh",
-    "test": "FOUNDRY_PROFILE=dev forge test -vvv",
+    "test": "forge test -vvv",
     "lcov:clean": "lcov --remove lcov.info -o lcov.info 'test/**' 'scripts/**' 'contracts/transmuter/configs/**' 'contracts/utils/**'",
     "lcov:generate-html": "genhtml lcov.info --output=coverage",
     "size": "forge build --skip test --sizes",

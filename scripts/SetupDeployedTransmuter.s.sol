@@ -149,8 +149,8 @@ contract SetupDeployedTransmuter is Utils {
             xMintFeeSteak[2] = uint64((80 * BASE_9) / 100);
 
             int64[] memory yMintFeeSteak = new int64[](3);
-            yMintFeeSteak[0] = int64(0);
-            yMintFeeSteak[1] = int64(0);
+            yMintFeeSteak[0] = int64((5 * BASE_9) / 10000);
+            yMintFeeSteak[1] = int64((5 * BASE_9) / 10000);
             yMintFeeSteak[2] = int64(uint64(MAX_MINT_FEE));
 
             uint64[] memory xBurnFeeSteak = new uint64[](3);
@@ -159,8 +159,8 @@ contract SetupDeployedTransmuter is Utils {
             xBurnFeeSteak[2] = uint64((30 * BASE_9) / 100);
 
             int64[] memory yBurnFeeSteak = new int64[](3);
-            yBurnFeeSteak[0] = int64(0);
-            yBurnFeeSteak[1] = int64(0);
+            yBurnFeeSteak[0] = int64((5 * BASE_9) / 10000);
+            yBurnFeeSteak[1] = int64((5 * BASE_9) / 10000);
             yBurnFeeSteak[2] = int64(uint64(MAX_BURN_FEE));
 
             bytes memory oracleConfig;
