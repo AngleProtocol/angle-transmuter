@@ -21,8 +21,8 @@ contract SetupDeployedTransmuter is Utils {
         console.log(deployer.balance);
         vm.startBroadcast(deployerPrivateKey);
 
-        ITransmuter usdaTransmuter = ITransmuter(_chainToContract(CHAIN_SOURCE, ContractType.TransmuterAgUSD));
-        console.log(usdaTransmuter);
+        ITransmuter usdaTransmuter = ITransmuter(0x222222fD79264BBE280b4986F6FEfBC3524d0137);
+        console.log(address(usdaTransmuter));
 
         // TODO Run this script after facet upgrade script otherwise it won't work due to oracles calibrated
         // in a different manner
@@ -113,8 +113,9 @@ contract SetupDeployedTransmuter is Utils {
 
                 // Current value is 109.43, but we need to update it now otherwise we'll have to wait for a week
                 // before we can update it
-                uint256 initTarget = AggregatorV3Interface(0x32d1463EB53b73C095625719Afa544D5426354cB).latestAnswer() *
-                    1e10;
+                (, int256 answer, , , ) = AggregatorV3Interface(0x32d1463EB53b73C095625719Afa544D5426354cB)
+                    .latestRoundData();
+                uint256 initTarget = uint256(answer) * 1e10;
                 bytes memory targetData = abi.encode(
                     initTarget,
                     uint96(DEVIATION_THRESHOLD_IB01),
@@ -204,6 +205,14 @@ contract SetupDeployedTransmuter is Utils {
             usdaTransmuter.togglePause(collateral.token, Storage.ActionType.Mint);
             usdaTransmuter.togglePause(collateral.token, Storage.ActionType.Burn);
         }
+
+        // Set whitelist status for bIB01
+        bytes memory whitelistData = abi.encode(
+            Storage.WhitelistType.BACKED,
+            // Keyring whitelist check
+            abi.encode(address(0x9391B14dB2d43687Ea1f6E546390ED4b20766c46))
+        );
+        usdaTransmuter.setWhitelistStatus(BIB01, 1, whitelistData);
 
         console.log("Transmuter setup");
         vm.stopBroadcast();
