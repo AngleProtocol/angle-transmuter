@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { ITransmuterOracle, MockExternalOracle } from "../mock/MockExternalOracle.sol";
+import { MockMorphoOracle } from "../mock/MockMorphoOracle.sol";
 import { MockPyth } from "../mock/MockPyth.sol";
 import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
 import "../Fixture.sol";
@@ -526,6 +527,51 @@ contract OracleTest is Fixture, FunctionUtils {
             else if (circuitIsMultiplied[i] == 0 && expos[i] >= 0)
                 assertEq(redemption2, BASE_18 / (normalizer * prices[i]));
             pyth.setParams(0, 0);
+        }
+        vm.stopPrank();
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                        MORPHO                                                      
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testFuzz_ReadMorphoFeed(uint256[3] memory baseValues, uint256[3] memory normalizers) public {
+        vm.startPrank(governor);
+        for (uint256 i; i < _collaterals.length; i++) {
+            baseValues[i] = uint256(bound(baseValues[i], 100, 1e5));
+            normalizers[i] = uint256(bound(normalizers[i], 1, 18));
+            MockMorphoOracle morphoOracle = new MockMorphoOracle(baseValues[i] * 1e36);
+            {
+                Storage.OracleReadType readType = Storage.OracleReadType.MORPHO_ORACLE;
+                Storage.OracleReadType targetType = Storage.OracleReadType.MAX;
+                bytes memory readData = abi.encode(address(morphoOracle), 10 ** normalizers[i]);
+                bytes memory targetData = abi.encode(
+                    (baseValues[i] * 1e36) / 10 ** normalizers[i],
+                    uint96(block.timestamp),
+                    0,
+                    1 days
+                );
+                transmuter.setOracle(
+                    _collaterals[i],
+                    abi.encode(readType, targetType, readData, targetData, abi.encode(uint80(0), uint80(0), uint80(0)))
+                );
+            }
+            (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter
+                .getOracleValues(address(_collaterals[i]));
+            assertEq(mint, (baseValues[i] * 1e36) / 10 ** normalizers[i]);
+            assertEq(burn, (baseValues[i] * 1e36) / 10 ** normalizers[i]);
+            assertEq(ratio, BASE_18);
+            assertEq(minRatio, BASE_18);
+            assertEq(redemption, (baseValues[i] * 1e36) / 10 ** normalizers[i]);
+            if (i == 2) {
+                morphoOracle.setValue((baseValues[i] * 1e36 * 9) / 10);
+                (mint, burn, ratio, minRatio, redemption) = transmuter.getOracleValues(address(_collaterals[i]));
+                assertEq(mint, ((baseValues[i] * 1e36) * 9) / 10 ** normalizers[i] / 10);
+                assertEq(burn, ((baseValues[i] * 1e36) * 9) / 10 ** normalizers[i] / 10);
+                assertEq(ratio, (BASE_18 * 9) / 10);
+                assertEq(minRatio, (BASE_18 * 9) / 10);
+                assertEq(redemption, ((baseValues[i] * 1e36) * 9) / 10 ** normalizers[i] / 10);
+            }
         }
         vm.stopPrank();
     }
