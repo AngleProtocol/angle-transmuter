@@ -33,7 +33,8 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readRedemption();
         } else {
-            // We consider the actual oracle value and not the processed one as it doesn't impact directly the redemption process
+            // We consider the actual oracle value and not the processed one
+            // as it doesn't impact directly the redemption process
             (oracleValue, ) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, 0);
             // We don't consider the mint firewall as `readRedemption` is only used to compute the collateral ratio
             // `getCollateralRatio` is only used in `_quoteRedemptionCurve` and `accrue` on the savingsVest
