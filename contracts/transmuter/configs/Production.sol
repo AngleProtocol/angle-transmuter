@@ -74,7 +74,7 @@ contract Production {
                     Storage.OracleReadType.STABLE,
                     readData,
                     targetData,
-                    abi.encode(uint128(0), uint128(50 * BPS))
+                    abi.encode(uint80(5 * BPS), uint80(0), uint80(0))
                 );
             }
             collaterals[0] = CollateralSetupProd(
@@ -151,7 +151,7 @@ contract Production {
                 Storage.OracleReadType.MAX,
                 readData,
                 targetData,
-                abi.encode(uint128(20000 * BPS), uint128(100 * BPS))
+                abi.encode(uint80(0), uint80(20000 * BPS), uint128(100 * BPS))
             );
 
             collaterals[1] = CollateralSetupProd(

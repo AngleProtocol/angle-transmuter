@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import { MAX_MINT_FEE, MAX_BURN_FEE, BASE_6, BPS } from "contracts/utils/Constants.sol";
+import { MAX_MINT_FEE, MAX_BURN_FEE, BASE_6, BASE_8, BPS } from "contracts/utils/Constants.sol";
 import "utils/src/Constants.sol";
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -20,19 +20,30 @@ address constant EUROE = 0x820802Fa8a99901F52e39acD21177b0BE6EE2974;
 address constant EURE = 0x3231Cb76718CDeF2155FC47b5286d82e6eDA273f;
 address constant BC3M = 0x2F123cF3F37CE3328CC9B5b8415f9EC5109b45e7;
 address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+address constant BERNX = 0x3f95AA88dDbB7D9D484aa3D482bf0a80009c52c9;
 
+// EUROC
 uint80 constant FIREWALL_MINT_EUROC = uint80(0);
 uint80 constant FIREWALL_BURN_RATIO_EUROC = uint80(0);
 uint80 constant USER_PROTECTION_EUROC = uint80(5 * BPS);
+
+// BC3M
 uint80 constant FIREWALL_MINT_BC3M = uint80(70 * BPS);
 uint80 constant FIREWALL_BURN_RATIO_BC3M = uint80(50 * BPS);
 uint80 constant USER_PROTECTION_BC3M = uint80(0);
 uint96 constant DEVIATION_THRESHOLD_BC3M = uint96(50 * BPS);
+
+// ERNX
+uint80 constant FIREWALL_MINT_ERNX = uint80(120 * BPS);
+uint80 constant FIREWALL_BURN_RATIO_ERNX = uint80(100 * BPS);
+uint80 constant USER_PROTECTION_ERNX = uint80(0);
+uint96 constant DEVIATION_THRESHOLD_ERNX = uint96(100 * BPS);
+
 uint32 constant HEARTBEAT = uint32(1 days);
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     FACET ADDRESSES                                                 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
 address constant DIAMOND_CUT_FACET = 0x53B7d70013dEC21A97F216e80eEFCF45F25c2900;
 address constant DIAMOND_ETHERSCAN_FACET = 0xFa94Cd9d711de75695693c877BecA5473462Cf12;
