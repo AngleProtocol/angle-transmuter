@@ -209,7 +209,7 @@ contract SetupDeployedTransmuter is Utils {
         // Set whitelist status for bIB01
         bytes memory whitelistData = abi.encode(
             Storage.WhitelistType.BACKED,
-            // Keyring whitelist check
+            // TODO: Keyring whitelist check
             abi.encode(address(0x9391B14dB2d43687Ea1f6E546390ED4b20766c46))
         );
         usdaTransmuter.setWhitelistStatus(BIB01, 1, whitelistData);
