@@ -161,6 +161,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
         );
         transmuter.setOracle(BC3M, oracleConfigBC3M);
 
+<<<<<<< HEAD
         // Finally add the new collateral and adapt the target exposure
 
         // Set ERNX
@@ -310,6 +311,8 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
 
         transmuter.toggleWhitelist(Storage.WhitelistType.BACKED, WHALE_AGEUR);
 
+=======
+>>>>>>> df4f36e (testing after adding bERNX)
         // Finally add the new collateral and adapt the target exposure
 
         // Set ERNX
@@ -336,7 +339,6 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
             yBurnFeeERNX[1] = int64(uint64((50 * BASE_9) / 10000));
             yBurnFeeERNX[2] = int64(uint64(MAX_BURN_FEE));
 
-            bytes memory oracleConfig;
             {
                 bytes memory readData;
                 {
@@ -373,7 +375,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
                     );
                 }
 
-                oracleConfig = abi.encode(
+                oracleConfigBERNX = abi.encode(
                     Storage.OracleReadType.CHAINLINK_FEEDS,
                     Storage.OracleReadType.MAX,
                     readData,
@@ -383,7 +385,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
             }
             collateral = CollateralSetupProd(
                 BERNX,
-                oracleConfig,
+                oracleConfigBERNX,
                 xMintFeeERNX,
                 yMintFeeERNX,
                 xBurnFeeERNX,
@@ -397,6 +399,14 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
             transmuter.setFees(collateral.token, collateral.xBurnFee, collateral.yBurnFee, false);
             transmuter.togglePause(collateral.token, Storage.ActionType.Mint);
             transmuter.togglePause(collateral.token, Storage.ActionType.Burn);
+
+            // Set whitelist status for bC3M
+            bytes memory whitelistData = abi.encode(
+                WhitelistType.BACKED,
+                // Keyring whitelist check
+                abi.encode(address(0x9391B14dB2d43687Ea1f6E546390ED4b20766c46))
+            );
+            transmuter.setWhitelistStatus(BERNX, 1, whitelistData);
         }
 
         // Set target exposures for EUROC
@@ -455,6 +465,8 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
             transmuter.setFees(BC3M, xBurnFeeC3M, yBurnFeeC3M, false);
         }
 
+        transmuter.toggleWhitelist(Storage.WhitelistType.BACKED, WHALE_AGEUR);
+
         vm.stopPrank();
     }
 
@@ -486,7 +498,11 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
             assertEq(collatInfoEUROC.isBurnLive, 1);
             assertEq(collatInfoEUROC.decimals, 6);
             assertEq(collatInfoEUROC.onlyWhitelisted, 0);
+<<<<<<< HEAD
             assertApproxEqRel(collatInfoEUROC.normalizedStables, 9580108 * BASE_18, 100 * BPS);
+=======
+            assertApproxEqRel(collatInfoEUROC.normalizedStables, 9878038 * BASE_18, 100 * BPS);
+>>>>>>> df4f36e (testing after adding bERNX)
             assertEq(collatInfoEUROC.oracleConfig, oracleConfigEUROC);
             assertEq(collatInfoEUROC.whitelistData.length, 0);
             assertEq(collatInfoEUROC.managerData.subCollaterals.length, 0);
@@ -724,9 +740,33 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testUnit_Upgrade_getOracleValues_Success() external {
+<<<<<<< HEAD
         _checkOracleValues(address(EUROC), BASE_18, USER_PROTECTION_EUROC, FIREWALL_BURN_RATIO_EUROC);
         _checkOracleValues(address(BC3M), (11974 * BASE_18) / 100, USER_PROTECTION_BC3M, FIREWALL_BURN_RATIO_BC3M);
         _checkOracleValues(address(BERNX), (52274 * BASE_18) / 10000, USER_PROTECTION_ERNX, FIREWALL_BURN_RATIO_ERNX);
+=======
+        _checkOracleValues(
+            address(EUROC),
+            BASE_18,
+            USER_PROTECTION_EUROC,
+            FIREWALL_MINT_EUROC,
+            FIREWALL_BURN_RATIO_EUROC
+        );
+        _checkOracleValues(
+            address(BC3M),
+            (11949 * BASE_18) / 100,
+            USER_PROTECTION_BC3M,
+            FIREWALL_MINT_BC3M,
+            FIREWALL_BURN_RATIO_BC3M
+        );
+        _checkOracleValues(
+            address(BERNX),
+            (522 * BASE_18) / 100,
+            USER_PROTECTION_ERNX,
+            FIREWALL_MINT_ERNX,
+            FIREWALL_BURN_RATIO_ERNX
+        );
+>>>>>>> df4f36e (testing after adding bERNX)
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
