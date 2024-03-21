@@ -810,7 +810,7 @@ contract OracleTest is Fixture, FunctionUtils {
             vm.assume(fakeCollat != _collaterals[i]);
         }
         vm.prank(governor);
-        transmuter.toggleTrusted(alice, Storage.TrustedType.Updater);
+        transmuter.toggleTrusted(alice, Storage.TrustedType.Seller);
 
         vm.prank(alice);
         vm.expectRevert(Errors.NotCollateral.selector);
@@ -819,7 +819,7 @@ contract OracleTest is Fixture, FunctionUtils {
 
     function testFuzz_revertWhen_updateOracle_NotMax() public {
         vm.prank(governor);
-        transmuter.toggleTrusted(alice, Storage.TrustedType.Updater);
+        transmuter.toggleTrusted(alice, Storage.TrustedType.Seller);
 
         (, , , bytes memory targetData, ) = transmuter.getOracle(_collaterals[0]);
         assertEq(targetData.length, 0);
@@ -831,7 +831,7 @@ contract OracleTest is Fixture, FunctionUtils {
 
     function testFuzz_revertWhen_updateOracle_NoUpdate() public {
         vm.prank(governor);
-        transmuter.toggleTrusted(alice, Storage.TrustedType.Updater);
+        transmuter.toggleTrusted(alice, Storage.TrustedType.Seller);
 
         address collateral = _collaterals[0];
         uint96 deviationThreshold = 0;
@@ -866,7 +866,7 @@ contract OracleTest is Fixture, FunctionUtils {
 
     function testFuzz_updateOracle_Heartbeat_Success(uint32 heartbeat) public {
         vm.prank(governor);
-        transmuter.toggleTrusted(alice, Storage.TrustedType.Updater);
+        transmuter.toggleTrusted(alice, Storage.TrustedType.Seller);
 
         address collateral = _collaterals[0];
         uint96 deviationThreshold = 0;
@@ -914,7 +914,7 @@ contract OracleTest is Fixture, FunctionUtils {
 
     function testFuzz_updateOracle_Deviation_Success(uint96 deviationThreshold, uint256 newOracleValue) public {
         vm.prank(governor);
-        transmuter.toggleTrusted(alice, Storage.TrustedType.Updater);
+        transmuter.toggleTrusted(alice, Storage.TrustedType.Seller);
 
         {
             (Storage.OracleReadType readType, , bytes memory data, , bytes memory hyperparameters) = transmuter
@@ -964,7 +964,7 @@ contract OracleTest is Fixture, FunctionUtils {
 
     function testFuzz_updateOracle_BothConditions_Success(uint96 deviationThreshold, uint32 heartbeat) public {
         vm.prank(governor);
-        transmuter.toggleTrusted(alice, Storage.TrustedType.Updater);
+        transmuter.toggleTrusted(alice, Storage.TrustedType.Seller);
 
         uint256 indexCollat = 0;
         address collateral = _collaterals[indexCollat];
@@ -1051,19 +1051,21 @@ contract OracleTest is Fixture, FunctionUtils {
     }
 
     function _getReadType(uint8 newReadType) internal pure returns (Storage.OracleReadType readType) {
-        readType = newReadType == 0 ? Storage.OracleReadType.CHAINLINK_FEEDS : newReadType == 1
-            ? Storage.OracleReadType.EXTERNAL
-            : newReadType == 2
-            ? Storage.OracleReadType.NO_ORACLE
-            : newReadType == 3
-            ? Storage.OracleReadType.STABLE
-            : newReadType == 4
-            ? Storage.OracleReadType.WSTETH
-            : newReadType == 5
-            ? Storage.OracleReadType.CBETH
-            : newReadType == 6
-            ? Storage.OracleReadType.RETH
-            : Storage.OracleReadType.SFRXETH;
+        readType = newReadType == 0
+            ? Storage.OracleReadType.CHAINLINK_FEEDS
+            : newReadType == 1
+                ? Storage.OracleReadType.EXTERNAL
+                : newReadType == 2
+                    ? Storage.OracleReadType.NO_ORACLE
+                    : newReadType == 3
+                        ? Storage.OracleReadType.STABLE
+                        : newReadType == 4
+                            ? Storage.OracleReadType.WSTETH
+                            : newReadType == 5
+                                ? Storage.OracleReadType.CBETH
+                                : newReadType == 6
+                                    ? Storage.OracleReadType.RETH
+                                    : Storage.OracleReadType.SFRXETH;
     }
 
     function _updateOracles(

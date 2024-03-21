@@ -92,7 +92,7 @@ contract SettersGovernor is AccessControlModifiers, ISettersGovernor {
     }
 
     function updateOracle(address collateral) external {
-        if (s.transmuterStorage().isTrusted[msg.sender] == 0) revert NotTrusted();
+        if (s.transmuterStorage().isSellerTrusted[msg.sender] == 0) revert NotTrusted();
         LibOracle.updateOracle(collateral);
     }
 

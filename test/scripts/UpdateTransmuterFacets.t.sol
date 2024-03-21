@@ -250,7 +250,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
 
             // Set whitelist status for bC3M
             bytes memory whitelistData = abi.encode(
-                WhitelistType.BACKED,
+                Storage.WhitelistType.BACKED,
                 // Keyring whitelist check
                 abi.encode(address(0x9391B14dB2d43687Ea1f6E546390ED4b20766c46))
             );
