@@ -10,6 +10,7 @@ import "./Constants.s.sol";
 import "contracts/transmuter/Storage.sol" as Storage;
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 import "interfaces/external/chainlink/AggregatorV3Interface.sol";
+import "interfaces/external/IERC4626.sol";
 
 import { CollateralSetupProd } from "contracts/transmuter/configs/ProductionTypes.sol";
 
@@ -149,8 +150,8 @@ contract SetupDeployedTransmuter is Utils {
             xMintFeeSteak[2] = uint64((80 * BASE_9) / 100);
 
             int64[] memory yMintFeeSteak = new int64[](3);
-            yMintFeeSteak[0] = int64((5 * BASE_9) / 10000);
-            yMintFeeSteak[1] = int64((5 * BASE_9) / 10000);
+            yMintFeeSteak[0] = int64(uint64((5 * BASE_9) / 10000));
+            yMintFeeSteak[1] = int64(uint64((5 * BASE_9) / 10000));
             yMintFeeSteak[2] = int64(uint64(MAX_MINT_FEE));
 
             uint64[] memory xBurnFeeSteak = new uint64[](3);
@@ -159,8 +160,8 @@ contract SetupDeployedTransmuter is Utils {
             xBurnFeeSteak[2] = uint64((30 * BASE_9) / 100);
 
             int64[] memory yBurnFeeSteak = new int64[](3);
-            yBurnFeeSteak[0] = int64((5 * BASE_9) / 10000);
-            yBurnFeeSteak[1] = int64((5 * BASE_9) / 10000);
+            yBurnFeeSteak[0] = int64(uint64((5 * BASE_9) / 10000));
+            yBurnFeeSteak[1] = int64(uint64((5 * BASE_9) / 10000));
             yBurnFeeSteak[2] = int64(uint64(MAX_BURN_FEE));
 
             bytes memory oracleConfig;
@@ -168,8 +169,9 @@ contract SetupDeployedTransmuter is Utils {
                 // TODO: replace with Morpho steakUSDC/USD oracle address
                 bytes memory readData = abi.encode(0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6, BASE_18);
                 // Current price is 1.012534 -> we take a small margin
+                uint256 startPrice = IERC4626(STEAK_USDC).previewRedeem(1e30);
                 bytes memory targetData = abi.encode(
-                    1013000000000000000,
+                    startPrice,
                     uint96(DEVIATION_THRESHOLD_STEAKUSDC),
                     uint96(block.timestamp),
                     HEARTBEAT
