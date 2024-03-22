@@ -211,8 +211,6 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
                     );
                 }
 
-                // Current value is 109.43, but we need to update it now otherwise we'll have to wait for a week
-                // before we can update it
                 (, int256 answer, , , ) = AggregatorV3Interface(0x32d1463EB53b73C095625719Afa544D5426354cB)
                     .latestRoundData();
                 uint256 initTarget = uint256(answer) * 1e10;
