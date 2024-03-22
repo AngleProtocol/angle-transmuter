@@ -6,13 +6,13 @@ import "./ProductionTypes.sol";
 
 /// @dev This contract is used only once to initialize the diamond proxy.
 contract ProductionUSD {
+    address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+
     function initialize(
         IAccessControlManager _accessControlManager,
         address _agToken,
         address dummyImplementation
     ) external {
-        uint256 BPS = 1e14;
-        address usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
         /*
         require(address(_accessControlManager) == 0x5bc6BEf80DA563EBf6Df6D6913513fa9A7ec89BE);
         require(address(_agToken) == 0x0000206329b97DB379d5E1Bf586BbDB969C63274);
@@ -67,7 +67,7 @@ contract ProductionUSD {
                 );
             }
             collaterals[0] = CollateralSetupProd(
-                usdc,
+                USDC,
                 oracleConfig,
                 xMintFeeUsdc,
                 yMintFeeUsdc,
@@ -98,7 +98,7 @@ contract ProductionUSD {
         }
 
         // setRedemptionCurveParams
-        LibSetters.togglePause(usdc, ActionType.Redeem);
+        LibSetters.togglePause(USDC, ActionType.Redeem);
         uint64[] memory xRedeemFee = new uint64[](4);
         xRedeemFee[0] = uint64((75 * BASE_9) / 100);
         xRedeemFee[1] = uint64((85 * BASE_9) / 100);

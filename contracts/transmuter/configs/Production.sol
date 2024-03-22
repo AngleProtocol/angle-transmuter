@@ -8,14 +8,14 @@ import "./ProductionTypes.sol";
 contract Production {
     error WrongSetup();
 
+    address constant EUROC = 0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c;
+    address constant BC3M = 0x2F123cF3F37CE3328CC9B5b8415f9EC5109b45e7;
+
     function initialize(
         IAccessControlManager _accessControlManager,
         address _agToken,
         address dummyImplementation
     ) external {
-        uint256 BPS = 1e14;
-        address euroc = 0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c;
-        address bc3m = 0x2F123cF3F37CE3328CC9B5b8415f9EC5109b45e7;
         require(address(_accessControlManager) == 0x5bc6BEf80DA563EBf6Df6D6913513fa9A7ec89BE);
         require(address(_agToken) == 0x1a7e4e63778B4f12a199C062f3eFdD288afCBce8);
 
@@ -78,7 +78,7 @@ contract Production {
                 );
             }
             collaterals[0] = CollateralSetupProd(
-                euroc,
+                EUROC,
                 oracleConfig,
                 xMintFeeEuroc,
                 yMintFeeEuroc,
@@ -155,7 +155,7 @@ contract Production {
             );
 
             collaterals[1] = CollateralSetupProd(
-                bc3m,
+                BC3M,
                 oracleConfig,
                 xMintFeeC3M,
                 yMintFeeC3M,
@@ -191,14 +191,14 @@ contract Production {
             // Keyring whitelist check
             abi.encode(address(0x4954c61984180868495D1a7Fb193b05a2cbd9dE3))
         );
-        LibSetters.setWhitelistStatus(bc3m, 1, whitelistData);
+        LibSetters.setWhitelistStatus(BC3M, 1, whitelistData);
 
         // adjustStablecoins
-        LibSetters.adjustStablecoins(euroc, 8851136430000000000000000, true);
-        LibSetters.adjustStablecoins(bc3m, 4192643570000000000000000, true);
+        LibSetters.adjustStablecoins(EUROC, 8851136430000000000000000, true);
+        LibSetters.adjustStablecoins(BC3M, 4192643570000000000000000, true);
 
         // setRedemptionCurveParams
-        LibSetters.togglePause(euroc, ActionType.Redeem);
+        LibSetters.togglePause(EUROC, ActionType.Redeem);
         uint64[] memory xRedeemFee = new uint64[](4);
         xRedeemFee[0] = uint64((75 * BASE_9) / 100);
         xRedeemFee[1] = uint64((85 * BASE_9) / 100);
