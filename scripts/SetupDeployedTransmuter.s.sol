@@ -11,6 +11,7 @@ import "contracts/transmuter/Storage.sol" as Storage;
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 import "interfaces/external/chainlink/AggregatorV3Interface.sol";
 import "interfaces/external/IERC4626.sol";
+import "interfaces/IAgToken.sol";
 
 import { CollateralSetupProd } from "contracts/transmuter/configs/ProductionTypes.sol";
 
@@ -23,6 +24,7 @@ contract SetupDeployedTransmuter is Utils {
         vm.startBroadcast(deployerPrivateKey);
 
         ITransmuter usdaTransmuter = ITransmuter(0x222222fD79264BBE280b4986F6FEfBC3524d0137);
+        IAgToken treasuryUSDA = IAgToken(0x8667DBEBf68B0BFa6Db54f550f41Be16c4067d60);
         console.log(address(usdaTransmuter));
 
         // TODO Run this script after facet upgrade script otherwise it won't work due to oracles calibrated
@@ -204,6 +206,9 @@ contract SetupDeployedTransmuter is Utils {
 
         usdaTransmuter.toggleTrusted(NEW_DEPLOYER, Storage.TrustedType.Seller);
         usdaTransmuter.toggleTrusted(NEW_KEEPER, Storage.TrustedType.Seller);
+
+        // Add minter the flashloan contract on Ethereum
+        treasuryUSDA.addMinter(0x4A2FF9bC686A0A23DA13B6194C69939189506F7F);
 
         console.log("Transmuter setup");
         vm.stopBroadcast();
