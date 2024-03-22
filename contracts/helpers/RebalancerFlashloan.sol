@@ -14,10 +14,13 @@ contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
     using SafeCast for uint256;
     bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
+    /// @notice ERC4626 Vault accepted as a collateral
     IERC4626 public immutable VAULT;
 
+    /// @notice Liquid collateral wrapped in the vault
     IERC20 public immutable COLLATERAL;
 
+    /// @notice Angle stablecoin flashloan contract
     IERC3156FlashLender public immutable FLASHLOAN;
 
     constructor(
@@ -30,13 +33,20 @@ contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
         VAULT = _vault;
         COLLATERAL = IERC20(_vault.asset());
         FLASHLOAN = _flashloan;
-        _collateral.safeApprove(type(uint256).max, address(_vault));
-        IERC20(AGTOKEN).safeApprove(type(uint256).max, address(_flashloan));
+        COLLATERAL.safeApprove(address(_vault), type(uint256).max);
+        IERC20(AGTOKEN).safeApprove(address(_flashloan), type(uint256).max);
     }
 
+    /// @notice Burns `amountStablecoins` for one collateral asset and mints the same with another asset
+    /// @dev If `increase` is 1, then the system
     function adjustYieldExposure(uint256 amountStablecoins, uint8 increase) external {
-        if (!TRANSMUTER.isSellerTrusted(sender)) revert NotTrusted();
-        FLASHLOAN.flashLoan(address(this), address(AGTOKEN), amountStablecoins, abi.encode(increase));
+        if (!TRANSMUTER.isTrustedSeller(msg.sender)) revert NotTrusted();
+        FLASHLOAN.flashLoan(
+            IERC3156FlashBorrower(address(this)),
+            address(AGTOKEN),
+            amountStablecoins,
+            abi.encode(increase)
+        );
     }
 
     /// @inheritdoc IERC3156FlashBorrower
@@ -48,7 +58,7 @@ contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
         bytes calldata data
     ) external returns (bytes32) {
         if (msg.sender != address(FLASHLOAN) || initiator != address(this) || fee != 0) revert NotTrusted();
-        uint256 typeAction = abi.decode(data, uint256);
+        uint256 typeAction = abi.decode(data, (uint256));
         address tokenOut;
         address tokenIn;
         if (typeAction == 1) {
@@ -62,9 +72,9 @@ contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
         }
         uint256 amountOut = TRANSMUTER.swapExactInput(amount, 0, AGTOKEN, tokenOut, address(this), block.timestamp);
         if (typeAction == 1) amountOut = VAULT.deposit(amountOut, address(this));
-        else amountOut = VAULT.redeem(amountOut, address(this));
+        else amountOut = VAULT.redeem(amountOut, address(this), address(this));
         uint256 allowance = IERC20(tokenIn).allowance(address(this), address(TRANSMUTER));
-        if (allowance < amountIn)
+        if (allowance < amountOut)
             IERC20(tokenIn).safeIncreaseAllowance(address(TRANSMUTER), type(uint256).max - allowance);
         uint256 amountStableOut = TRANSMUTER.swapExactInput(
             amountOut,
