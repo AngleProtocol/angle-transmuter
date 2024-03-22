@@ -785,8 +785,9 @@ contract BurnTest is Fixture, FunctionUtils {
             18,
             IERC20Metadata(_collaterals[fromToken]).decimals()
         );
+        if (supposedAmountOut > initialAmounts[fromToken]) vm.expectRevert(Errors.InvalidSwap.selector);
         uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
-        if (amountOut == 0) return;
+        if (amountOut == 0 || supposedAmountOut > initialAmounts[fromToken]) return;
 
         if (stableAmount > _minWallet) {
             _assertApproxEqRelDecimalWithTolerance(

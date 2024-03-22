@@ -75,7 +75,7 @@ via_ir = false
 gas_reports = ["*"]
 
 [profile.ci.fuzz]
-runs = 100
+runs = 1000
 
 [profile.ci.invariant]
 runs = 10
