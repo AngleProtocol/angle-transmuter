@@ -266,9 +266,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
 
             bytes memory oracleConfig;
             {
-                // TODO: replace with Morpho steakUSDC/USD oracle address
-                MockMorphoOracle morphoOracle = new MockMorphoOracle(1013000000000000000);
-                bytes memory readData = abi.encode(address(morphoOracle), 1);
+                bytes memory readData = abi.encode(0x025106374196586E8BC91eE8818dD7B0Efd2B78B, BASE_18);
                 // Current price is 1.012534 -> we take a small margin
                 bytes memory targetData = abi.encode(
                     1013000000000000000,
@@ -313,10 +311,13 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         bytes memory whitelistData = abi.encode(
             WhitelistType.BACKED,
             // Keyring whitelist check
-            abi.encode(address(0x4954c61984180868495D1a7Fb193b05a2cbd9dE3))
+            abi.encode(address(0x9391B14dB2d43687Ea1f6E546390ED4b20766c46))
         );
         transmuter.setWhitelistStatus(BIB01, 1, whitelistData);
         transmuter.toggleWhitelist(Storage.WhitelistType.BACKED, WHALE_USDA);
+
+        transmuter.toggleTrusted(NEW_DEPLOYER, Storage.TrustedType.Seller);
+        transmuter.toggleTrusted(NEW_KEEPER, Storage.TrustedType.Seller);
 
         vm.stopPrank();
     }
@@ -459,11 +460,11 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         assertEq(transmuter.isTrusted(DEPLOYER), false);
         assertEq(transmuter.isTrustedSeller(DEPLOYER), false);
         assertEq(transmuter.isTrusted(NEW_DEPLOYER), false);
-        assertEq(transmuter.isTrustedSeller(NEW_DEPLOYER), false);
+        assertEq(transmuter.isTrustedSeller(NEW_DEPLOYER), true);
         assertEq(transmuter.isTrusted(KEEPER), false);
         assertEq(transmuter.isTrustedSeller(KEEPER), false);
         assertEq(transmuter.isTrusted(NEW_KEEPER), false);
-        assertEq(transmuter.isTrustedSeller(NEW_KEEPER), false);
+        assertEq(transmuter.isTrustedSeller(NEW_KEEPER), true);
     }
 
     function testUnit_UpgradeUSDA_IsWhitelistedForCollateral() external {

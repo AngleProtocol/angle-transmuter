@@ -166,8 +166,7 @@ contract SetupDeployedTransmuter is Utils {
 
             bytes memory oracleConfig;
             {
-                // TODO: replace with Morpho steakUSDC/USD oracle address
-                bytes memory readData = abi.encode(0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6, BASE_18);
+                bytes memory readData = abi.encode(0x025106374196586E8BC91eE8818dD7B0Efd2B78B, BASE_18);
                 // Current price is 1.012534 -> we take a small margin
                 uint256 startPrice = IERC4626(STEAK_USDC).previewRedeem(1e30);
                 bytes memory targetData = abi.encode(
@@ -211,10 +210,12 @@ contract SetupDeployedTransmuter is Utils {
         // Set whitelist status for bIB01
         bytes memory whitelistData = abi.encode(
             Storage.WhitelistType.BACKED,
-            // TODO: Keyring whitelist check
             abi.encode(address(0x9391B14dB2d43687Ea1f6E546390ED4b20766c46))
         );
         usdaTransmuter.setWhitelistStatus(BIB01, 1, whitelistData);
+
+        usdaTransmuter.toggleTrusted(NEW_DEPLOYER, Storage.TrustedType.Seller);
+        usdaTransmuter.toggleTrusted(NEW_KEEPER, Storage.TrustedType.Seller);
 
         console.log("Transmuter setup");
         vm.stopBroadcast();
