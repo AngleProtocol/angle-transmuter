@@ -21,11 +21,10 @@ import { CollateralSetupProd } from "contracts/transmuter/configs/ProductionType
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 import "utils/src/Constants.sol";
 import { IERC20 } from "oz/interfaces/IERC20.sol";
-import { MockMorphoOracle } from "../mock/MockMorphoOracle.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
 
 import { IFlashAngle } from "borrow/interfaces/IFlashAngle.sol";
-import "contracts/helpers/RebalancerFlashloan.sol";
+import { RebalancerFlashloan } from "contracts/helpers/RebalancerFlashloan.sol";
 
 interface OldTransmuter {
     function getOracle(
@@ -338,9 +337,18 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         );
 
         // Setup flashloan
-
         vm.startPrank(governor);
         FLASHLOAN.setFlashLoanParameters(address(USDA), 0, type(uint256).max);
+        vm.stopPrank();
+
+        // Initialize Transmuter reserves
+        deal(BIB01, NEW_DEPLOYER, 100000 * BASE_18);
+        deal(STEAK_USDC, NEW_DEPLOYER, 1000000 * BASE_18);
+        vm.startPrank(NEW_DEPLOYER);
+        IERC20(BIB01).approve(transmuter, type(uint256).max);
+        IERC20(STEAK_USDC).approve(transmuter, type(uint256).max);
+        transmuter.swapExactOutput(1200 * BASE_18, type(uint256).max, BIB01, USDA, NEW_DEPLOYER, block.timestamp);
+        transmuter.swapExactOutput(2400 * BASE_18, type(uint256).max, STEAK_USDC, USDA, NEW_DEPLOYER, block.timestamp);
         vm.stopPrank();
     }
 
@@ -348,7 +356,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
                                                         GETTERS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testUnit_UpgradeUSDA_AgToken() external {
+    function testUnit_Rebalance_AgToken() external {
         assertEq(address(transmuter.agToken()), 0x0000206329b97DB379d5E1Bf586BbDB969C63274);
     }
 }
