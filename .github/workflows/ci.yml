@@ -26,9 +26,6 @@ jobs:
         with:
           registry-token: ${{ secrets.GH_REGISTRY_ACCESS_TOKEN }}
 
-      - name: Install dependencies
-        run: yarn install
-
       - name: Run solhint
         run: yarn lint:check
 
@@ -53,9 +50,6 @@ jobs:
         uses: ./.github/actions/setup-repo
         with:
           registry-token: ${{ secrets.GH_REGISTRY_ACCESS_TOKEN }}
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
 
       - name: Compile foundry
         run: yarn compile --sizes
