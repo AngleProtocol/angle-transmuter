@@ -63,7 +63,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         transmuter = ITransmuter(0x222222fD79264BBE280b4986F6FEfBC3524d0137);
         USDA = IERC20(0x0000206329b97DB379d5E1Bf586BbDB969C63274);
         FLASHLOAN = IFlashAngle(0x4A2FF9bC686A0A23DA13B6194C69939189506F7F);
-        treasuryUSDA = IAgToken(0x8667DBEBf68B0BFa6Db54f550f41Be16c4067d60);
+        treasuryUSDA = IAgToken(0xf8588520E760BB0b3bDD62Ecb25186A28b0830ee);
 
         Storage.FacetCut[] memory replaceCut;
         Storage.FacetCut[] memory addCut;
@@ -322,9 +322,6 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         transmuter.toggleWhitelist(Storage.WhitelistType.BACKED, NEW_DEPLOYER);
         transmuter.toggleTrusted(NEW_DEPLOYER, Storage.TrustedType.Seller);
         transmuter.toggleTrusted(NEW_KEEPER, Storage.TrustedType.Seller);
-
-        console.log("OK1");
-
         IAgToken(treasuryUSDA).addMinter(address(FLASHLOAN));
         vm.stopPrank();
 
@@ -337,11 +334,12 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         );
 
         // Setup flashloan
+        // Core contract
         vm.startPrank(0x5bc6BEf80DA563EBf6Df6D6913513fa9A7ec89BE);
         FLASHLOAN.addStablecoinSupport(address(treasuryUSDA));
-        console.log("OK2");
         vm.stopPrank();
-        vm.startPrank(governor);
+        // Governor address
+        vm.startPrank(0xdC4e6DFe07EFCa50a197DF15D9200883eF4Eb1c8);
         FLASHLOAN.setFlashLoanParameters(address(USDA), 0, type(uint256).max);
         vm.stopPrank();
 
@@ -367,7 +365,6 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
             NEW_DEPLOYER,
             block.timestamp
         );
-        console.log("OK3");
         vm.stopPrank();
     }
 
