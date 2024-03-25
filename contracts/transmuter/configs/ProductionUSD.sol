@@ -6,7 +6,7 @@ import "./ProductionTypes.sol";
 
 /// @dev This contract is used only once to initialize the diamond proxy.
 contract ProductionUSD {
-    address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
     function initialize(
         IAccessControlManager _accessControlManager,
