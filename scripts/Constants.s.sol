@@ -21,6 +21,8 @@ address constant EURE = 0x3231Cb76718CDeF2155FC47b5286d82e6eDA273f;
 address constant BC3M = 0x2F123cF3F37CE3328CC9B5b8415f9EC5109b45e7;
 address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 address constant BERNX = 0x3f95AA88dDbB7D9D484aa3D482bf0a80009c52c9;
+address constant STEAK_USDC = 0xBEEF01735c132Ada46AA9aA4c54623cAA92A64CB;
+address constant BIB01 = 0xCA30c93B02514f86d5C86a6e375E3A330B435Fb5;
 
 // EUROC
 uint80 constant FIREWALL_MINT_EUROC = uint80(0);
@@ -39,7 +41,21 @@ uint80 constant FIREWALL_BURN_RATIO_ERNX = uint80(100 * BPS);
 uint80 constant USER_PROTECTION_ERNX = uint80(0);
 uint96 constant DEVIATION_THRESHOLD_ERNX = uint96(100 * BPS);
 
-uint32 constant HEARTBEAT = uint32(1 days);
+uint32 constant HEARTBEAT = uint32(7 days);
+
+uint80 constant FIREWALL_MINT_USDC = uint80(0);
+uint80 constant FIREWALL_BURN_RATIO_USDC = uint80(0);
+uint80 constant USER_PROTECTION_USDC = uint80(5 * BPS);
+
+uint80 constant FIREWALL_MINT_STEAK_USDC = uint80(0);
+uint80 constant FIREWALL_BURN_RATIO_STEAK_USDC = uint80(50 * BPS);
+uint80 constant USER_PROTECTION_STEAK_USDC = uint80(0);
+uint256 constant DEVIATION_THRESHOLD_STEAKUSDC = 50 * BPS;
+
+uint80 constant FIREWALL_MINT_IB01 = uint80(70 * BPS);
+uint80 constant FIREWALL_BURN_RATIO_IB01 = uint80(50 * BPS);
+uint80 constant USER_PROTECTION_IB01 = uint80(0);
+uint256 constant DEVIATION_THRESHOLD_IB01 = 50 * BPS;
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     FACET ADDRESSES                                                 

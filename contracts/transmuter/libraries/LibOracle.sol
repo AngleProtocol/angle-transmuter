@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 
 import { ITransmuterOracle } from "interfaces/ITransmuterOracle.sol";
 import { AggregatorV3Interface } from "interfaces/external/chainlink/AggregatorV3Interface.sol";
+import { IMorphoOracle } from "interfaces/external/morpho/IMorphoOracle.sol";
 import { IPyth, PythStructs } from "interfaces/external/pyth/IPyth.sol";
 
 import { LibStorage as s } from "./LibStorage.sol";
@@ -33,25 +34,14 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readRedemption();
         } else {
-            // We consider the actual oracle value and not the processed one
-            // as it doesn't impact directly the redemption process
             (oracleValue, ) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, 0);
-            // We don't consider the mint firewall as `readRedemption` is only used to compute the collateral ratio
-            // `getCollateralRatio` is only used in `_quoteRedemptionCurve` and `accrue` on the savingsVest
-            // `_quoteRedemptionCurve` use the collateral ratio to compute the penalty factor. Artificially increase the
-            // oracle rate will just allow you to navigate through the penalty factor curve and when
-            // the collateral ratio > 100% the penalty factor curve is decreasing such that there is no incentives
-            // for upward manipulation
-            // `accrue` would be impacted by an inflated oracle value, but only governors can call this function
-            // We don't consider the burn firewall is less relevant for redemptions
-            // as there is already a surplus buffer to circumvent small deviations
             return oracleValue;
         }
     }
 
     /// @notice Reads the oracle value used during mint operations for an asset with `oracleConfig`
-    /// @dev For assets which do not rely on external oracles, this value is the minimum between the asset oracle
-    /// value and its target price
+    /// @dev For assets which do not rely on external oracles, this value is the minimum between the processed oracle
+    /// value for the asset and its target price
     function readMint(bytes memory oracleConfig) internal view returns (uint256 oracleValue) {
         (
             OracleReadType oracleType,
@@ -70,7 +60,7 @@ library LibOracle {
         oracleValue = _firewallMint(targetPrice, oracleValue, mintDeviation);
     }
 
-    /// @notice Reads the oracle value that will be used for a burn operation for an asset with `oracleConfig`
+    /// @notice Reads the oracle value used for a burn operation for an asset with `oracleConfig`
     /// @return oracleValue The actual oracle value obtained
     /// @return ratio If `oracle value < target price`, the ratio between the oracle value and the target
     /// price, otherwise `BASE_18`
@@ -142,7 +132,7 @@ library LibOracle {
     ) internal view returns (uint256 oracleValue, uint256 targetPrice) {
         targetPrice = read(targetType, BASE_18, targetData);
         oracleValue = read(oracleType, targetPrice, oracleData);
-        // Post process of the oracle value, it tolerates small deviation from target
+        // Post process of the oracle value: system may tolerate small deviations from target
         oracleValue = _userOracleProtection(targetPrice, oracleValue, deviation);
     }
 
@@ -197,6 +187,9 @@ library LibOracle {
         } else if (readType == OracleReadType.MAX) {
             (uint256 maxValue, , , ) = abi.decode(data, (uint256, uint96, uint96, uint32));
             return maxValue;
+        } else if (readType == OracleReadType.MORPHO_ORACLE) {
+            (address contractAddress, uint256 normalizationFactor) = abi.decode(data, (address, uint256));
+            return IMorphoOracle(contractAddress).price() / normalizationFactor;
         }
         // If the `OracleReadType` is `EXTERNAL`, it means that this function is called to compute a
         // `targetPrice` in which case the `baseValue` is returned here
@@ -256,15 +249,18 @@ library LibOracle {
     }
 
     /// @notice Firewall in case the oracle value reported is too high compared to the target
-    /// --> disregard the oracle value and return the target price
-    /// TODO we may want something continuous ans therefore set
-    /// `oracleValue = targetPrice * (BASE_18 + deviation) / BASE_18`
+    /// @dev This mint firewall is useful in the case of assets for which the `targetPrice` is  theorically defined as
+    /// the maximum value ever observed for the oracle, but this maximum value has simply not been updated.
+    /// Typically, imagine a case where target is 100 and oracle is 101, in this setup, during a mint, because
+    /// target should be put at 101 but hasn't been modified, the system uses for a price the oracle value
     function _firewallMint(uint256 targetPrice, uint256 oracleValue, uint256 deviation) private pure returns (uint256) {
         if (targetPrice * (BASE_18 + deviation) < oracleValue * BASE_18) oracleValue = targetPrice;
         return oracleValue;
     }
 
     /// @notice Firewall in case the oracle value reported is low compared to the target
+    /// @dev If the oracle value is slightly below its target, then no deviation is reported for the oracle and
+    /// the price of burning the stablecoin for other assets is not impacted
     function _burnRatio(
         uint256 targetPrice,
         uint256 oracleValue,
@@ -275,7 +271,7 @@ library LibOracle {
         return ratio;
     }
 
-    /// @notice Firewall in case the oracle value reported is under a reasonable threshold to the target
+    /// @notice Firewall in case the oracle value reported is reasonably close to the target
     /// --> disregard the oracle value and return the target price
     function _userOracleProtection(
         uint256 targetPrice,

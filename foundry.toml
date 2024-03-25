@@ -24,8 +24,8 @@ memory_limit = 1000043554432
 runs = 10000
 
 [invariant]
-runs = 1000
-depth = 30
+runs = 8
+depth = 256
 
 [rpc_endpoints]
 arbitrum = "${ETH_NODE_URI_ARBITRUM}"

@@ -3,7 +3,6 @@
 pragma solidity ^0.8.19;
 
 import { IERC20 } from "oz/interfaces/IERC20.sol";
-import { IERC20Metadata } from "oz/interfaces/IERC20Metadata.sol";
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { SafeCast } from "oz/utils/math/SafeCast.sol";
 
