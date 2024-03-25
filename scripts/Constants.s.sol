@@ -47,7 +47,7 @@ uint80 constant FIREWALL_MINT_USDC = uint80(0);
 uint80 constant FIREWALL_BURN_RATIO_USDC = uint80(0);
 uint80 constant USER_PROTECTION_USDC = uint80(5 * BPS);
 
-uint80 constant FIREWALL_MINT_STEAK_USDC = uint80(50 * BPS);
+uint80 constant FIREWALL_MINT_STEAK_USDC = uint80(0);
 uint80 constant FIREWALL_BURN_RATIO_STEAK_USDC = uint80(50 * BPS);
 uint80 constant USER_PROTECTION_STEAK_USDC = uint80(0);
 uint256 constant DEVIATION_THRESHOLD_STEAKUSDC = 50 * BPS;
