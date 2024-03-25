@@ -90,6 +90,7 @@ uint80 constant FIREWALL_BURN_RATIO_IB01 = uint80(50 * BPS);
 uint80 constant USER_PROTECTION_IB01 = uint80(0);
 uint256 constant DEVIATION_THRESHOLD_IB01 = 50 * BPS;
 
+<<<<<<< HEAD
 uint80 constant FIREWALL_MINT_USDC = uint80(0);
 uint80 constant FIREWALL_BURN_RATIO_USDC = uint80(0);
 uint80 constant USER_PROTECTION_USDC = uint80(5 * BPS);
@@ -105,7 +106,12 @@ uint80 constant USER_PROTECTION_IB01 = uint80(0);
 uint256 constant DEVIATION_THRESHOLD_IB01 = 50 * BPS;
 
 >>>>>>> db78197 (feat: setup  script for USDA transmuter)
+<<<<<<< HEAD
 >>>>>>> 70915c9 (feat: setup  script for USDA transmuter)
+=======
+=======
+>>>>>>> e9ce80c (finish rebase)
+>>>>>>> 75a829b (finish rebase)
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     FACET ADDRESSES                                                 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
