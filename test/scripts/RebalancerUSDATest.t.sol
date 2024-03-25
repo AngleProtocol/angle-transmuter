@@ -23,13 +23,11 @@ import "utils/src/Constants.sol";
 import { IERC20 } from "oz/interfaces/IERC20.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
 
-import { IFlashAngle } from "borrow/interfaces/IFlashAngle.sol";
-import { RebalancerFlashloan } from "contracts/helpers/RebalancerFlashloan.sol";
+import { RebalancerFlashloan, IERC4626, IERC3156FlashLender } from "contracts/helpers/RebalancerFlashloan.sol";
 
-interface OldTransmuter {
-    function getOracle(
-        address
-    ) external view returns (Storage.OracleReadType, Storage.OracleReadType, bytes memory, bytes memory);
+interface IFlashAngle {
+    function addStablecoinSupport(address _treasury) external;
+    function setFlashLoanParameters(address stablecoin, uint64 _flashLoanFee, uint256 _maxBorrowable) external;
 }
 
 contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
@@ -44,7 +42,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
 
     ITransmuter transmuter;
     IERC20 USDA;
-    IAgToken TreasuryUSDA;
+    IAgToken treasuryUSDA;
     IFlashAngle FLASHLOAN;
     address governor;
     RebalancerFlashloan public rebalancer;
@@ -65,7 +63,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         transmuter = ITransmuter(0x222222fD79264BBE280b4986F6FEfBC3524d0137);
         USDA = IERC20(0x0000206329b97DB379d5E1Bf586BbDB969C63274);
         FLASHLOAN = IFlashAngle(0x4A2FF9bC686A0A23DA13B6194C69939189506F7F);
-        TreasuryUSDA = IAgToken(0x8667DBEBf68B0BFa6Db54f550f41Be16c4067d60);
+        treasuryUSDA = IAgToken(0x8667DBEBf68B0BFa6Db54f550f41Be16c4067d60);
 
         Storage.FacetCut[] memory replaceCut;
         Storage.FacetCut[] memory addCut;
@@ -321,11 +319,13 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
             abi.encode(address(0x9391B14dB2d43687Ea1f6E546390ED4b20766c46))
         );
         transmuter.setWhitelistStatus(BIB01, 1, whitelistData);
-        transmuter.toggleWhitelist(Storage.WhitelistType.BACKED, WHALE_USDA);
+        transmuter.toggleWhitelist(Storage.WhitelistType.BACKED, NEW_DEPLOYER);
         transmuter.toggleTrusted(NEW_DEPLOYER, Storage.TrustedType.Seller);
         transmuter.toggleTrusted(NEW_KEEPER, Storage.TrustedType.Seller);
 
-        IAgToken(TreasuryUSDA).addMinter(address(FLASHLOAN));
+        console.log("OK1");
+
+        IAgToken(treasuryUSDA).addMinter(address(FLASHLOAN));
         vm.stopPrank();
 
         // Setup rebalancer
@@ -337,6 +337,10 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         );
 
         // Setup flashloan
+        vm.startPrank(0x5bc6BEf80DA563EBf6Df6D6913513fa9A7ec89BE);
+        FLASHLOAN.addStablecoinSupport(address(treasuryUSDA));
+        console.log("OK2");
+        vm.stopPrank();
         vm.startPrank(governor);
         FLASHLOAN.setFlashLoanParameters(address(USDA), 0, type(uint256).max);
         vm.stopPrank();
@@ -345,10 +349,25 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         deal(BIB01, NEW_DEPLOYER, 100000 * BASE_18);
         deal(STEAK_USDC, NEW_DEPLOYER, 1000000 * BASE_18);
         vm.startPrank(NEW_DEPLOYER);
-        IERC20(BIB01).approve(transmuter, type(uint256).max);
-        IERC20(STEAK_USDC).approve(transmuter, type(uint256).max);
-        transmuter.swapExactOutput(1200 * BASE_18, type(uint256).max, BIB01, USDA, NEW_DEPLOYER, block.timestamp);
-        transmuter.swapExactOutput(2400 * BASE_18, type(uint256).max, STEAK_USDC, USDA, NEW_DEPLOYER, block.timestamp);
+        IERC20(BIB01).approve(address(transmuter), type(uint256).max);
+        IERC20(STEAK_USDC).approve(address(transmuter), type(uint256).max);
+        transmuter.swapExactOutput(
+            1200 * BASE_18,
+            type(uint256).max,
+            BIB01,
+            address(USDA),
+            NEW_DEPLOYER,
+            block.timestamp
+        );
+        transmuter.swapExactOutput(
+            2400 * BASE_18,
+            type(uint256).max,
+            STEAK_USDC,
+            address(USDA),
+            NEW_DEPLOYER,
+            block.timestamp
+        );
+        console.log("OK3");
         vm.stopPrank();
     }
 
