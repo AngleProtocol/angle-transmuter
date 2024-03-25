@@ -57,6 +57,11 @@ contract RebalancerFlashloanTest is Fixture, FunctionUtils {
         assertEq(address(rebalancer.VAULT()), address(_saving));
         assertEq(address(rebalancer.COLLATERAL()), collat);
         assertEq(address(rebalancer.FLASHLOAN()), governor);
+        assertEq(
+            IERC20Metadata(address(agToken)).allowance(address(rebalancer), address(flashloan)),
+            type(uint256).max
+        );
+        assertEq(IERC20Metadata(address(collat)).allowance(address(rebalancer), address(_saving)), type(uint256).max);
     }
 
     function test_Constructor_RevertWhen_ZeroAddress() public {

@@ -327,6 +327,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
 
         // Setup rebalancer
         rebalancer = new RebalancerFlashloan(
+            // Mock access control manager for
             IAccessControlManager(0x3fc5a1bd4d0A435c55374208A6A81535A1923039),
             transmuter,
             IERC4626(address(STEAK_USDC)),
@@ -371,6 +372,11 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         GETTERS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testUnit_RebalancerSetup() external {
+        assertEq(address(transmuter.agToken()), 0x0000206329b97DB379d5E1Bf586BbDB969C63274);
+        // Revert when
+    }
 
     function testUnit_Rebalance_AgToken() external {
         assertEq(address(transmuter.agToken()), 0x0000206329b97DB379d5E1Bf586BbDB969C63274);
