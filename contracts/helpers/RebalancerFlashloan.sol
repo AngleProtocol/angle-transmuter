@@ -9,6 +9,8 @@ import { IERC3156FlashLender } from "oz/interfaces/IERC3156FlashLender.sol";
 
 /// @title RebalancerFlashloan
 /// @author Angle Labs, Inc.
+/// @dev Rebalancer contract for a Transmuter with as collaterals a liquid stablecoin and an ERC4626 token
+/// using this liquid stablecoin as an asset
 contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
@@ -37,8 +39,10 @@ contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
         IERC20(AGTOKEN).safeApprove(address(_flashloan), type(uint256).max);
     }
 
-    /// @notice Burns `amountStablecoins` for one collateral asset and mints the same with another asset
-    /// @dev If `increase` is 1, then the system
+    /// @notice Burns `amountStablecoins` for one collateral asset and mints stablecoins from the proceeds of the
+    /// first burn
+    /// @dev If `increase` is 1, then the system tries to increase its exposure to the yield bearing asset which means
+    /// burning stablecoin for the liquid asset, depositing into the ERC4626 vault, then minting the stablecoin
     function adjustYieldExposure(uint256 amountStablecoins, uint8 increase) external {
         if (!TRANSMUTER.isTrustedSeller(msg.sender)) revert NotTrusted();
         FLASHLOAN.flashLoan(
@@ -62,11 +66,11 @@ contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
         address tokenOut;
         address tokenIn;
         if (typeAction == 1) {
-            // Increase yield exposure action: we bring in the vault
+            // Increase yield exposure action: we bring in the ERC4626 token
             tokenOut = address(COLLATERAL);
             tokenIn = address(VAULT);
         } else {
-            // Decrease yield exposure action: we bring in the collateral
+            // Decrease yield exposure action: we bring in the liquid asset
             tokenIn = address(COLLATERAL);
             tokenOut = address(VAULT);
         }

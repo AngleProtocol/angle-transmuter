@@ -30,7 +30,7 @@ interface IFlashAngle {
     function setFlashLoanParameters(address stablecoin, uint64 _flashLoanFee, uint256 _maxBorrowable) external;
 }
 
-contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
+contract RebalancerUSDATest is Helpers, Test {
     using stdJson for string;
 
     uint256 public CHAIN_SOURCE;
@@ -165,7 +165,6 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
             );
             oracleConfigUSDC = oracleConfig;
             transmuter.setOracle(USDC, oracleConfig);
-            (, , , , uint256 redemptionPrice) = transmuter.getOracleValues(address(USDC));
         }
 
         // Set Collaterals
@@ -255,8 +254,8 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
             xMintFeeSteak[2] = uint64((80 * BASE_9) / 100);
 
             int64[] memory yMintFeeSteak = new int64[](3);
-            yMintFeeSteak[0] = int64(0);
-            yMintFeeSteak[1] = int64(0);
+            yMintFeeSteak[0] = int64(uint64((5 * BASE_9) / 10000));
+            yMintFeeSteak[1] = int64(uint64((5 * BASE_9) / 10000));
             yMintFeeSteak[2] = int64(uint64(MAX_MINT_FEE));
 
             uint64[] memory xBurnFeeSteak = new uint64[](3);
@@ -265,8 +264,8 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
             xBurnFeeSteak[2] = uint64((30 * BASE_9) / 100);
 
             int64[] memory yBurnFeeSteak = new int64[](3);
-            yBurnFeeSteak[0] = int64(0);
-            yBurnFeeSteak[1] = int64(0);
+            yBurnFeeSteak[0] = int64(uint64((5 * BASE_9) / 10000));
+            yBurnFeeSteak[1] = int64(uint64((5 * BASE_9) / 10000));
             yBurnFeeSteak[2] = int64(uint64(MAX_BURN_FEE));
 
             bytes memory oracleConfig;
@@ -284,7 +283,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
                     Storage.OracleReadType.MAX,
                     readData,
                     targetData,
-                    abi.encode(USER_PROTECTION_STEAK_USDC, FIREWALL_MINT_STEAK_USDC, FIREWALL_BURN_RATIO_STEAK_USDC)
+                    abi.encode(USER_PROTECTION_STEAK_USDC, uint80(50 * BPS), FIREWALL_BURN_RATIO_STEAK_USDC)
                 );
                 oracleConfigSTEAK = oracleConfig;
             }
@@ -322,6 +321,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         transmuter.toggleWhitelist(Storage.WhitelistType.BACKED, NEW_DEPLOYER);
         transmuter.toggleTrusted(NEW_DEPLOYER, Storage.TrustedType.Seller);
         transmuter.toggleTrusted(NEW_KEEPER, Storage.TrustedType.Seller);
+        transmuter.toggleTrusted(DEPLOYER, Storage.TrustedType.Seller);
         IAgToken(treasuryUSDA).addMinter(address(FLASHLOAN));
         vm.stopPrank();
 
@@ -375,10 +375,215 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
 
     function testUnit_RebalancerSetup() external {
         assertEq(address(transmuter.agToken()), 0x0000206329b97DB379d5E1Bf586BbDB969C63274);
-        // Revert when
+        // Revert when no order has been setup
+        vm.startPrank(NEW_DEPLOYER);
+        vm.expectRevert();
+        rebalancer.adjustYieldExposure(BASE_18, 1);
+
+        vm.expectRevert();
+        rebalancer.adjustYieldExposure(BASE_18, 0);
+        vm.stopPrank();
     }
 
-    function testUnit_Rebalance_AgToken() external {
-        assertEq(address(transmuter.agToken()), 0x0000206329b97DB379d5E1Bf586BbDB969C63274);
+    function testFuzz_adjustYieldExposure_SuccessIncrease(uint256 amount) external {
+        amount = bound(amount, BASE_18, BASE_18 * 100);
+        deal(address(USDA), address(rebalancer), BASE_18 * 1000);
+        (uint256 fromUSDC, uint256 total) = transmuter.getIssuedByCollateral(address(USDC));
+        (uint256 fromSTEAK, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
+        vm.startPrank(DEPLOYER);
+        rebalancer.setOrder(address(STEAK_USDC), address(USDC), BASE_18 * 500, 0);
+        rebalancer.setOrder(address(USDC), address(STEAK_USDC), BASE_18 * 500, 0);
+
+        uint256 budget = rebalancer.budget();
+        (uint112 orderBudget0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
+        (uint112 orderBudget1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
+        rebalancer.adjustYieldExposure(amount, 1);
+
+        vm.stopPrank();
+
+        (uint256 fromUSDCPost, uint256 totalPost) = transmuter.getIssuedByCollateral(address(USDC));
+        (uint256 fromSTEAKPost, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
+        assertLe(totalPost, total);
+        assertEq(fromUSDCPost, fromUSDC - amount);
+        assertLe(fromSTEAKPost, fromSTEAK + amount);
+        assertGe(fromSTEAKPost, fromSTEAK);
+        assertLe(rebalancer.budget(), budget);
+        (uint112 newOrder0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
+        (uint112 newOrder1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
+        assertEq(newOrder0, orderBudget0);
+        assertLe(newOrder1, orderBudget1);
+    }
+
+    function testFuzz_adjustYieldExposure_SuccessDecrease(uint256 amount) external {
+        amount = bound(amount, BASE_18, BASE_18 * 100);
+        deal(address(USDA), address(rebalancer), BASE_18 * 1000);
+        (uint256 fromUSDC, uint256 total) = transmuter.getIssuedByCollateral(address(USDC));
+        (uint256 fromSTEAK, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
+        vm.startPrank(DEPLOYER);
+        rebalancer.setOrder(address(STEAK_USDC), address(USDC), BASE_18 * 500, 0);
+        rebalancer.setOrder(address(USDC), address(STEAK_USDC), BASE_18 * 500, 0);
+        uint256 budget = rebalancer.budget();
+        (uint112 orderBudget0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
+        (uint112 orderBudget1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
+        rebalancer.adjustYieldExposure(amount, 0);
+        vm.stopPrank();
+        (uint256 fromUSDCPost, uint256 totalPost) = transmuter.getIssuedByCollateral(address(USDC));
+        (uint256 fromSTEAKPost, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
+        assertLe(totalPost, total);
+        assertLe(fromUSDCPost, fromUSDC + amount);
+        assertGe(fromUSDCPost, fromUSDC);
+        assertEq(fromSTEAKPost, fromSTEAK - amount);
+        assertLe(rebalancer.budget(), budget);
+        (uint112 newOrder0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
+        (uint112 newOrder1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
+        assertLe(newOrder0, orderBudget0);
+        assertEq(newOrder1, orderBudget1);
+    }
+
+    function testFuzz_adjustYieldExposure_SuccessNoBudgetIncrease(uint256 amount) external {
+        amount = bound(amount, BASE_18, BASE_18 * 100);
+        deal(address(USDA), address(rebalancer), BASE_18 * 1000);
+        (uint256 fromUSDC, uint256 total) = transmuter.getIssuedByCollateral(address(USDC));
+        (uint256 fromSTEAK, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
+        vm.startPrank(DEPLOYER);
+        uint64[] memory xMintFee = new uint64[](1);
+        xMintFee[0] = uint64(0);
+        int64[] memory yMintFee = new int64[](1);
+        yMintFee[0] = int64(0);
+        transmuter.setFees(STEAK_USDC, xMintFee, yMintFee, true);
+        assertEq(rebalancer.budget(), 0);
+        rebalancer.adjustYieldExposure(amount, 1);
+        vm.stopPrank();
+        (uint256 fromUSDCPost, uint256 totalPost) = transmuter.getIssuedByCollateral(address(USDC));
+        (uint256 fromSTEAKPost, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
+        assertGe(totalPost, total);
+        assertEq(fromUSDCPost, fromUSDC - amount);
+        assertGe(fromSTEAKPost, fromSTEAK + amount);
+    }
+
+    function testFuzz_adjustYieldExposure_SuccessDecreaseSplit(uint256 amount, uint256 split) external {
+        amount = bound(amount, BASE_18, BASE_18 * 100);
+        split = bound(split, BASE_9 / 4, (BASE_9 * 3) / 4);
+        deal(address(USDA), address(rebalancer), BASE_18 * 1000);
+        (uint256 fromUSDC, uint256 total) = transmuter.getIssuedByCollateral(address(USDC));
+        (uint256 fromSTEAK, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
+        vm.startPrank(DEPLOYER);
+        rebalancer.setOrder(address(STEAK_USDC), address(USDC), BASE_18 * 500, 0);
+        rebalancer.setOrder(address(USDC), address(STEAK_USDC), BASE_18 * 500, 0);
+        uint256 budget = rebalancer.budget();
+        (uint112 orderBudget0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
+        (uint112 orderBudget1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
+
+        rebalancer.adjustYieldExposure((amount * split) / BASE_9, 0);
+
+        (uint256 fromUSDCPost, uint256 totalPost) = transmuter.getIssuedByCollateral(address(USDC));
+        (uint256 fromSTEAKPost, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
+        assertLe(totalPost, total);
+        assertLe(fromUSDCPost, fromUSDC + (amount * split) / BASE_9);
+        assertGe(fromUSDCPost, fromUSDC);
+        assertEq(fromSTEAKPost, fromSTEAK - (amount * split) / BASE_9);
+        assertLe(rebalancer.budget(), budget);
+
+        rebalancer.adjustYieldExposure(amount - (amount * split) / BASE_9, 0);
+
+        (fromUSDCPost, totalPost) = transmuter.getIssuedByCollateral(address(USDC));
+        (fromSTEAKPost, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
+        assertLe(totalPost, total);
+        assertLe(fromUSDCPost, fromUSDC + amount);
+        assertGe(fromUSDCPost, fromUSDC);
+        assertEq(fromSTEAKPost, fromSTEAK - amount);
+        assertLe(rebalancer.budget(), budget);
+        (uint112 newOrder0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
+        (uint112 newOrder1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
+        assertLe(newOrder0, orderBudget0);
+        assertEq(newOrder1, orderBudget1);
+
+        vm.stopPrank();
+    }
+
+    function testFuzz_adjustYieldExposure_SuccessIncreaseSplit(uint256 amount, uint256 split) external {
+        amount = bound(amount, BASE_18, BASE_18 * 100);
+        split = bound(split, BASE_9 / 4, (BASE_9 * 3) / 4);
+        deal(address(USDA), address(rebalancer), BASE_18 * 1000);
+        (uint256 fromUSDC, uint256 total) = transmuter.getIssuedByCollateral(address(USDC));
+        (uint256 fromSTEAK, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
+        vm.startPrank(DEPLOYER);
+        rebalancer.setOrder(address(STEAK_USDC), address(USDC), BASE_18 * 500, 0);
+        rebalancer.setOrder(address(USDC), address(STEAK_USDC), BASE_18 * 500, 0);
+        uint256 budget = rebalancer.budget();
+        (uint112 orderBudget0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
+        (uint112 orderBudget1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
+
+        rebalancer.adjustYieldExposure((amount * split) / BASE_9, 1);
+
+        (uint256 fromUSDCPost, uint256 totalPost) = transmuter.getIssuedByCollateral(address(USDC));
+        (uint256 fromSTEAKPost, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
+        assertLe(totalPost, total);
+        assertEq(fromUSDCPost, fromUSDC - (amount * split) / BASE_9);
+        assertLe(fromSTEAKPost, fromSTEAK + (amount * split) / BASE_9);
+        assertGe(fromSTEAKPost, fromSTEAK);
+        assertLe(rebalancer.budget(), budget);
+
+        rebalancer.adjustYieldExposure(amount - (amount * split) / BASE_9, 1);
+
+        (fromUSDCPost, totalPost) = transmuter.getIssuedByCollateral(address(USDC));
+        (fromSTEAKPost, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
+        assertLe(totalPost, total);
+        assertEq(fromUSDCPost, fromUSDC - amount);
+        assertLe(fromSTEAKPost, fromSTEAK + amount);
+        assertGe(fromSTEAKPost, fromSTEAK);
+        assertLe(rebalancer.budget(), budget);
+        (uint112 newOrder0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
+        (uint112 newOrder1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
+        assertEq(newOrder0, orderBudget0);
+        assertLe(newOrder1, orderBudget1);
+
+        vm.stopPrank();
+    }
+
+    function testFuzz_adjustYieldExposure_SuccessAltern(uint256 amount) external {
+        amount = bound(amount, BASE_18, BASE_18 * 100);
+        deal(address(USDA), address(rebalancer), BASE_18 * 1000);
+        (uint256 fromUSDC, uint256 total) = transmuter.getIssuedByCollateral(address(USDC));
+        (uint256 fromSTEAK, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
+        vm.startPrank(DEPLOYER);
+        rebalancer.setOrder(address(STEAK_USDC), address(USDC), BASE_18 * 500, 0);
+        rebalancer.setOrder(address(USDC), address(STEAK_USDC), BASE_18 * 500, 0);
+        uint256 budget = rebalancer.budget();
+        (uint112 orderBudget0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
+        (uint112 orderBudget1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
+
+        rebalancer.adjustYieldExposure(amount, 1);
+
+        (uint256 fromUSDCPost, uint256 totalPost) = transmuter.getIssuedByCollateral(address(USDC));
+        (uint256 fromSTEAKPost, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
+        assertLe(totalPost, total);
+        assertEq(fromUSDCPost, fromUSDC - amount);
+        assertLe(fromSTEAKPost, fromSTEAK + amount);
+        assertGe(fromSTEAKPost, fromSTEAK);
+        assertLe(rebalancer.budget(), budget);
+        (uint112 newOrder0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
+        (uint112 newOrder1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
+        assertEq(newOrder0, orderBudget0);
+        assertLe(newOrder1, orderBudget1);
+
+        rebalancer.adjustYieldExposure(amount, 0);
+
+        (orderBudget0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
+        (orderBudget1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
+        assertLe(orderBudget0, newOrder0);
+        assertEq(orderBudget1, newOrder1);
+
+        (uint256 fromUSDCPost2, uint256 totalPost2) = transmuter.getIssuedByCollateral(address(USDC));
+        (uint256 fromSTEAKPost2, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
+
+        assertLe(totalPost2, totalPost);
+        assertLe(fromUSDCPost2, fromUSDC);
+        assertLe(fromSTEAKPost2, fromSTEAK);
+        assertLe(fromSTEAKPost2, fromSTEAKPost);
+        assertGe(fromUSDCPost2, fromUSDCPost);
+        assertLe(rebalancer.budget(), budget);
+
+        vm.stopPrank();
     }
 }
