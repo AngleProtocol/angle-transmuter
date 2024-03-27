@@ -344,12 +344,12 @@ contract SwapTest is Fixture, FunctionUtils {
     function testFuzz_ArbitrageSwap(
         uint256[3] memory initialAmounts,
         uint256[3] memory latestOracleValue,
-        uint80[9] memory userAndMintBurnFirewall,
+        uint128[6] memory userAndBurnFirewall,
         uint256 stableAmount,
         uint256 fromToken,
         uint256 toToken
     ) public {
-        _updateOracleFirewalls(userAndMintBurnFirewall);
+        _updateOracleFirewalls(userAndBurnFirewall);
         // let's first load the reserves of the protocol
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
             charlie,

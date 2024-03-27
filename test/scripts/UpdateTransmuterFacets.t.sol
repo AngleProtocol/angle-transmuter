@@ -377,7 +377,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
                     Storage.OracleReadType.MAX,
                     readData,
                     targetData,
-                    abi.encode(USER_PROTECTION_ERNX, FIREWALL_MINT_ERNX, FIREWALL_BURN_RATIO_ERNX)
+                    abi.encode(USER_PROTECTION_ERNX, FIREWALL_BURN_RATIO_ERNX)
                 );
             }
             collateral = CollateralSetupProd(
