@@ -54,10 +54,10 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readMint();
         }
-        (uint80 userDeviation, uint80 mintDeviation, ) = abi.decode(hyperparameters, (uint80, uint80, uint80));
+        (uint126 userDeviation, ) = abi.decode(hyperparameters, (uint126, uint126));
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, userDeviation);
-        oracleValue = _firewallMint(targetPrice, oracleValue, mintDeviation);
+        if (targetPrice < oracleValue) oracleValue = targetPrice;
     }
 
     /// @notice Reads the oracle value used for a burn operation for an asset with `oracleConfig`
@@ -76,10 +76,10 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readBurn();
         }
-        (uint80 userDeviation, , uint80 burnRatioDeviation) = abi.decode(hyperparameters, (uint80, uint80, uint80));
+        (uint126 userDeviation, uint126 burnRatioDeviation) = abi.decode(hyperparameters, (uint126, uint126));
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, userDeviation);
-        ratio = _burnRatio(targetPrice, oracleValue, burnRatioDeviation);
+        (ratio, oracleValue) = _burnRatio(targetPrice, oracleValue, burnRatioDeviation);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -249,7 +249,7 @@ library LibOracle {
     }
 
     /// @notice Firewall in case the oracle value reported is too high compared to the target
-    /// @dev This mint firewall is useful in the case of assets for which the `targetPrice` is  theorically defined as
+    /// @dev This mint firewall is useful in the case of assets for which the `targetPrice` is theorically defined as
     /// the maximum value ever observed for the oracle, but this maximum value has simply not been updated.
     /// Typically, imagine a case where target is 100 and oracle is 101, in this setup, during a mint, because
     /// target should be put at 101 but hasn't been modified, the system uses for a price the oracle value
@@ -260,15 +260,17 @@ library LibOracle {
 
     /// @notice Firewall in case the oracle value reported is low compared to the target
     /// @dev If the oracle value is slightly below its target, then no deviation is reported for the oracle and
-    /// the price of burning the stablecoin for other assets is not impacted
+    /// the price of burning the stablecoin for other assets is not impacted. Also, the oracle value of this asset
+    /// is set to the target price, to not be open to direct arbitrage
     function _burnRatio(
         uint256 targetPrice,
         uint256 oracleValue,
         uint256 deviation
-    ) private pure returns (uint256 ratio) {
-        ratio = BASE_18;
+    ) private pure returns (uint256, uint256) {
+        uint256 ratio = BASE_18;
         if (oracleValue * BASE_18 < targetPrice * (BASE_18 - deviation)) ratio = (oracleValue * BASE_18) / targetPrice;
-        return ratio;
+        else if (oracleValue < targetPrice) oracleValue = targetPrice;
+        return (ratio, oracleValue);
     }
 
     /// @notice Firewall in case the oracle value reported is reasonably close to the target
