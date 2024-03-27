@@ -624,8 +624,7 @@ contract OracleTest is Fixture, FunctionUtils {
                     targetPrice * (BASE_18 - userAndBurnFirewall[i]) < oracleMint * BASE_18 &&
                     targetPrice * (BASE_18 + userAndBurnFirewall[i]) > oracleMint * BASE_18
                 ) oracleMint = targetPrice;
-                if (targetPrice * (BASE_18 + userAndBurnFirewall[i + 3]) < oracleMint * BASE_18)
-                    oracleMint = targetPrice;
+                if (targetPrice < oracleMint) oracleMint = targetPrice;
             }
             assertEq(mint, oracleMint);
         }
@@ -696,8 +695,9 @@ contract OracleTest is Fixture, FunctionUtils {
                         targetPrice * (BASE_18 - userAndBurnFirewall[i]) < oracleBurn * BASE_18 &&
                         targetPrice * (BASE_18 + userAndBurnFirewall[i]) > oracleBurn * BASE_18
                     ) oracleBurn = targetPrice;
-                    if (oracleBurn * BASE_18 < targetPrice * (BASE_18 - userAndBurnFirewall[i + 6]))
+                    if (oracleBurn * BASE_18 < targetPrice * (BASE_18 - userAndBurnFirewall[i + 3]))
                         oracleDeviation = (oracleBurn * BASE_18) / targetPrice;
+                    else if (oracleBurn < targetPrice) oracleBurn = targetPrice;
                     assertEq(deviation, oracleDeviation);
                 }
             }
@@ -754,7 +754,7 @@ contract OracleTest is Fixture, FunctionUtils {
                     assertEq(ratio, (BASE_18 * 10) / 11);
                     assertEq(redemption, (BASE_18 * 10) / 11);
                 } else {
-                    assertEq(mint, (BASE_18 * 11) / 10);
+                    assertEq(mint, BASE_18);
                     assertEq(burn, (BASE_18 * 11) / 10);
                     assertEq(ratio, BASE_18);
                     assertEq(redemption, (BASE_18 * 11) / 10);
@@ -825,6 +825,13 @@ contract OracleTest is Fixture, FunctionUtils {
                         abi.encode(readType, targetType, readData, targetData, hyperParameters)
                     );
                 }
+                if (i == 1) {
+                    (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter
+                        .getOracleValues(address(_collaterals[1]));
+                    assertEq(mint, (BASE_18 * 9) / 10);
+                    assertEq(burn, BASE_18);
+                    assertEq(redemption, (BASE_18 * 9) / 10);
+                }
             }
         }
 
@@ -872,9 +879,6 @@ contract OracleTest is Fixture, FunctionUtils {
         transmuter.toggleTrusted(alice, Storage.TrustedType.Seller);
 
         address collateral = _collaterals[0];
-        uint96 deviationThreshold = 0;
-        // This should be enough to avoid automatically minted blocks by foundry
-        uint32 heartbeat = 1000;
 
         (
             Storage.OracleReadType readType,

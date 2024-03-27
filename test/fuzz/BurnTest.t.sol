@@ -1409,8 +1409,11 @@ contract BurnTest is Fixture, FunctionUtils {
             if (i == fromToken) {
                 oracleValue = uint256(oracleValueTmp);
                 if (
-                    BASE_8 * (BASE_18 - userFirewall) < oracleValue * BASE_18 &&
-                    oracleValue * BASE_18 < BASE_8 * (BASE_18 + userFirewall)
+                    // We are in the user deviation tolerance
+                    (BASE_8 * (BASE_18 - userFirewall) < oracleValue * BASE_18 &&
+                        oracleValue * BASE_18 < BASE_8 * (BASE_18 + userFirewall)) ||
+                    // Or we are in the burn deviation tolerance
+                    (BASE_8 * (BASE_18 - burnRatioDeviation) <= oracleValue * BASE_18 && oracleValue <= BASE_8)
                 ) oracleValue = BASE_8;
             }
         }

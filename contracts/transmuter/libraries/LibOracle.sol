@@ -186,7 +186,7 @@ library LibOracle {
             }
             return quotePrice;
         } else if (readType == OracleReadType.MAX) {
-            (uint256 maxValue, , , ) = abi.decode(data, (uint256, uint96, uint96, uint32));
+            uint256 maxValue = abi.decode(data, (uint256));
             return maxValue;
         } else if (readType == OracleReadType.MORPHO_ORACLE) {
             (address contractAddress, uint256 normalizationFactor) = abi.decode(data, (address, uint256));
@@ -296,20 +296,23 @@ library LibOracle {
             OracleReadType oracleType,
             OracleReadType targetType,
             bytes memory oracleData,
-            ,
+            bytes memory targetData,
             bytes memory hyperparameters
         ) = _parseOracleConfig(ts.collaterals[collateral].oracleConfig);
 
         if (targetType != OracleReadType.MAX) revert OracleUpdateFailed();
-
         uint256 oracleValue = read(oracleType, BASE_18, oracleData);
-        ts.collaterals[collateral].oracleConfig = abi.encode(
-            oracleType,
-            targetType,
-            oracleData,
-            // There are no checks whether the value increased or not
-            abi.encode(oracleValue),
-            hyperparameters
-        );
+
+        uint256 maxValue = abi.decode(targetData, (uint256));
+        if (oracleValue > maxValue)
+            ts.collaterals[collateral].oracleConfig = abi.encode(
+                oracleType,
+                targetType,
+                oracleData,
+                // There are no checks whether the value increased or not
+                abi.encode(oracleValue),
+                hyperparameters
+            );
+        else revert OracleUpdateFailed();
     }
 }
