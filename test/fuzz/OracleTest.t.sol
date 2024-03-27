@@ -754,7 +754,7 @@ contract OracleTest is Fixture, FunctionUtils {
                     assertEq(ratio, (BASE_18 * 10) / 11);
                     assertEq(redemption, (BASE_18 * 10) / 11);
                 } else {
-                    assertEq(mint, (BASE_18 * 11) / 10);
+                    assertEq(mint, BASE_18);
                     assertEq(burn, (BASE_18 * 11) / 10);
                     assertEq(ratio, BASE_18);
                     assertEq(redemption, (BASE_18 * 11) / 10);
