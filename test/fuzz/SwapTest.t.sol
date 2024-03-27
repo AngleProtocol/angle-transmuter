@@ -340,6 +340,81 @@ contract SwapTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
+    // TODO Tests to check that you can't arb directly the system mint with one asset and burn with another and make a profit
+    function testFuzz_ArbitrageSwap(
+        uint256[3] memory initialAmounts,
+        uint256[3] memory latestOracleValue,
+        uint80[9] memory userAndMintBurnFirewall,
+        uint256 stableAmount,
+        uint256 fromToken,
+        uint256 toToken
+    ) public {
+        _updateOracleFirewalls(userAndMintBurnFirewall);
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            charlie,
+            sweeper,
+            initialAmounts,
+            0
+        );
+        if (mintedStables == 0) return;
+        _updateOracles(latestOracleValue);
+
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        toToken = bound(toToken, 0, _collaterals.length - 1);
+        stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
+        if (stableAmount == 0) return;
+
+        (uint256 prevCollatRatio, ) = transmuter.getCollateralRatio();
+        vm.startPrank(alice);
+        {
+            uint256 estimatedAmount = transmuter.quoteOut(stableAmount, _collaterals[fromToken], address(agToken));
+            deal(address(_collaterals[fromToken]), alice, estimatedAmount);
+            IERC20(_collaterals[fromToken]).approve(address(transmuter), estimatedAmount);
+        }
+        uint256 amountInSpent = transmuter.swapExactOutput(
+            stableAmount,
+            type(uint256).max,
+            _collaterals[fromToken],
+            address(agToken),
+            alice,
+            block.timestamp + 1000
+        );
+        if (amountInSpent == 0) return;
+        {
+            try transmuter.quoteIn(stableAmount, address(agToken), _collaterals[toToken]) returns (
+                uint256 amountOutSupposed
+            ) {
+                if (amountOutSupposed == 0) return;
+                if (
+                    amountOutSupposed > IERC20(_collaterals[toToken]).balanceOf(address(transmuter)) ||
+                    stableAmount > collateralMintedStables[toToken]
+                ) vm.expectRevert(Errors.InvalidSwap.selector);
+            } catch {
+                return; // Tryong to swap for a collateral that isn't deep enough
+            }
+        }
+        uint256 amountOutReceived = transmuter.swapExactInput(
+            stableAmount,
+            0,
+            address(agToken),
+            _collaterals[toToken],
+            alice,
+            block.timestamp + 1000
+        );
+
+        {
+            (, , , , uint256 oracleTo) = transmuter.getOracleValues(_collaterals[toToken]);
+            (, , , , uint256 oracleFrom) = transmuter.getOracleValues(_collaterals[fromToken]);
+            assertLe(amountOutReceived * toToken, amountInSpent * fromToken * 2, "Direct arbitrage");
+        }
+        {
+            (uint256 collatRatio, ) = transmuter.getCollateralRatio();
+            assertLe(prevCollatRatio / 2, collatRatio, "Collateral ratio should not decrease");
+        }
+        vm.stopPrank();
+    }
+
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                          UTILS                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
