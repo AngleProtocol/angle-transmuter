@@ -54,7 +54,8 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readMint();
         }
-        (uint126 userDeviation, ) = abi.decode(hyperparameters, (uint126, uint126));
+
+        (uint128 userDeviation, ) = abi.decode(hyperparameters, (uint128, uint128));
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, userDeviation);
         if (targetPrice < oracleValue) oracleValue = targetPrice;
@@ -76,7 +77,7 @@ library LibOracle {
             ITransmuterOracle externalOracle = abi.decode(oracleData, (ITransmuterOracle));
             return externalOracle.readBurn();
         }
-        (uint126 userDeviation, uint126 burnRatioDeviation) = abi.decode(hyperparameters, (uint126, uint126));
+        (uint128 userDeviation, uint128 burnRatioDeviation) = abi.decode(hyperparameters, (uint128, uint128));
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, userDeviation);
         (ratio, oracleValue) = _burnRatio(targetPrice, oracleValue, burnRatioDeviation);

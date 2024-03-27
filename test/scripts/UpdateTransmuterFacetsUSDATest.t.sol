@@ -156,7 +156,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
                 Storage.OracleReadType.STABLE,
                 readData,
                 targetData,
-                abi.encode(uint80(5 * BPS), uint80(0), uint80(0))
+                abi.encode(uint128(5 * BPS), uint128(0))
             );
             oracleConfigUSDC = oracleConfig;
             transmuter.setOracle(USDC, oracleConfig);
@@ -214,19 +214,14 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
                 (, int256 answer, , , ) = AggregatorV3Interface(0x32d1463EB53b73C095625719Afa544D5426354cB)
                     .latestRoundData();
                 uint256 initTarget = uint256(answer) * 1e10;
-                bytes memory targetData = abi.encode(
-                    initTarget,
-                    uint96(DEVIATION_THRESHOLD_IB01),
-                    uint96(block.timestamp),
-                    HEARTBEAT
-                );
+                bytes memory targetData = abi.encode(initTarget);
 
                 oracleConfig = abi.encode(
                     Storage.OracleReadType.CHAINLINK_FEEDS,
                     Storage.OracleReadType.MAX,
                     readData,
                     targetData,
-                    abi.encode(USER_PROTECTION_IB01, FIREWALL_MINT_IB01, FIREWALL_BURN_RATIO_IB01)
+                    abi.encode(USER_PROTECTION_IB01, FIREWALL_BURN_RATIO_IB01)
                 );
                 oracleConfigIB01 = oracleConfig;
             }
@@ -266,18 +261,13 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
             {
                 bytes memory readData = abi.encode(0x025106374196586E8BC91eE8818dD7B0Efd2B78B, BASE_18);
                 // Current price is 1.012534 -> we take a small margin
-                bytes memory targetData = abi.encode(
-                    1013000000000000000,
-                    uint96(DEVIATION_THRESHOLD_STEAKUSDC),
-                    uint96(block.timestamp),
-                    HEARTBEAT
-                );
+                bytes memory targetData = abi.encode(1013000000000000000);
                 oracleConfig = abi.encode(
                     Storage.OracleReadType.MORPHO_ORACLE,
                     Storage.OracleReadType.MAX,
                     readData,
                     targetData,
-                    abi.encode(USER_PROTECTION_STEAK_USDC, FIREWALL_MINT_STEAK_USDC, FIREWALL_BURN_RATIO_STEAK_USDC)
+                    abi.encode(USER_PROTECTION_STEAK_USDC, FIREWALL_BURN_RATIO_STEAK_USDC)
                 );
                 oracleConfigSTEAK = oracleConfig;
             }
@@ -481,19 +471,12 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testUnit_UpgradeUSDA_getOracleValues_Success() external {
-        _checkOracleValues(address(USDC), BASE_18, USER_PROTECTION_USDC, FIREWALL_MINT_USDC, FIREWALL_BURN_RATIO_USDC);
-        _checkOracleValues(
-            address(BIB01),
-            109480000000000000000,
-            USER_PROTECTION_IB01,
-            FIREWALL_MINT_IB01,
-            FIREWALL_BURN_RATIO_IB01
-        );
+        _checkOracleValues(address(USDC), BASE_18, USER_PROTECTION_USDC, FIREWALL_BURN_RATIO_USDC);
+        _checkOracleValues(address(BIB01), 109480000000000000000, USER_PROTECTION_IB01, FIREWALL_BURN_RATIO_IB01);
         _checkOracleValues(
             address(STEAK_USDC),
             1013000000000000000,
             USER_PROTECTION_STEAK_USDC,
-            FIREWALL_MINT_STEAK_USDC,
             FIREWALL_BURN_RATIO_STEAK_USDC
         );
     }
@@ -674,9 +657,8 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
     function _checkOracleValues(
         address collateral,
         uint256 targetValue,
-        uint80 userProtection,
-        uint80 firewallMint,
-        uint80 firewallBurn
+        uint128 userProtection,
+        uint128 firewallBurn
     ) internal {
         (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter.getOracleValues(
             collateral
@@ -695,7 +677,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         ) {
             assertEq(mint, targetValue);
             assertEq(ratio, BASE_18);
-        } else if (redemption * BASE_18 > targetValue * (BASE_18 + firewallMint)) {
+        } else if (redemption > targetValue) {
             assertEq(mint, targetValue);
             assertEq(ratio, BASE_18);
         } else if (redemption * BASE_18 < targetValue * (BASE_18 - firewallBurn)) {

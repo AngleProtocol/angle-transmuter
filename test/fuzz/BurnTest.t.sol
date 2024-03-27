@@ -672,12 +672,12 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256[3] memory initialAmounts,
         uint256 transferProportion,
         uint256[3] memory latestOracleValue,
-        uint80[9] memory userAndMintBurnFirewall,
+        uint128[6] memory userAndBurnFirewall,
         int64 upperFees,
         uint256 stableAmount,
         uint256 fromToken
     ) public {
-        _updateOracleFirewalls(userAndMintBurnFirewall);
+        _updateOracleFirewalls(userAndBurnFirewall);
         // let's first load the reserves of the protocol
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
             charlie,
@@ -1394,11 +1394,11 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256 minDeviation = BASE_8;
         uint256 oracleValue;
         for (uint256 i; i < _oracles.length; i++) {
-            uint80 userFirewall;
-            uint80 burnRatioDeviation;
+            uint128 userFirewall;
+            uint128 burnRatioDeviation;
             {
                 (, , , , bytes memory hyperparameters) = transmuter.getOracle(address(_collaterals[i]));
-                (userFirewall, , burnRatioDeviation) = abi.decode(hyperparameters, (uint80, uint80, uint80));
+                (userFirewall, burnRatioDeviation) = abi.decode(hyperparameters, (uint128, uint128));
             }
             (, int256 oracleValueTmp, , , ) = _oracles[i].latestRoundData();
             if (
@@ -1417,16 +1417,14 @@ contract BurnTest is Fixture, FunctionUtils {
         return (amount * minDeviation) / oracleValue;
     }
 
-    function _updateOracleFirewalls(uint80[9] memory userAndMintBurnFirewall) internal returns (uint80[9] memory) {
-        uint80[] memory userFirewall = new uint80[](3);
-        uint80[] memory mintFirewall = new uint80[](3);
-        uint80[] memory burnFirewall = new uint80[](3);
+    function _updateOracleFirewalls(uint128[6] memory userAndBurnFirewall) internal returns (uint128[6] memory) {
+        uint128[] memory userFirewall = new uint128[](3);
+        uint128[] memory burnFirewall = new uint128[](3);
         for (uint256 i; i < _collaterals.length; i++) {
-            userFirewall[i] = uint80(bound(userAndMintBurnFirewall[i], 0, BASE_18));
-            mintFirewall[i] = userAndMintBurnFirewall[i + 3];
-            burnFirewall[i] = uint80(bound(userAndMintBurnFirewall[i + 6], 0, BASE_18));
-            userAndMintBurnFirewall[i] = userFirewall[i];
-            userAndMintBurnFirewall[i + 6] = burnFirewall[i];
+            userFirewall[i] = uint128(bound(userAndBurnFirewall[i], 0, BASE_18));
+            burnFirewall[i] = uint128(bound(userAndBurnFirewall[i + 3], 0, BASE_18));
+            userAndBurnFirewall[i] = userFirewall[i];
+            userAndBurnFirewall[i + 3] = burnFirewall[i];
         }
 
         vm.startPrank(governor);
@@ -1445,12 +1443,12 @@ contract BurnTest is Fixture, FunctionUtils {
                     targetType,
                     data,
                     targetData,
-                    abi.encode(uint80(userFirewall[i]), uint80(mintFirewall[i]), uint80(burnFirewall[i]))
+                    abi.encode(uint128(userFirewall[i]), uint128(burnFirewall[i]))
                 )
             );
         }
         vm.stopPrank();
-        return userAndMintBurnFirewall;
+        return userAndBurnFirewall;
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

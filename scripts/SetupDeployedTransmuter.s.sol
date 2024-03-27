@@ -59,7 +59,7 @@ contract SetupDeployedTransmuter is Utils {
                 Storage.OracleReadType.STABLE,
                 readData,
                 targetData,
-                abi.encode(uint80(5 * BPS), uint80(0), uint80(0))
+                abi.encode(uint128(5 * BPS), uint128(0))
             );
             usdaTransmuter.setOracle(USDC, oracleConfig);
         }
@@ -115,19 +115,14 @@ contract SetupDeployedTransmuter is Utils {
                 (, int256 answer, , , ) = AggregatorV3Interface(0x32d1463EB53b73C095625719Afa544D5426354cB)
                     .latestRoundData();
                 uint256 initTarget = uint256(answer) * 1e10;
-                bytes memory targetData = abi.encode(
-                    initTarget,
-                    uint96(DEVIATION_THRESHOLD_IB01),
-                    uint96(block.timestamp),
-                    HEARTBEAT
-                );
+                bytes memory targetData = abi.encode(initTarget);
 
                 oracleConfig = abi.encode(
                     Storage.OracleReadType.CHAINLINK_FEEDS,
                     Storage.OracleReadType.MAX,
                     readData,
                     targetData,
-                    abi.encode(USER_PROTECTION_IB01, FIREWALL_MINT_IB01, FIREWALL_BURN_RATIO_IB01)
+                    abi.encode(USER_PROTECTION_IB01, FIREWALL_BURN_RATIO_IB01)
                 );
             }
             collaterals[0] = CollateralSetupProd(
@@ -167,18 +162,13 @@ contract SetupDeployedTransmuter is Utils {
                 bytes memory readData = abi.encode(0x025106374196586E8BC91eE8818dD7B0Efd2B78B, BASE_18);
                 // Current price is 1.012534 -> we take a small margin
                 uint256 startPrice = IERC4626(STEAK_USDC).previewRedeem(1e30);
-                bytes memory targetData = abi.encode(
-                    startPrice,
-                    uint96(DEVIATION_THRESHOLD_STEAKUSDC),
-                    uint96(block.timestamp),
-                    HEARTBEAT
-                );
+                bytes memory targetData = abi.encode(startPrice);
                 oracleConfig = abi.encode(
                     Storage.OracleReadType.MORPHO_ORACLE,
                     Storage.OracleReadType.MAX,
                     readData,
                     targetData,
-                    abi.encode(USER_PROTECTION_STEAK_USDC, FIREWALL_MINT_STEAK_USDC, FIREWALL_BURN_RATIO_STEAK_USDC)
+                    abi.encode(USER_PROTECTION_STEAK_USDC, FIREWALL_BURN_RATIO_STEAK_USDC)
                 );
             }
             collaterals[1] = CollateralSetupProd(

@@ -74,7 +74,7 @@ contract Production {
                     Storage.OracleReadType.STABLE,
                     readData,
                     targetData,
-                    abi.encode(uint80(5 * BPS), uint80(0), uint80(0))
+                    abi.encode(uint128(5 * BPS), uint128(0))
                 );
             }
             collaterals[0] = CollateralSetupProd(
@@ -144,14 +144,14 @@ contract Production {
                     if (ratio <= 0) revert WrongSetup();
                     initialValue = (BASE_18 * uint256(ratio)) / 1e8;
                 }
-                targetData = abi.encode(initialValue, block.timestamp, 50 * BPS, 1 days);
+                targetData = abi.encode(initialValue);
             }
             bytes memory oracleConfig = abi.encode(
                 Storage.OracleReadType.CHAINLINK_FEEDS,
                 Storage.OracleReadType.MAX,
                 readData,
                 targetData,
-                abi.encode(uint80(0), uint80(20000 * BPS), uint128(100 * BPS))
+                abi.encode(uint128(0), uint128(100 * BPS))
             );
 
             collaterals[1] = CollateralSetupProd(

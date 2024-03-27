@@ -179,19 +179,17 @@ contract OracleTest is Fixture, FunctionUtils {
                 Storage.OracleReadType readType;
                 Storage.OracleReadType targetType;
                 uint256 userFirewall;
-                uint256 mintFirewall;
                 uint256 burnFirewall;
                 {
                     bytes memory hyperparameters;
                     (readType, targetType, oracleData, targetData, hyperparameters) = transmuter.getOracle(
                         address(_collaterals[i])
                     );
-                    (userFirewall, mintFirewall, burnFirewall) = abi.decode(hyperparameters, (uint80, uint80, uint80));
+                    (userFirewall, burnFirewall) = abi.decode(hyperparameters, (uint128, uint128));
                 }
 
                 assertEq(uint256(readType), uint256(Storage.OracleReadType.CHAINLINK_FEEDS));
                 assertEq(uint256(targetType), uint256(Storage.OracleReadType.STABLE));
-                assertEq(mintFirewall, 0);
                 assertEq(userFirewall, 0);
                 assertEq(burnFirewall, 0);
             }
@@ -487,13 +485,13 @@ contract OracleTest is Fixture, FunctionUtils {
                 vm.expectRevert(Errors.InvalidRate.selector);
                 transmuter.setOracle(
                     _collaterals[i],
-                    abi.encode(readType, targetType, readData, targetData, abi.encode(uint80(0), uint80(0), uint80(0)))
+                    abi.encode(readType, targetType, readData, targetData, abi.encode(uint128(0), uint128(0)))
                 );
 
                 pyth.setParams(110000000, -8);
                 transmuter.setOracle(
                     _collaterals[i],
-                    abi.encode(readType, targetType, readData, targetData, abi.encode(uint80(0), uint80(0), uint80(0)))
+                    abi.encode(readType, targetType, readData, targetData, abi.encode(uint128(0), uint128(0)))
                 );
             }
             if (i == 0) {
@@ -553,7 +551,7 @@ contract OracleTest is Fixture, FunctionUtils {
                 );
                 transmuter.setOracle(
                     _collaterals[i],
-                    abi.encode(readType, targetType, readData, targetData, abi.encode(uint80(0), uint80(0), uint80(0)))
+                    abi.encode(readType, targetType, readData, targetData, abi.encode(uint128(0), uint128(0)))
                 );
             }
             (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter
@@ -586,14 +584,14 @@ contract OracleTest is Fixture, FunctionUtils {
         uint8[3] memory newQuoteType,
         uint8[3] memory newReadType,
         uint8[3] memory newTargetType,
-        uint80[9] memory userAndMintBurnFirewall,
+        uint128[6] memory userAndBurnFirewall,
         uint256[3] memory latestOracleValue,
         uint256[4] memory latestExchangeRateStakeETH
     ) public {
         _updateStakeETHExchangeRates(latestExchangeRateStakeETH);
         _updateOracleValues(latestOracleValue);
         _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
-        userAndMintBurnFirewall = _updateOracleFirewalls(userAndMintBurnFirewall);
+        userAndBurnFirewall = _updateOracleFirewalls(userAndBurnFirewall);
 
         for (uint256 i; i < _collaterals.length; i++) {
             (uint256 mint, , , , ) = transmuter.getOracleValues(address(_collaterals[i]));
@@ -623,10 +621,10 @@ contract OracleTest is Fixture, FunctionUtils {
 
             if (newReadType[i] != 1) {
                 if (
-                    targetPrice * (BASE_18 - userAndMintBurnFirewall[i]) < oracleMint * BASE_18 &&
-                    targetPrice * (BASE_18 + userAndMintBurnFirewall[i]) > oracleMint * BASE_18
+                    targetPrice * (BASE_18 - userAndBurnFirewall[i]) < oracleMint * BASE_18 &&
+                    targetPrice * (BASE_18 + userAndBurnFirewall[i]) > oracleMint * BASE_18
                 ) oracleMint = targetPrice;
-                if (targetPrice * (BASE_18 + userAndMintBurnFirewall[i + 3]) < oracleMint * BASE_18)
+                if (targetPrice * (BASE_18 + userAndBurnFirewall[i + 3]) < oracleMint * BASE_18)
                     oracleMint = targetPrice;
             }
             assertEq(mint, oracleMint);
@@ -638,7 +636,7 @@ contract OracleTest is Fixture, FunctionUtils {
         uint8[3] memory newQuoteType,
         uint8[3] memory newReadType,
         uint8[3] memory newTargetType,
-        uint80[9] memory userAndMintBurnFirewall,
+        uint128[6] memory userAndBurnFirewall,
         uint256[3] memory latestOracleValue,
         uint256[4] memory latestExchangeRateStakeETH
     ) public {
@@ -648,7 +646,7 @@ contract OracleTest is Fixture, FunctionUtils {
             uint8[3] memory newChainlinkDecimals = [8, 8, 8];
             _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
         }
-        userAndMintBurnFirewall = _updateOracleFirewalls(userAndMintBurnFirewall);
+        userAndBurnFirewall = _updateOracleFirewalls(userAndBurnFirewall);
 
         uint256 minDeviation;
         uint256 minRatio;
@@ -695,10 +693,10 @@ contract OracleTest is Fixture, FunctionUtils {
                 uint256 oracleDeviation = BASE_18;
                 if (newReadType[i] != 1) {
                     if (
-                        targetPrice * (BASE_18 - userAndMintBurnFirewall[i]) < oracleBurn * BASE_18 &&
-                        targetPrice * (BASE_18 + userAndMintBurnFirewall[i]) > oracleBurn * BASE_18
+                        targetPrice * (BASE_18 - userAndBurnFirewall[i]) < oracleBurn * BASE_18 &&
+                        targetPrice * (BASE_18 + userAndBurnFirewall[i]) > oracleBurn * BASE_18
                     ) oracleBurn = targetPrice;
-                    if (oracleBurn * BASE_18 < targetPrice * (BASE_18 - userAndMintBurnFirewall[i + 6]))
+                    if (oracleBurn * BASE_18 < targetPrice * (BASE_18 - userAndBurnFirewall[i + 6]))
                         oracleDeviation = (oracleBurn * BASE_18) / targetPrice;
                     assertEq(deviation, oracleDeviation);
                 }
@@ -735,13 +733,10 @@ contract OracleTest is Fixture, FunctionUtils {
                 else if (i == 1) pyth.setParams(9000000000, -10);
                 else if (i == 2) pyth.setParams(96000, -5);
                 {
-                    bytes memory hyperParameters = abi.encode(uint80(0), uint80(0), uint80(0));
-                    if (i == 0)
-                        hyperParameters = abi.encode(uint80(0.05 ether), uint80(0.15 ether), uint80(0.07 ether));
-                    else if (i == 1)
-                        hyperParameters = abi.encode(uint80(0.03 ether), uint80(0.08 ether), uint80(0.099 ether));
-                    else if (i == 2)
-                        hyperParameters = abi.encode(uint80(0.5 ether), uint80(0.1 ether), uint80(0.1 ether));
+                    bytes memory hyperParameters = abi.encode(uint128(0), uint128(0));
+                    if (i == 0) hyperParameters = abi.encode(uint128(0.05 ether), uint128(0.07 ether));
+                    else if (i == 1) hyperParameters = abi.encode(uint128(0.03 ether), uint128(0.099 ether));
+                    else if (i == 2) hyperParameters = abi.encode(uint128(0.5 ether), uint128(0.1 ether));
                     transmuter.setOracle(
                         _collaterals[i],
                         abi.encode(readType, targetType, readData, targetData, hyperParameters)
@@ -821,13 +816,10 @@ contract OracleTest is Fixture, FunctionUtils {
                 else if (i == 1) pyth.setParams(9000000000, -10);
                 else if (i == 2) pyth.setParams(96000, -5);
                 {
-                    bytes memory hyperParameters = abi.encode(uint80(0), uint80(0), uint80(0));
-                    if (i == 0)
-                        hyperParameters = abi.encode(uint80(0.05 ether), uint80(0.15 ether), uint80(0.07 ether));
-                    else if (i == 1)
-                        hyperParameters = abi.encode(uint80(0.03 ether), uint80(0.08 ether), uint80(0.1 ether));
-                    else if (i == 2)
-                        hyperParameters = abi.encode(uint80(0.5 ether), uint80(0.1 ether), uint80(0.1 ether));
+                    bytes memory hyperParameters = abi.encode(uint128(0), uint128(0));
+                    if (i == 0) hyperParameters = abi.encode(uint128(0.05 ether), uint128(0.07 ether));
+                    else if (i == 1) hyperParameters = abi.encode(uint128(0.03 ether), uint128(0.1 ether));
+                    else if (i == 2) hyperParameters = abi.encode(uint128(0.5 ether), uint128(0.1 ether));
                     transmuter.setOracle(
                         _collaterals[i],
                         abi.encode(readType, targetType, readData, targetData, hyperParameters)
@@ -896,13 +888,7 @@ contract OracleTest is Fixture, FunctionUtils {
         vm.prank(governor);
         transmuter.setOracle(
             collateral,
-            abi.encode(
-                readType,
-                Storage.OracleReadType.MAX,
-                data,
-                abi.encode(oracleValue, uint96(block.timestamp), deviationThreshold, heartbeat),
-                hyperparameters
-            )
+            abi.encode(readType, Storage.OracleReadType.MAX, data, abi.encode(oracleValue), hyperparameters)
         );
 
         vm.prank(alice);
@@ -910,105 +896,7 @@ contract OracleTest is Fixture, FunctionUtils {
         transmuter.updateOracle(collateral);
     }
 
-    function testFuzz_updateOracle_Heartbeat_Success(uint32 heartbeat) public {
-        vm.prank(governor);
-        transmuter.toggleTrusted(alice, Storage.TrustedType.Seller);
-
-        address collateral = _collaterals[0];
-        uint96 deviationThreshold = 0;
-
-        (Storage.OracleReadType readType, , bytes memory data, , bytes memory hyperparameters) = transmuter.getOracle(
-            address(collateral)
-        );
-        (uint256 oracleValue, , , , ) = transmuter.getOracleValues(collateral);
-
-        vm.prank(governor);
-        transmuter.setOracle(
-            collateral,
-            abi.encode(
-                readType,
-                Storage.OracleReadType.MAX,
-                data,
-                abi.encode(oracleValue, deviationThreshold, uint96(block.timestamp), heartbeat),
-                hyperparameters
-            )
-        );
-
-        vm.warp(block.timestamp + heartbeat + 1);
-
-        // Update the oracles
-        {
-            uint256[3] memory latestOracleValue = [BASE_8, BASE_8, BASE_8];
-            _updateOracleValues(latestOracleValue);
-        }
-
-        vm.prank(alice);
-        transmuter.updateOracle(collateral);
-
-        (, , , bytes memory targetData, ) = transmuter.getOracle(address(collateral));
-        (
-            uint256 maxValue,
-            uint96 deviationThresholdContract,
-            uint96 lastUpdateTimestamp,
-            uint32 heartbeatContract
-        ) = abi.decode(targetData, (uint256, uint96, uint96, uint32));
-        assertEq(maxValue, oracleValue);
-        assertEq(deviationThresholdContract, deviationThreshold);
-        assertEq(lastUpdateTimestamp, block.timestamp);
-        assertEq(heartbeatContract, heartbeat);
-    }
-
-    function testFuzz_updateOracle_Deviation_Success(uint96 deviationThreshold, uint256 newOracleValue) public {
-        vm.prank(governor);
-        transmuter.toggleTrusted(alice, Storage.TrustedType.Seller);
-
-        {
-            (Storage.OracleReadType readType, , bytes memory data, , bytes memory hyperparameters) = transmuter
-                .getOracle(address(_collaterals[0]));
-            (uint256 oracleValue, , , , ) = transmuter.getOracleValues(_collaterals[0]);
-
-            vm.prank(governor);
-            transmuter.setOracle(
-                _collaterals[0],
-                abi.encode(
-                    readType,
-                    Storage.OracleReadType.MAX,
-                    data,
-                    abi.encode(oracleValue, deviationThreshold, uint96(block.timestamp), 1000),
-                    hyperparameters
-                )
-            );
-        }
-
-        // Update the oracles
-        {
-            (, int256 oracleValueTmp, , , ) = _oracles[0].latestRoundData();
-            uint256 updateOracleValue = (uint256(oracleValueTmp) * (BASE_18 + uint256(deviationThreshold))) /
-                BASE_18 +
-                1;
-            if (updateOracleValue > _maxOracleValue) return;
-
-            newOracleValue = bound(newOracleValue, updateOracleValue, _maxOracleValue);
-            uint256[3] memory latestOracleValue = [newOracleValue, BASE_8, BASE_8];
-            latestOracleValue = _updateOracleValues(latestOracleValue);
-            newOracleValue = latestOracleValue[0];
-        }
-
-        vm.prank(alice);
-        transmuter.updateOracle(_collaterals[0]);
-
-        (, , , bytes memory targetData, ) = transmuter.getOracle(address(_collaterals[0]));
-        (uint256 maxValue, uint96 deviationThresholdContract, uint96 lastUpdateTimestamp, ) = abi.decode(
-            targetData,
-            (uint256, uint96, uint96, uint32)
-        );
-
-        assertEq(maxValue, (newOracleValue * BASE_18) / BASE_8);
-        assertEq(deviationThresholdContract, deviationThreshold);
-        assertEq(lastUpdateTimestamp, block.timestamp);
-    }
-
-    function testFuzz_updateOracle_BothConditions_Success(uint96 deviationThreshold, uint32 heartbeat) public {
+    function testFuzz_updateOracle_Success(uint256 updateOracleValue, uint32 heartbeat) public {
         vm.prank(governor);
         transmuter.toggleTrusted(alice, Storage.TrustedType.Seller);
 
@@ -1026,21 +914,19 @@ contract OracleTest is Fixture, FunctionUtils {
                     readType,
                     Storage.OracleReadType.MAX,
                     data,
-                    abi.encode(oracleValue, deviationThreshold, uint96(block.timestamp), heartbeat),
-                    abi.encode(uint80(0), uint80(0), uint80(0))
+                    abi.encode(oracleValue),
+                    abi.encode(uint128(0), uint128(0))
                 )
             );
         }
 
-        vm.warp(block.timestamp + heartbeat + 1);
+        vm.warp(block.timestamp + heartbeat);
 
         // Update the oracles
         uint256 newOracleValue;
         {
             (, int256 oracleValueTmp, , , ) = _oracles[indexCollat].latestRoundData();
-            uint256 updateOracleValue = (uint256(oracleValueTmp) * (BASE_18 + uint256(deviationThreshold))) /
-                BASE_18 +
-                1;
+            updateOracleValue = bound(updateOracleValue, uint256(oracleValueTmp), _maxOracleValue);
             if (updateOracleValue > _maxOracleValue) return;
 
             uint256[3] memory latestOracleValue = [updateOracleValue, BASE_8, BASE_8];
@@ -1052,13 +938,9 @@ contract OracleTest is Fixture, FunctionUtils {
         transmuter.updateOracle(collateral);
 
         (, , , bytes memory targetData, ) = transmuter.getOracle(address(collateral));
-        (uint256 maxValue, uint96 deviationThresholdContract, uint96 lastUpdateTimestamp, ) = abi.decode(
-            targetData,
-            (uint256, uint96, uint96, uint32)
-        );
+        uint256 maxValue = abi.decode(targetData, (uint256));
 
         assertEq(maxValue, (newOracleValue * BASE_18) / BASE_8);
-        assertEq(lastUpdateTimestamp, block.timestamp);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1165,7 +1047,7 @@ contract OracleTest is Fixture, FunctionUtils {
             }
             transmuter.setOracle(
                 _collaterals[i],
-                abi.encode(readType, targetType, readData, targetData, abi.encode(uint80(0), uint80(0), uint80(0)))
+                abi.encode(readType, targetType, readData, targetData, abi.encode(uint128(0), uint128(0)))
             );
         }
         vm.stopPrank();
@@ -1284,16 +1166,14 @@ contract OracleTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-    function _updateOracleFirewalls(uint80[9] memory userAndMintBurnFirewall) internal returns (uint80[9] memory) {
-        uint80[] memory userFirewall = new uint80[](3);
-        uint80[] memory mintFirewall = new uint80[](3);
-        uint80[] memory burnFirewall = new uint80[](3);
+    function _updateOracleFirewalls(uint128[6] memory userAndBurnFirewall) internal returns (uint128[6] memory) {
+        uint128[] memory userFirewall = new uint128[](3);
+        uint128[] memory burnFirewall = new uint128[](3);
         for (uint256 i; i < _collaterals.length; i++) {
-            userFirewall[i] = uint80(bound(userAndMintBurnFirewall[i], 0, BASE_18));
-            mintFirewall[i] = userAndMintBurnFirewall[i + 3];
-            burnFirewall[i] = uint80(bound(userAndMintBurnFirewall[i + 6], 0, BASE_18));
-            userAndMintBurnFirewall[i] = userFirewall[i];
-            userAndMintBurnFirewall[i + 6] = burnFirewall[i];
+            userFirewall[i] = uint128(bound(userAndBurnFirewall[i], 0, BASE_18));
+            burnFirewall[i] = uint128(bound(userAndBurnFirewall[i + 3], 0, BASE_18));
+            userAndBurnFirewall[i] = userFirewall[i];
+            userAndBurnFirewall[i + 3] = burnFirewall[i];
         }
 
         vm.startPrank(governor);
@@ -1312,11 +1192,11 @@ contract OracleTest is Fixture, FunctionUtils {
                     targetType,
                     data,
                     targetData,
-                    abi.encode(uint80(userFirewall[i]), uint80(mintFirewall[i]), uint80(burnFirewall[i]))
+                    abi.encode(uint128(userFirewall[i]), uint128(burnFirewall[i]))
                 )
             );
         }
         vm.stopPrank();
-        return userAndMintBurnFirewall;
+        return userAndBurnFirewall;
     }
 }

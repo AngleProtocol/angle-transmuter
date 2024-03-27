@@ -148,7 +148,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
             targetTypeEUROC,
             oracleDataEUROC,
             targetDataEUROC,
-            abi.encode(USER_PROTECTION_EUROC, FIREWALL_MINT_EUROC, FIREWALL_BURN_RATIO_EUROC)
+            abi.encode(USER_PROTECTION_EUROC, FIREWALL_BURN_RATIO_EUROC)
         );
         transmuter.setOracle(EUROC, oracleConfigEUROC);
 
@@ -156,8 +156,8 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
             oracleTypeBC3M,
             Storage.OracleReadType.MAX,
             oracleDataBC3M,
-            abi.encode(currentBC3MPrice, DEVIATION_THRESHOLD_BC3M, uint96(block.timestamp), HEARTBEAT),
-            abi.encode(USER_PROTECTION_BC3M, FIREWALL_MINT_BC3M, FIREWALL_BURN_RATIO_BC3M)
+            abi.encode(currentBC3MPrice),
+            abi.encode(USER_PROTECTION_BC3M, FIREWALL_BURN_RATIO_BC3M)
         );
         transmuter.setOracle(BC3M, oracleConfigBC3M);
 
@@ -215,12 +215,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
                     (, int256 ratio, , uint256 updatedAt, ) = AggregatorV3Interface(
                         0x475855DAe09af1e3f2d380d766b9E630926ad3CE
                     ).latestRoundData();
-                    targetData = abi.encode(
-                        (uint256(ratio) * BASE_18) / BASE_8,
-                        uint96(DEVIATION_THRESHOLD_ERNX),
-                        uint96(block.timestamp),
-                        HEARTBEAT
-                    );
+                    targetData = abi.encode((uint256(ratio) * BASE_18) / BASE_8);
                 }
 
                 oracleConfigBERNX = abi.encode(
@@ -228,7 +223,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
                     Storage.OracleReadType.MAX,
                     readData,
                     targetData,
-                    abi.encode(USER_PROTECTION_ERNX, FIREWALL_MINT_ERNX, FIREWALL_BURN_RATIO_ERNX)
+                    abi.encode(USER_PROTECTION_ERNX, FIREWALL_BURN_RATIO_ERNX)
                 );
             }
             collateral = CollateralSetupProd(
@@ -584,27 +579,9 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testUnit_Upgrade_getOracleValues_Success() external {
-        _checkOracleValues(
-            address(EUROC),
-            BASE_18,
-            USER_PROTECTION_EUROC,
-            FIREWALL_MINT_EUROC,
-            FIREWALL_BURN_RATIO_EUROC
-        );
-        _checkOracleValues(
-            address(BC3M),
-            (11949 * BASE_18) / 100,
-            USER_PROTECTION_BC3M,
-            FIREWALL_MINT_BC3M,
-            FIREWALL_BURN_RATIO_BC3M
-        );
-        _checkOracleValues(
-            address(BERNX),
-            (522 * BASE_18) / 100,
-            USER_PROTECTION_ERNX,
-            FIREWALL_MINT_ERNX,
-            FIREWALL_BURN_RATIO_ERNX
-        );
+        _checkOracleValues(address(EUROC), BASE_18, USER_PROTECTION_EUROC, FIREWALL_BURN_RATIO_EUROC);
+        _checkOracleValues(address(BC3M), (11949 * BASE_18) / 100, USER_PROTECTION_BC3M, FIREWALL_BURN_RATIO_BC3M);
+        _checkOracleValues(address(BERNX), (522 * BASE_18) / 100, USER_PROTECTION_ERNX, FIREWALL_BURN_RATIO_ERNX);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -882,9 +859,8 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
     function _checkOracleValues(
         address collateral,
         uint256 targetValue,
-        uint80 userProtection,
-        uint80 firewallMint,
-        uint80 firewallBurn
+        uint128 userProtection,
+        uint128 firewallBurn
     ) internal {
         (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter.getOracleValues(
             collateral
@@ -903,7 +879,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
         ) {
             assertEq(mint, targetValue);
             assertEq(ratio, BASE_18);
-        } else if (redemption * BASE_18 > targetValue * (BASE_18 + firewallMint)) {
+        } else if (redemption > targetValue) {
             assertEq(mint, targetValue);
             assertEq(ratio, BASE_18);
         } else if (redemption * BASE_18 < targetValue * (BASE_18 - firewallBurn)) {
