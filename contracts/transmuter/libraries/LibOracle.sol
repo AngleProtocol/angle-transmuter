@@ -295,31 +295,20 @@ library LibOracle {
             OracleReadType oracleType,
             OracleReadType targetType,
             bytes memory oracleData,
-            bytes memory targetData,
+            ,
             bytes memory hyperparameters
         ) = _parseOracleConfig(ts.collaterals[collateral].oracleConfig);
 
         if (targetType != OracleReadType.MAX) revert OracleUpdateFailed();
 
         uint256 oracleValue = read(oracleType, BASE_18, oracleData);
-        (uint256 maxValue, uint96 deviationThreshold, uint96 lastUpdateTimestamp, uint32 heartbeat) = abi.decode(
-            targetData,
-            (uint256, uint96, uint96, uint32)
+        ts.collaterals[collateral].oracleConfig = abi.encode(
+            oracleType,
+            targetType,
+            oracleData,
+            // There are no checks whether the value increased or not
+            abi.encode(oracleValue),
+            hyperparameters
         );
-
-        if (
-            (oracleValue * BASE_18 >= maxValue * (BASE_18 + deviationThreshold)) ||
-            (block.timestamp - lastUpdateTimestamp > heartbeat)
-        ) {
-            ts.collaterals[collateral].oracleConfig = abi.encode(
-                oracleType,
-                targetType,
-                oracleData,
-                abi.encode(oracleValue, deviationThreshold, block.timestamp, heartbeat),
-                hyperparameters
-            );
-        } else {
-            revert OracleUpdateFailed();
-        }
     }
 }
