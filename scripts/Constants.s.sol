@@ -26,26 +26,26 @@ address constant BIB01 = 0xCA30c93B02514f86d5C86a6e375E3A330B435Fb5;
 
 // EUROC
 uint128 constant FIREWALL_BURN_RATIO_EUROC = uint128(0);
-uint128 constant USER_PROTECTION_EUROC = uint128(5 * BPS);
+uint128 constant USER_PROTECTION_EUROC = uint128(10 * BPS);
 
 // BC3M
-uint128 constant FIREWALL_BURN_RATIO_BC3M = uint128(50 * BPS);
+uint128 constant FIREWALL_BURN_RATIO_BC3M = uint128(10 * BPS);
 uint128 constant USER_PROTECTION_BC3M = uint128(0);
 
 // ERNX
-uint128 constant FIREWALL_BURN_RATIO_ERNX = uint128(100 * BPS);
+uint128 constant FIREWALL_BURN_RATIO_ERNX = uint128(20 * BPS);
 uint128 constant USER_PROTECTION_ERNX = uint128(0);
-
-uint32 constant HEARTBEAT = uint32(7 days);
 
 uint128 constant FIREWALL_BURN_RATIO_USDC = uint128(0);
 uint128 constant USER_PROTECTION_USDC = uint128(5 * BPS);
 
-uint128 constant FIREWALL_BURN_RATIO_STEAK_USDC = uint128(50 * BPS);
+uint128 constant FIREWALL_BURN_RATIO_STEAK_USDC = uint128(5 * BPS);
 uint128 constant USER_PROTECTION_STEAK_USDC = uint128(0);
 
-uint128 constant FIREWALL_BURN_RATIO_IB01 = uint128(50 * BPS);
+uint128 constant FIREWALL_BURN_RATIO_IB01 = uint128(20 * BPS);
 uint128 constant USER_PROTECTION_IB01 = uint128(0);
+
+uint32 constant HEARTBEAT = uint32(7 days);
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     FACET ADDRESSES                                                 
