@@ -135,6 +135,7 @@ struct TransmuterStorage {
     mapping(address => uint256) isTrusted; // If an address is trusted to update the normalizer value
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     mapping(address => uint256) isSellerTrusted; // If an address is trusted to sell accruing reward tokens or to run keeper jobs on oracles
 =======
 =======
@@ -152,6 +153,9 @@ struct TransmuterStorage {
 =======
 >>>>>>> 8623ccf (feat: USDA setup (#108))
     mapping(address => uint256) isSellerTrusted; // If an address is trusted to sell accruing reward tokens
+=======
+    mapping(address => uint256) isSellerTrusted; // If an address is trusted to sell accruing reward tokens or to run keeper jobs on oracles
+>>>>>>> 794b604 (chore: review minor changes)
     mapping(WhitelistType => mapping(address => uint256)) isWhitelistedForType;
     // Whether an address is whitelisted for a specific whitelist type
 }
