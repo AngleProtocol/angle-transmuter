@@ -27,9 +27,9 @@ contract Helpers is Utils {
     address public sweeper;
 
     function setUp() public virtual {
+        ethereumFork = vm.createFork(vm.envString("ETH_NODE_URI_MAINNET"));
         arbitrumFork = vm.createFork(vm.envString("ETH_NODE_URI_ARBITRUM"));
         avalancheFork = vm.createFork(vm.envString("ETH_NODE_URI_AVALANCHE"));
-        ethereumFork = vm.createFork(vm.envString("ETH_NODE_URI_MAINNET"));
         optimismFork = vm.createFork(vm.envString("ETH_NODE_URI_OPTIMISM"));
         polygonFork = vm.createFork(vm.envString("ETH_NODE_URI_POLYGON"));
         gnosisFork = vm.createFork(vm.envString("ETH_NODE_URI_GNOSIS"));
@@ -39,9 +39,9 @@ contract Helpers is Utils {
         baseFork = vm.createFork(vm.envString("ETH_NODE_URI_BASE"));
         lineaFork = vm.createFork(vm.envString("ETH_NODE_URI_LINEA"));
 
+        forkIdentifier[CHAIN_ETHEREUM] = ethereumFork;
         forkIdentifier[CHAIN_ARBITRUM] = arbitrumFork;
         forkIdentifier[CHAIN_AVALANCHE] = avalancheFork;
-        forkIdentifier[CHAIN_ETHEREUM] = ethereumFork;
         forkIdentifier[CHAIN_OPTIMISM] = optimismFork;
         forkIdentifier[CHAIN_POLYGON] = polygonFork;
         forkIdentifier[CHAIN_GNOSIS] = gnosisFork;

@@ -42,46 +42,26 @@ contract RebalancerFlashloanTest is Fixture, FunctionUtils {
         _saving.initialize(accessControlManager, IERC20MetadataUpgradeable(address(token)), _name, _symbol, BASE_6);
         vm.stopPrank();
 
-        rebalancer = new RebalancerFlashloan(
-            accessControlManager,
-            transmuter,
-            IERC4626(address(_saving)),
-            IERC3156FlashLender(governor)
-        );
+        rebalancer = new RebalancerFlashloan(accessControlManager, transmuter, IERC3156FlashLender(governor));
     }
 
     function test_RebalancerInitialization() public {
         assertEq(address(rebalancer.accessControlManager()), address(accessControlManager));
         assertEq(address(rebalancer.AGTOKEN()), address(agToken));
         assertEq(address(rebalancer.TRANSMUTER()), address(transmuter));
-        assertEq(address(rebalancer.VAULT()), address(_saving));
-        assertEq(address(rebalancer.COLLATERAL()), collat);
         assertEq(address(rebalancer.FLASHLOAN()), governor);
         assertEq(IERC20Metadata(address(agToken)).allowance(address(rebalancer), address(governor)), type(uint256).max);
-        assertEq(IERC20Metadata(address(collat)).allowance(address(rebalancer), address(_saving)), type(uint256).max);
+        assertEq(IERC20Metadata(address(collat)).allowance(address(rebalancer), address(_saving)), 0);
     }
 
     function test_Constructor_RevertWhen_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new RebalancerFlashloan(
-            accessControlManager,
-            transmuter,
-            IERC4626(address(_saving)),
-            IERC3156FlashLender(address(0))
-        );
-
-        vm.expectRevert();
-        new RebalancerFlashloan(
-            accessControlManager,
-            transmuter,
-            IERC4626(address(0)),
-            IERC3156FlashLender(address(governor))
-        );
+        new RebalancerFlashloan(accessControlManager, transmuter, IERC3156FlashLender(address(0)));
     }
 
     function test_adjustYieldExposure_RevertWhen_NotTrusted() public {
         vm.expectRevert(Errors.NotTrusted.selector);
-        rebalancer.adjustYieldExposure(1, 1);
+        rebalancer.adjustYieldExposure(1, 1, address(0), address(0));
     }
 
     function test_onFlashLoan_RevertWhen_NotTrusted() public {

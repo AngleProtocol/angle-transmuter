@@ -70,9 +70,7 @@ contract Rebalancer is IRebalancer, AccessControl {
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
         // First, dealing with the allowance of the rebalancer to the Transmuter: this allowance is made infinite
         // by default
-        uint256 allowance = IERC20(tokenIn).allowance(address(this), address(TRANSMUTER));
-        if (allowance < amountIn)
-            IERC20(tokenIn).safeIncreaseAllowance(address(TRANSMUTER), type(uint256).max - allowance);
+        _adjustAllowance(tokenIn, address(TRANSMUTER), amountIn);
         // Mint agToken from `tokenIn`
         uint256 amountAgToken = TRANSMUTER.swapExactInput(
             amountIn,
@@ -198,5 +196,14 @@ contract Rebalancer is IRebalancer, AccessControl {
         if (token == address(AGTOKEN) && IERC20(token).balanceOf(address(this)) < budget + amount)
             revert InvalidParam();
         IERC20(token).safeTransfer(to, amount);
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                        HELPER                                                      
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function _adjustAllowance(address token, address sender, uint256 amountIn) internal {
+        uint256 allowance = IERC20(token).allowance(address(this), sender);
+        if (allowance < amountIn) IERC20(token).safeIncreaseAllowance(sender, type(uint256).max - allowance);
     }
 }
