@@ -4,6 +4,10 @@ pragma solidity ^0.8.19;
 import { Utils } from "./utils/Utils.s.sol";
 import { console } from "forge-std/console.sol";
 import { stdJson } from "forge-std/StdJson.sol";
+import { Getters } from "contracts/transmuter/facets/Getters.sol";
+import { Redeemer } from "contracts/transmuter/facets/Redeemer.sol";
+import { SettersGovernor } from "contracts/transmuter/facets/SettersGovernor.sol";
+import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import "stringutils/strings.sol";
 import "./Constants.s.sol";
 
@@ -15,6 +19,11 @@ import "interfaces/external/IERC4626.sol";
 import { CollateralSetupProd } from "contracts/transmuter/configs/ProductionTypes.sol";
 
 contract SetupDeployedTransmuter is Utils {
+    using stdJson for string;
+    string[] replaceFacetNames;
+    string[] addFacetNames;
+    address[] facetAddressList;
+    address[] addFacetAddressList;
     function run() external {
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC_MAINNET"), "m/44'/60'/0'/0/", 0);
         address deployer = vm.addr(deployerPrivateKey);
@@ -25,11 +34,73 @@ contract SetupDeployedTransmuter is Utils {
         ITransmuter usdaTransmuter = ITransmuter(0x222222fD79264BBE280b4986F6FEfBC3524d0137);
         console.log(address(usdaTransmuter));
 
-        // TODO Run this script after facet upgrade script otherwise it won't work due to oracles calibrated
-        // in a different manner
+        Storage.FacetCut[] memory replaceCut;
+        Storage.FacetCut[] memory addCut;
+
+        // TODO: replace by the real facet addresses obtained when deploying
+        replaceFacetNames.push("Getters");
+        facetAddressList.push(address(new Getters()));
+        console.log("Getters deployed at: ", facetAddressList[facetAddressList.length - 1]);
+
+        replaceFacetNames.push("Redeemer");
+        facetAddressList.push(address(new Redeemer()));
+        console.log("Redeemer deployed at: ", facetAddressList[facetAddressList.length - 1]);
+
+        replaceFacetNames.push("SettersGovernor");
+        address settersGovernor = address(new SettersGovernor());
+        facetAddressList.push(settersGovernor);
+        console.log("SettersGovernor deployed at: ", facetAddressList[facetAddressList.length - 1]);
+
+        replaceFacetNames.push("Swapper");
+        facetAddressList.push(address(new Swapper()));
+        console.log("Swapper deployed at: ", facetAddressList[facetAddressList.length - 1]);
+
+        addFacetNames.push("SettersGovernor");
+        addFacetAddressList.push(settersGovernor);
+
+        string memory jsonReplace = vm.readFile(JSON_SELECTOR_PATH_REPLACE);
+        {
+            // Build appropriate payload
+            uint256 n = replaceFacetNames.length;
+            replaceCut = new Storage.FacetCut[](n);
+            for (uint256 i = 0; i < n; ++i) {
+                // Get Selectors from json
+                bytes4[] memory selectors = _arrayBytes32ToBytes4(
+                    jsonReplace.readBytes32Array(string.concat("$.", replaceFacetNames[i]))
+                );
+
+                replaceCut[i] = Storage.FacetCut({
+                    facetAddress: facetAddressList[i],
+                    action: Storage.FacetCutAction.Replace,
+                    functionSelectors: selectors
+                });
+            }
+        }
+
+        string memory jsonAdd = vm.readFile(JSON_SELECTOR_PATH_ADD);
+        {
+            // Build appropriate payload
+            uint256 n = addFacetNames.length;
+            addCut = new Storage.FacetCut[](n);
+            for (uint256 i = 0; i < n; ++i) {
+                // Get Selectors from json
+                bytes4[] memory selectors = _arrayBytes32ToBytes4(
+                    jsonAdd.readBytes32Array(string.concat("$.", addFacetNames[i]))
+                );
+                addCut[i] = Storage.FacetCut({
+                    facetAddress: addFacetAddressList[i],
+                    action: Storage.FacetCutAction.Add,
+                    functionSelectors: selectors
+                });
+            }
+        }
+
+        bytes memory callData;
+        // set the right implementations
+        usdaTransmuter.diamondCut(replaceCut, address(0), callData);
+        usdaTransmuter.diamondCut(addCut, address(0), callData);
 
         // For USDC, we just need to update the oracle as the fees have already been properly set for this use case
-
         {
             bytes memory oracleConfig;
             bytes memory readData;
@@ -160,7 +231,6 @@ contract SetupDeployedTransmuter is Utils {
             bytes memory oracleConfig;
             {
                 bytes memory readData = abi.encode(0x025106374196586E8BC91eE8818dD7B0Efd2B78B, BASE_18);
-                // Current price is 1.012534 -> we take a small margin
                 uint256 startPrice = IERC4626(STEAK_USDC).previewRedeem(1e30);
                 bytes memory targetData = abi.encode(startPrice);
                 oracleConfig = abi.encode(
@@ -204,7 +274,6 @@ contract SetupDeployedTransmuter is Utils {
 
         usdaTransmuter.toggleTrusted(NEW_DEPLOYER, Storage.TrustedType.Seller);
         usdaTransmuter.toggleTrusted(NEW_KEEPER, Storage.TrustedType.Seller);
-
         console.log("Transmuter setup");
         vm.stopBroadcast();
     }

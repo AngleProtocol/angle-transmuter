@@ -25,12 +25,6 @@ contract UpdateTransmuterFacets is Helpers {
     string[] replaceFacetNames;
     address[] facetAddressList;
 
-    ITransmuter transmuter;
-    IERC20 agEUR;
-    address governor;
-    bytes public oracleConfigEUROC;
-    bytes public oracleConfigBC3M;
-
     function run() external {
         // TODO: make sure that selectors are well generated `yarn generate` before running this script
         // Here the `selectors.json` file is normally up to date
