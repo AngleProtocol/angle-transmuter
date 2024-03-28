@@ -21,7 +21,7 @@ import { CollateralSetupProd } from "contracts/transmuter/configs/ProductionType
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 import "utils/src/Constants.sol";
 import { IERC20 } from "oz/interfaces/IERC20.sol";
-import { MockMorphoOracle } from "../mock/MockMorphoOracle.sol";
+import { IMorphoOracle, MockMorphoOracle } from "../mock/MockMorphoOracle.sol";
 
 interface OldTransmuter {
     function getOracle(
@@ -260,8 +260,9 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
             bytes memory oracleConfig;
             {
                 bytes memory readData = abi.encode(0x025106374196586E8BC91eE8818dD7B0Efd2B78B, BASE_18);
-                // Current price is 1.012534 -> we take a small margin
-                bytes memory targetData = abi.encode(1013000000000000000);
+                bytes memory targetData = abi.encode(
+                    IMorphoOracle(0x025106374196586E8BC91eE8818dD7B0Efd2B78B).price() / BASE_18
+                );
                 oracleConfig = abi.encode(
                     Storage.OracleReadType.MORPHO_ORACLE,
                     Storage.OracleReadType.MAX,
@@ -368,7 +369,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
                 );
                 address keyringGuard = abi.decode(data, (address));
                 assertEq(uint8(whitelist), uint8(Storage.WhitelistType.BACKED));
-                assertEq(keyringGuard, 0x4954c61984180868495D1a7Fb193b05a2cbd9dE3);
+                assertEq(keyringGuard, 0x9391B14dB2d43687Ea1f6E546390ED4b20766c46);
             }
             assertEq(collatInfoIB01.managerData.subCollaterals.length, 0);
             assertEq(collatInfoIB01.managerData.config.length, 0);
@@ -475,7 +476,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         _checkOracleValues(address(BIB01), 109480000000000000000, USER_PROTECTION_IB01, FIREWALL_BURN_RATIO_IB01);
         _checkOracleValues(
             address(STEAK_USDC),
-            1013000000000000000,
+            1.015 ether,
             USER_PROTECTION_STEAK_USDC,
             FIREWALL_BURN_RATIO_STEAK_USDC
         );
@@ -675,9 +676,6 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
             targetValue * (BASE_18 - userProtection) < redemption * BASE_18 &&
             redemption * BASE_18 < targetValue * (BASE_18 + userProtection)
         ) {
-            assertEq(mint, targetValue);
-            assertEq(ratio, BASE_18);
-        } else if (redemption > targetValue) {
             assertEq(mint, targetValue);
             assertEq(ratio, BASE_18);
         } else if (redemption * BASE_18 < targetValue * (BASE_18 - firewallBurn)) {

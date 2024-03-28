@@ -19,7 +19,7 @@
     "test:invariant": "forge test -vvv --gas-report --match-path \"test/invariants/**/*.sol\"",
     "test:fuzz": "forge test -vvv --gas-report --match-path \"test/fuzz/**/*.sol\"",
     "slither": "chmod +x ./slither.sh && ./slither.sh",
-    "test": "forge test -vvv",
+    "test": "forge test -vvvv",
     "lcov:clean": "lcov --remove lcov.info -o lcov.info 'test/**' 'scripts/**' 'contracts/transmuter/configs/**' 'contracts/utils/**'",
     "lcov:generate-html": "genhtml lcov.info --output=coverage",
     "size": "forge build --skip test --sizes",
@@ -44,6 +44,6 @@
     "solhint-plugin-prettier": "^0.0.5"
   },
   "dependencies": {
-    "@angleprotocol/sdk": "^0.36.13"
+    "@angleprotocol/sdk": "^0.37.1"
   }
 }

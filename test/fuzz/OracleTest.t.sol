@@ -930,7 +930,7 @@ contract OracleTest is Fixture, FunctionUtils {
         uint256 newOracleValue;
         {
             (, int256 oracleValueTmp, , , ) = _oracles[indexCollat].latestRoundData();
-            updateOracleValue = bound(updateOracleValue, uint256(oracleValueTmp), _maxOracleValue);
+            updateOracleValue = bound(updateOracleValue, uint256(oracleValueTmp) + 1, _maxOracleValue);
             if (updateOracleValue > _maxOracleValue) return;
 
             uint256[3] memory latestOracleValue = [updateOracleValue, BASE_8, BASE_8];

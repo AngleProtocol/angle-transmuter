@@ -341,7 +341,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
             assertEq(collatInfoEUROC.isBurnLive, 1);
             assertEq(collatInfoEUROC.decimals, 6);
             assertEq(collatInfoEUROC.onlyWhitelisted, 0);
-            assertApproxEqRel(collatInfoEUROC.normalizedStables, 9878038 * BASE_18, 100 * BPS);
+            assertApproxEqRel(collatInfoEUROC.normalizedStables, 9580108 * BASE_18, 100 * BPS);
             assertEq(collatInfoEUROC.oracleConfig, oracleConfigEUROC);
             assertEq(collatInfoEUROC.whitelistData.length, 0);
             assertEq(collatInfoEUROC.managerData.subCollaterals.length, 0);
@@ -537,7 +537,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
     function testUnit_Upgrade_GetCollateralRatio() external {
         (uint64 collatRatio, uint256 stablecoinIssued) = transmuter.getCollateralRatio();
         assertApproxEqRel(collatRatio, 1065 * 10 ** 6, BPS * 100);
-        assertApproxEqRel(stablecoinIssued, 16218282 * BASE_18, 100 * BPS);
+        assertApproxEqRel(stablecoinIssued, 15816758 * BASE_18, 100 * BPS);
     }
 
     function testUnit_Upgrade_isTrusted() external {
@@ -580,8 +580,8 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
 
     function testUnit_Upgrade_getOracleValues_Success() external {
         _checkOracleValues(address(EUROC), BASE_18, USER_PROTECTION_EUROC, FIREWALL_BURN_RATIO_EUROC);
-        _checkOracleValues(address(BC3M), (11949 * BASE_18) / 100, USER_PROTECTION_BC3M, FIREWALL_BURN_RATIO_BC3M);
-        _checkOracleValues(address(BERNX), (522 * BASE_18) / 100, USER_PROTECTION_ERNX, FIREWALL_BURN_RATIO_ERNX);
+        _checkOracleValues(address(BC3M), (11974 * BASE_18) / 100, USER_PROTECTION_BC3M, FIREWALL_BURN_RATIO_BC3M);
+        _checkOracleValues(address(BERNX), (52274 * BASE_18) / 10000, USER_PROTECTION_ERNX, FIREWALL_BURN_RATIO_ERNX);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
