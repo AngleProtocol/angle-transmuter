@@ -106,7 +106,7 @@ contract TraderWithSplit is BaseActor {
 
         // Approval only usefull for QuoteType.MintExactInput and QuoteType.MintExactOutput
         IERC20(testS.tokenIn).approve(address(_transmuter), testS.amountIn);
-        IERC20(testS.tokenIn).approve(address(_transmuterSplit), testS.amountIn);
+        IERC20(testS.tokenIn).approve(address(_transmuterSplit), testS.amountIn + 1);
 
         // Swap
         if (quoteType == QuoteType.MintExactInput || quoteType == QuoteType.BurnExactInput) {
