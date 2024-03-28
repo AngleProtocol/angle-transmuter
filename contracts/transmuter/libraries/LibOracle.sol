@@ -80,7 +80,14 @@ library LibOracle {
         (uint128 userDeviation, uint128 burnRatioDeviation) = abi.decode(hyperparameters, (uint128, uint128));
         uint256 targetPrice;
         (oracleValue, targetPrice) = readSpotAndTarget(oracleType, targetType, oracleData, targetData, userDeviation);
-        (ratio, oracleValue) = _burnRatio(targetPrice, oracleValue, burnRatioDeviation);
+        // Firewall in case the oracle value reported is low compared to the target
+        // If the oracle value is slightly below its target, then no deviation is reported for the oracle and
+        // the price of burning the stablecoin for other assets is not impacted. Also, the oracle value of this asset
+        // is set to the target price, to not be open to direct arbitrage
+        ratio = BASE_18;
+        if (oracleValue * BASE_18 < targetPrice * (BASE_18 - burnRatioDeviation))
+            ratio = (oracleValue * BASE_18) / targetPrice;
+        else if (oracleValue < targetPrice) oracleValue = targetPrice;
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -133,8 +140,13 @@ library LibOracle {
     ) internal view returns (uint256 oracleValue, uint256 targetPrice) {
         targetPrice = read(targetType, BASE_18, targetData);
         oracleValue = read(oracleType, targetPrice, oracleData);
-        // Post process of the oracle value: system may tolerate small deviations from target
-        oracleValue = _userOracleProtection(targetPrice, oracleValue, deviation);
+        // System may tolerate small deviations from target
+        // If the oracle value reported is reasonably close to the target
+        // --> disregard the oracle value and return the target price
+        if (
+            targetPrice * (BASE_18 - deviation) < oracleValue * BASE_18 &&
+            oracleValue * BASE_18 < targetPrice * (BASE_18 + deviation)
+        ) oracleValue = targetPrice;
     }
 
     /// @notice Reads an oracle value (or a target oracle value) for an asset based on its data parsed `oracleConfig`
@@ -247,45 +259,6 @@ library LibOracle {
         bytes memory oracleConfig
     ) private pure returns (OracleReadType, OracleReadType, bytes memory, bytes memory, bytes memory) {
         return abi.decode(oracleConfig, (OracleReadType, OracleReadType, bytes, bytes, bytes));
-    }
-
-    /// @notice Firewall in case the oracle value reported is too high compared to the target
-    /// @dev This mint firewall is useful in the case of assets for which the `targetPrice` is theorically defined as
-    /// the maximum value ever observed for the oracle, but this maximum value has simply not been updated.
-    /// Typically, imagine a case where target is 100 and oracle is 101, in this setup, during a mint, because
-    /// target should be put at 101 but hasn't been modified, the system uses for a price the oracle value
-    function _firewallMint(uint256 targetPrice, uint256 oracleValue, uint256 deviation) private pure returns (uint256) {
-        if (targetPrice * (BASE_18 + deviation) < oracleValue * BASE_18) oracleValue = targetPrice;
-        return oracleValue;
-    }
-
-    /// @notice Firewall in case the oracle value reported is low compared to the target
-    /// @dev If the oracle value is slightly below its target, then no deviation is reported for the oracle and
-    /// the price of burning the stablecoin for other assets is not impacted. Also, the oracle value of this asset
-    /// is set to the target price, to not be open to direct arbitrage
-    function _burnRatio(
-        uint256 targetPrice,
-        uint256 oracleValue,
-        uint256 deviation
-    ) private pure returns (uint256, uint256) {
-        uint256 ratio = BASE_18;
-        if (oracleValue * BASE_18 < targetPrice * (BASE_18 - deviation)) ratio = (oracleValue * BASE_18) / targetPrice;
-        else if (oracleValue < targetPrice) oracleValue = targetPrice;
-        return (ratio, oracleValue);
-    }
-
-    /// @notice Firewall in case the oracle value reported is reasonably close to the target
-    /// --> disregard the oracle value and return the target price
-    function _userOracleProtection(
-        uint256 targetPrice,
-        uint256 oracleValue,
-        uint256 deviation
-    ) private pure returns (uint256) {
-        if (
-            targetPrice * (BASE_18 - deviation) < oracleValue * BASE_18 &&
-            oracleValue * BASE_18 < targetPrice * (BASE_18 + deviation)
-        ) oracleValue = targetPrice;
-        return oracleValue;
     }
 
     function updateOracle(address collateral) internal {
