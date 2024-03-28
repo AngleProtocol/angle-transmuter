@@ -49,6 +49,7 @@ uint128 constant USER_PROTECTION_IB01 = uint128(0);
 uint32 constant HEARTBEAT = uint32(7 days);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 // EUROC
 uint80 constant FIREWALL_MINT_EUROC = uint80(0);
 uint80 constant FIREWALL_BURN_RATIO_EUROC = uint80(0);
@@ -112,6 +113,8 @@ uint256 constant DEVIATION_THRESHOLD_IB01 = 50 * BPS;
 =======
 >>>>>>> e9ce80c (finish rebase)
 >>>>>>> 75a829b (finish rebase)
+=======
+>>>>>>> 5dc17c4 (fix: post rebase)
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     FACET ADDRESSES                                                 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/

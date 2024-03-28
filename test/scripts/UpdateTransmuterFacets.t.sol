@@ -1014,6 +1014,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
         address collateral,
         uint256 targetValue,
 <<<<<<< HEAD
+<<<<<<< HEAD
         uint128 userProtection,
         uint128 firewallBurn
 =======
@@ -1037,6 +1038,10 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
         uint80 firewallBurn
 >>>>>>> db78197 (feat: setup  script for USDA transmuter)
 >>>>>>> c15f71e (feat: setup  script for USDA transmuter)
+=======
+        uint128 userProtection,
+        uint128 firewallBurn
+>>>>>>> 7932f15 (fix: post rebase)
     ) internal {
         (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter.getOracleValues(
             collateral
