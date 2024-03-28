@@ -879,9 +879,6 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
         ) {
             assertEq(mint, targetValue);
             assertEq(ratio, BASE_18);
-        } else if (redemption > targetValue) {
-            assertEq(mint, targetValue);
-            assertEq(ratio, BASE_18);
         } else if (redemption * BASE_18 < targetValue * (BASE_18 - firewallBurn)) {
             assertEq(mint, redemption);
             assertEq(ratio, (redemption * BASE_18) / targetValue);
