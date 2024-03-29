@@ -7,7 +7,7 @@
     "coverage": "FOUNDRY_PROFILE=dev forge coverage --report lcov && yarn lcov:clean && yarn lcov:generate-html",
     "compile": "forge build",
     "compile:dev": "FOUNDRY_PROFILE=dev forge build",
-    "deploy": "forge script --skip test --broadcast --verify --slow -vvvv scripts/DeploySavingsNoImplem.s.sol --rpc-url",
+    "deploy": "forge script --skip test --broadcast --verify --slow -vvvv --rpc-url",
     "deploy:fork": "forge script --skip test  --slow --fork-url fork --broadcast -vvvv",
     "generate": "FOUNDRY_PROFILE=dev forge script scripts/utils/GenerateSelectors.s.sol",
     "deploy:check": "FOUNDRY_PROFILE=dev forge script --fork-url fork scripts/test/CheckTransmuter.s.sol",
