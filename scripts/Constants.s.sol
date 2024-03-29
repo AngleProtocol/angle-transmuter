@@ -54,12 +54,12 @@ uint32 constant HEARTBEAT = uint32(7 days);
 address constant DIAMOND_CUT_FACET = 0x53B7d70013dEC21A97F216e80eEFCF45F25c2900;
 address constant DIAMOND_ETHERSCAN_FACET = 0xFa94Cd9d711de75695693c877BecA5473462Cf12;
 address constant DIAMOND_LOUPE_FACET = 0x65Ddeedf8e68f26D787B678E28Af13fde0249967;
-address constant GETTERS_FACET = 0xd1b575ED715e4630340BfdC4fB8A37dF3383C84a;
+address constant GETTERS_FACET = 0x99fe8557A8F322525262720C52b7d57c56924012;
 address constant REWARD_HANDLER_FACET = 0x770756e43b9ac742538850003791deF3020211F3;
-address constant SETTERS_GOVERNOR_FACET = 0x1F37F93c6aA7d987AE04786145d3066EAb8EEB43;
+address constant SETTERS_GOVERNOR_FACET = 0x49c7B39A2E01869d39548F232F9B1586DA8Ef9c2;
 address constant SETTERS_GUARDIAN_FACET = 0xdda8f002925a0DfB151c0EaCb48d7136ce6a999F;
-address constant SWAPPER_FACET = 0x06c33a0C80C3970cbeDDE641C7A6419d703D93d7;
-address constant REDEEMER_FACET = 0x1e45b65CdD3712fEf0024d063d6574A609985E59;
+address constant SWAPPER_FACET = 0xD838bF7fB3b420ac93A7d9f5b40230F78b33536F;
+address constant REDEEMER_FACET = 0xa09735EfbcfF6E76e6EfFF82A9Ad996A85cd0725;
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     SAVINGS IMPLEM                                                  

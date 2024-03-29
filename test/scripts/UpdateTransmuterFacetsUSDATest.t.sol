@@ -18,6 +18,7 @@ import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import "contracts/transmuter/libraries/LibHelpers.sol";
 import "interfaces/external/chainlink/AggregatorV3Interface.sol";
 import { CollateralSetupProd } from "contracts/transmuter/configs/ProductionTypes.sol";
+import "interfaces/external/IERC4626.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 import "utils/src/Constants.sol";
 import { IERC20 } from "oz/interfaces/IERC20.sol";
@@ -57,31 +58,30 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         vm.selectFork(forkIdentifier[CHAIN_SOURCE]);
 
         governor = DEPLOYER;
-        transmuter = ITransmuter(0x222222fD79264BBE280b4986F6FEfBC3524d0137);
-        USDA = IERC20(0x0000206329b97DB379d5E1Bf586BbDB969C63274);
+        transmuter = ITransmuter(_chainToContract(CHAIN_SOURCE, ContractType.TransmuterAgUSD));
+        USDA = IERC20(_chainToContract(CHAIN_SOURCE, ContractType.AgUSD));
 
         Storage.FacetCut[] memory replaceCut;
         Storage.FacetCut[] memory addCut;
 
         replaceFacetNames.push("Getters");
-        facetAddressList.push(address(new Getters()));
+        facetAddressList.push(GETTERS_FACET);
         console.log("Getters deployed at: ", facetAddressList[facetAddressList.length - 1]);
 
         replaceFacetNames.push("Redeemer");
-        facetAddressList.push(address(new Redeemer()));
+        facetAddressList.push(REDEEMER_FACET);
         console.log("Redeemer deployed at: ", facetAddressList[facetAddressList.length - 1]);
 
         replaceFacetNames.push("SettersGovernor");
-        address settersGovernor = address(new SettersGovernor());
-        facetAddressList.push(settersGovernor);
+        facetAddressList.push(SETTERS_GOVERNOR_FACET);
         console.log("SettersGovernor deployed at: ", facetAddressList[facetAddressList.length - 1]);
 
         replaceFacetNames.push("Swapper");
-        facetAddressList.push(address(new Swapper()));
+        facetAddressList.push(SWAPPER_FACET);
         console.log("Swapper deployed at: ", facetAddressList[facetAddressList.length - 1]);
 
         addFacetNames.push("SettersGovernor");
-        addFacetAddressList.push(settersGovernor);
+        addFacetAddressList.push(SETTERS_GOVERNOR_FACET);
 
         string memory jsonReplace = vm.readFile(JSON_SELECTOR_PATH_REPLACE);
         {
@@ -127,6 +127,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         transmuter.diamondCut(replaceCut, address(0), callData);
         transmuter.diamondCut(addCut, address(0), callData);
 
+        // For USDC, we just need to update the oracle as the fees have already been properly set for this use case
         {
             bytes memory oracleConfig;
             bytes memory readData;
@@ -156,7 +157,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
                 Storage.OracleReadType.STABLE,
                 readData,
                 targetData,
-                abi.encode(uint128(5 * BPS), uint128(0))
+                abi.encode(USER_PROTECTION_USDC, FIREWALL_BURN_RATIO_USDC)
             );
             oracleConfigUSDC = oracleConfig;
             transmuter.setOracle(USDC, oracleConfig);
@@ -243,8 +244,8 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
             xMintFeeSteak[2] = uint64((80 * BASE_9) / 100);
 
             int64[] memory yMintFeeSteak = new int64[](3);
-            yMintFeeSteak[0] = int64(0);
-            yMintFeeSteak[1] = int64(0);
+            yMintFeeSteak[0] = int64(uint64((5 * BASE_9) / 10000));
+            yMintFeeSteak[1] = int64(uint64((5 * BASE_9) / 10000));
             yMintFeeSteak[2] = int64(uint64(MAX_MINT_FEE));
 
             uint64[] memory xBurnFeeSteak = new uint64[](3);
@@ -253,16 +254,15 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
             xBurnFeeSteak[2] = uint64((30 * BASE_9) / 100);
 
             int64[] memory yBurnFeeSteak = new int64[](3);
-            yBurnFeeSteak[0] = int64(0);
-            yBurnFeeSteak[1] = int64(0);
+            yBurnFeeSteak[0] = int64(uint64((5 * BASE_9) / 10000));
+            yBurnFeeSteak[1] = int64(uint64((5 * BASE_9) / 10000));
             yBurnFeeSteak[2] = int64(uint64(MAX_BURN_FEE));
 
             bytes memory oracleConfig;
             {
                 bytes memory readData = abi.encode(0x025106374196586E8BC91eE8818dD7B0Efd2B78B, BASE_18);
-                bytes memory targetData = abi.encode(
-                    IMorphoOracle(0x025106374196586E8BC91eE8818dD7B0Efd2B78B).price() / BASE_18
-                );
+                uint256 startPrice = IERC4626(STEAK_USDC).previewRedeem(1e30);
+                bytes memory targetData = abi.encode(startPrice);
                 oracleConfig = abi.encode(
                     Storage.OracleReadType.MORPHO_ORACLE,
                     Storage.OracleReadType.MAX,
@@ -298,14 +298,13 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
 
         // Set whitelist status for bIB01
         bytes memory whitelistData = abi.encode(
-            WhitelistType.BACKED,
-            // Keyring whitelist check
+            Storage.WhitelistType.BACKED,
             abi.encode(address(0x9391B14dB2d43687Ea1f6E546390ED4b20766c46))
         );
         transmuter.setWhitelistStatus(BIB01, 1, whitelistData);
         transmuter.toggleWhitelist(Storage.WhitelistType.BACKED, WHALE_USDA);
 
-        transmuter.toggleTrusted(NEW_DEPLOYER, Storage.TrustedType.Seller);
+        // transmuter.toggleTrusted(NEW_DEPLOYER, Storage.TrustedType.Seller);
         transmuter.toggleTrusted(NEW_KEEPER, Storage.TrustedType.Seller);
 
         vm.stopPrank();

@@ -21,11 +21,6 @@ import { CollateralSetupProd } from "contracts/transmuter/configs/ProductionType
 contract SetupDeployedTransmuter is Utils {
     using stdJson for string;
 
-    address constant GETTERS = 0x99fe8557A8F322525262720C52b7d57c56924012;
-    address constant REDEEMER = 0xa09735EfbcfF6E76e6EfFF82A9Ad996A85cd0725;
-    address constant SETTERS_GOVERNOR = 0x49c7B39A2E01869d39548F232F9B1586DA8Ef9c2;
-    address constant SWAPPER = 0xD838bF7fB3b420ac93A7d9f5b40230F78b33536F;
-
     string[] replaceFacetNames;
     string[] addFacetNames;
     address[] facetAddressList;
@@ -37,31 +32,29 @@ contract SetupDeployedTransmuter is Utils {
         console.log(deployer.balance);
         vm.startBroadcast(deployerPrivateKey);
 
-        ITransmuter usdaTransmuter = ITransmuter(0x222222fD79264BBE280b4986F6FEfBC3524d0137);
-        console.log(address(usdaTransmuter));
+        ITransmuter usdaTransmuter = ITransmuter(_chainToContract(CHAIN_SOURCE, ContractType.TransmuterAgUSD));
 
         Storage.FacetCut[] memory replaceCut;
         Storage.FacetCut[] memory addCut;
 
-        // TODO: replace by the real facet addresses obtained when deploying
         replaceFacetNames.push("Getters");
-        facetAddressList.push(GETTERS);
+        facetAddressList.push(GETTERS_FACET);
         console.log("Getters deployed at: ", facetAddressList[facetAddressList.length - 1]);
 
         replaceFacetNames.push("Redeemer");
-        facetAddressList.push(REDEEMER);
+        facetAddressList.push(REDEEMER_FACET);
         console.log("Redeemer deployed at: ", facetAddressList[facetAddressList.length - 1]);
 
         replaceFacetNames.push("SettersGovernor");
-        facetAddressList.push(SETTERS_GOVERNOR);
+        facetAddressList.push(SETTERS_GOVERNOR_FACET);
         console.log("SettersGovernor deployed at: ", facetAddressList[facetAddressList.length - 1]);
 
         replaceFacetNames.push("Swapper");
-        facetAddressList.push(SWAPPER);
+        facetAddressList.push(SWAPPER_FACET);
         console.log("Swapper deployed at: ", facetAddressList[facetAddressList.length - 1]);
 
         addFacetNames.push("SettersGovernor");
-        addFacetAddressList.push(SETTERS_GOVERNOR);
+        addFacetAddressList.push(SETTERS_GOVERNOR_FACET);
 
         string memory jsonReplace = vm.readFile(JSON_SELECTOR_PATH_REPLACE);
         {
@@ -135,7 +128,7 @@ contract SetupDeployedTransmuter is Utils {
                 Storage.OracleReadType.STABLE,
                 readData,
                 targetData,
-                abi.encode(uint128(5 * BPS), uint128(0))
+                abi.encode(USER_PROTECTION_USDC, FIREWALL_BURN_RATIO_USDC)
             );
             usdaTransmuter.setOracle(USDC, oracleConfig);
         }
@@ -277,9 +270,8 @@ contract SetupDeployedTransmuter is Utils {
         );
         usdaTransmuter.setWhitelistStatus(BIB01, 1, whitelistData);
 
-        usdaTransmuter.toggleTrusted(NEW_DEPLOYER, Storage.TrustedType.Seller);
+        // usdaTransmuter.toggleTrusted(NEW_DEPLOYER, Storage.TrustedType.Seller);
         usdaTransmuter.toggleTrusted(NEW_KEEPER, Storage.TrustedType.Seller);
-        console.log("Transmuter setup");
         vm.stopBroadcast();
     }
 }
