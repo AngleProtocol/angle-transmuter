@@ -20,6 +20,12 @@ import { CollateralSetupProd } from "contracts/transmuter/configs/ProductionType
 
 contract SetupDeployedTransmuter is Utils {
     using stdJson for string;
+
+    address constant GETTERS = 0x99fe8557A8F322525262720C52b7d57c56924012;
+    address constant REDEEMER = 0xa09735EfbcfF6E76e6EfFF82A9Ad996A85cd0725;
+    address constant SETTERS_GOVERNOR = 0x49c7B39A2E01869d39548F232F9B1586DA8Ef9c2;
+    address constant SWAPPER = 0xD838bF7fB3b420ac93A7d9f5b40230F78b33536F;
+
     string[] replaceFacetNames;
     string[] addFacetNames;
     address[] facetAddressList;
@@ -39,24 +45,23 @@ contract SetupDeployedTransmuter is Utils {
 
         // TODO: replace by the real facet addresses obtained when deploying
         replaceFacetNames.push("Getters");
-        facetAddressList.push(address(new Getters()));
+        facetAddressList.push(GETTERS);
         console.log("Getters deployed at: ", facetAddressList[facetAddressList.length - 1]);
 
         replaceFacetNames.push("Redeemer");
-        facetAddressList.push(address(new Redeemer()));
+        facetAddressList.push(REDEEMER);
         console.log("Redeemer deployed at: ", facetAddressList[facetAddressList.length - 1]);
 
         replaceFacetNames.push("SettersGovernor");
-        address settersGovernor = address(new SettersGovernor());
-        facetAddressList.push(settersGovernor);
+        facetAddressList.push(SETTERS_GOVERNOR);
         console.log("SettersGovernor deployed at: ", facetAddressList[facetAddressList.length - 1]);
 
         replaceFacetNames.push("Swapper");
-        facetAddressList.push(address(new Swapper()));
+        facetAddressList.push(SWAPPER);
         console.log("Swapper deployed at: ", facetAddressList[facetAddressList.length - 1]);
 
         addFacetNames.push("SettersGovernor");
-        addFacetAddressList.push(settersGovernor);
+        addFacetAddressList.push(SETTERS_GOVERNOR);
 
         string memory jsonReplace = vm.readFile(JSON_SELECTOR_PATH_REPLACE);
         {
