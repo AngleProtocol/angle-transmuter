@@ -23,7 +23,7 @@ import { DummyDiamondImplementation } from "./generated/DummyDiamondImplementati
 import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 
-import { MockTreasury } from "../test/mock/MockTreasury.sol";
+import { MockTreasury } from "test/mock/MockTreasury.sol";
 import { MockToken } from "borrow/mock/MockToken.sol";
 
 contract DeployTransmuterWithoutFacets is TransmuterDeploymentHelper {

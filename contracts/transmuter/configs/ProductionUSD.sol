@@ -6,12 +6,13 @@ import "./ProductionTypes.sol";
 
 /// @dev This contract is used only once to initialize the diamond proxy.
 contract ProductionUSD {
+    address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+
     function initialize(
         IAccessControlManager _accessControlManager,
         address _agToken,
         address dummyImplementation
     ) external {
-        address usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
         /*
         require(address(_accessControlManager) == 0x5bc6BEf80DA563EBf6Df6D6913513fa9A7ec89BE);
         require(address(_agToken) == 0x0000206329b97DB379d5E1Bf586BbDB969C63274);
@@ -35,34 +36,38 @@ contract ProductionUSD {
 
             bytes memory oracleConfig;
             {
-                AggregatorV3Interface[] memory circuitChainlink = new AggregatorV3Interface[](1);
-                uint32[] memory stalePeriods = new uint32[](1);
-                uint8[] memory circuitChainIsMultiplied = new uint8[](1);
-                uint8[] memory chainlinkDecimals = new uint8[](1);
+                bytes memory readData;
+                {
+                    AggregatorV3Interface[] memory circuitChainlink = new AggregatorV3Interface[](1);
+                    uint32[] memory stalePeriods = new uint32[](1);
+                    uint8[] memory circuitChainIsMultiplied = new uint8[](1);
+                    uint8[] memory chainlinkDecimals = new uint8[](1);
 
-                // Chainlink USDC/USD oracle
-                circuitChainlink[0] = AggregatorV3Interface(0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6);
-                stalePeriods[0] = 1 days;
-                circuitChainIsMultiplied[0] = 1;
-                chainlinkDecimals[0] = 8;
-                OracleQuoteType quoteType = OracleQuoteType.UNIT;
-                bytes memory readData = abi.encode(
-                    circuitChainlink,
-                    stalePeriods,
-                    circuitChainIsMultiplied,
-                    chainlinkDecimals,
-                    quoteType
-                );
+                    // Chainlink USDC/USD oracle
+                    circuitChainlink[0] = AggregatorV3Interface(0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6);
+                    stalePeriods[0] = 1 days;
+                    circuitChainIsMultiplied[0] = 1;
+                    chainlinkDecimals[0] = 8;
+                    OracleQuoteType quoteType = OracleQuoteType.UNIT;
+                    readData = abi.encode(
+                        circuitChainlink,
+                        stalePeriods,
+                        circuitChainIsMultiplied,
+                        chainlinkDecimals,
+                        quoteType
+                    );
+                }
                 bytes memory targetData;
                 oracleConfig = abi.encode(
                     Storage.OracleReadType.CHAINLINK_FEEDS,
                     Storage.OracleReadType.STABLE,
                     readData,
-                    targetData
+                    targetData,
+                    abi.encode(uint128(0), uint128(50 * BPS))
                 );
             }
             collaterals[0] = CollateralSetupProd(
-                usdc,
+                USDC,
                 oracleConfig,
                 xMintFeeUsdc,
                 yMintFeeUsdc,
@@ -93,7 +98,7 @@ contract ProductionUSD {
         }
 
         // setRedemptionCurveParams
-        LibSetters.togglePause(usdc, ActionType.Redeem);
+        LibSetters.togglePause(USDC, ActionType.Redeem);
         uint64[] memory xRedeemFee = new uint64[](4);
         xRedeemFee[0] = uint64((75 * BASE_9) / 100);
         xRedeemFee[1] = uint64((85 * BASE_9) / 100);

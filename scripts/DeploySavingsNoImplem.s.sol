@@ -15,7 +15,7 @@ import { TransparentUpgradeableProxy } from "oz/proxy/transparent/TransparentUpg
 
 import { ImmutableCreate2Factory } from "./utils/TransmuterDeploymentHelper.s.sol";
 
-import { MockTreasury } from "../test/mock/MockTreasury.sol";
+import { MockTreasury } from "test/mock/MockTreasury.sol";
 
 /// @dev To deploy on a different chain, just replace the chainId and be sure the sdk has the required addresses
 contract DeploySavingsNoImplem is Utils {

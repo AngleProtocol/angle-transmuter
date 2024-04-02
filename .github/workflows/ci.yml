@@ -21,8 +21,10 @@ jobs:
           node-version: 18
           cache: "yarn"
 
-      - name: Install dependencies
-        run: yarn install
+      - name: Setup repo
+        uses: ./.github/actions/setup-repo
+        with:
+          registry-token: ${{ secrets.GH_REGISTRY_ACCESS_TOKEN }}
 
       - name: Run solhint
         run: yarn lint:check
@@ -44,8 +46,10 @@ jobs:
         with:
           version: nightly
 
-      - name: Install node_modules
-        run: yarn install
+      - name: Setup repo
+        uses: ./.github/actions/setup-repo
+        with:
+          registry-token: ${{ secrets.GH_REGISTRY_ACCESS_TOKEN }}
 
       - name: Compile foundry
         run: yarn compile --sizes
@@ -88,6 +92,11 @@ jobs:
 
       - name: Run Foundry tests
         run: yarn test:unit
+        env:
+          ETH_NODE_URI_POLYGON: ${{ secrets.ETH_NODE_URI_POLYGON }}
+          ETH_NODE_URI_ARBITRUM: ${{ secrets.ETH_NODE_URI_ARBITRUM }}
+          ETH_NODE_URI_OPTIMISM: ${{ secrets.ETH_NODE_URI_OPTIMISM }}
+          ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
 
   test-invariant:
     needs: ["build", "lint"]
@@ -116,6 +125,10 @@ jobs:
         env:
           FOUNDRY_INVARIANT_RUNS: "8"
           FOUNDRY_INVARIANT_DEPTH: "256"
+          ETH_NODE_URI_POLYGON: ${{ secrets.ETH_NODE_URI_POLYGON }}
+          ETH_NODE_URI_ARBITRUM: ${{ secrets.ETH_NODE_URI_ARBITRUM }}
+          ETH_NODE_URI_OPTIMISM: ${{ secrets.ETH_NODE_URI_OPTIMISM }}
+          ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
 
   test-fuzz:
     needs: ["build", "lint"]
@@ -143,6 +156,10 @@ jobs:
         run: yarn test:fuzz
         env:
           FOUNDRY_FUZZ_RUNS: "5000"
+          ETH_NODE_URI_POLYGON: ${{ secrets.ETH_NODE_URI_POLYGON }}
+          ETH_NODE_URI_ARBITRUM: ${{ secrets.ETH_NODE_URI_ARBITRUM }}
+          ETH_NODE_URI_OPTIMISM: ${{ secrets.ETH_NODE_URI_OPTIMISM }}
+          ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
 
   coverage:
     needs: ["build", "lint"]
@@ -169,6 +186,11 @@ jobs:
 
       - name: "Generate the coverage report using the unit and the integration tests"
         run: "yarn ci:coverage"
+        env:
+          ETH_NODE_URI_POLYGON: ${{ secrets.ETH_NODE_URI_POLYGON }}
+          ETH_NODE_URI_ARBITRUM: ${{ secrets.ETH_NODE_URI_ARBITRUM }}
+          ETH_NODE_URI_OPTIMISM: ${{ secrets.ETH_NODE_URI_OPTIMISM }}
+          ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
 
       - name: "Upload coverage report to Codecov"
         uses: "codecov/codecov-action@v3"

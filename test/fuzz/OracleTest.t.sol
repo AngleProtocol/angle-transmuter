@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { ITransmuterOracle, MockExternalOracle } from "../mock/MockExternalOracle.sol";
+import { MockMorphoOracle } from "../mock/MockMorphoOracle.sol";
 import { MockPyth } from "../mock/MockPyth.sol";
 import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
 import "../Fixture.sol";
@@ -21,6 +22,7 @@ contract OracleTest is Fixture, FunctionUtils {
 
     uint256 internal _maxAmountWithoutDecimals = 10 ** 15;
     uint256 internal _minOracleValue = 10 ** 3; // 10**(-5)
+    uint256 internal _maxOracleValue = BASE_18 / 100;
     uint256 internal _minWallet = 10 ** 18; // in base 18
     uint256 internal _maxWallet = 10 ** (18 + 12); // in base 18
 
@@ -170,17 +172,28 @@ contract OracleTest is Fixture, FunctionUtils {
         uint8[3] memory newTargetType,
         uint256[4] memory latestExchangeRateStakeETH
     ) public {
-        for (uint i; i < _collaterals.length; i++) {
+        for (uint256 i; i < _collaterals.length; i++) {
             bytes memory oracleData;
             bytes memory targetData;
             {
                 Storage.OracleReadType readType;
                 Storage.OracleReadType targetType;
-                (readType, targetType, oracleData, targetData) = transmuter.getOracle(address(_collaterals[i]));
+                uint256 userFirewall;
+                uint256 burnFirewall;
+                {
+                    bytes memory hyperparameters;
+                    (readType, targetType, oracleData, targetData, hyperparameters) = transmuter.getOracle(
+                        address(_collaterals[i])
+                    );
+                    (userFirewall, burnFirewall) = abi.decode(hyperparameters, (uint128, uint128));
+                }
 
-                assertEq(uint(readType), uint(Storage.OracleReadType.CHAINLINK_FEEDS));
-                assertEq(uint(targetType), uint(Storage.OracleReadType.STABLE));
+                assertEq(uint256(readType), uint256(Storage.OracleReadType.CHAINLINK_FEEDS));
+                assertEq(uint256(targetType), uint256(Storage.OracleReadType.STABLE));
+                assertEq(userFirewall, 0);
+                assertEq(burnFirewall, 0);
             }
+
             (
                 AggregatorV3Interface[] memory circuitChainlink,
                 uint32[] memory stalePeriods,
@@ -195,7 +208,7 @@ contract OracleTest is Fixture, FunctionUtils {
             assertEq(address(circuitChainlink[0]), address(_oracles[i]));
             assertEq(circuitChainIsMultiplied[0], 1);
             assertEq(chainlinkDecimals[0], 8);
-            assertEq(uint(quoteType), uint(Storage.OracleQuoteType.UNIT));
+            assertEq(uint256(quoteType), uint256(Storage.OracleQuoteType.UNIT));
         }
 
         _updateStakeETHExchangeRates(latestExchangeRateStakeETH);
@@ -207,14 +220,14 @@ contract OracleTest is Fixture, FunctionUtils {
             newTargetType
         );
 
-        for (uint i; i < _collaterals.length; i++) {
+        for (uint256 i; i < _collaterals.length; i++) {
             {
                 bytes memory data;
                 {
                     bytes memory targetData;
                     Storage.OracleReadType readType;
                     Storage.OracleReadType targetType;
-                    (readType, targetType, data, targetData) = transmuter.getOracle(address(_collaterals[i]));
+                    (readType, targetType, data, targetData, ) = transmuter.getOracle(address(_collaterals[i]));
 
                     assertEq(uint8(readType), newReadType[i]);
                     assertEq(uint8(targetType), newTargetType[i]);
@@ -246,7 +259,7 @@ contract OracleTest is Fixture, FunctionUtils {
 
             if (newTargetType[i] == 0) {
                 bytes memory targetData;
-                (, , , targetData) = transmuter.getOracle(address(_collaterals[i]));
+                (, , , targetData, ) = transmuter.getOracle(address(_collaterals[i]));
                 (
                     AggregatorV3Interface[] memory circuitChainlink,
                     uint32[] memory stalePeriods,
@@ -273,7 +286,7 @@ contract OracleTest is Fixture, FunctionUtils {
                                                     READREDEMPTION                                                  
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testFuzz_OracleReadRedemptionSuccess(
+    function testFuzz_OracleReadRedemption_Success(
         uint8[3] memory newChainlinkDecimals,
         uint8[3] memory newCircuitChainIsMultiplied,
         uint8[3] memory newQuoteType,
@@ -286,7 +299,7 @@ contract OracleTest is Fixture, FunctionUtils {
         _updateOracleValues(latestOracleValue);
         _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
 
-        for (uint i; i < _collaterals.length; i++) {
+        for (uint256 i; i < _collaterals.length; i++) {
             (, , , , uint256 redemption) = transmuter.getOracleValues(address(_collaterals[i]));
             uint256 oracleRedemption;
             uint256 targetPrice;
@@ -319,7 +332,7 @@ contract OracleTest is Fixture, FunctionUtils {
                                                        READMINT                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testFuzz_OracleReadMintSuccess(
+    function testFuzz_OracleReadMint_Success(
         uint8[3] memory newChainlinkDecimals,
         uint8[3] memory newCircuitChainIsMultiplied,
         uint8[3] memory newQuoteType,
@@ -332,7 +345,7 @@ contract OracleTest is Fixture, FunctionUtils {
         _updateOracleValues(latestOracleValue);
         _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
 
-        for (uint i; i < _collaterals.length; i++) {
+        for (uint256 i; i < _collaterals.length; i++) {
             (uint256 mint, , , , ) = transmuter.getOracleValues(address(_collaterals[i]));
             uint256 oracleMint;
             uint256 targetPrice;
@@ -367,7 +380,7 @@ contract OracleTest is Fixture, FunctionUtils {
                                                        READBURN                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testFuzz_OracleReadBurnSuccess(
+    function testFuzz_OracleReadBurn_Success(
         uint8[3] memory newChainlinkDecimals,
         uint8[3] memory newCircuitChainIsMultiplied,
         uint8[3] memory newQuoteType,
@@ -382,7 +395,7 @@ contract OracleTest is Fixture, FunctionUtils {
 
         uint256 minDeviation;
         uint256 minRatio;
-        for (uint i; i < _collaterals.length; i++) {
+        for (uint256 i; i < _collaterals.length; i++) {
             uint256 burn;
             uint256 deviation;
             (, burn, deviation, minRatio, ) = transmuter.getOracleValues(address(_collaterals[i]));
@@ -470,10 +483,16 @@ contract OracleTest is Fixture, FunctionUtils {
                     readData = abi.encode(address(pyth), feedIds, stalePeriods, isMultiplied, quoteType);
                 }
                 vm.expectRevert(Errors.InvalidRate.selector);
-                transmuter.setOracle(_collaterals[i], abi.encode(readType, targetType, readData, targetData));
+                transmuter.setOracle(
+                    _collaterals[i],
+                    abi.encode(readType, targetType, readData, targetData, abi.encode(uint128(0), uint128(0)))
+                );
 
                 pyth.setParams(110000000, -8);
-                transmuter.setOracle(_collaterals[i], abi.encode(readType, targetType, readData, targetData));
+                transmuter.setOracle(
+                    _collaterals[i],
+                    abi.encode(readType, targetType, readData, targetData, abi.encode(uint128(0), uint128(0)))
+                );
             }
             if (i == 0) {
                 (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter
@@ -508,6 +527,424 @@ contract OracleTest is Fixture, FunctionUtils {
             pyth.setParams(0, 0);
         }
         vm.stopPrank();
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                        MORPHO                                                      
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testFuzz_ReadMorphoFeed(uint256[3] memory baseValues, uint256[3] memory normalizers) public {
+        vm.startPrank(governor);
+        for (uint256 i; i < _collaterals.length; i++) {
+            baseValues[i] = uint256(bound(baseValues[i], 100, 1e5));
+            normalizers[i] = uint256(bound(normalizers[i], 1, 18));
+            MockMorphoOracle morphoOracle = new MockMorphoOracle(baseValues[i] * 1e36);
+            {
+                Storage.OracleReadType readType = Storage.OracleReadType.MORPHO_ORACLE;
+                Storage.OracleReadType targetType = Storage.OracleReadType.MAX;
+                bytes memory readData = abi.encode(address(morphoOracle), 10 ** normalizers[i]);
+                bytes memory targetData = abi.encode(
+                    (baseValues[i] * 1e36) / 10 ** normalizers[i],
+                    uint96(block.timestamp),
+                    0,
+                    1 days
+                );
+                transmuter.setOracle(
+                    _collaterals[i],
+                    abi.encode(readType, targetType, readData, targetData, abi.encode(uint128(0), uint128(0)))
+                );
+            }
+            (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter
+                .getOracleValues(address(_collaterals[i]));
+            assertEq(mint, (baseValues[i] * 1e36) / 10 ** normalizers[i]);
+            assertEq(burn, (baseValues[i] * 1e36) / 10 ** normalizers[i]);
+            assertEq(ratio, BASE_18);
+            assertEq(minRatio, BASE_18);
+            assertEq(redemption, (baseValues[i] * 1e36) / 10 ** normalizers[i]);
+            if (i == 2) {
+                morphoOracle.setValue((baseValues[i] * 1e36 * 9) / 10);
+                (mint, burn, ratio, minRatio, redemption) = transmuter.getOracleValues(address(_collaterals[i]));
+                assertEq(mint, ((baseValues[i] * 1e36) * 9) / 10 ** normalizers[i] / 10);
+                assertEq(burn, ((baseValues[i] * 1e36) * 9) / 10 ** normalizers[i] / 10);
+                assertEq(ratio, (BASE_18 * 9) / 10);
+                assertEq(minRatio, (BASE_18 * 9) / 10);
+                assertEq(redemption, ((baseValues[i] * 1e36) * 9) / 10 ** normalizers[i] / 10);
+            }
+        }
+        vm.stopPrank();
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                       FIREWALL                                                     
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testFuzz_OracleReadMint_WithFirewall_Success(
+        uint8[3] memory newChainlinkDecimals,
+        uint8[3] memory newCircuitChainIsMultiplied,
+        uint8[3] memory newQuoteType,
+        uint8[3] memory newReadType,
+        uint8[3] memory newTargetType,
+        uint128[6] memory userAndBurnFirewall,
+        uint256[3] memory latestOracleValue,
+        uint256[4] memory latestExchangeRateStakeETH
+    ) public {
+        _updateStakeETHExchangeRates(latestExchangeRateStakeETH);
+        _updateOracleValues(latestOracleValue);
+        _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
+        userAndBurnFirewall = _updateOracleFirewalls(userAndBurnFirewall);
+
+        for (uint256 i; i < _collaterals.length; i++) {
+            (uint256 mint, , , , ) = transmuter.getOracleValues(address(_collaterals[i]));
+            uint256 oracleMint;
+            uint256 targetPrice;
+            if (newTargetType[i] == 0) {
+                (, int256 value, , , ) = _oracles[i].latestRoundData();
+                targetPrice = newCircuitChainIsMultiplied[i] == 1
+                    ? (BASE_18 * uint256(value)) / 10 ** (newChainlinkDecimals[i])
+                    : (BASE_18 * 10 ** (newChainlinkDecimals[i])) / uint256(value);
+            } else if (newTargetType[i] == 1 || newTargetType[i] == 2 || newTargetType[i] == 3) targetPrice = BASE_18;
+            else targetPrice = latestExchangeRateStakeETH[newTargetType[i] - 4];
+
+            uint256 quoteAmount = newQuoteType[i] == 0 ? BASE_18 : targetPrice;
+
+            if (newReadType[i] == 0) {
+                (, int256 value, , , ) = _oracles[i].latestRoundData();
+                oracleMint = newCircuitChainIsMultiplied[i] == 1
+                    ? (quoteAmount * uint256(value)) / 10 ** (newChainlinkDecimals[i])
+                    : (quoteAmount * 10 ** (newChainlinkDecimals[i])) / uint256(value);
+            } else if (newReadType[i] == 1) {
+                (, int256 value, , , ) = _oracles[i].latestRoundData();
+                oracleMint = uint256(value) * 1e12;
+            } else if (newReadType[i] == 2) oracleMint = targetPrice;
+            else if (newReadType[i] == 3) oracleMint = BASE_18;
+            else oracleMint = latestExchangeRateStakeETH[newReadType[i] - 4];
+
+            if (newReadType[i] != 1) {
+                if (
+                    targetPrice * (BASE_18 - userAndBurnFirewall[i]) < oracleMint * BASE_18 &&
+                    targetPrice * (BASE_18 + userAndBurnFirewall[i]) > oracleMint * BASE_18
+                ) oracleMint = targetPrice;
+                if (targetPrice < oracleMint) oracleMint = targetPrice;
+            }
+            assertEq(mint, oracleMint);
+        }
+    }
+
+    function testFuzz_OracleReadBurn_WithFirewall_Success(
+        uint8[3] memory newCircuitChainIsMultiplied,
+        uint8[3] memory newQuoteType,
+        uint8[3] memory newReadType,
+        uint8[3] memory newTargetType,
+        uint128[6] memory userAndBurnFirewall,
+        uint256[3] memory latestOracleValue,
+        uint256[4] memory latestExchangeRateStakeETH
+    ) public {
+        _updateStakeETHExchangeRates(latestExchangeRateStakeETH);
+        _updateOracleValues(latestOracleValue);
+        {
+            uint8[3] memory newChainlinkDecimals = [8, 8, 8];
+            _updateOracles(newChainlinkDecimals, newCircuitChainIsMultiplied, newQuoteType, newReadType, newTargetType);
+        }
+        userAndBurnFirewall = _updateOracleFirewalls(userAndBurnFirewall);
+
+        uint256 minDeviation;
+        uint256 minRatio;
+        for (uint256 i; i < _collaterals.length; i++) {
+            uint256 burn;
+            uint256 deviation;
+            (, burn, deviation, minRatio, ) = transmuter.getOracleValues(address(_collaterals[i]));
+            if (i == 0) minDeviation = deviation;
+            if (deviation < minDeviation) minDeviation = deviation;
+
+            uint256 targetPrice;
+            if (newTargetType[i] == 0) {
+                (, int256 value, , , ) = _oracles[i].latestRoundData();
+                targetPrice = newCircuitChainIsMultiplied[i] == 1
+                    ? (BASE_18 * uint256(value)) / 10 ** 8
+                    : (BASE_18 * 10 ** 8) / uint256(value);
+            } else if (newTargetType[i] == 1 || newTargetType[i] == 2 || newTargetType[i] == 3) targetPrice = BASE_18;
+            else targetPrice = latestExchangeRateStakeETH[newTargetType[i] - 4];
+
+            uint256 oracleBurn;
+            if (newReadType[i] == 0) {
+                (, int256 value, , , ) = _oracles[i].latestRoundData();
+                if (newQuoteType[i] == 0) {
+                    if (newCircuitChainIsMultiplied[i] == 1) {
+                        oracleBurn = (BASE_18 * uint256(value)) / 10 ** 8;
+                    } else {
+                        oracleBurn = (BASE_18 * 10 ** 8) / uint256(value);
+                    }
+                } else {
+                    if (newCircuitChainIsMultiplied[i] == 1) {
+                        oracleBurn = (targetPrice * uint256(value)) / 10 ** 8;
+                    } else {
+                        oracleBurn = (targetPrice * 10 ** 8) / uint256(value);
+                    }
+                }
+            } else if (newReadType[i] == 1) {
+                (, int256 value, , , ) = _oracles[i].latestRoundData();
+                oracleBurn = uint256(value) * 1e12;
+            } else if (newReadType[i] == 2) oracleBurn = targetPrice;
+            else if (newReadType[i] == 3) oracleBurn = BASE_18;
+            else oracleBurn = latestExchangeRateStakeETH[newReadType[i] - 4];
+
+            {
+                uint256 oracleDeviation = BASE_18;
+                if (newReadType[i] != 1) {
+                    if (
+                        targetPrice * (BASE_18 - userAndBurnFirewall[i]) < oracleBurn * BASE_18 &&
+                        targetPrice * (BASE_18 + userAndBurnFirewall[i]) > oracleBurn * BASE_18
+                    ) oracleBurn = targetPrice;
+                    if (oracleBurn * BASE_18 < targetPrice * (BASE_18 - userAndBurnFirewall[i + 3]))
+                        oracleDeviation = (oracleBurn * BASE_18) / targetPrice;
+                    else if (oracleBurn < targetPrice) oracleBurn = targetPrice;
+                    assertEq(deviation, oracleDeviation);
+                }
+            }
+            assertEq(burn, oracleBurn);
+        }
+        assertEq(minDeviation, minRatio);
+    }
+
+    function testFuzz_Simple_ReadPythFeed_WithFirewalls(uint8[3] memory circuitIsMultiplied) public {
+        vm.startPrank(governor);
+        for (uint256 i; i < _collaterals.length; i++) {
+            MockPyth pyth = new MockPyth();
+            int64 price;
+            int32 expo;
+            circuitIsMultiplied[i] = uint8(bound(circuitIsMultiplied[i], 0, 1));
+            {
+                Storage.OracleReadType readType = Storage.OracleReadType.PYTH;
+                Storage.OracleReadType targetType = Storage.OracleReadType.STABLE;
+                Storage.OracleQuoteType quoteType = Storage.OracleQuoteType.UNIT;
+                bytes memory readData;
+                bytes memory targetData;
+                {
+                    bytes32[] memory feedIds = new bytes32[](1);
+                    uint32[] memory stalePeriods = new uint32[](1);
+                    uint8[] memory isMultiplied = new uint8[](1);
+                    feedIds[0] = bytes32(0);
+                    stalePeriods[0] = 1 hours;
+                    isMultiplied[0] = circuitIsMultiplied[i];
+                    readData = abi.encode(address(pyth), feedIds, stalePeriods, isMultiplied, quoteType);
+                }
+
+                if (i == 0) pyth.setParams(110000000, -8);
+                else if (i == 1) pyth.setParams(9000000000, -10);
+                else if (i == 2) pyth.setParams(96000, -5);
+                {
+                    bytes memory hyperParameters = abi.encode(uint128(0), uint128(0));
+                    if (i == 0) hyperParameters = abi.encode(uint128(0.05 ether), uint128(0.07 ether));
+                    else if (i == 1) hyperParameters = abi.encode(uint128(0.03 ether), uint128(0.099 ether));
+                    else if (i == 2) hyperParameters = abi.encode(uint128(0.5 ether), uint128(0.1 ether));
+                    transmuter.setOracle(
+                        _collaterals[i],
+                        abi.encode(readType, targetType, readData, targetData, hyperParameters)
+                    );
+                }
+            }
+        }
+        for (uint256 i; i < _collaterals.length; i++) {
+            (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter
+                .getOracleValues(address(_collaterals[i]));
+            if (i == 0) {
+                if (circuitIsMultiplied[i] == 0) {
+                    assertEq(mint, (BASE_18 * 10) / 11);
+                    assertEq(burn, (BASE_18 * 10) / 11);
+                    assertEq(ratio, (BASE_18 * 10) / 11);
+                    assertEq(redemption, (BASE_18 * 10) / 11);
+                } else {
+                    assertEq(mint, BASE_18);
+                    assertEq(burn, (BASE_18 * 11) / 10);
+                    assertEq(ratio, BASE_18);
+                    assertEq(redemption, (BASE_18 * 11) / 10);
+                }
+            }
+            if (i == 1) {
+                if (circuitIsMultiplied[i] == 0) {
+                    assertEq(mint, BASE_18);
+                    assertEq(burn, (BASE_18 * 10) / 9);
+                    assertEq(ratio, BASE_18);
+                    assertEq(redemption, (BASE_18 * 10) / 9);
+                } else {
+                    assertEq(mint, (BASE_18 * 9) / 10);
+                    assertEq(burn, (BASE_18 * 9) / 10);
+                    assertEq(ratio, (BASE_18 * 9) / 10);
+                    assertEq(redemption, (BASE_18 * 9) / 10);
+                }
+            }
+            if (i == 2) {
+                if (circuitIsMultiplied[i] == 0) {
+                    assertEq(mint, BASE_18);
+                    assertEq(burn, BASE_18);
+                    assertEq(ratio, BASE_18);
+                    assertEq(redemption, (BASE_18 * 100) / 96);
+                } else {
+                    assertEq(mint, BASE_18);
+                    assertEq(burn, BASE_18);
+                    assertEq(ratio, BASE_18);
+                    assertEq(redemption, (BASE_18 * 96) / 100);
+                }
+            }
+        }
+        vm.stopPrank();
+    }
+
+    function test_Simple_ReadPythFeed_WithFirewalls() public {
+        vm.startPrank(governor);
+        for (uint256 i; i < _collaterals.length; i++) {
+            MockPyth pyth = new MockPyth();
+            int64 price;
+            int32 expo;
+            {
+                Storage.OracleReadType readType = Storage.OracleReadType.PYTH;
+                Storage.OracleReadType targetType = Storage.OracleReadType.STABLE;
+                Storage.OracleQuoteType quoteType = Storage.OracleQuoteType.UNIT;
+                bytes memory readData;
+                bytes memory targetData;
+                {
+                    bytes32[] memory feedIds = new bytes32[](1);
+                    uint32[] memory stalePeriods = new uint32[](1);
+                    uint8[] memory isMultiplied = new uint8[](1);
+                    feedIds[0] = bytes32(0);
+                    stalePeriods[0] = 1 hours;
+                    isMultiplied[0] = 1;
+                    readData = abi.encode(address(pyth), feedIds, stalePeriods, isMultiplied, quoteType);
+                }
+
+                if (i == 0) pyth.setParams(110000000, -8);
+                else if (i == 1) pyth.setParams(9000000000, -10);
+                else if (i == 2) pyth.setParams(96000, -5);
+                {
+                    bytes memory hyperParameters = abi.encode(uint128(0), uint128(0));
+                    if (i == 0) hyperParameters = abi.encode(uint128(0.05 ether), uint128(0.07 ether));
+                    else if (i == 1) hyperParameters = abi.encode(uint128(0.03 ether), uint128(0.1 ether));
+                    else if (i == 2) hyperParameters = abi.encode(uint128(0.5 ether), uint128(0.1 ether));
+                    transmuter.setOracle(
+                        _collaterals[i],
+                        abi.encode(readType, targetType, readData, targetData, hyperParameters)
+                    );
+                }
+                if (i == 1) {
+                    (uint256 mint, uint256 burn, uint256 ratio, uint256 minRatio, uint256 redemption) = transmuter
+                        .getOracleValues(address(_collaterals[1]));
+                    assertEq(mint, (BASE_18 * 9) / 10);
+                    assertEq(burn, BASE_18);
+                    assertEq(redemption, (BASE_18 * 9) / 10);
+                }
+            }
+        }
+
+        (, , , uint256 minRatio, ) = transmuter.getOracleValues(address(_collaterals[0]));
+        assertEq(minRatio, BASE_18);
+        vm.stopPrank();
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                 UPDATE ORACLE STORAGE                                              
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testFuzz_revertWhen_updateOracle_NotAuthorized() public {
+        vm.startPrank(alice);
+        vm.expectRevert(Errors.NotTrusted.selector);
+        transmuter.updateOracle(_collaterals[0]);
+    }
+
+    function testFuzz_revertWhen_updateOracle_NotACollateral(address fakeCollat) public {
+        for (uint256 i; i < _collaterals.length; i++) {
+            vm.assume(fakeCollat != _collaterals[i]);
+        }
+        vm.prank(governor);
+        transmuter.toggleTrusted(alice, Storage.TrustedType.Seller);
+
+        vm.prank(alice);
+        vm.expectRevert(Errors.NotCollateral.selector);
+        transmuter.updateOracle(fakeCollat);
+    }
+
+    function testFuzz_revertWhen_updateOracle_NotMax() public {
+        vm.prank(governor);
+        transmuter.toggleTrusted(alice, Storage.TrustedType.Seller);
+
+        (, , , bytes memory targetData, ) = transmuter.getOracle(_collaterals[0]);
+        assertEq(targetData.length, 0);
+
+        vm.prank(alice);
+        vm.expectRevert(Errors.OracleUpdateFailed.selector);
+        transmuter.updateOracle(_collaterals[0]);
+    }
+
+    function testFuzz_revertWhen_updateOracle_NoUpdate() public {
+        vm.prank(governor);
+        transmuter.toggleTrusted(alice, Storage.TrustedType.Seller);
+
+        address collateral = _collaterals[0];
+
+        (
+            Storage.OracleReadType readType,
+            Storage.OracleReadType targetType,
+            bytes memory data,
+            bytes memory targetData,
+            bytes memory hyperparameters
+        ) = transmuter.getOracle(address(collateral));
+        (uint256 oracleValue, , , , ) = transmuter.getOracleValues(collateral);
+
+        vm.prank(governor);
+        transmuter.setOracle(
+            collateral,
+            abi.encode(readType, Storage.OracleReadType.MAX, data, abi.encode(oracleValue), hyperparameters)
+        );
+
+        vm.prank(alice);
+        vm.expectRevert(Errors.OracleUpdateFailed.selector);
+        transmuter.updateOracle(collateral);
+    }
+
+    function testFuzz_updateOracle_Success(uint256 updateOracleValue, uint32 heartbeat) public {
+        vm.prank(governor);
+        transmuter.toggleTrusted(alice, Storage.TrustedType.Seller);
+
+        uint256 indexCollat = 0;
+        address collateral = _collaterals[indexCollat];
+
+        {
+            (Storage.OracleReadType readType, , bytes memory data, , ) = transmuter.getOracle(address(collateral));
+            (uint256 oracleValue, , , , ) = transmuter.getOracleValues(collateral);
+
+            vm.prank(governor);
+            transmuter.setOracle(
+                collateral,
+                abi.encode(
+                    readType,
+                    Storage.OracleReadType.MAX,
+                    data,
+                    abi.encode(oracleValue),
+                    abi.encode(uint128(0), uint128(0))
+                )
+            );
+        }
+
+        vm.warp(block.timestamp + heartbeat);
+
+        // Update the oracles
+        uint256 newOracleValue;
+        {
+            (, int256 oracleValueTmp, , , ) = _oracles[indexCollat].latestRoundData();
+            updateOracleValue = bound(updateOracleValue, uint256(oracleValueTmp) + 1, _maxOracleValue);
+            if (updateOracleValue > _maxOracleValue) return;
+
+            uint256[3] memory latestOracleValue = [updateOracleValue, BASE_8, BASE_8];
+            latestOracleValue = _updateOracleValues(latestOracleValue);
+            newOracleValue = latestOracleValue[indexCollat];
+        }
+
+        vm.prank(alice);
+        transmuter.updateOracle(collateral);
+
+        (, , , bytes memory targetData, ) = transmuter.getOracle(address(collateral));
+        uint256 maxValue = abi.decode(targetData, (uint256));
+
+        assertEq(maxValue, (newOracleValue * BASE_18) / BASE_8);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -546,19 +983,21 @@ contract OracleTest is Fixture, FunctionUtils {
     }
 
     function _getReadType(uint8 newReadType) internal pure returns (Storage.OracleReadType readType) {
-        readType = newReadType == 0 ? Storage.OracleReadType.CHAINLINK_FEEDS : newReadType == 1
-            ? Storage.OracleReadType.EXTERNAL
-            : newReadType == 2
-            ? Storage.OracleReadType.NO_ORACLE
-            : newReadType == 3
-            ? Storage.OracleReadType.STABLE
-            : newReadType == 4
-            ? Storage.OracleReadType.WSTETH
-            : newReadType == 5
-            ? Storage.OracleReadType.CBETH
-            : newReadType == 6
-            ? Storage.OracleReadType.RETH
-            : Storage.OracleReadType.SFRXETH;
+        readType = newReadType == 0
+            ? Storage.OracleReadType.CHAINLINK_FEEDS
+            : newReadType == 1
+                ? Storage.OracleReadType.EXTERNAL
+                : newReadType == 2
+                    ? Storage.OracleReadType.NO_ORACLE
+                    : newReadType == 3
+                        ? Storage.OracleReadType.STABLE
+                        : newReadType == 4
+                            ? Storage.OracleReadType.WSTETH
+                            : newReadType == 5
+                                ? Storage.OracleReadType.CBETH
+                                : newReadType == 6
+                                    ? Storage.OracleReadType.RETH
+                                    : Storage.OracleReadType.SFRXETH;
     }
 
     function _updateOracles(
@@ -610,16 +1049,20 @@ contract OracleTest is Fixture, FunctionUtils {
                 if (readType != Storage.OracleReadType.EXTERNAL) readData = data;
                 if (targetType == Storage.OracleReadType.CHAINLINK_FEEDS) targetData = data;
             }
-            transmuter.setOracle(_collaterals[i], abi.encode(readType, targetType, readData, targetData));
+            transmuter.setOracle(
+                _collaterals[i],
+                abi.encode(readType, targetType, readData, targetData, abi.encode(uint128(0), uint128(0)))
+            );
         }
         vm.stopPrank();
     }
 
-    function _updateOracleValues(uint256[3] memory latestOracleValue) internal {
+    function _updateOracleValues(uint256[3] memory latestOracleValue) internal returns (uint256[3] memory) {
         for (uint256 i; i < _collaterals.length; i++) {
-            latestOracleValue[i] = bound(latestOracleValue[i], _minOracleValue * 10, BASE_18 / 100);
+            latestOracleValue[i] = bound(latestOracleValue[i], _minOracleValue * 10, _maxOracleValue);
             MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(int256(latestOracleValue[i]));
         }
+        return latestOracleValue;
     }
 
     function _updateStakeETHExchangeRates(uint256[4] memory latestExchangeRateStakeETH) internal {
@@ -672,9 +1115,16 @@ contract OracleTest is Fixture, FunctionUtils {
                 quoteType
             );
             bytes memory targetData;
+            (, , , , bytes memory hyperparameters) = transmuter.getOracle(address(_collaterals[i]));
             transmuter.setOracle(
                 _collaterals[i],
-                abi.encode(Storage.OracleReadType.CHAINLINK_FEEDS, Storage.OracleReadType.STABLE, readData, targetData)
+                abi.encode(
+                    Storage.OracleReadType.CHAINLINK_FEEDS,
+                    Storage.OracleReadType.STABLE,
+                    readData,
+                    targetData,
+                    hyperparameters
+                )
             );
         }
         vm.stopPrank();
@@ -705,22 +1155,52 @@ contract OracleTest is Fixture, FunctionUtils {
                 chainlinkDecimals,
                 quoteType
             );
+            (, , , , bytes memory hyperparameters) = transmuter.getOracle(address(_collaterals[i]));
             transmuter.setOracle(
                 _collaterals[i],
-                abi.encode(Storage.OracleReadType.STABLE, Storage.OracleReadType.CHAINLINK_FEEDS, readData, targetData)
+                abi.encode(
+                    Storage.OracleReadType.STABLE,
+                    Storage.OracleReadType.CHAINLINK_FEEDS,
+                    readData,
+                    targetData,
+                    hyperparameters
+                )
             );
         }
         vm.stopPrank();
     }
 
-    function _getBurnOracle(uint256 amount, uint256 fromToken) internal view returns (uint256) {
-        uint256 minDeviation = BASE_8;
-        uint256 oracleValue;
-        for (uint256 i; i < _oracles.length; i++) {
-            (, int256 oracleValueTmp, , , ) = _oracles[i].latestRoundData();
-            if (minDeviation > uint256(oracleValueTmp)) minDeviation = uint256(oracleValueTmp);
-            if (i == fromToken) oracleValue = uint256(oracleValueTmp);
+    function _updateOracleFirewalls(uint128[6] memory userAndBurnFirewall) internal returns (uint128[6] memory) {
+        uint128[] memory userFirewall = new uint128[](3);
+        uint128[] memory burnFirewall = new uint128[](3);
+        for (uint256 i; i < _collaterals.length; i++) {
+            userFirewall[i] = uint128(bound(userAndBurnFirewall[i], 0, BASE_18));
+            burnFirewall[i] = uint128(bound(userAndBurnFirewall[i + 3], 0, BASE_18));
+            userAndBurnFirewall[i] = userFirewall[i];
+            userAndBurnFirewall[i + 3] = burnFirewall[i];
         }
-        return (amount * minDeviation) / oracleValue;
+
+        vm.startPrank(governor);
+        for (uint256 i; i < _collaterals.length; i++) {
+            (
+                Storage.OracleReadType readType,
+                Storage.OracleReadType targetType,
+                bytes memory data,
+                bytes memory targetData,
+
+            ) = transmuter.getOracle(address(_collaterals[i]));
+            transmuter.setOracle(
+                _collaterals[i],
+                abi.encode(
+                    readType,
+                    targetType,
+                    data,
+                    targetData,
+                    abi.encode(uint128(userFirewall[i]), uint128(burnFirewall[i]))
+                )
+            );
+        }
+        vm.stopPrank();
+        return userAndBurnFirewall;
     }
 }

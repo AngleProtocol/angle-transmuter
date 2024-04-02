@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import "contracts/utils/Constants.sol";
-import { CHAIN_ETHEREUM } from "utils/src/Constants.sol";
+import { MAX_MINT_FEE, MAX_BURN_FEE, BASE_6, BASE_8, BPS } from "contracts/utils/Constants.sol";
+import "utils/src/Constants.sol";
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                    MAINNET CONSTANTS                                                
@@ -10,19 +10,46 @@ import { CHAIN_ETHEREUM } from "utils/src/Constants.sol";
 
 uint256 constant CHAIN_SOURCE = CHAIN_ETHEREUM;
 
-address constant IMMUTABLE_CREATE2_FACTORY_ADDRESS = 0x0000000000FFe8B47B3e2130213B802212439497;
 address constant DEPLOYER = 0xfdA462548Ce04282f4B6D6619823a7C64Fdc0185;
+address constant KEEPER = 0xcC617C6f9725eACC993ac626C7efC6B96476916E;
+address constant NEW_DEPLOYER = 0xA9DdD91249DFdd450E81E1c56Ab60E1A62651701;
+address constant NEW_KEEPER = 0xa9bbbDDe822789F123667044443dc7001fb43C01;
 
 address constant EUROC = 0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c;
 address constant EUROE = 0x820802Fa8a99901F52e39acD21177b0BE6EE2974;
 address constant EURE = 0x3231Cb76718CDeF2155FC47b5286d82e6eDA273f;
 address constant BC3M = 0x2F123cF3F37CE3328CC9B5b8415f9EC5109b45e7;
-
 address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+address constant BERNX = 0x3f95AA88dDbB7D9D484aa3D482bf0a80009c52c9;
+address constant STEAK_USDC = 0xBEEF01735c132Ada46AA9aA4c54623cAA92A64CB;
+address constant BIB01 = 0xCA30c93B02514f86d5C86a6e375E3A330B435Fb5;
+
+// EUROC
+uint128 constant FIREWALL_BURN_RATIO_EUROC = uint128(0);
+uint128 constant USER_PROTECTION_EUROC = uint128(10 * BPS);
+
+// BC3M
+uint128 constant FIREWALL_BURN_RATIO_BC3M = uint128(10 * BPS);
+uint128 constant USER_PROTECTION_BC3M = uint128(0);
+
+// ERNX
+uint128 constant FIREWALL_BURN_RATIO_ERNX = uint128(20 * BPS);
+uint128 constant USER_PROTECTION_ERNX = uint128(0);
+
+uint128 constant FIREWALL_BURN_RATIO_USDC = uint128(0);
+uint128 constant USER_PROTECTION_USDC = uint128(5 * BPS);
+
+uint128 constant FIREWALL_BURN_RATIO_STEAK_USDC = uint128(5 * BPS);
+uint128 constant USER_PROTECTION_STEAK_USDC = uint128(0);
+
+uint128 constant FIREWALL_BURN_RATIO_IB01 = uint128(20 * BPS);
+uint128 constant USER_PROTECTION_IB01 = uint128(0);
+
+uint32 constant HEARTBEAT = uint32(7 days);
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                     FACET ADDRESSES                                                 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
 address constant DIAMOND_CUT_FACET = 0x53B7d70013dEC21A97F216e80eEFCF45F25c2900;
 address constant DIAMOND_ETHERSCAN_FACET = 0xFa94Cd9d711de75695693c877BecA5473462Cf12;

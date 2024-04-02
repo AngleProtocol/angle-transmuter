@@ -1,19 +1,33 @@
 {
-  "solidity.formatter": "prettier",
   "[typescript]": {
     "editor.defaultFormatter": "rvest.vs-code-prettier-eslint"
   },
   "[solidity]": {
     "editor.defaultFormatter": "JuanBlanco.solidity"
   },
-  "editor.codeActionsOnSave": {
-    "source.fixAll": true
-  },
+  "editor.formatOnSave": true,
   "workbench.colorCustomizations": {
     "diffEditor.insertedTextBackground": "#00bb0044",
     "diffEditor.removedTextBackground": "#ff000044"
   },
   "slither.solcPath": "",
   "slither.hiddenDetectors": [],
-  "solidity.compileUsingRemoteVersion": "v0.8.19+commit.7dd6d404"
+  "solidity.compileUsingRemoteVersion": "v0.8.22",
+  "files.insertFinalNewline": true,
+  "solidity.remappings": [
+    "ds-test/=lib/forge-std/lib/ds-test/src/",
+    "forge-std/=lib/forge-std/src/",
+    "stringutils/=lib/solidity-stringutils",
+    "contracts/=contracts/",
+    "test/=test/",
+    "interfaces/=contracts/interfaces/",
+    "oz/=lib/openzeppelin-contracts/contracts/",
+    "oz-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+    "mock/=test/mock/",
+    "prb/math/=lib/prb-math/src/",
+    "borrow/=lib/borrow-contracts/contracts",
+    "utils/=lib/utils"
+  ]
 }

@@ -33,6 +33,7 @@ error NotGovernorOrGuardian();
 error NotTrusted();
 error NotWhitelisted();
 error OneInchSwapFailed();
+error OracleUpdateFailed();
 error Paused();
 error ReentrantCall();
 error RemoveFacetAddressMustBeZeroAddress(address _facetAddress);

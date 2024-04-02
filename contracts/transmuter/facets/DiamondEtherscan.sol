@@ -4,7 +4,6 @@ pragma solidity ^0.8.19;
 
 import { IDiamondEtherscan } from "interfaces/IDiamondEtherscan.sol";
 
-import { LibDiamond } from "../libraries/LibDiamond.sol";
 import { LibDiamondEtherscan } from "../libraries/LibDiamondEtherscan.sol";
 import { AccessControlModifiers } from "./AccessControlModifiers.sol";
 

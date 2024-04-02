@@ -288,7 +288,9 @@ contract SavingsTest is Fixture, FunctionUtils {
         uint256 indexReceiver,
         uint256[2] memory elapseTimestamps
     ) public {
-        for (uint256 i; i < amounts.length; i++) amounts[i] = bound(amounts[i], 0, _maxAmount);
+        for (uint256 i; i < amounts.length; i++) {
+            amounts[i] = bound(amounts[i], 0, _maxAmount);
+        }
         rate = bound(rate, _minRate, _maxRate);
         // shorten the time otherwise the DL diverge too much from the actual formula (1+rate)**seconds
         elapseTimestamps[0] = bound(elapseTimestamps[0], 0, _maxElapseTime);
@@ -473,16 +475,13 @@ contract SavingsTest is Fixture, FunctionUtils {
         assertEq(_saving.balanceOf(receiver), shares);
     }
 
-    function testFuzz_MintNonNullRate(
-        uint256[2] memory shares,
-        uint256 rate,
-        uint256 indexReceiver,
-        uint256[2] memory elapseTimestamps
-    ) public {
-        for (uint256 i; i < shares.length; i++) {
+    function testFuzz_MintNonNullRate(uint256[4] memory shares, uint256[2] memory elapseTimestamps) public {
+        // shares[2] rate
+        // shares[3] indexReceiver
+        for (uint256 i; i < 2; i++) {
             shares[i] = bound(shares[i], 0, _maxAmount);
         }
-        rate = bound(rate, _minRate, _maxRate);
+        shares[2] = bound(shares[2], _minRate, _maxRate);
         // shorten the time otherwise the DL diverge too much from the actual formula (1+rate)**seconds
         elapseTimestamps[0] = bound(elapseTimestamps[0], 0, _maxElapseTime);
         elapseTimestamps[1] = bound(elapseTimestamps[1], 0, _maxElapseTime);
@@ -490,21 +489,20 @@ contract SavingsTest is Fixture, FunctionUtils {
         _deposit(shares[0], sweeper, sweeper, 0);
 
         vm.prank(governor);
-        _saving.setRate(uint208(rate));
+        _saving.setRate(uint208(shares[2]));
 
         // first time elapse
         skip(elapseTimestamps[0]);
         uint256 compoundAssets = ((shares[0] + _initDeposit) *
-            unwrap(powu(ud(BASE_18 + rate / BASE_9), elapseTimestamps[0]))) /
+            unwrap(powu(ud(BASE_18 + shares[2] / BASE_9), elapseTimestamps[0]))) /
             unwrap(powu(ud(BASE_18), elapseTimestamps[0]));
-
         address receiver;
         uint256 returnAmount;
         {
             uint256 prevShares = _saving.totalSupply();
             uint256 balanceAsset = _saving.totalAssets();
             uint256 supposedAmount = _saving.previewMint(shares[1]);
-            (returnAmount, , receiver) = _mint(shares[1], supposedAmount, alice, address(0), indexReceiver);
+            (returnAmount, , receiver) = _mint(shares[1], supposedAmount, alice, address(0), shares[3]);
             uint256 expectedAmount = (shares[1] * balanceAsset) / prevShares;
             assertEq(shares[1], _saving.balanceOf(receiver));
             assertApproxEqAbs(returnAmount, expectedAmount, 1 wei);
@@ -515,7 +513,7 @@ contract SavingsTest is Fixture, FunctionUtils {
         skip(elapseTimestamps[1]);
 
         {
-            uint256 increasedRate = (BASE_18 * unwrap(powu(ud(BASE_18 + rate / BASE_9), elapseTimestamps[1]))) /
+            uint256 increasedRate = (BASE_18 * unwrap(powu(ud(BASE_18 + shares[2] / BASE_9), elapseTimestamps[1]))) /
                 unwrap(powu(ud(BASE_18), elapseTimestamps[1]));
             uint256 newCompoundAssets = (((compoundAssets + returnAmount) * increasedRate) / BASE_18);
 
@@ -633,8 +631,8 @@ contract SavingsTest is Fixture, FunctionUtils {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        REDEEM                                                      
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+                                                         REDEEM
+     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testFuzz_RedeemSuccess(
         uint256[2] memory amounts,
@@ -707,29 +705,26 @@ contract SavingsTest is Fixture, FunctionUtils {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                       WITHDRAW                                                     
+                                                       WITHDRAW
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function testFuzz_MaxWithdrawSuccess(
-        uint256[2] memory amounts,
-        uint256 rate,
-        uint256 indexReceiver,
-        uint256[2] memory elapseTimestamps
-    ) public {
-        for (uint256 i; i < amounts.length; i++) {
+    function testFuzz_MaxWithdrawSuccess(uint256[4] memory amounts, uint256[2] memory elapseTimestamps) public {
+        // amounts[2] rate
+        // amounts[3] indexReceiver
+        for (uint256 i; i < 2; i++) {
             amounts[i] = bound(amounts[i], 0, _maxAmount);
         }
         // shorten the time otherwise the DL diverge too much from the actual formula (1+rate)**seconds
         for (uint256 i; i < elapseTimestamps.length; i++) {
             elapseTimestamps[i] = bound(elapseTimestamps[i], 0, _maxElapseTime);
         }
-        rate = bound(rate, _minRate, _maxRate);
-        address receiver = actors[bound(indexReceiver, 0, _nbrActor - 1)];
+        amounts[2] = bound(amounts[2], _minRate, _maxRate);
+        address receiver = actors[bound(amounts[3], 0, _nbrActor - 1)];
 
         _deposit(amounts[0], sweeper, sweeper, 0);
 
         vm.prank(governor);
-        _saving.setRate(uint208(rate));
+        _saving.setRate(uint208(amounts[2]));
 
         // first time elapse
         skip(elapseTimestamps[0]);

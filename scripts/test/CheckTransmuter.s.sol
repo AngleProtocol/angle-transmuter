@@ -11,13 +11,15 @@ import "stringutils/strings.sol";
 import "../Constants.s.sol";
 import "contracts/transmuter/Storage.sol" as Storage;
 
-contract CheckTransmuter is Utils, StdCheats {
+contract CheckTransmuter is Utils, AssertUtils, StdCheats {
     using strings for *;
 
     // TODO: replace with deployed Transmuter address
     ITransmuter public constant transmuter = ITransmuter(0x1757a98c1333B9dc8D408b194B2279b5AFDF70Cc);
+    address public AGEUR;
 
     function run() external {
+        AGEUR = _chainToContract(CHAIN_SOURCE, ContractType.AgEUR);
         /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         FEE STRUCTURE                                                  
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/

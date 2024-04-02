@@ -133,11 +133,14 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
             // If a token is in the `forfeitTokens` list, then it is not sent as part of the redemption process
             if (amounts[i] > 0 && LibHelpers.checkList(tokens[i], forfeitTokens) < 0) {
                 Collateral storage collatInfo = ts.collaterals[collateralListMem[indexCollateral]];
-                if (collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, to))
+                if (collatInfo.onlyWhitelisted > 0 && !LibWhitelist.checkWhitelist(collatInfo.whitelistData, to)) {
                     revert NotWhitelisted();
-                if (collatInfo.isManaged > 0)
+                }
+                if (collatInfo.isManaged > 0) {
                     LibManager.release(tokens[i], to, amounts[i], collatInfo.managerData.config);
-                else IERC20(tokens[i]).safeTransfer(to, amounts[i]);
+                } else {
+                    IERC20(tokens[i]).safeTransfer(to, amounts[i]);
+                }
             }
             if (subCollateralsTracker[indexCollateral] - 1 <= i) ++indexCollateral;
         }
@@ -166,8 +169,7 @@ contract Redeemer is IRedeemer, AccessControlModifiers {
             penaltyFactor = uint64(LibHelpers.piecewiseLinear(collatRatio, xRedemptionCurveMem, yRedemptionCurveMem));
         }
 
-        uint256 balancesLength = balances.length;
-        for (uint256 i; i < balancesLength; ++i) {
+        for (uint256 i; i < balances.length; ++i) {
             // The amount given for each token in reserves does not depend on the price of the tokens in reserve:
             // it is a proportion of the balance for each token computed as the ratio between the stablecoins
             // burnt relative to the amount of stablecoins issued.

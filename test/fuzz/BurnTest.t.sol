@@ -6,6 +6,7 @@ import { stdError } from "forge-std/Test.sol";
 import { ManagerStorage, ManagerType, WhitelistType } from "contracts/transmuter/Storage.sol";
 
 import "contracts/utils/Errors.sol" as Errors;
+import "contracts/transmuter/Storage.sol" as Storage;
 
 import "../Fixture.sol";
 import { IERC20Metadata } from "../mock/MockTokenPermit.sol";
@@ -664,6 +665,143 @@ contract BurnTest is Fixture, FunctionUtils {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                       FIREWALL                                                     
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    function testFuzz_QuoteBurnExactInput_WithFirewall_FixPiecewiseFees(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint256[3] memory latestOracleValue,
+        uint128[6] memory userAndBurnFirewall,
+        int64 upperFees,
+        uint256 stableAmount,
+        uint256 fromToken
+    ) public {
+        _updateOracleFirewalls(userAndBurnFirewall);
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            charlie,
+            sweeper,
+            initialAmounts,
+            transferProportion
+        );
+        if (mintedStables == 0) return;
+        _updateOracles(latestOracleValue);
+
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        stableAmount = bound(stableAmount, 0, collateralMintedStables[fromToken]);
+        if (stableAmount == 0) return;
+        upperFees = int64(bound(int256(upperFees), 0, int256((BASE_9 * 999) / 1000) - 1));
+        uint64[] memory xFeeBurn = new uint64[](3);
+        xFeeBurn[0] = uint64(BASE_9);
+        xFeeBurn[1] = uint64((BASE_9 * 99) / 100);
+        xFeeBurn[2] = uint64(BASE_9 / 2);
+        int64[] memory yFeeBurn = new int64[](3);
+        yFeeBurn[0] = int64(0);
+        yFeeBurn[1] = int64(0);
+        yFeeBurn[2] = upperFees;
+        vm.prank(governor);
+        transmuter.setFees(_collaterals[fromToken], xFeeBurn, yFeeBurn, false);
+
+        uint256 supposedAmountOut;
+        {
+            uint256 copyStableAmount = stableAmount;
+            uint256[] memory exposures = _getExposures(mintedStables, collateralMintedStables);
+            (
+                uint256 amountFromPrevBreakpoint,
+                uint256 amountToNextBreakpoint,
+                uint256 lowerIndex
+            ) = _amountToPrevAndNextExposure(
+                    mintedStables,
+                    fromToken,
+                    collateralMintedStables,
+                    exposures[fromToken],
+                    xFeeBurn
+                );
+            // this is to handle in easy tests
+            if (lowerIndex == xFeeBurn.length - 1) return;
+
+            if (lowerIndex == 0) {
+                if (copyStableAmount <= amountToNextBreakpoint) {
+                    collateralMintedStables[fromToken] -= copyStableAmount;
+                    mintedStables -= copyStableAmount;
+                    // first burn segment are always constant fees
+                    supposedAmountOut += (copyStableAmount * (BASE_9 - uint64(yFeeBurn[0]))) / BASE_9;
+                    copyStableAmount = 0;
+                } else {
+                    collateralMintedStables[fromToken] -= amountToNextBreakpoint;
+                    mintedStables -= amountToNextBreakpoint;
+                    // first burn segment are always constant fees
+                    supposedAmountOut += (amountToNextBreakpoint * (BASE_9 - uint64(yFeeBurn[0]))) / BASE_9;
+                    copyStableAmount -= amountToNextBreakpoint;
+
+                    exposures = _getExposures(mintedStables, collateralMintedStables);
+                    (amountFromPrevBreakpoint, amountToNextBreakpoint, lowerIndex) = _amountToPrevAndNextExposure(
+                        mintedStables,
+                        fromToken,
+                        collateralMintedStables,
+                        exposures[fromToken],
+                        xFeeBurn
+                    );
+                }
+            }
+            if (copyStableAmount > 0) {
+                if (copyStableAmount <= amountToNextBreakpoint) {
+                    collateralMintedStables[fromToken] -= copyStableAmount;
+                    int256 midFees;
+                    {
+                        int256 currentFees;
+                        uint256 slope = (uint256(uint64(yFeeBurn[lowerIndex + 1] - yFeeBurn[lowerIndex])) * BASE_36) /
+                            (amountToNextBreakpoint + amountFromPrevBreakpoint);
+                        currentFees = yFeeBurn[lowerIndex] + int256((slope * amountFromPrevBreakpoint) / BASE_36);
+                        int256 endFees = yFeeBurn[lowerIndex] +
+                            int256((slope * (amountFromPrevBreakpoint + copyStableAmount)) / BASE_36);
+                        midFees = (currentFees + endFees) / 2;
+                    }
+                    supposedAmountOut += (copyStableAmount * (BASE_9 - uint64(uint256(midFees)))) / BASE_9;
+                } else {
+                    collateralMintedStables[fromToken] -= amountToNextBreakpoint;
+                    {
+                        int256 midFees;
+                        {
+                            uint256 slope = (uint256(uint64(yFeeBurn[lowerIndex + 1] - yFeeBurn[lowerIndex])) *
+                                BASE_36) / (amountToNextBreakpoint + amountFromPrevBreakpoint);
+                            int256 currentFees = yFeeBurn[lowerIndex] +
+                                int256((slope * amountFromPrevBreakpoint) / BASE_36);
+                            int256 endFees = yFeeBurn[lowerIndex + 1];
+                            midFees = (currentFees + endFees) / 2;
+                        }
+                        supposedAmountOut += (amountToNextBreakpoint * (BASE_9 - uint64(uint256(midFees)))) / BASE_9;
+                    }
+                    // next part is just with end fees
+                    supposedAmountOut +=
+                        ((copyStableAmount - amountToNextBreakpoint) * (BASE_9 - uint64(yFeeBurn[lowerIndex + 1]))) /
+                        BASE_9;
+                }
+            }
+        }
+        supposedAmountOut = _convertDecimalTo(
+            _getBurnOracle(supposedAmountOut, fromToken),
+            18,
+            IERC20Metadata(_collaterals[fromToken]).decimals()
+        );
+        if (supposedAmountOut > initialAmounts[fromToken]) vm.expectRevert(Errors.InvalidSwap.selector);
+        uint256 amountOut = transmuter.quoteIn(stableAmount, address(agToken), _collaterals[fromToken]);
+        if (amountOut == 0 || supposedAmountOut > initialAmounts[fromToken]) return;
+
+        if (stableAmount > _minWallet) {
+            _assertApproxEqRelDecimalWithTolerance(
+                supposedAmountOut,
+                amountOut,
+                amountOut,
+                // precision of 0.01%
+                _MAX_PERCENTAGE_DEVIATION * 100,
+                18
+            );
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                    INDEPENDENT PATH                                                 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
@@ -1256,11 +1394,64 @@ contract BurnTest is Fixture, FunctionUtils {
         uint256 minDeviation = BASE_8;
         uint256 oracleValue;
         for (uint256 i; i < _oracles.length; i++) {
+            uint128 userFirewall;
+            uint128 burnRatioDeviation;
+            {
+                (, , , , bytes memory hyperparameters) = transmuter.getOracle(address(_collaterals[i]));
+                (userFirewall, burnRatioDeviation) = abi.decode(hyperparameters, (uint128, uint128));
+            }
             (, int256 oracleValueTmp, , , ) = _oracles[i].latestRoundData();
-            if (minDeviation > uint256(oracleValueTmp)) minDeviation = uint256(oracleValueTmp);
-            if (i == fromToken) oracleValue = uint256(oracleValueTmp);
+            if (
+                BASE_8 * (BASE_18 - userFirewall) > uint256(oracleValueTmp) * BASE_18 &&
+                uint256(oracleValueTmp) * BASE_18 < BASE_8 * (BASE_18 - burnRatioDeviation) &&
+                minDeviation > uint256(oracleValueTmp)
+            ) minDeviation = uint256(oracleValueTmp);
+            if (i == fromToken) {
+                oracleValue = uint256(oracleValueTmp);
+                if (
+                    // We are in the user deviation tolerance
+                    (BASE_8 * (BASE_18 - userFirewall) < oracleValue * BASE_18 &&
+                        oracleValue * BASE_18 < BASE_8 * (BASE_18 + userFirewall)) ||
+                    // Or we are in the burn deviation tolerance
+                    (BASE_8 * (BASE_18 - burnRatioDeviation) <= oracleValue * BASE_18 && oracleValue <= BASE_8)
+                ) oracleValue = BASE_8;
+            }
         }
         return (amount * minDeviation) / oracleValue;
+    }
+
+    function _updateOracleFirewalls(uint128[6] memory userAndBurnFirewall) internal returns (uint128[6] memory) {
+        uint128[] memory userFirewall = new uint128[](3);
+        uint128[] memory burnFirewall = new uint128[](3);
+        for (uint256 i; i < _collaterals.length; i++) {
+            userFirewall[i] = uint128(bound(userAndBurnFirewall[i], 0, BASE_18));
+            burnFirewall[i] = uint128(bound(userAndBurnFirewall[i + 3], 0, BASE_18));
+            userAndBurnFirewall[i] = userFirewall[i];
+            userAndBurnFirewall[i + 3] = burnFirewall[i];
+        }
+
+        vm.startPrank(governor);
+        for (uint256 i; i < _collaterals.length; i++) {
+            (
+                Storage.OracleReadType readType,
+                Storage.OracleReadType targetType,
+                bytes memory data,
+                bytes memory targetData,
+
+            ) = transmuter.getOracle(address(_collaterals[i]));
+            transmuter.setOracle(
+                _collaterals[i],
+                abi.encode(
+                    readType,
+                    targetType,
+                    data,
+                    targetData,
+                    abi.encode(uint128(userFirewall[i]), uint128(burnFirewall[i]))
+                )
+            );
+        }
+        vm.stopPrank();
+        return userAndBurnFirewall;
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

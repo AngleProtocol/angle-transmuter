@@ -31,6 +31,7 @@ uint256 constant BASE_6 = 1e6;
 uint256 constant BASE_8 = 1e8;
 uint256 constant BASE_9 = 1e9;
 uint256 constant BASE_12 = 1e12;
+uint256 constant BPS = 1e14;
 uint256 constant BASE_18 = 1e18;
 uint256 constant HALF_BASE_27 = 1e27 / 2;
 uint256 constant BASE_27 = 1e27;

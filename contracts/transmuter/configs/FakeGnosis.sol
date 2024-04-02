@@ -85,7 +85,8 @@ contract FakeGnosis {
                 Storage.OracleReadType.CHAINLINK_FEEDS,
                 Storage.OracleReadType.STABLE,
                 readData,
-                targetData
+                targetData,
+                abi.encode(uint128(0), uint128(50 * BPS))
             );
             collaterals[i] = CollateralSetupProd(
                 _collateralAddresses[i],

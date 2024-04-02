@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.19;
 
-import { Utils } from "../utils/Utils.s.sol";
+import { Utils, AssertUtils } from "../utils/Utils.s.sol";
 import { console } from "forge-std/console.sol";
 import { StdCheats } from "forge-std/Test.sol";
 import { IERC20 } from "oz/token/ERC20/IERC20.sol";
@@ -11,13 +11,15 @@ import "stringutils/strings.sol";
 import "../Constants.s.sol";
 import "contracts/transmuter/Storage.sol" as Storage;
 
-contract CheckTransmuterUSD is Utils, StdCheats {
+contract CheckTransmuterUSD is Utils, AssertUtils, StdCheats {
     using strings for *;
 
     // TODO: replace with deployed Transmuter address
     ITransmuter public constant transmuter = ITransmuter(0x712B29A840d717C5B1150f02cCaA01fedaD78F4c);
+    address public AGEUR;
 
     function run() external {
+        AGEUR = _chainToContract(CHAIN_SOURCE, ContractType.AgEUR);
         address stablecoin = address(transmuter.agToken());
         /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         FEE STRUCTURE                                                  

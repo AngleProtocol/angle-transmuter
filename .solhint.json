@@ -1,8 +1,13 @@
 {
   "extends": "solhint:recommended",
-  "plugins": ["prettier"],
+  "plugins": [
+    "prettier"
+  ],
   "rules": {
-    "max-line-length": ["error", 120],
+    "max-line-length": [
+      "error",
+      120
+    ],
     "avoid-call-value": "warn",
     "avoid-low-level-calls": "off",
     "avoid-tx-origin": "warn",
@@ -22,7 +27,15 @@
     "no-inline-assembly": "off",
     "no-complex-fallback": "off",
     "reason-string": "off",
-    "func-visibility": ["warn", { "ignoreConstructors": true }],
-    "explicit-types": ["error","explicit"]
+    "func-visibility": [
+      "warn",
+      {
+        "ignoreConstructors": true
+      }
+    ],
+    "explicit-types": [
+      "error",
+      "explicit"
+    ]
   }
 }

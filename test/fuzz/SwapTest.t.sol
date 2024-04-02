@@ -149,6 +149,29 @@ contract SwapTest is Fixture, FunctionUtils {
         transmuter.swapExactOutput(amount, 0, _collaterals[fromToken], address(agToken), alice, block.timestamp * 2);
         vm.expectRevert(Errors.Paused.selector);
         transmuter.swapExactInput(amount, 0, _collaterals[fromToken], address(agToken), alice, block.timestamp * 2);
+        vm.stopPrank();
+    }
+
+    function test_RevertWhen_Paused2(
+        uint256[3] memory initialAmounts,
+        uint256 transferProportion,
+        uint256[3] memory latestOracleValue,
+        uint256 amount,
+        uint256 fromToken
+    ) public {
+        fromToken = bound(fromToken, 0, _collaterals.length - 1);
+        amount = bound(amount, 2, _maxAmountWithoutDecimals * 10 ** 18);
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, ) = _loadReserves(charlie, sweeper, initialAmounts, transferProportion);
+        if (mintedStables == 0) return;
+        _updateOracles(latestOracleValue);
+
+        vm.startPrank(governor);
+        transmuter.togglePause(_collaterals[fromToken], Storage.ActionType.Mint);
+        transmuter.togglePause(_collaterals[fromToken], Storage.ActionType.Burn);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
         vm.expectRevert(Errors.Paused.selector);
         transmuter.swapExactOutput(amount, 0, address(agToken), _collaterals[fromToken], alice, block.timestamp * 2);
         vm.expectRevert(Errors.Paused.selector);
@@ -357,5 +380,51 @@ contract SwapTest is Fixture, FunctionUtils {
             latestOracleValue[i] = bound(latestOracleValue[i], _minOracleValue, BASE_18);
             MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(int256(latestOracleValue[i]));
         }
+    }
+
+    function _updateOracleFirewalls(uint128[6] memory userAndBurnFirewall) internal returns (uint128[6] memory) {
+        uint128[] memory userFirewall = new uint128[](3);
+        uint128[] memory burnFirewall = new uint128[](3);
+        for (uint256 i; i < _collaterals.length; i++) {
+            userFirewall[i] = uint128(bound(userAndBurnFirewall[i], 0, BASE_18));
+            burnFirewall[i] = uint128(bound(userAndBurnFirewall[i + 3], 0, BASE_18));
+            userAndBurnFirewall[i] = userFirewall[i];
+            userAndBurnFirewall[i + 3] = burnFirewall[i];
+        }
+
+        vm.startPrank(governor);
+        for (uint256 i; i < _collaterals.length; i++) {
+            (
+                Storage.OracleReadType readType,
+                Storage.OracleReadType targetType,
+                bytes memory data,
+                bytes memory targetData,
+
+            ) = transmuter.getOracle(address(_collaterals[i]));
+            transmuter.setOracle(
+                _collaterals[i],
+                abi.encode(
+                    readType,
+                    targetType,
+                    data,
+                    targetData,
+                    abi.encode(uint128(userFirewall[i]), uint128(burnFirewall[i]))
+                )
+            );
+        }
+        vm.stopPrank();
+        return userAndBurnFirewall;
+    }
+
+    function _userOracleProtection(
+        uint256 targetPrice,
+        uint256 oracleValue,
+        uint256 deviation
+    ) private pure returns (uint256) {
+        if (
+            targetPrice * (BASE_18 - deviation) < oracleValue * BASE_18 &&
+            oracleValue * BASE_18 < targetPrice * (BASE_18 + deviation)
+        ) oracleValue = targetPrice;
+        return oracleValue;
     }
 }

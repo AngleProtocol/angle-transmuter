@@ -9,6 +9,7 @@ import { IAccessControlManager } from "interfaces/IAccessControlManager.sol";
 import { ISettersGovernor } from "interfaces/ISetters.sol";
 
 import { LibManager } from "../libraries/LibManager.sol";
+import { LibOracle } from "../libraries/LibOracle.sol";
 import { LibSetters } from "../libraries/LibSetters.sol";
 import { LibStorage as s } from "../libraries/LibStorage.sol";
 import { AccessControlModifiers } from "./AccessControlModifiers.sol";
@@ -88,6 +89,11 @@ contract SettersGovernor is AccessControlModifiers, ISettersGovernor {
     /// @inheritdoc ISettersGovernor
     function setOracle(address collateral, bytes memory oracleConfig) external onlyGovernor {
         LibSetters.setOracle(collateral, oracleConfig);
+    }
+
+    function updateOracle(address collateral) external {
+        if (s.transmuterStorage().isSellerTrusted[msg.sender] == 0) revert NotTrusted();
+        LibOracle.updateOracle(collateral);
     }
 
     /// @inheritdoc ISettersGovernor

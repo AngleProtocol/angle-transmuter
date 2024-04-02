@@ -1,5 +1,5 @@
 [profile.default]
-src = 'contracts'
+src = 'contract'
 out = 'out'
 test = 'test'
 libs = ['node_modules', 'lib']
@@ -10,17 +10,22 @@ via_ir = true
 sizes = true
 optimizer = true
 optimizer_runs=1000
-solc_version = '0.8.19'
+solc_version = '0.8.22'
 ffi = true
-fs_permissions = [{ access = "read-write", path = "./scripts/selectors.json"}, { access = "read-write", path = "./scripts/vanity.json"}]
+fs_permissions = [ 
+ { access = "read-write", path = "./scripts/selectors.json"},
+ { access = "read-write", path = "./scripts/selectors_replace.json"}, 
+ { access = "read-write", path = "./scripts/selectors_add.json"}, 
+ { access = "read-write", path = "./scripts/vanity.json"}
+]
 memory_limit = 1000043554432
 
 [fuzz]
 runs = 10000
 
 [invariant]
-runs = 1000
-depth = 30
+runs = 8
+depth = 256
 
 [rpc_endpoints]
 arbitrum = "${ETH_NODE_URI_ARBITRUM}"
@@ -59,8 +64,8 @@ gas_reports = ["*"]
 runs = 2000
 
 [profile.dev.invariant]
-runs = 10
-depth = 1
+runs = 100
+depth = 30
 fail_on_revert = false
 
 [profile.ci]
@@ -70,7 +75,7 @@ via_ir = false
 gas_reports = ["*"]
 
 [profile.ci.fuzz]
-runs = 100
+runs = 1000
 
 [profile.ci.invariant]
 runs = 10
