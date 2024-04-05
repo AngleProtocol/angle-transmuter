@@ -119,10 +119,6 @@ struct Collateral {
 }
 
 struct TransmuterStorage {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 8623ccf (feat: USDA setup (#108))
     IAgToken agToken; // agToken handled by the system
     uint8 isRedemptionLive; // If redemption is unpaused
     uint8 statusReentrant; // If call is reentrant or not
@@ -133,29 +129,7 @@ struct TransmuterStorage {
     int64[] yRedemptionCurve; // Value of the redemption fees at `xRedemptionCurve`
     mapping(address => Collateral) collaterals; // Maps a collateral asset to its parameters
     mapping(address => uint256) isTrusted; // If an address is trusted to update the normalizer value
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
     mapping(address => uint256) isSellerTrusted; // If an address is trusted to sell accruing reward tokens or to run keeper jobs on oracles
-=======
-=======
-    IAgToken agToken;                            // agToken handled by the system
-    uint8 isRedemptionLive;                      // If redemption is unpaused
-    uint8 statusReentrant;                        // If call is reentrant or not
-    uint128 normalizedStables;                   // Normalized amount of stablecoins issued by the system
-    uint128 normalizer;                          // To reconcile `normalizedStables` values with the actual amount
-    address[] collateralList;                    // List of collateral assets supported by the system
-    uint64[] xRedemptionCurve;                   // Increasing collateral ratios > 0
-    int64[] yRedemptionCurve;                    // Value of the redemption fees at `xRedemptionCurve`
-    mapping(address => Collateral) collaterals;  // Maps a collateral asset to its parameters
-    mapping(address => uint256) isTrusted;       // If an address is trusted to update the normalizer value
->>>>>>> d29323a (feat: start scripts)
-=======
->>>>>>> 8623ccf (feat: USDA setup (#108))
-    mapping(address => uint256) isSellerTrusted; // If an address is trusted to sell accruing reward tokens
-=======
-    mapping(address => uint256) isSellerTrusted; // If an address is trusted to sell accruing reward tokens or to run keeper jobs on oracles
->>>>>>> 794b604 (chore: review minor changes)
     mapping(WhitelistType => mapping(address => uint256)) isWhitelistedForType;
     // Whether an address is whitelisted for a specific whitelist type
 }
