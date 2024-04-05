@@ -2,15 +2,15 @@
 pragma solidity ^0.8.19;
 
 import "oz/token/ERC20/utils/SafeERC20.sol";
-import {Math} from "oz/utils/math/Math.sol";
+import { Math } from "oz/utils/math/Math.sol";
 import "oz/utils/Strings.sol";
 
-import {stdError} from "forge-std/Test.sol";
+import { stdError } from "forge-std/Test.sol";
 
-import {MockManager} from "mock/MockManager.sol";
-import {IERC20Metadata} from "mock/MockTokenPermit.sol";
+import { MockManager } from "mock/MockManager.sol";
+import { IERC20Metadata } from "mock/MockTokenPermit.sol";
 
-import {ManagerStorage, WhitelistType} from "contracts/transmuter/Storage.sol";
+import { ManagerStorage, WhitelistType } from "contracts/transmuter/Storage.sol";
 import "contracts/transmuter/libraries/LibHelpers.sol";
 import "contracts/utils/Errors.sol" as Errors;
 
@@ -84,12 +84,12 @@ contract RedeemTest is Fixture, FunctionUtils {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                      QUOTEREDEEM
+                                                      QUOTEREDEEM                                                   
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testFuzz_QuoteRedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables,) = _loadReserves(initialAmounts, transferProportion);
+        (uint256 mintedStables, ) = _loadReserves(initialAmounts, transferProportion);
 
         // check collateral ratio first
         (uint64 collatRatio, uint256 stablecoinsIssued) = transmuter.getCollateralRatio();
@@ -117,8 +117,10 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256[2] memory latestOracleValue
     ) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) =
-            _loadReserves(initialAmounts, transferProportion);
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
 
         // change oracle value but such that total collateralisation is still == 1
         for (uint256 i; i < latestOracleValue.length; ++i) {
@@ -165,8 +167,10 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256[3] memory latestOracleValue
     ) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) =
-            _loadReserves(initialAmounts, transferProportion);
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
         uint64 collatRatio;
         {
             bool reverted;
@@ -193,7 +197,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         int64[10] memory yFeeRedeemUnbounded
     ) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables,) = _loadReserves(initialAmounts, transferProportion);
+        (uint256 mintedStables, ) = _loadReserves(initialAmounts, transferProportion);
         (, int64[] memory yFeeRedeem) = _randomRedeemptionFees(xFeeRedeemUnbounded, yFeeRedeemUnbounded);
 
         vm.startPrank(alice);
@@ -206,7 +210,11 @@ contract RedeemTest is Fixture, FunctionUtils {
 
         _assertSizes(tokens, amounts);
         _assertQuoteAmounts(
-            uint64(BASE_9), mintedStables, amountBurnt, uint64(yFeeRedeem[yFeeRedeem.length - 1]), amounts
+            uint64(BASE_9),
+            mintedStables,
+            amountBurnt,
+            uint64(yFeeRedeem[yFeeRedeem.length - 1]),
+            amounts
         );
     }
 
@@ -218,16 +226,20 @@ contract RedeemTest is Fixture, FunctionUtils {
         int64[10] memory yFeeRedeemUnbounded
     ) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) =
-            _loadReserves(initialAmounts, transferProportion);
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
         uint64 collatRatio;
         {
             bool reverted;
             (collatRatio, reverted) = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
             if (reverted) return;
         }
-        (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) =
-            _randomRedeemptionFees(xFeeRedeemUnbounded, yFeeRedeemUnbounded);
+        (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) = _randomRedeemptionFees(
+            xFeeRedeemUnbounded,
+            yFeeRedeemUnbounded
+        );
 
         vm.startPrank(alice);
         uint256 amountBurnt = agToken.balanceOf(alice);
@@ -246,13 +258,15 @@ contract RedeemTest is Fixture, FunctionUtils {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        REDEEM
+                                                        REDEEM                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testFuzz_RedeemAllAtPeg(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) =
-            _loadReserves(initialAmounts, transferProportion);
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
 
         _sweepBalances(alice, _collaterals);
         // currently oracles are all set to 1 --> collateral ratio = 1
@@ -264,8 +278,12 @@ contract RedeemTest is Fixture, FunctionUtils {
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
         // uint256[] memory forfeitTokens = new uint256[](0);
         uint256[] memory minAmountOuts = new uint256[](_collaterals.length);
-        (address[] memory tokens, uint256[] memory amounts) =
-            transmuter.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
+        (address[] memory tokens, uint256[] memory amounts) = transmuter.redeem(
+            amountBurnt,
+            alice,
+            block.timestamp + 1 days,
+            minAmountOuts
+        );
         vm.stopPrank();
 
         if (mintedStables == 0) return;
@@ -294,8 +312,10 @@ contract RedeemTest is Fixture, FunctionUtils {
         int64[10] memory yFeeRedeemUnbounded
     ) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) =
-            _loadReserves(initialAmounts, transferProportion);
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
         uint64 collatRatio;
         {
             bool reverted;
@@ -303,8 +323,10 @@ contract RedeemTest is Fixture, FunctionUtils {
             if (reverted) return;
         }
 
-        (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) =
-            _randomRedeemptionFees(xFeeRedeemUnbounded, yFeeRedeemUnbounded);
+        (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) = _randomRedeemptionFees(
+            xFeeRedeemUnbounded,
+            yFeeRedeemUnbounded
+        );
         // Mute warnings
         collatRatio;
         xFeeRedeem;
@@ -354,8 +376,10 @@ contract RedeemTest is Fixture, FunctionUtils {
         int64[10] memory yFeeRedeemUnbounded
     ) public {
         // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) =
-            _loadReserves(initialAmounts, transferProportion);
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            initialAmounts,
+            transferProportion
+        );
         {
             (, bool reverted) = _updateOracles(latestOracleValue, mintedStables, collateralMintedStables);
             if (reverted) return;
@@ -374,8 +398,8 @@ contract RedeemTest is Fixture, FunctionUtils {
             {
                 uint256 totalCollateralization = _computeCollateralisation();
                 if (
-                    mintedStables > 0
-                        && (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
+                    mintedStables > 0 &&
+                    (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
                 ) {
                     vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
                     shouldReturn = true;
@@ -408,8 +432,9 @@ contract RedeemTest is Fixture, FunctionUtils {
 
             // Testing implicitly the ts.normalizer and ts.normalizedStables
             for (uint256 i; i < _collaterals.length; ++i) {
-                (uint256 stableIssuedByCollateral, uint256 totalStable) =
-                    transmuter.getIssuedByCollateral(_collaterals[i]);
+                (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(
+                    _collaterals[i]
+                );
                 assertApproxEqAbs(
                     stableIssuedByCollateral,
                     (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
@@ -419,10 +444,12 @@ contract RedeemTest is Fixture, FunctionUtils {
             }
 
             // Compute mintedStables while rounding up
-            uint128 normalizedStables =
-                uint128(uint256(vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1))));
-            uint128 normalizer =
-                uint128(uint256(vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1)) >> 128));
+            uint128 normalizedStables = uint128(
+                uint256(vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1)))
+            );
+            uint128 normalizer = uint128(
+                uint256(vm.load(address(transmuter), bytes32(uint256(TRANSMUTER_STORAGE_POSITION) + 1)) >> 128)
+            );
             mintedStables = uint256(normalizedStables).mulDiv(normalizer, BASE_27, Math.Rounding.Up);
 
             // now do a second redeem to test with non trivial ts.normalizer and ts.normalizedStables
@@ -434,8 +461,8 @@ contract RedeemTest is Fixture, FunctionUtils {
                 {
                     uint256 totalCollateralization = _computeCollateralisation();
                     if (
-                        mintedStables > 0
-                            && (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
+                        mintedStables > 0 &&
+                        (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
                     ) {
                         vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
                         shouldReturn = true;
@@ -470,8 +497,8 @@ contract RedeemTest is Fixture, FunctionUtils {
         for (uint256 i; i < _collaterals.length; ++i) {
             uint256 stableIssuedByCollateral;
             (stableIssuedByCollateral, totalStable2) = transmuter.getIssuedByCollateral(_collaterals[i]);
-            uint256 realStableIssueByCollateralLeft =
-                (collateralMintedStables[i] * (mintedStables - amountBurntBob)) / (mintedStables + amountBurnt);
+            uint256 realStableIssueByCollateralLeft = (collateralMintedStables[i] * (mintedStables - amountBurntBob)) /
+                (mintedStables + amountBurnt);
             _assertApproxEqRelDecimalWithTolerance(
                 realStableIssueByCollateralLeft,
                 stableIssuedByCollateral,
@@ -490,7 +517,7 @@ contract RedeemTest is Fixture, FunctionUtils {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                  REDEEM WITH MANAGER
+                                                  REDEEM WITH MANAGER                                               
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testFuzz_QuoteRedemptionCurveWithManagerRandomRedemptionFees(
@@ -537,63 +564,13 @@ contract RedeemTest is Fixture, FunctionUtils {
             {
                 bool reverted;
                 (collatRatio, reverted) = _updateOraclesWithSubCollaterals(
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
                     abi.encode(mintedStables, collateralMintedStables),
                     airdropAmountsAndOracleValues
-=======
-                    latestOracleValue,
-                    abi.encode(mintedStables, collateralMintedStables),
-                    airdropAmounts
->>>>>>> e04c233 (feat: fixed tests + test on mint and burn firewalls oracles)
-=======
-                    latestOracleValue, abi.encode(mintedStables, collateralMintedStables), airdropAmounts
->>>>>>> bfa582e (fix part of the stack too deep when via-ir)
-=======
-                    latestOracleValue,
-                    abi.encode(mintedStables, collateralMintedStables),
-                    airdropAmounts
->>>>>>> 74b17b2 (add back the RedeemTest)
-=======
-                    abi.encode(mintedStables, collateralMintedStables),
-                    airdropAmountsAndOracleValues
->>>>>>> 4c6f8cf (fix redeem test compilation)
                 );
                 if (reverted) return;
             }
         }
 
-<<<<<<< HEAD
-        (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) =
-            _randomRedeemptionFees(xFeeRedeemUnbounded, yFeeRedeemUnbounded);
-
-        vm.startPrank(alice);
-        uint256 amountBurnt = agToken.balanceOf(alice);
-        uint256[] memory amounts;
-        {
-            address[] memory tokens;
-            {
-<<<<<<< HEAD
-                bool shouldReturn;
-                {
-                    uint256 totalCollateralization = _computeCollateralisation();
-                    if (
-                        mintedStables > 0 &&
-                        (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
-                    ) {
-                        vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
-                        shouldReturn = true;
-                    } else if (mintedStables == 0) {
-                        vm.expectRevert(stdError.divisionError);
-                    }
-=======
-                uint256 totalCollateralization = _computeCollateralisation();
-                if (
-                    mintedStables > 0
-                        && (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
-=======
         (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem) = _randomRedeemptionFees(
             xFeeRedeemUnbounded,
             yFeeRedeemUnbounded
@@ -605,33 +582,6 @@ contract RedeemTest is Fixture, FunctionUtils {
         {
             address[] memory tokens;
             {
-<<<<<<< HEAD
-                uint256 totalCollateralization = _computeCollateralisation();
-                if (
-                    mintedStables > 0 &&
-                    (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
->>>>>>> 74b17b2 (add back the RedeemTest)
-                ) {
-                    vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
-                    shouldReturn = true;
-                } else if (mintedStables == 0) {
-                    vm.expectRevert(stdError.divisionError);
-<<<<<<< HEAD
->>>>>>> bfa582e (fix part of the stack too deep when via-ir)
-                }
-                (tokens, amounts) = transmuter.quoteRedemptionCurve(amountBurnt);
-                if (shouldReturn) return;
-            }
-            vm.stopPrank();
-
-            if (mintedStables == 0) return;
-
-            // compute fee at current collatRatio
-            _assertSizesWithManager(tokens, amounts);
-        }
-
-=======
-=======
                 bool shouldReturn;
                 {
                     uint256 totalCollateralization = _computeCollateralisation();
@@ -644,7 +594,6 @@ contract RedeemTest is Fixture, FunctionUtils {
                     } else if (mintedStables == 0) {
                         vm.expectRevert(stdError.divisionError);
                     }
->>>>>>> f6be794 (yarn prettier)
                 }
                 (tokens, amounts) = transmuter.quoteRedemptionCurve(amountBurnt);
                 if (shouldReturn) return;
@@ -653,21 +602,10 @@ contract RedeemTest is Fixture, FunctionUtils {
 
             if (mintedStables == 0) return;
 
-<<<<<<< HEAD
-        // compute fee at current collatRatio
-        _assertSizesWithManager(tokens, amounts);
-<<<<<<< HEAD
->>>>>>> 74b17b2 (add back the RedeemTest)
-=======
-        }
-        
->>>>>>> 4c6f8cf (fix redeem test compilation)
-=======
             // compute fee at current collatRatio
             _assertSizesWithManager(tokens, amounts);
         }
 
->>>>>>> f6be794 (yarn prettier)
         uint64 fee;
         if (collatRatio >= BASE_9) fee = uint64(yFeeRedeem[yFeeRedeem.length - 1]);
         else fee = uint64(LibHelpers.piecewiseLinear(collatRatio, xFeeRedeem, yFeeRedeem));
@@ -676,33 +614,10 @@ contract RedeemTest is Fixture, FunctionUtils {
 
     function testFuzz_MultiRedemptionCurveWithManagerRandomRedemptionFees(
         uint256[3] memory initialAmounts,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
         uint256[2] memory transferRedeemProportion,
         uint256[3 * 2] memory nbrSubCollateralsAndIsManaged,
         uint256[3 * (_MAX_SUB_COLLATERALS + 1)] memory airdropAmountsAndOracleValues,
         uint256[3 * 2 * _MAX_SUB_COLLATERALS] memory latestSubCollatOracleValueAndDecimals,
-=======
-=======
->>>>>>> 74b17b2 (add back the RedeemTest)
-        uint256[3] memory nbrSubCollaterals,
-        bool[3] memory isManaged,
-        uint256[3 * _MAX_SUB_COLLATERALS] memory airdropAmounts,
-        uint256[3 * _MAX_SUB_COLLATERALS] memory latestSubCollatOracleValue,
-        uint256[3 * _MAX_SUB_COLLATERALS] memory subCollatDecimals,
-        uint256[2] memory transferRedeemProportion,
-        uint256[3] memory latestOracleValue,
-<<<<<<< HEAD
->>>>>>> e04c233 (feat: fixed tests + test on mint and burn firewalls oracles)
-=======
->>>>>>> 74b17b2 (add back the RedeemTest)
-=======
-        uint256[2] memory transferRedeemProportion,
-        uint256[3 * 2] memory nbrSubCollateralsAndIsManaged,
-        uint256[3 * (_MAX_SUB_COLLATERALS + 1)] memory airdropAmountsAndOracleValues,
-        uint256[3 * 2 * _MAX_SUB_COLLATERALS] memory latestSubCollatOracleValueAndDecimals,
->>>>>>> 4c6f8cf (fix redeem test compilation)
         uint64[10] memory xFeeRedeemUnbounded,
         int64[10] memory yFeeRedeemUnbounded
     ) public {
@@ -710,58 +625,15 @@ contract RedeemTest is Fixture, FunctionUtils {
             // Randomly set subcollaterals and manager if needed
             (IERC20[] memory subCollaterals, AggregatorV3Interface[] memory oracles) = _createManager(
                 _collaterals[i],
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
                 nbrSubCollateralsAndIsManaged[2 * i],
                 nbrSubCollateralsAndIsManaged[2 * i + 1],
                 i * _MAX_SUB_COLLATERALS,
                 latestSubCollatOracleValueAndDecimals
-=======
-                nbrSubCollaterals[i],
-                isManaged[i],
-                i * _MAX_SUB_COLLATERALS,
-                latestSubCollatOracleValue,
-                subCollatDecimals
->>>>>>> 74b17b2 (add back the RedeemTest)
-=======
-                nbrSubCollateralsAndIsManaged[2*i],
-                nbrSubCollateralsAndIsManaged[2*i+1],
-=======
-                nbrSubCollateralsAndIsManaged[2 * i],
-                nbrSubCollateralsAndIsManaged[2 * i + 1],
->>>>>>> f6be794 (yarn prettier)
-                i * _MAX_SUB_COLLATERALS,
-                latestSubCollatOracleValueAndDecimals
->>>>>>> 4c6f8cf (fix redeem test compilation)
             );
             _subCollaterals[_collaterals[i]] = SubCollateralStorage(subCollaterals, oracles);
         }
 
         // let's first load the reserves of the protocol
-<<<<<<< HEAD
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) =
-            _loadReserves(initialAmounts, transferRedeemProportion[0]);
-        // airdrop amounts in the subcollaterals
-        for (uint256 i; i < _collaterals.length; ++i) {
-            if (_subCollaterals[_collaterals[i]].subCollaterals.length > 0) {
-                _loadSubCollaterals(address(_collaterals[i]), airdropAmountsAndOracleValues, i * _MAX_SUB_COLLATERALS);
-            }
-        }
-        _updateOraclesWithSubCollaterals(
-<<<<<<< HEAD
-<<<<<<< HEAD
-            abi.encode(mintedStables, collateralMintedStables),
-            airdropAmountsAndOracleValues
-=======
-            latestOracleValue,
-            abi.encode(mintedStables, collateralMintedStables),
-            airdropAmounts
->>>>>>> e04c233 (feat: fixed tests + test on mint and burn firewalls oracles)
-=======
-            latestOracleValue, abi.encode(mintedStables, collateralMintedStables), airdropAmounts
->>>>>>> bfa582e (fix part of the stack too deep when via-ir)
-=======
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
             initialAmounts,
             transferRedeemProportion[0]
@@ -774,12 +646,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
         _updateOraclesWithSubCollaterals(
             abi.encode(mintedStables, collateralMintedStables),
-<<<<<<< HEAD
-            airdropAmounts
->>>>>>> 74b17b2 (add back the RedeemTest)
-=======
             airdropAmountsAndOracleValues
->>>>>>> 4c6f8cf (fix redeem test compilation)
         );
         _randomRedeemptionFees(xFeeRedeemUnbounded, yFeeRedeemUnbounded);
         _sweepBalancesWithManager(alice, _collaterals);
@@ -795,13 +662,8 @@ contract RedeemTest is Fixture, FunctionUtils {
             {
                 uint256 totalCollateralization = _computeCollateralisation();
                 if (
-<<<<<<< HEAD
-                    mintedStables > 0
-                        && (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
-=======
                     mintedStables > 0 &&
                     (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
->>>>>>> 74b17b2 (add back the RedeemTest)
                 ) {
                     vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
                     shouldReturn = true;
@@ -814,18 +676,8 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
         if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
         {
-<<<<<<< HEAD
-<<<<<<< HEAD
             uint256[] memory amounts;
             address[] memory tokens;
-=======
-            address[] memory tokens;
-            uint256[] memory amounts;
->>>>>>> 74b17b2 (add back the RedeemTest)
-=======
-            uint256[] memory amounts;
-            address[] memory tokens;
->>>>>>> 4c6f8cf (fix redeem test compilation)
             {
                 uint256[] memory minAmountOuts = new uint256[](quoteAmounts.length);
                 (tokens, amounts) = transmuter.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
@@ -843,14 +695,9 @@ contract RedeemTest is Fixture, FunctionUtils {
             }
             // Testing implicitly the ts.normalizer and ts.normalizedStables
             for (uint256 i; i < _collaterals.length; ++i) {
-<<<<<<< HEAD
-                (uint256 stableIssuedByCollateral, uint256 totalStable) =
-                    transmuter.getIssuedByCollateral(_collaterals[i]);
-=======
                 (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(
                     _collaterals[i]
                 );
->>>>>>> 74b17b2 (add back the RedeemTest)
                 assertApproxEqAbs(
                     stableIssuedByCollateral,
                     (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
@@ -869,13 +716,8 @@ contract RedeemTest is Fixture, FunctionUtils {
                 {
                     uint256 totalCollateralization = _computeCollateralisation();
                     if (
-<<<<<<< HEAD
-                        mintedStables > 0
-                            && (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
-=======
                         mintedStables > 0 &&
                         (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
->>>>>>> 74b17b2 (add back the RedeemTest)
                     ) {
                         vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
                         shouldReturn = true;
@@ -912,13 +754,8 @@ contract RedeemTest is Fixture, FunctionUtils {
         for (uint256 i; i < _collaterals.length; ++i) {
             uint256 stableIssuedByCollateral;
             (stableIssuedByCollateral, totalStable2) = transmuter.getIssuedByCollateral(_collaterals[i]);
-<<<<<<< HEAD
-            uint256 realStableIssueByCollateralLeft =
-                (collateralMintedStables[i] * (mintedStables - amountBurntBob)) / (mintedStables + amountBurnt);
-=======
             uint256 realStableIssueByCollateralLeft = (collateralMintedStables[i] * (mintedStables - amountBurntBob)) /
                 (mintedStables + amountBurnt);
->>>>>>> 74b17b2 (add back the RedeemTest)
             _assertApproxEqRelDecimalWithTolerance(
                 realStableIssueByCollateralLeft,
                 stableIssuedByCollateral,
@@ -928,29 +765,15 @@ contract RedeemTest is Fixture, FunctionUtils {
             );
         }
         _assertApproxEqRelDecimalWithTolerance(
-<<<<<<< HEAD
-            mintedStables - amountBurntBob, totalStable2, mintedStables - amountBurntBob, _MAX_PERCENTAGE_DEVIATION, 18
-=======
             mintedStables - amountBurntBob,
             totalStable2,
             mintedStables - amountBurntBob,
             _MAX_PERCENTAGE_DEVIATION,
             18
->>>>>>> 74b17b2 (add back the RedeemTest)
         );
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-<<<<<<< HEAD
-                                                  REDEEM WITH FORFEIT
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    function test_RevertWhen_RedeemInvalidArrayLengths(uint256[3] memory initialAmounts, uint256 transferProportion)
-        public
-    {
-        // let's first load the reserves of the protocol
-        (uint256 mintedStables,) = _loadReserves(initialAmounts, transferProportion);
-=======
                                                   REDEEM WITH FORFEIT                                               
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
@@ -960,7 +783,6 @@ contract RedeemTest is Fixture, FunctionUtils {
     ) public {
         // let's first load the reserves of the protocol
         (uint256 mintedStables, ) = _loadReserves(initialAmounts, transferProportion);
->>>>>>> 74b17b2 (add back the RedeemTest)
 
         // check collateral ratio first
         if (mintedStables == 0) return;
@@ -988,37 +810,12 @@ contract RedeemTest is Fixture, FunctionUtils {
     }
 
     function testFuzz_MultiForfeitRedemptionCurveWithManagerRandomRedemptionFees(
-<<<<<<< HEAD
-<<<<<<< HEAD
         uint256[3] memory initialValue, // initialAmounts of size 3 / nbrSubCollaterals of size 3
         uint256[2] memory transferRedeemProportion,
         uint256[3 * 2] memory nbrSubCollateralsAndIsManaged,
         uint256[3 * (_MAX_SUB_COLLATERALS + 1)] memory airdropAmountsAndOracleValues,
         uint256[3 * 2 * _MAX_SUB_COLLATERALS] memory latestSubCollatOracleValueAndDecimals,
         bool[3 * (_MAX_SUB_COLLATERALS + 1)] memory areForfeit,
-<<<<<<< HEAD
-=======
-        uint256[2] memory transferRedeemProportion,
-        uint256[3] memory latestOracleValue,
->>>>>>> e04c233 (feat: fixed tests + test on mint and burn firewalls oracles)
-=======
-        uint256[6] memory initialValue, // initialAmounts of size 3 / nbrSubCollaterals of size 3
-        bool[3] memory isManaged,
-        uint256[3 * _MAX_SUB_COLLATERALS] memory airdropAmounts,
-        uint256[3 * _MAX_SUB_COLLATERALS] memory latestSubCollatOracleValue,
-        uint256[3 * _MAX_SUB_COLLATERALS] memory subCollatDecimals,
-        bool[3 * (_MAX_SUB_COLLATERALS + 1)] memory areForfeit,
-        uint256[2] memory transferRedeemProportion,
-        uint256[3] memory latestOracleValue,
->>>>>>> 74b17b2 (add back the RedeemTest)
-=======
-        uint256[3] memory initialValue, // initialAmounts of size 3 / nbrSubCollaterals of size 3
-        uint256[2] memory transferRedeemProportion,
-        uint256[3 * 2] memory nbrSubCollateralsAndIsManaged,
-        uint256[3 * (_MAX_SUB_COLLATERALS + 1)] memory airdropAmountsAndOracleValues,
-        uint256[3 * 2 * _MAX_SUB_COLLATERALS] memory latestSubCollatOracleValueAndDecimals,
-        bool[3 * (_MAX_SUB_COLLATERALS + 1)] memory areForfeit,
->>>>>>> 4c6f8cf (fix redeem test compilation)
         uint64[10] memory xFeeRedeemUnbounded, // X and Y arrays of length 10 each
         int64[10] memory yFeeRedeemUnbounded // X and Y arrays of length 10 each
     ) public {
@@ -1026,69 +823,15 @@ contract RedeemTest is Fixture, FunctionUtils {
             // Randomly set subcollaterals and manager if needed
             (IERC20[] memory subCollaterals, AggregatorV3Interface[] memory oracles) = _createManager(
                 _collaterals[i],
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
                 nbrSubCollateralsAndIsManaged[2 * i],
                 nbrSubCollateralsAndIsManaged[2 * i + 1],
                 i * _MAX_SUB_COLLATERALS,
                 latestSubCollatOracleValueAndDecimals
-=======
-                initialValue[3 + i],
-                isManaged[i],
-                i * _MAX_SUB_COLLATERALS,
-                latestSubCollatOracleValue,
-                subCollatDecimals
->>>>>>> 74b17b2 (add back the RedeemTest)
-=======
-                nbrSubCollateralsAndIsManaged[2*i],
-                nbrSubCollateralsAndIsManaged[2*i+1],
-=======
-                nbrSubCollateralsAndIsManaged[2 * i],
-                nbrSubCollateralsAndIsManaged[2 * i + 1],
->>>>>>> f6be794 (yarn prettier)
-                i * _MAX_SUB_COLLATERALS,
-                latestSubCollatOracleValueAndDecimals
->>>>>>> 4c6f8cf (fix redeem test compilation)
             );
             _subCollaterals[_collaterals[i]] = SubCollateralStorage(subCollaterals, oracles);
         }
 
         // let's first load the reserves of the protocol
-<<<<<<< HEAD
-<<<<<<< HEAD
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
-<<<<<<< HEAD
-            initialValue,
-=======
-            [initialValue[0], initialValue[1], initialValue[2]],
->>>>>>> e04c233 (feat: fixed tests + test on mint and burn firewalls oracles)
-            transferRedeemProportion[0]
-        );
-=======
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) =
-            _loadReserves([initialValue[0], initialValue[1], initialValue[2]], transferRedeemProportion[0]);
->>>>>>> bfa582e (fix part of the stack too deep when via-ir)
-        // airdrop amounts in the subcollaterals
-        for (uint256 i; i < _collaterals.length; ++i) {
-            if (_subCollaterals[_collaterals[i]].subCollaterals.length > 0) {
-                _loadSubCollaterals(address(_collaterals[i]), airdropAmountsAndOracleValues, i * _MAX_SUB_COLLATERALS);
-            }
-        }
-        _updateOraclesWithSubCollaterals(
-<<<<<<< HEAD
-<<<<<<< HEAD
-            abi.encode(mintedStables, collateralMintedStables),
-            airdropAmountsAndOracleValues
-=======
-            latestOracleValue,
-            abi.encode(mintedStables, collateralMintedStables),
-            airdropAmounts
->>>>>>> e04c233 (feat: fixed tests + test on mint and burn firewalls oracles)
-=======
-            latestOracleValue, abi.encode(mintedStables, collateralMintedStables), airdropAmounts
->>>>>>> bfa582e (fix part of the stack too deep when via-ir)
-=======
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
             initialValue,
             transferRedeemProportion[0]
@@ -1101,12 +844,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
         _updateOraclesWithSubCollaterals(
             abi.encode(mintedStables, collateralMintedStables),
-<<<<<<< HEAD
-            airdropAmounts
->>>>>>> 74b17b2 (add back the RedeemTest)
-=======
             airdropAmountsAndOracleValues
->>>>>>> 4c6f8cf (fix redeem test compilation)
         );
         _randomRedeemptionFees(xFeeRedeemUnbounded, yFeeRedeemUnbounded);
         _sweepBalancesWithManager(alice, _collaterals);
@@ -1122,13 +860,8 @@ contract RedeemTest is Fixture, FunctionUtils {
             {
                 uint256 totalCollateralization = _computeCollateralisation();
                 if (
-<<<<<<< HEAD
-                    mintedStables > 0
-                        && (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
-=======
                     mintedStables > 0 &&
                     (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
->>>>>>> 74b17b2 (add back the RedeemTest)
                 ) {
                     vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
                     shouldReturn = true;
@@ -1147,15 +880,11 @@ contract RedeemTest is Fixture, FunctionUtils {
                 uint256[] memory minAmountOuts = new uint256[](quoteAmounts.length);
                 if (mintedStables == 0) vm.expectRevert(stdError.divisionError);
                 (tokens, amounts) = transmuter.redeemWithForfeit(
-<<<<<<< HEAD
-                    amountBurnt, alice, block.timestamp + 1 days, minAmountOuts, forfeitTokens
-=======
                     amountBurnt,
                     alice,
                     block.timestamp + 1 days,
                     minAmountOuts,
                     forfeitTokens
->>>>>>> 74b17b2 (add back the RedeemTest)
                 );
             }
             vm.stopPrank();
@@ -1169,14 +898,9 @@ contract RedeemTest is Fixture, FunctionUtils {
 
             // Testing implicitly the ts.normalizer and ts.normalizedStables
             for (uint256 i; i < _collaterals.length; ++i) {
-<<<<<<< HEAD
-                (uint256 stableIssuedByCollateral, uint256 totalStable) =
-                    transmuter.getIssuedByCollateral(_collaterals[i]);
-=======
                 (uint256 stableIssuedByCollateral, uint256 totalStable) = transmuter.getIssuedByCollateral(
                     _collaterals[i]
                 );
->>>>>>> 74b17b2 (add back the RedeemTest)
                 assertApproxEqAbs(
                     stableIssuedByCollateral,
                     (collateralMintedStables[i] * (mintedStables - amountBurnt)) / mintedStables,
@@ -1194,13 +918,8 @@ contract RedeemTest is Fixture, FunctionUtils {
                 bool shouldReturn;
                 uint256 totalCollateralization = _computeCollateralisation();
                 if (
-<<<<<<< HEAD
-                    mintedStables > 0
-                        && (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
-=======
                     mintedStables > 0 &&
                     (totalCollateralization.mulDiv(BASE_9, mintedStables, Math.Rounding.Up)) > type(uint64).max
->>>>>>> 74b17b2 (add back the RedeemTest)
                 ) {
                     vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
                     shouldReturn = true;
@@ -1238,13 +957,8 @@ contract RedeemTest is Fixture, FunctionUtils {
             for (uint256 i; i < _collaterals.length; ++i) {
                 uint256 stableIssuedByCollateral;
                 (stableIssuedByCollateral, totalStable2) = transmuter.getIssuedByCollateral(_collaterals[i]);
-<<<<<<< HEAD
-                uint256 realStableIssueByCollateralLeft =
-                    (collateralMintedStables[i] * (mintedStables - amountBurntBob)) / (mintedStables + amountBurnt);
-=======
                 uint256 realStableIssueByCollateralLeft = (collateralMintedStables[i] *
                     (mintedStables - amountBurntBob)) / (mintedStables + amountBurnt);
->>>>>>> 74b17b2 (add back the RedeemTest)
 
                 _assertApproxEqRelDecimalWithTolerance(
                     realStableIssueByCollateralLeft,
@@ -1265,24 +979,15 @@ contract RedeemTest is Fixture, FunctionUtils {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-<<<<<<< HEAD
-                                               REDEEM WITH WHITELISTING
-=======
                                                REDEEM WITH WHITELISTING                                             
->>>>>>> 74b17b2 (add back the RedeemTest)
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function testFuzz_WithWhitelistedToken(uint256[3] memory initialAmounts, uint256 transferProportion) public {
         // let's first load the reserves of the protocol
-<<<<<<< HEAD
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) =
-            _loadReserves(initialAmounts, transferProportion);
-=======
         (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
             initialAmounts,
             transferProportion
         );
->>>>>>> 74b17b2 (add back the RedeemTest)
 
         _sweepBalances(alice, _collaterals);
 
@@ -1310,17 +1015,12 @@ contract RedeemTest is Fixture, FunctionUtils {
         vm.expectRevert(Errors.NotWhitelisted.selector);
         transmuter.redeem(amountBurnt, bob, block.timestamp + 1 days, minAmountOuts);
 
-<<<<<<< HEAD
-        (address[] memory tokens, uint256[] memory amounts) =
-            transmuter.redeem(amountBurnt, alice, block.timestamp + 1 days, minAmountOuts);
-=======
         (address[] memory tokens, uint256[] memory amounts) = transmuter.redeem(
             amountBurnt,
             alice,
             block.timestamp + 1 days,
             minAmountOuts
         );
->>>>>>> 74b17b2 (add back the RedeemTest)
         vm.stopPrank();
 
         assertEq(amounts, quoteAmounts);
@@ -1339,14 +1039,6 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
     }
 
-<<<<<<< HEAD
-    function testFuzz_WithForfeitAndWhitelistedTokens(uint256[3] memory initialAmounts, uint256 transferProportion)
-        public
-    {
-        // let's first load the reserves of the protocol
-        (uint256 mintedStables, uint256[] memory collateralMintedStables) =
-            _loadReserves(initialAmounts, transferProportion);
-=======
     function testFuzz_WithForfeitAndWhitelistedTokens(
         uint256[3] memory initialAmounts,
         uint256 transferProportion
@@ -1356,7 +1048,6 @@ contract RedeemTest is Fixture, FunctionUtils {
             initialAmounts,
             transferProportion
         );
->>>>>>> 74b17b2 (add back the RedeemTest)
 
         _sweepBalances(alice, _collaterals);
         {
@@ -1393,10 +1084,6 @@ contract RedeemTest is Fixture, FunctionUtils {
         address[] memory forfeitTokens2 = new address[](2);
         forfeitTokens2[0] = address(eurA);
         forfeitTokens2[1] = address(eurB);
-<<<<<<< HEAD
-        (address[] memory tokens, uint256[] memory amounts) =
-            transmuter.redeemWithForfeit(amountBurnt, bob, block.timestamp + 1 days, minAmountOuts, forfeitTokens2);
-=======
         (address[] memory tokens, uint256[] memory amounts) = transmuter.redeemWithForfeit(
             amountBurnt,
             bob,
@@ -1404,7 +1091,6 @@ contract RedeemTest is Fixture, FunctionUtils {
             minAmountOuts,
             forfeitTokens2
         );
->>>>>>> 74b17b2 (add back the RedeemTest)
         vm.stopPrank();
 
         assertEq(amounts, quoteAmounts);
@@ -1425,11 +1111,7 @@ contract RedeemTest is Fixture, FunctionUtils {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-<<<<<<< HEAD
-                                                        ASSERTS
-=======
                                                         ASSERTS                                                     
->>>>>>> 74b17b2 (add back the RedeemTest)
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function _assertSizes(address[] memory tokens, uint256[] memory amounts) internal {
@@ -1497,11 +1179,7 @@ contract RedeemTest is Fixture, FunctionUtils {
         AssertQuoteParams memory quoteStorage;
         {
             for (uint256 i; i < _oracles.length; ++i) {
-<<<<<<< HEAD
-                (, int256 value,,,) = _oracles[i].latestRoundData();
-=======
                 (, int256 value, , , ) = _oracles[i].latestRoundData();
->>>>>>> 74b17b2 (add back the RedeemTest)
                 uint8 decimals = IERC20Metadata(_collaterals[i]).decimals();
                 if (uint256(value) > quoteStorage.maxOracle) quoteStorage.maxOracle = uint256(value);
                 if (amounts[i] > quoteStorage.maxValue) quoteStorage.maxValue = amounts[i] / 10 ** decimals;
@@ -1516,16 +1194,10 @@ contract RedeemTest is Fixture, FunctionUtils {
             }
             // Otherwise there can be rounding errors that make the last check not precise at all
             if (
-<<<<<<< HEAD
-                quoteStorage.maxValue > quoteStorage.minValue * 10 ** 14
-                    || quoteStorage.maxOracle > quoteStorage.minOracle * 10 ** 14 || quoteStorage.minOracle < 10 ** 5
-                    || quoteStorage.maxOracle > 10 ** 13
-=======
                 quoteStorage.maxValue > quoteStorage.minValue * 10 ** 14 ||
                 quoteStorage.maxOracle > quoteStorage.minOracle * 10 ** 14 ||
                 quoteStorage.minOracle < 10 ** 5 ||
                 quoteStorage.maxOracle > 10 ** 13
->>>>>>> 74b17b2 (add back the RedeemTest)
             ) quoteStorage.lastCheck = true;
         }
         quoteStorage.amountInValueReceived = quoteStorage.amountInValueReceived / BASE_8;
@@ -1555,20 +1227,12 @@ contract RedeemTest is Fixture, FunctionUtils {
         AssertQuoteParams memory quoteStorage;
         {
             for (uint256 i; i < _collaterals.length; ++i) {
-<<<<<<< HEAD
-                (, int256 oracleValue,,,) = _oracles[i].latestRoundData();
-                {
-                    uint8 decimals = IERC20Metadata(_collaterals[i]).decimals();
-                    quoteStorage.amountInValueReceived +=
-                        (uint256(oracleValue) * _convertDecimalTo(amounts[quoteStorage.count++], decimals, 18)) / BASE_8;
-=======
                 (, int256 oracleValue, , , ) = _oracles[i].latestRoundData();
                 {
                     uint8 decimals = IERC20Metadata(_collaterals[i]).decimals();
                     quoteStorage.amountInValueReceived +=
                         (uint256(oracleValue) * _convertDecimalTo(amounts[quoteStorage.count++], decimals, 18)) /
                         BASE_8;
->>>>>>> 74b17b2 (add back the RedeemTest)
                     if (uint256(oracleValue) > quoteStorage.maxOracle) quoteStorage.maxOracle = uint256(oracleValue);
                     if (amounts[i] > quoteStorage.maxValue) quoteStorage.maxValue = amounts[i] / 10 ** decimals;
                     if (amounts[i] < quoteStorage.minValue || quoteStorage.minValue == 0) {
@@ -1582,17 +1246,6 @@ contract RedeemTest is Fixture, FunctionUtils {
                 // we don't double count the real collateral
                 uint256 subCollateralValue;
                 for (uint256 k = 1; k < _subCollaterals[_collaterals[i]].subCollaterals.length; k++) {
-<<<<<<< HEAD
-                    (, int256 value,,,) = _subCollaterals[_collaterals[i]].oracles[k - 1].latestRoundData();
-                    uint8 decimals =
-                        IERC20Metadata(address(_subCollaterals[_collaterals[i]].subCollaterals[k])).decimals();
-                    subCollateralValue += (
-                        uint256(value)
-                            * _convertDecimalTo(
-                                amounts[quoteStorage.count++], decimals, IERC20Metadata(_collaterals[i]).decimals()
-                            )
-                    ) / BASE_8;
-=======
                     (, int256 value, , , ) = _subCollaterals[_collaterals[i]].oracles[k - 1].latestRoundData();
                     uint8 decimals = IERC20Metadata(address(_subCollaterals[_collaterals[i]].subCollaterals[k]))
                         .decimals();
@@ -1604,7 +1257,6 @@ contract RedeemTest is Fixture, FunctionUtils {
                                 IERC20Metadata(_collaterals[i]).decimals()
                             )) /
                         BASE_8;
->>>>>>> 74b17b2 (add back the RedeemTest)
                     if (uint256(value) > quoteStorage.maxOracle) quoteStorage.maxOracle = uint256(value);
                     if (amounts[i] > quoteStorage.maxValue) quoteStorage.maxValue = amounts[i] / 10 ** decimals;
                     if (amounts[i] < quoteStorage.minValue || quoteStorage.minValue == 0) {
@@ -1615,17 +1267,6 @@ contract RedeemTest is Fixture, FunctionUtils {
                     }
                     if (uint256(value) > BASE_18 || amounts[i] < 10 ** 4) quoteStorage.lastCheck = true;
                 }
-<<<<<<< HEAD
-                quoteStorage.amountInValueReceived += (
-                    _convertDecimalTo(subCollateralValue, IERC20Metadata(_collaterals[i]).decimals(), 18)
-                        * uint256(oracleValue)
-                ) / BASE_8;
-            }
-            if (
-                quoteStorage.maxValue > quoteStorage.minValue * 10 ** 14
-                    || quoteStorage.maxOracle > quoteStorage.minOracle * 10 ** 14 || quoteStorage.minOracle < 10 ** 5
-                    || quoteStorage.maxOracle > 10 ** 13
-=======
                 quoteStorage.amountInValueReceived +=
                     (_convertDecimalTo(subCollateralValue, IERC20Metadata(_collaterals[i]).decimals(), 18) *
                         uint256(oracleValue)) /
@@ -1636,7 +1277,6 @@ contract RedeemTest is Fixture, FunctionUtils {
                 quoteStorage.maxOracle > quoteStorage.minOracle * 10 ** 14 ||
                 quoteStorage.minOracle < 10 ** 5 ||
                 quoteStorage.maxOracle > 10 ** 13
->>>>>>> 74b17b2 (add back the RedeemTest)
             ) quoteStorage.lastCheck = true;
         }
 
@@ -1646,13 +1286,8 @@ contract RedeemTest is Fixture, FunctionUtils {
             uint256 totalCollateralization = _computeCollateralisation();
             uint256 trueMintedStables = transmuter.getTotalIssued();
             if (
-<<<<<<< HEAD
-                trueMintedStables > 0
-                    && totalCollateralization.mulDiv(BASE_9, trueMintedStables, Math.Rounding.Up) > type(uint64).max
-=======
                 trueMintedStables > 0 &&
                 totalCollateralization.mulDiv(BASE_9, trueMintedStables, Math.Rounding.Up) > type(uint64).max
->>>>>>> 74b17b2 (add back the RedeemTest)
             ) {
                 reverted = true;
                 vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
@@ -1695,15 +1330,6 @@ contract RedeemTest is Fixture, FunctionUtils {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-<<<<<<< HEAD
-                                                         UTILS
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    function _loadReserves(uint256[3] memory initialAmounts, uint256 transferProportion)
-        internal
-        returns (uint256 mintedStables, uint256[] memory collateralMintedStables)
-    {
-=======
                                                          UTILS                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
@@ -1711,7 +1337,6 @@ contract RedeemTest is Fixture, FunctionUtils {
         uint256[3] memory initialAmounts,
         uint256 transferProportion
     ) internal returns (uint256 mintedStables, uint256[] memory collateralMintedStables) {
->>>>>>> 74b17b2 (add back the RedeemTest)
         collateralMintedStables = new uint256[](_collaterals.length);
 
         vm.startPrank(alice);
@@ -1721,16 +1346,12 @@ contract RedeemTest is Fixture, FunctionUtils {
             IERC20(_collaterals[i]).approve(address(transmuter), initialAmounts[i]);
 
             collateralMintedStables[i] = transmuter.swapExactInput(
-<<<<<<< HEAD
-                initialAmounts[i], 0, _collaterals[i], address(agToken), alice, block.timestamp * 2
-=======
                 initialAmounts[i],
                 0,
                 _collaterals[i],
                 address(agToken),
                 alice,
                 block.timestamp * 2
->>>>>>> 74b17b2 (add back the RedeemTest)
             );
             mintedStables += collateralMintedStables[i];
         }
@@ -1743,21 +1364,8 @@ contract RedeemTest is Fixture, FunctionUtils {
 
     function _loadSubCollaterals(
         address collateral,
-<<<<<<< HEAD
-<<<<<<< HEAD
         // The last 3 values should be disregarded as they are oracle values
         uint256[3 * (_MAX_SUB_COLLATERALS + 1)] memory airdropAmounts,
-=======
-        uint256[3 * _MAX_SUB_COLLATERALS] memory airdropAmounts,
->>>>>>> 74b17b2 (add back the RedeemTest)
-=======
-        // The last 3 values should be disregarded as they are oracle values
-<<<<<<< HEAD
-        uint256[3 * (_MAX_SUB_COLLATERALS+1)] memory airdropAmounts,
->>>>>>> 4c6f8cf (fix redeem test compilation)
-=======
-        uint256[3 * (_MAX_SUB_COLLATERALS + 1)] memory airdropAmounts,
->>>>>>> f6be794 (yarn prettier)
         uint256 startIndex
     ) internal {
         IERC20[] memory listSubCollaterals = _subCollaterals[collateral].subCollaterals;
@@ -1793,13 +1401,8 @@ contract RedeemTest is Fixture, FunctionUtils {
             uint256 totalCollateralization = _computeCollateralisation();
             uint256 trueMintedStables = transmuter.getTotalIssued();
             if (
-<<<<<<< HEAD
-                trueMintedStables > 0
-                    && totalCollateralization.mulDiv(BASE_9, trueMintedStables, Math.Rounding.Up) > type(uint64).max
-=======
                 trueMintedStables > 0 &&
                 totalCollateralization.mulDiv(BASE_9, trueMintedStables, Math.Rounding.Up) > type(uint64).max
->>>>>>> 74b17b2 (add back the RedeemTest)
             ) {
                 reverted = true;
                 vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
@@ -1818,34 +1421,6 @@ contract RedeemTest is Fixture, FunctionUtils {
     }
 
     function _updateOraclesWithSubCollaterals(
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-        bytes memory collateralStablesAndMintedStables,
-        uint256[3 * (_MAX_SUB_COLLATERALS + 1)] memory airdropAmountsAndOracleValues
-=======
-        uint256[3] memory latestOracleValue,
-        bytes memory collateralStablesAndMintedStables,
-        uint256[3 * _MAX_SUB_COLLATERALS] memory airdropAmounts
->>>>>>> e04c233 (feat: fixed tests + test on mint and burn firewalls oracles)
-    ) internal returns (uint64 collatRatio, bool reverted) {
-        uint256 collateralisation;
-        for (uint256 i; i < airdropAmountsAndOracleValues.length / (_MAX_SUB_COLLATERALS + 1); ++i) {
-            airdropAmountsAndOracleValues[3 * _MAX_SUB_COLLATERALS + i] = bound(
-                airdropAmountsAndOracleValues[3 * _MAX_SUB_COLLATERALS + i],
-                _minOracleValue,
-                BASE_18
-            );
-            MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(
-                int256(airdropAmountsAndOracleValues[3 * _MAX_SUB_COLLATERALS + i])
-            );
-
-            if (_subCollaterals[_collaterals[i]].subCollaterals.length <= 1) {
-<<<<<<< HEAD
-=======
-        uint256[3] memory latestOracleValue,
-=======
->>>>>>> 4c6f8cf (fix redeem test compilation)
         bytes memory collateralStablesAndMintedStables,
         uint256[3 * (_MAX_SUB_COLLATERALS + 1)] memory airdropAmountsAndOracleValues
     ) internal returns (uint64 collatRatio, bool reverted) {
@@ -1861,42 +1436,13 @@ contract RedeemTest is Fixture, FunctionUtils {
             );
 
             if (_subCollaterals[_collaterals[i]].subCollaterals.length <= 1) {
->>>>>>> 74b17b2 (add back the RedeemTest)
                 (, uint256[] memory collateralMintedStables) = abi.decode(
                     collateralStablesAndMintedStables,
                     (uint256, uint256[])
                 );
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
                 collateralisation +=
                     (airdropAmountsAndOracleValues[3 * _MAX_SUB_COLLATERALS + i] * collateralMintedStables[i]) /
                     BASE_8;
-=======
-=======
-                (, uint256[] memory collateralMintedStables) =
-                    abi.decode(collateralStablesAndMintedStables, (uint256, uint256[]));
->>>>>>> bfa582e (fix part of the stack too deep when via-ir)
-                collateralisation += (latestOracleValue[i] * collateralMintedStables[i]) / BASE_8;
->>>>>>> e04c233 (feat: fixed tests + test on mint and burn firewalls oracles)
-            } else {
-                IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
-                // we don't double count the real collaterals
-                uint256 subCollateralValue =
-                    IERC20Metadata(address(listSubCollaterals[0])).balanceOf(address(_managers[_collaterals[i]]));
-                for (uint256 k = 1; k < listSubCollaterals.length; k++) {
-<<<<<<< HEAD
-=======
-                collateralisation += (latestOracleValue[i] * collateralMintedStables[i]) / BASE_8;
-=======
-                collateralisation += (airdropAmountsAndOracleValues[3 *_MAX_SUB_COLLATERALS+ i] * collateralMintedStables[i]) / BASE_8;
->>>>>>> 4c6f8cf (fix redeem test compilation)
-=======
-                collateralisation +=
-                    (airdropAmountsAndOracleValues[3 * _MAX_SUB_COLLATERALS + i] * collateralMintedStables[i]) /
-                    BASE_8;
->>>>>>> f6be794 (yarn prettier)
             } else {
                 IERC20[] memory listSubCollaterals = _subCollaterals[_collaterals[i]].subCollaterals;
                 // we don't double count the real collaterals
@@ -1904,90 +1450,36 @@ contract RedeemTest is Fixture, FunctionUtils {
                     address(_managers[_collaterals[i]])
                 );
                 for (uint256 k = 1; k < listSubCollaterals.length; k++) {
->>>>>>> 74b17b2 (add back the RedeemTest)
                     (, int256 oracleValue, , , ) = MockChainlinkOracle(
                         address(_subCollaterals[_collaterals[i]].oracles[k - 1])
                     ).latestRoundData();
                     subCollateralValue +=
                         (uint256(oracleValue) *
                             _convertDecimalTo(
-<<<<<<< HEAD
-<<<<<<< HEAD
                                 airdropAmountsAndOracleValues[i * _MAX_SUB_COLLATERALS + k - 1],
-=======
-                    (, int256 oracleValue,,,) =
-                        MockChainlinkOracle(address(_subCollaterals[_collaterals[i]].oracles[k - 1])).latestRoundData();
-                    subCollateralValue += (
-                        uint256(oracleValue)
-                            * _convertDecimalTo(
-                                airdropAmounts[i * _MAX_SUB_COLLATERALS + k - 1],
->>>>>>> bfa582e (fix part of the stack too deep when via-ir)
-                                IERC20Metadata(address(listSubCollaterals[k])).decimals(),
-                                IERC20Metadata(address(listSubCollaterals[0])).decimals()
-                            )
-                    ) / BASE_8;
-                }
-<<<<<<< HEAD
-                collateralisation +=
-                    (((BASE_18 * airdropAmountsAndOracleValues[3 * _MAX_SUB_COLLATERALS + i]) / BASE_8) *
-=======
-                                airdropAmounts[i * _MAX_SUB_COLLATERALS + k - 1],
-=======
-                                airdropAmountsAndOracleValues[i * _MAX_SUB_COLLATERALS + k - 1],
->>>>>>> 4c6f8cf (fix redeem test compilation)
                                 IERC20Metadata(address(listSubCollaterals[k])).decimals(),
                                 IERC20Metadata(address(listSubCollaterals[0])).decimals()
                             )) /
                         BASE_8;
                 }
                 collateralisation +=
-<<<<<<< HEAD
-<<<<<<< HEAD
-                    (((BASE_18 * latestOracleValue[i]) / BASE_8) *
->>>>>>> 74b17b2 (add back the RedeemTest)
-=======
-                    (((BASE_18 * airdropAmountsAndOracleValues[3 *_MAX_SUB_COLLATERALS+ i]) / BASE_8) *
->>>>>>> 4c6f8cf (fix redeem test compilation)
-=======
                     (((BASE_18 * airdropAmountsAndOracleValues[3 * _MAX_SUB_COLLATERALS + i]) / BASE_8) *
->>>>>>> f6be794 (yarn prettier)
                         _convertDecimalTo(
                             subCollateralValue,
                             IERC20Metadata(address(listSubCollaterals[0])).decimals(),
                             18
                         )) /
                     BASE_18;
-<<<<<<< HEAD
-=======
-                collateralisation += (
-                    ((BASE_18 * latestOracleValue[i]) / BASE_8)
-                        * _convertDecimalTo(
-                            subCollateralValue, IERC20Metadata(address(listSubCollaterals[0])).decimals(), 18
-                        )
-                ) / BASE_18;
->>>>>>> bfa582e (fix part of the stack too deep when via-ir)
-            }
-        }
-
-        (uint256 mintedStables,) = abi.decode(collateralStablesAndMintedStables, (uint256, uint256[]));
-=======
             }
         }
 
         (uint256 mintedStables, ) = abi.decode(collateralStablesAndMintedStables, (uint256, uint256[]));
->>>>>>> 74b17b2 (add back the RedeemTest)
         {
             {
                 uint256 trueMintedStables = transmuter.getTotalIssued();
                 if (
-<<<<<<< HEAD
-                    trueMintedStables > 0
-                        && _computeCollateralisation().mulDiv(BASE_9, trueMintedStables, Math.Rounding.Up)
-                            > type(uint64).max
-=======
                     trueMintedStables > 0 &&
                     _computeCollateralisation().mulDiv(BASE_9, trueMintedStables, Math.Rounding.Up) > type(uint64).max
->>>>>>> 74b17b2 (add back the RedeemTest)
                 ) {
                     reverted = true;
                     vm.expectRevert(bytes("SafeCast: value doesn't fit in 64 bits"));
@@ -2006,14 +1498,6 @@ contract RedeemTest is Fixture, FunctionUtils {
         }
     }
 
-<<<<<<< HEAD
-    function _randomRedeemptionFees(uint64[10] memory xFeeRedeemUnbounded, int64[10] memory yFeeRedeemUnbounded)
-        internal
-        returns (uint64[] memory xFeeRedeem, int64[] memory yFeeRedeem)
-    {
-        (xFeeRedeem, yFeeRedeem) =
-            _generateCurves(xFeeRedeemUnbounded, yFeeRedeemUnbounded, true, false, 0, int256(BASE_9));
-=======
     function _randomRedeemptionFees(
         uint64[10] memory xFeeRedeemUnbounded,
         int64[10] memory yFeeRedeemUnbounded
@@ -2026,7 +1510,6 @@ contract RedeemTest is Fixture, FunctionUtils {
             0,
             int256(BASE_9)
         );
->>>>>>> 74b17b2 (add back the RedeemTest)
         vm.prank(governor);
         transmuter.setRedemptionCurveParams(xFeeRedeem, yFeeRedeem);
     }
@@ -2052,17 +1535,9 @@ contract RedeemTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
-<<<<<<< HEAD
-    function _getForfeitTokens(bool[3 * (_MAX_SUB_COLLATERALS + 1)] memory areForfeited)
-        internal
-        view
-        returns (address[] memory forfeitTokens)
-    {
-=======
     function _getForfeitTokens(
         bool[3 * (_MAX_SUB_COLLATERALS + 1)] memory areForfeited
     ) internal view returns (address[] memory forfeitTokens) {
->>>>>>> 74b17b2 (add back the RedeemTest)
         uint256 nbrForfeit;
         for (uint256 i; i < areForfeited.length; ++i) {
             if (areForfeited[i]) nbrForfeit++;
@@ -2089,8 +1564,6 @@ contract RedeemTest is Fixture, FunctionUtils {
     function _createManager(
         address token,
         uint256 nbrSubCollaterals,
-<<<<<<< HEAD
-<<<<<<< HEAD
         uint256 isManaged,
         uint256 startIndex,
         // The first 3 * _MAX_SUB_COLLATERALS are for the oracle values and the rest are for the decimals
@@ -2098,34 +1571,11 @@ contract RedeemTest is Fixture, FunctionUtils {
     ) internal returns (IERC20[] memory subCollaterals, AggregatorV3Interface[] memory oracles) {
         nbrSubCollaterals = bound(nbrSubCollaterals, 0, _MAX_SUB_COLLATERALS);
         isManaged = bound(nbrSubCollaterals, 0, 1);
-=======
-        bool isManaged,
-=======
-        uint256 isManaged,
->>>>>>> 4c6f8cf (fix redeem test compilation)
-        uint256 startIndex,
-        // The first 3 * _MAX_SUB_COLLATERALS are for the oracle values and the rest are for the decimals
-        uint256[2 * 3 * _MAX_SUB_COLLATERALS] memory subCollateralOracleValueAndDecimals
-    ) internal returns (IERC20[] memory subCollaterals, AggregatorV3Interface[] memory oracles) {
-        nbrSubCollaterals = bound(nbrSubCollaterals, 0, _MAX_SUB_COLLATERALS);
-<<<<<<< HEAD
->>>>>>> 74b17b2 (add back the RedeemTest)
-=======
-        isManaged = bound(nbrSubCollaterals, 0, 1);
->>>>>>> 4c6f8cf (fix redeem test compilation)
         subCollaterals = new IERC20[](nbrSubCollaterals + 1);
 
         oracles = new AggregatorV3Interface[](nbrSubCollaterals);
         subCollaterals[0] = IERC20(token);
-<<<<<<< HEAD
-<<<<<<< HEAD
         if (nbrSubCollaterals == 0 && isManaged == 1) return (subCollaterals, oracles);
-=======
-        if (nbrSubCollaterals == 0 && isManaged) return (subCollaterals, oracles);
->>>>>>> 74b17b2 (add back the RedeemTest)
-=======
-        if (nbrSubCollaterals == 0 && isManaged == 1) return (subCollaterals, oracles);
->>>>>>> 4c6f8cf (fix redeem test compilation)
         MockManager manager = new MockManager(token);
         {
             uint8[] memory decimals = new uint8[](nbrSubCollaterals + 1);
@@ -2134,23 +1584,9 @@ contract RedeemTest is Fixture, FunctionUtils {
             uint8[] memory oracleIsMultiplied = new uint8[](nbrSubCollaterals);
             uint8[] memory chainlinkDecimals = new uint8[](nbrSubCollaterals);
             for (uint256 i = 1; i < nbrSubCollaterals + 1; ++i) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
                 decimals[i] = uint8(
                     bound(subCollateralOracleValueAndDecimals[3 * _MAX_SUB_COLLATERALS + startIndex + i - 1], 5, 18)
                 );
-=======
-                decimals[i] = uint8(bound(subCollateralsDecimals[startIndex + i - 1], 5, 18));
->>>>>>> 74b17b2 (add back the RedeemTest)
-=======
-                decimals[i] = uint8(bound(subCollateralOracleValueAndDecimals[3 * _MAX_SUB_COLLATERALS +startIndex + i - 1], 5, 18));
->>>>>>> 4c6f8cf (fix redeem test compilation)
-=======
-                decimals[i] = uint8(
-                    bound(subCollateralOracleValueAndDecimals[3 * _MAX_SUB_COLLATERALS + startIndex + i - 1], 5, 18)
-                );
->>>>>>> f6be794 (yarn prettier)
                 subCollaterals[i] = IERC20(
                     address(
                         new MockTokenPermit(
@@ -2161,37 +1597,13 @@ contract RedeemTest is Fixture, FunctionUtils {
                     )
                 );
                 oracles[i - 1] = AggregatorV3Interface(address(new MockChainlinkOracle()));
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
                 subCollateralOracleValueAndDecimals[startIndex + i - 1] = bound(
                     subCollateralOracleValueAndDecimals[startIndex + i - 1],
                     _minOracleValue,
                     BASE_18
                 );
-=======
-                subCollateralOracleValue[startIndex + i - 1] =
-                    bound(subCollateralOracleValue[startIndex + i - 1], _minOracleValue, BASE_18);
->>>>>>> bfa582e (fix part of the stack too deep when via-ir)
                 MockChainlinkOracle(address(oracles[i - 1])).setLatestAnswer(
                     int256(subCollateralOracleValueAndDecimals[startIndex + i - 1])
-=======
-                subCollateralOracleValue[startIndex + i - 1] = bound(
-                    subCollateralOracleValue[startIndex + i - 1],
-=======
-                subCollateralOracleValueAndDecimals[startIndex + i - 1] = bound(
-                    subCollateralOracleValueAndDecimals[startIndex + i - 1],
->>>>>>> 4c6f8cf (fix redeem test compilation)
-                    _minOracleValue,
-                    BASE_18
-                );
-                MockChainlinkOracle(address(oracles[i - 1])).setLatestAnswer(
-<<<<<<< HEAD
-                    int256(subCollateralOracleValue[startIndex + i - 1])
->>>>>>> 74b17b2 (add back the RedeemTest)
-=======
-                    int256(subCollateralOracleValueAndDecimals[startIndex + i - 1])
->>>>>>> 4c6f8cf (fix redeem test compilation)
                 );
                 stalePeriods[i - 1] = 365 days;
                 oracleIsMultiplied[i - 1] = 1;
@@ -2199,13 +1611,6 @@ contract RedeemTest is Fixture, FunctionUtils {
             }
 
             manager.setSubCollaterals(
-<<<<<<< HEAD
-                subCollaterals, abi.encode(decimals, oracles, stalePeriods, oracleIsMultiplied, chainlinkDecimals)
-            );
-        }
-        ManagerStorage memory managerData =
-            ManagerStorage(subCollaterals, abi.encode(ManagerType.EXTERNAL, abi.encode(IManager(address(manager)))));
-=======
                 subCollaterals,
                 abi.encode(decimals, oracles, stalePeriods, oracleIsMultiplied, chainlinkDecimals)
             );
@@ -2214,7 +1619,6 @@ contract RedeemTest is Fixture, FunctionUtils {
             subCollaterals,
             abi.encode(ManagerType.EXTERNAL, abi.encode(IManager(address(manager))))
         );
->>>>>>> 74b17b2 (add back the RedeemTest)
         _managers[token] = manager;
 
         vm.prank(governor);
@@ -2235,16 +1639,10 @@ contract RedeemTest is Fixture, FunctionUtils {
                 collateralBalance = IERC20(collateralList[i]).balanceOf(address(transmuter));
             }
 
-<<<<<<< HEAD
-            (,,,, uint256 oracleValue) = transmuter.getOracleValues(collateralList[i]);
-            totalCollateralization +=
-                (oracleValue * LibHelpers.convertDecimalTo(collateralBalance, collateral.decimals, 18)) / BASE_18;
-=======
             (, , , , uint256 oracleValue) = transmuter.getOracleValues(collateralList[i]);
             totalCollateralization +=
                 (oracleValue * LibHelpers.convertDecimalTo(collateralBalance, collateral.decimals, 18)) /
                 BASE_18;
->>>>>>> 74b17b2 (add back the RedeemTest)
         }
     }
 }
