@@ -220,14 +220,10 @@ jobs:
         with:
           version: nightly
 
-      - name: Compile foundry
-        run: forge build --build-info --skip */test/** */scripts/** --force
-
       - name: "Run Slither analysis"
         uses: "crytic/slither-action@v0.3.0"
         id: "slither"
         with:
-          ignore-compile: true
           fail-on: "none"
           sarif: "results.sarif"
 
