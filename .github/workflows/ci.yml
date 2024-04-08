@@ -26,6 +26,9 @@ jobs:
         with:
           registry-token: ${{ secrets.GH_REGISTRY_ACCESS_TOKEN }}
 
+      - name: Install dependencies
+        run: yarn install
+
       - name: Run solhint
         run: yarn lint:check
 
@@ -50,6 +53,9 @@ jobs:
         uses: ./.github/actions/setup-repo
         with:
           registry-token: ${{ secrets.GH_REGISTRY_ACCESS_TOKEN }}
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
 
       - name: Compile foundry
         run: yarn compile --sizes
@@ -220,12 +226,17 @@ jobs:
         with:
           version: nightly
 
+      - name: Compile foundry
+        run: forge build --build-info --skip */test/** */scripts/** --force
+
       - name: "Run Slither analysis"
-        uses: "crytic/slither-action@v0.3.0"
+        uses: "crytic/slither-action@v0.3.2"
         id: "slither"
         with:
+          ignore-compile: true
           fail-on: "none"
           sarif: "results.sarif"
+          slither-version: "0.10.1"
 
       - name: "Upload SARIF file to GitHub code scanning"
         uses: "github/codeql-action/upload-sarif@v2"
