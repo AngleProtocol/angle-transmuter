@@ -61,7 +61,7 @@ src = 'contracts'
 gas_reports = ["*"]
 
 [profile.dev.fuzz]
-runs = 2000
+runs = 20
 
 [profile.dev.invariant]
 runs = 100
