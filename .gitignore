@@ -18,6 +18,7 @@ export
 typechain
 slither-audit.txt
 slither
+cache
 
 # Test output
 coverage
