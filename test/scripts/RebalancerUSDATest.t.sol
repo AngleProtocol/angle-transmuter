@@ -7,7 +7,6 @@ import { Test } from "forge-std/Test.sol";
 
 import "../../scripts/Constants.s.sol";
 
-import { Helpers } from "../../scripts/Helpers.s.sol";
 import "contracts/utils/Errors.sol" as Errors;
 import "contracts/transmuter/Storage.sol" as Storage;
 import "contracts/transmuter/libraries/LibHelpers.sol";
@@ -25,7 +24,7 @@ interface IFlashAngle {
     function setFlashLoanParameters(address stablecoin, uint64 _flashLoanFee, uint256 _maxBorrowable) external;
 }
 
-contract RebalancerUSDATest is Helpers, Test {
+contract RebalancerUSDATest is Test {
     using stdJson for string;
 
     ITransmuter transmuter;
@@ -34,12 +33,10 @@ contract RebalancerUSDATest is Helpers, Test {
     IFlashAngle FLASHLOAN;
     address governor;
     RebalancerFlashloan public rebalancer;
+    uint256 ethereumFork;
 
-    function setUp() public override {
-        super.setUp();
-
-        ethereumFork = vm.createFork(vm.envString("ETH_NODE_URI_MAINNET"), 19610333);
-        vm.selectFork(ethereumFork);
+    function setUp() public {
+        ethereumFork = vm.createSelectFork(vm.envString("ETH_NODE_URI_MAINNET"), 19610333);
 
         transmuter = ITransmuter(0x222222fD79264BBE280b4986F6FEfBC3524d0137);
         USDA = IERC20(0x0000206329b97DB379d5E1Bf586BbDB969C63274);
