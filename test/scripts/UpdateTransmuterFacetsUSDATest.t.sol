@@ -54,7 +54,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         CHAIN_SOURCE = CHAIN_ETHEREUM;
 
         ethereumFork = vm.createFork(vm.envString("ETH_NODE_URI_MAINNET"), 19483530);
-        vm.selectFork(forkIdentifier[CHAIN_SOURCE]);
+        vm.selectFork(ethereumFork);
 
         governor = DEPLOYER;
         transmuter = ITransmuter(0x222222fD79264BBE280b4986F6FEfBC3524d0137);

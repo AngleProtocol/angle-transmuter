@@ -21,6 +21,7 @@ import { RebalancerFlashloan, IERC4626, IERC3156FlashLender } from "contracts/he
 
 interface IFlashAngle {
     function addStablecoinSupport(address _treasury) external;
+
     function setFlashLoanParameters(address stablecoin, uint64 _flashLoanFee, uint256 _maxBorrowable) external;
 }
 
@@ -94,10 +95,10 @@ contract RebalancerUSDATest is Helpers, Test {
         // Revert when no order has been setup
         vm.startPrank(NEW_DEPLOYER);
         vm.expectRevert();
-        rebalancer.adjustYieldExposure(BASE_18, 1, USDC, STEAK_USDC);
+        rebalancer.adjustYieldExposure(BASE_18, 1, USDC, STEAK_USDC, 0);
 
         vm.expectRevert();
-        rebalancer.adjustYieldExposure(BASE_18, 0, USDC, STEAK_USDC);
+        rebalancer.adjustYieldExposure(BASE_18, 0, USDC, STEAK_USDC, 0);
         vm.stopPrank();
     }
 
@@ -113,7 +114,7 @@ contract RebalancerUSDATest is Helpers, Test {
         uint256 budget = rebalancer.budget();
         (uint112 orderBudget0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
         (uint112 orderBudget1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
-        rebalancer.adjustYieldExposure(amount, 1, USDC, STEAK_USDC);
+        rebalancer.adjustYieldExposure(amount, 1, USDC, STEAK_USDC, 0);
 
         vm.stopPrank();
 
@@ -130,6 +131,17 @@ contract RebalancerUSDATest is Helpers, Test {
         assertLe(newOrder1, orderBudget1);
     }
 
+    function testFuzz_adjustYieldExposure_RevertMinAmountOut(uint256 amount) external {
+        amount = bound(amount, BASE_18, BASE_18 * 100);
+        deal(address(USDA), address(rebalancer), BASE_18 * 1000);
+        vm.startPrank(governor);
+        rebalancer.setOrder(address(STEAK_USDC), address(USDC), BASE_18 * 500, 0);
+        rebalancer.setOrder(address(USDC), address(STEAK_USDC), BASE_18 * 500, 0);
+        vm.expectRevert();
+        rebalancer.adjustYieldExposure(amount, 1, USDC, STEAK_USDC, type(uint256).max);
+        vm.stopPrank();
+    }
+
     function testFuzz_adjustYieldExposure_SuccessDecrease(uint256 amount) external {
         amount = bound(amount, BASE_18, BASE_18 * 100);
         deal(address(USDA), address(rebalancer), BASE_18 * 1000);
@@ -141,7 +153,7 @@ contract RebalancerUSDATest is Helpers, Test {
         uint256 budget = rebalancer.budget();
         (uint112 orderBudget0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
         (uint112 orderBudget1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
-        rebalancer.adjustYieldExposure(amount, 0, USDC, STEAK_USDC);
+        rebalancer.adjustYieldExposure(amount, 0, USDC, STEAK_USDC, 0);
         vm.stopPrank();
         (uint256 fromUSDCPost, uint256 totalPost) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAKPost, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
@@ -176,7 +188,7 @@ contract RebalancerUSDATest is Helpers, Test {
 
         transmuter.setFees(STEAK_USDC, xMintFee, yMintFee, true);
         transmuter.updateOracle(STEAK_USDC);
-        rebalancer.adjustYieldExposure(amount, 1, USDC, STEAK_USDC);
+        rebalancer.adjustYieldExposure(amount, 1, USDC, STEAK_USDC, 0);
         vm.stopPrank();
         (uint256 fromUSDCPost, uint256 totalPost) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAKPost, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
@@ -198,7 +210,7 @@ contract RebalancerUSDATest is Helpers, Test {
         (uint112 orderBudget0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
         (uint112 orderBudget1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
 
-        rebalancer.adjustYieldExposure((amount * split) / BASE_9, 0, USDC, STEAK_USDC);
+        rebalancer.adjustYieldExposure((amount * split) / BASE_9, 0, USDC, STEAK_USDC, 0);
 
         (uint256 fromUSDCPost, uint256 totalPost) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAKPost, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
@@ -208,7 +220,7 @@ contract RebalancerUSDATest is Helpers, Test {
         assertEq(fromSTEAKPost, fromSTEAK - (amount * split) / BASE_9);
         assertLe(rebalancer.budget(), budget);
 
-        rebalancer.adjustYieldExposure(amount - (amount * split) / BASE_9, 0, USDC, STEAK_USDC);
+        rebalancer.adjustYieldExposure(amount - (amount * split) / BASE_9, 0, USDC, STEAK_USDC, 0);
 
         (fromUSDCPost, totalPost) = transmuter.getIssuedByCollateral(address(USDC));
         (fromSTEAKPost, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
@@ -238,7 +250,7 @@ contract RebalancerUSDATest is Helpers, Test {
         (uint112 orderBudget0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
         (uint112 orderBudget1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
 
-        rebalancer.adjustYieldExposure((amount * split) / BASE_9, 1, USDC, STEAK_USDC);
+        rebalancer.adjustYieldExposure((amount * split) / BASE_9, 1, USDC, STEAK_USDC, 0);
 
         (uint256 fromUSDCPost, uint256 totalPost) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAKPost, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
@@ -248,7 +260,7 @@ contract RebalancerUSDATest is Helpers, Test {
         assertGe(fromSTEAKPost, fromSTEAK);
         assertLe(rebalancer.budget(), budget);
 
-        rebalancer.adjustYieldExposure(amount - (amount * split) / BASE_9, 1, USDC, STEAK_USDC);
+        rebalancer.adjustYieldExposure(amount - (amount * split) / BASE_9, 1, USDC, STEAK_USDC, 0);
 
         (fromUSDCPost, totalPost) = transmuter.getIssuedByCollateral(address(USDC));
         (fromSTEAKPost, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
@@ -277,7 +289,7 @@ contract RebalancerUSDATest is Helpers, Test {
         (uint112 orderBudget0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
         (uint112 orderBudget1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));
 
-        rebalancer.adjustYieldExposure(amount, 1, USDC, STEAK_USDC);
+        rebalancer.adjustYieldExposure(amount, 1, USDC, STEAK_USDC, 0);
 
         (uint256 fromUSDCPost, uint256 totalPost) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAKPost, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
@@ -291,7 +303,7 @@ contract RebalancerUSDATest is Helpers, Test {
         assertEq(newOrder0, orderBudget0);
         assertLe(newOrder1, orderBudget1);
 
-        rebalancer.adjustYieldExposure(amount, 0, USDC, STEAK_USDC);
+        rebalancer.adjustYieldExposure(amount, 0, USDC, STEAK_USDC, 0);
 
         (orderBudget0, , , ) = rebalancer.orders(address(USDC), address(STEAK_USDC));
         (orderBudget1, , , ) = rebalancer.orders(address(STEAK_USDC), address(USDC));

@@ -53,7 +53,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
         CHAIN_SOURCE = CHAIN_ETHEREUM;
 
         ethereumFork = vm.createFork(vm.envString("ETH_NODE_URI_MAINNET"), 19425035);
-        vm.selectFork(forkIdentifier[CHAIN_SOURCE]);
+        vm.selectFork(ethereumFork);
 
         governor = _chainToContract(CHAIN_SOURCE, ContractType.Timelock);
         transmuter = ITransmuter(_chainToContract(CHAIN_SOURCE, ContractType.TransmuterAgEUR));

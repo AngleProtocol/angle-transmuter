@@ -33,18 +33,20 @@ contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
     /// first burn
     /// @dev If `increase` is 1, then the system tries to increase its exposure to the yield bearing asset which means
     /// burning stablecoin for the liquid asset, depositing into the ERC4626 vault, then minting the stablecoin
+    /// @dev This function reverts if the second stablecoin mint gives less than `minAmountOut` of stablecoins
     function adjustYieldExposure(
         uint256 amountStablecoins,
         uint8 increase,
         address collateral,
-        address vault
+        address vault,
+        uint256 minAmountOut
     ) external {
         if (!TRANSMUTER.isTrustedSeller(msg.sender)) revert NotTrusted();
         FLASHLOAN.flashLoan(
             IERC3156FlashBorrower(address(this)),
             address(AGTOKEN),
             amountStablecoins,
-            abi.encode(increase, collateral, vault)
+            abi.encode(increase, collateral, vault, minAmountOut)
         );
     }
 
@@ -57,7 +59,10 @@ contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
         bytes calldata data
     ) external returns (bytes32) {
         if (msg.sender != address(FLASHLOAN) || initiator != address(this) || fee != 0) revert NotTrusted();
-        (uint256 typeAction, address collateral, address vault) = abi.decode(data, (uint256, address, address));
+        (uint256 typeAction, address collateral, address vault, uint256 minAmountOut) = abi.decode(
+            data,
+            (uint256, address, address, uint256)
+        );
         address tokenOut;
         address tokenIn;
         if (typeAction == 1) {
@@ -78,7 +83,7 @@ contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
         _adjustAllowance(tokenIn, address(TRANSMUTER), amountOut);
         uint256 amountStableOut = TRANSMUTER.swapExactInput(
             amountOut,
-            0,
+            minAmountOut,
             tokenIn,
             AGTOKEN,
             address(this),

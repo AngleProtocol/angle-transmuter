@@ -61,7 +61,7 @@ contract RebalancerFlashloanTest is Fixture, FunctionUtils {
 
     function test_adjustYieldExposure_RevertWhen_NotTrusted() public {
         vm.expectRevert(Errors.NotTrusted.selector);
-        rebalancer.adjustYieldExposure(1, 1, address(0), address(0));
+        rebalancer.adjustYieldExposure(1, 1, address(0), address(0), 0);
     }
 
     function test_onFlashLoan_RevertWhen_NotTrusted() public {
