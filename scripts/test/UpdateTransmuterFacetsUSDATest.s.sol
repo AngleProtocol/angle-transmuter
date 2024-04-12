@@ -5,9 +5,9 @@ import { stdJson } from "forge-std/StdJson.sol";
 import { console } from "forge-std/console.sol";
 import { Test } from "forge-std/Test.sol";
 
-import "../../scripts/Constants.s.sol";
+import "../Constants.s.sol";
 
-import { Helpers } from "../../scripts/Helpers.s.sol";
+import { Helpers } from "../Helpers.s.sol";
 import "contracts/utils/Errors.sol" as Errors;
 import "contracts/transmuter/Storage.sol" as Storage;
 import { Getters } from "contracts/transmuter/facets/Getters.sol";
@@ -21,7 +21,7 @@ import { CollateralSetupProd } from "contracts/transmuter/configs/ProductionType
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 import "utils/src/Constants.sol";
 import { IERC20 } from "oz/interfaces/IERC20.sol";
-import { IMorphoOracle, MockMorphoOracle } from "../mock/MockMorphoOracle.sol";
+import { IMorphoOracle, MockMorphoOracle } from "../../test/mock/MockMorphoOracle.sol";
 
 interface OldTransmuter {
     function getOracle(
@@ -54,7 +54,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         CHAIN_SOURCE = CHAIN_ETHEREUM;
 
         ethereumFork = vm.createFork(vm.envString("ETH_NODE_URI_MAINNET"), 19483530);
-        vm.selectFork(forkIdentifier[CHAIN_SOURCE]);
+        vm.selectFork(ethereumFork);
 
         governor = DEPLOYER;
         transmuter = ITransmuter(0x222222fD79264BBE280b4986F6FEfBC3524d0137);

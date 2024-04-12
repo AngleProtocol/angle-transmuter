@@ -5,9 +5,9 @@ import { stdJson } from "forge-std/StdJson.sol";
 import { console } from "forge-std/console.sol";
 import { Test } from "forge-std/Test.sol";
 
-import "../../scripts/Constants.s.sol";
+import "../Constants.s.sol";
 
-import { Helpers } from "../../scripts/Helpers.s.sol";
+import { Helpers } from "../Helpers.s.sol";
 import "contracts/utils/Errors.sol" as Errors;
 import "contracts/transmuter/Storage.sol" as Storage;
 import { Getters } from "contracts/transmuter/facets/Getters.sol";
@@ -53,7 +53,7 @@ contract UpdateTransmuterFacetsTest is Helpers, Test {
         CHAIN_SOURCE = CHAIN_ETHEREUM;
 
         ethereumFork = vm.createFork(vm.envString("ETH_NODE_URI_MAINNET"), 19425035);
-        vm.selectFork(forkIdentifier[CHAIN_SOURCE]);
+        vm.selectFork(ethereumFork);
 
         governor = _chainToContract(CHAIN_SOURCE, ContractType.Timelock);
         transmuter = ITransmuter(_chainToContract(CHAIN_SOURCE, ContractType.TransmuterAgEUR));
