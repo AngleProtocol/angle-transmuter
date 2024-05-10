@@ -361,11 +361,9 @@ contract Swapper is ISwapper, AccessControlModifiers {
             }
             {
                 // In the mint case, when `!v.isExact`: = `b_{i+1} * (1+(g_i(0)+f_{i+1})/2)`
-                uint256 amountToNextBreakPointNormalizer = v.isExact
-                    ? v.amountToNextBreakPoint
-                    : v.isMint
-                        ? _invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
-                        : _applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
+                uint256 amountToNextBreakPointNormalizer = v.isExact ? v.amountToNextBreakPoint : v.isMint
+                    ? _invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
+                    : _applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
 
                 if (amountToNextBreakPointNormalizer >= amountStable) {
                     int64 midFee;
@@ -435,11 +433,9 @@ contract Swapper is ISwapper, AccessControlModifiers {
                     return amount + _computeFee(quoteType, amountStable, midFee);
                 } else {
                     amountStable -= amountToNextBreakPointNormalizer;
-                    amount += !v.isExact
-                        ? v.amountToNextBreakPoint
-                        : v.isMint
-                            ? _invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
-                            : _applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
+                    amount += !v.isExact ? v.amountToNextBreakPoint : v.isMint
+                        ? _invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
+                        : _applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
                     currentExposure = v.upperExposure * BASE_9;
                     ++i;
                     // Update for the rest of the swaps the stablecoins issued from the asset
@@ -538,13 +534,11 @@ contract Swapper is ISwapper, AccessControlModifiers {
     /// @notice Applies or inverts `fees` to an `amount` based on the type of operation
     function _computeFee(QuoteType quoteType, uint256 amount, int64 fees) internal pure returns (uint256) {
         return
-            quoteType == QuoteType.MintExactInput
-                ? _applyFeeMint(amount, fees)
-                : quoteType == QuoteType.MintExactOutput
-                    ? _invertFeeMint(amount, fees)
-                    : quoteType == QuoteType.BurnExactInput
-                        ? _applyFeeBurn(amount, fees)
-                        : _invertFeeBurn(amount, fees);
+            quoteType == QuoteType.MintExactInput ? _applyFeeMint(amount, fees) : quoteType == QuoteType.MintExactOutput
+                ? _invertFeeMint(amount, fees)
+                : quoteType == QuoteType.BurnExactInput
+                ? _applyFeeBurn(amount, fees)
+                : _invertFeeBurn(amount, fees);
     }
 
     /// @notice Checks whether an operation is a mint operation or not
