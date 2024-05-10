@@ -114,4 +114,7 @@ interface IGetters {
 
     /// @notice Gets the data needed to deal with whitelists for `collateral`
     function getCollateralWhitelistData(address collateral) external view returns (bytes memory);
+
+    /// @notice Returns the stablecoin cap for `collateral`
+    function getStablecoinCap(address collateral) external view returns (uint256);
 }

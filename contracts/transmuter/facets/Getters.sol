@@ -189,4 +189,9 @@ contract Getters is IGetters {
     function getCollateralWhitelistData(address collateral) external view returns (bytes memory) {
         return s.transmuterStorage().collaterals[collateral].whitelistData;
     }
+
+    /// @inheritdoc IGetters
+    function getStablecoinCap(address collateral) external view returns (uint256) {
+        return s.transmuterStorage().collaterals[collateral].stablecoinCap;
+    }
 }

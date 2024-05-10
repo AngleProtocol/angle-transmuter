@@ -30,6 +30,7 @@ library LibSetters {
     event PauseToggled(address indexed collateral, uint256 pausedType, bool isPaused);
     event RedemptionCurveParamsSet(uint64[] xFee, int64[] yFee);
     event ReservesAdjusted(address indexed collateral, uint256 amount, bool increase);
+    event StablecoinCapSet(address indexed collateral, uint256 stablecoinCap);
     event TrustedToggled(address indexed sender, bool isTrusted, TrustedType trustedType);
     event WhitelistStatusToggled(WhitelistType whitelistType, address indexed who, uint256 whitelistStatus);
 
@@ -207,6 +208,14 @@ library LibSetters {
         uint256 whitelistStatus = 1 - ts.isWhitelistedForType[whitelistType][who];
         ts.isWhitelistedForType[whitelistType][who] = whitelistStatus;
         emit WhitelistStatusToggled(whitelistType, who, whitelistStatus);
+    }
+
+    /// @notice Sets the stablecoin cap that can be issued from a collateral
+    function setStablecoinCap(address collateral, uint256 stablecoinCap) internal {
+        Collateral storage collatInfo = s.transmuterStorage().collaterals[collateral];
+        if (collatInfo.decimals == 0) revert NotCollateral();
+        collatInfo.stablecoinCap = stablecoinCap;
+        emit StablecoinCapSet(collateral, stablecoinCap);
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////

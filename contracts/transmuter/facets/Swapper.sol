@@ -151,9 +151,12 @@ contract Swapper is ISwapper, AccessControlModifiers {
 
     /// @inheritdoc ISwapper
     function quoteIn(uint256 amountIn, address tokenIn, address tokenOut) external view returns (uint256 amountOut) {
+        TransmuterStorage storage ts = s.transmuterStorage();
         (bool mint, Collateral storage collatInfo) = _getMintBurn(tokenIn, tokenOut, 0);
-        if (mint) return _quoteMintExactInput(collatInfo, amountIn);
-        else {
+        if (mint) {
+            amountOut = _quoteMintExactInput(collatInfo, amountIn);
+            _checkHardCaps(collatInfo, amountOut, ts.normalizer);
+        } else {
             amountOut = _quoteBurnExactInput(tokenOut, collatInfo, amountIn);
             _checkAmounts(tokenOut, collatInfo, amountOut);
         }
@@ -161,9 +164,12 @@ contract Swapper is ISwapper, AccessControlModifiers {
 
     /// @inheritdoc ISwapper
     function quoteOut(uint256 amountOut, address tokenIn, address tokenOut) external view returns (uint256 amountIn) {
+        TransmuterStorage storage ts = s.transmuterStorage();
         (bool mint, Collateral storage collatInfo) = _getMintBurn(tokenIn, tokenOut, 0);
-        if (mint) return _quoteMintExactOutput(collatInfo, amountOut);
-        else {
+        if (mint) {
+            _checkHardCaps(collatInfo, amountOut, ts.normalizer);
+            return _quoteMintExactOutput(collatInfo, amountOut);
+        } else {
             _checkAmounts(tokenOut, collatInfo, amountOut);
             return _quoteBurnExactOutput(tokenOut, collatInfo, amountOut);
         }
@@ -187,6 +193,7 @@ contract Swapper is ISwapper, AccessControlModifiers {
         if (amountIn > 0 && amountOut > 0) {
             TransmuterStorage storage ts = s.transmuterStorage();
             if (mint) {
+                _checkHardCaps(collatInfo, amountOut, ts.normalizer);
                 uint128 changeAmount = (amountOut.mulDiv(BASE_27, ts.normalizer, Math.Rounding.Up)).toUint128();
                 // The amount of stablecoins issued from a collateral are not stored as absolute variables, but
                 // as variables normalized by a `normalizer`
@@ -354,9 +361,11 @@ contract Swapper is ISwapper, AccessControlModifiers {
             }
             {
                 // In the mint case, when `!v.isExact`: = `b_{i+1} * (1+(g_i(0)+f_{i+1})/2)`
-                uint256 amountToNextBreakPointNormalizer = v.isExact ? v.amountToNextBreakPoint : v.isMint
-                    ? _invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
-                    : _applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
+                uint256 amountToNextBreakPointNormalizer = v.isExact
+                    ? v.amountToNextBreakPoint
+                    : v.isMint
+                        ? _invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
+                        : _applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
 
                 if (amountToNextBreakPointNormalizer >= amountStable) {
                     int64 midFee;
@@ -426,9 +435,11 @@ contract Swapper is ISwapper, AccessControlModifiers {
                     return amount + _computeFee(quoteType, amountStable, midFee);
                 } else {
                     amountStable -= amountToNextBreakPointNormalizer;
-                    amount += !v.isExact ? v.amountToNextBreakPoint : v.isMint
-                        ? _invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
-                        : _applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
+                    amount += !v.isExact
+                        ? v.amountToNextBreakPoint
+                        : v.isMint
+                            ? _invertFeeMint(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2)
+                            : _applyFeeBurn(v.amountToNextBreakPoint, int64(v.upperFees + currentFees) / 2);
                     currentExposure = v.upperExposure * BASE_9;
                     ++i;
                     // Update for the rest of the swaps the stablecoins issued from the asset
@@ -450,6 +461,12 @@ contract Swapper is ISwapper, AccessControlModifiers {
             (collatInfo.isManaged > 0 && LibManager.maxAvailable(collatInfo.managerData.config) < amountOut) ||
             (collatInfo.isManaged == 0 && IERC20(collateral).balanceOf(address(this)) < amountOut)
         ) revert InvalidSwap();
+    }
+
+    /// @notice Checks whether there is enough space left to mint from this collateral
+    function _checkHardCaps(Collateral storage collatInfo, uint256 amount, uint256 normalizer) internal view {
+        if (amount + (collatInfo.normalizedStables * normalizer) / BASE_27 > collatInfo.stablecoinCap)
+            revert InvalidSwap();
     }
 
     /// @notice Checks whether a swap from `tokenIn` to `tokenOut` is a mint or a burn, whether the
@@ -521,11 +538,13 @@ contract Swapper is ISwapper, AccessControlModifiers {
     /// @notice Applies or inverts `fees` to an `amount` based on the type of operation
     function _computeFee(QuoteType quoteType, uint256 amount, int64 fees) internal pure returns (uint256) {
         return
-            quoteType == QuoteType.MintExactInput ? _applyFeeMint(amount, fees) : quoteType == QuoteType.MintExactOutput
-                ? _invertFeeMint(amount, fees)
-                : quoteType == QuoteType.BurnExactInput
-                ? _applyFeeBurn(amount, fees)
-                : _invertFeeBurn(amount, fees);
+            quoteType == QuoteType.MintExactInput
+                ? _applyFeeMint(amount, fees)
+                : quoteType == QuoteType.MintExactOutput
+                    ? _invertFeeMint(amount, fees)
+                    : quoteType == QuoteType.BurnExactInput
+                        ? _applyFeeBurn(amount, fees)
+                        : _invertFeeBurn(amount, fees);
     }
 
     /// @notice Checks whether an operation is a mint operation or not

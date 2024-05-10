@@ -31,4 +31,9 @@ contract SettersGuardian is AccessControlModifiers, ISettersGuardian {
     function toggleWhitelist(WhitelistType whitelistType, address who) external onlyGuardian {
         LibSetters.toggleWhitelist(whitelistType, who);
     }
+
+    /// @inheritdoc ISettersGuardian
+    function setStablecoinCap(address collateral, uint256 stablecoinCap) external onlyGuardian {
+        LibSetters.setStablecoinCap(collateral, stablecoinCap);
+    }
 }

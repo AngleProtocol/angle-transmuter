@@ -59,4 +59,7 @@ interface ISettersGuardian {
 
     /// @notice Changes the whitelist status for a collateral with `whitelistType` for an address `who`
     function toggleWhitelist(WhitelistType whitelistType, address who) external;
+
+    /// @notice Sets the stablecoin cap that can be issued from a `collateral`
+    function setStablecoinCap(address collateral, uint256 stablecoinCap) external;
 }

@@ -207,6 +207,11 @@ contract Test {
         LibSetters.setFees(eurY.collateral, xBurnFee, yBurnFee, false);
         LibSetters.togglePause(eurY.collateral, ActionType.Burn);
 
+        // Set no hard limits on stablecoin minting per collateral
+        LibSetters.setStablecoinCap(eurA.collateral, type(uint256).max);
+        LibSetters.setStablecoinCap(eurB.collateral, type(uint256).max);
+        LibSetters.setStablecoinCap(eurY.collateral, type(uint256).max);
+
         // Redeem
         LibSetters.togglePause(eurA.collateral, ActionType.Redeem);
     }
