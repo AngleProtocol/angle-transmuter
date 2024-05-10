@@ -1353,7 +1353,7 @@ contract Test_Setters_DiamondEtherscan is Fixture {
     }
 }
 
-contract Test_Setters_SetStalecoinCap is Fixture {
+contract Test_Setters_SetStablecoinCap is Fixture {
     event StablecoinCapSet(address indexed collateral, uint256 stablecoinCap);
 
     function test_RevertWhen_NotGuardian() public {
