@@ -18,7 +18,7 @@ contract AdjustYieldExposure is Utils {
         vm.startBroadcast(deployerPrivateKey);
 
         RebalancerFlashloan rebalancer = RebalancerFlashloan(0x22604C0E5633A9810E01c9cb469B23Eee17AC411);
-        rebalancer.adjustYieldExposure(1000000 * 1 ether, 1, USDC, STEAK_USDC, 900000 * 1 ether);
+        rebalancer.adjustYieldExposure(1300000 * 1 ether, 0, USDC, STEAK_USDC, 1200000 * 1 ether);
 
         vm.stopBroadcast();
     }
