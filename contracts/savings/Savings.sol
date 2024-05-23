@@ -32,7 +32,7 @@ contract Savings is BaseSavings {
     /// @notice Checks whether the address is trusted to set the rate
     mapping(address => uint256) public isTrustedUpdater;
 
-    uint256[49] private __gap;
+    uint256[48] private __gap;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         EVENTS                                                      
