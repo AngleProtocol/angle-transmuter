@@ -30,7 +30,8 @@ struct CollatParams {
 
 /// @title Harvester
 /// @author Angle Labs, Inc.
-/// @dev Contract for anyone to permissionlessly adjust the reserves of Angle Transmuter through the RebalancerFlashloan contract
+/// @dev Contract for anyone to permissionlessly adjust the reserves of Angle Transmuter through
+/// the RebalancerFlashloan contract
 contract Harvester is AccessControl {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
