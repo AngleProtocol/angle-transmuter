@@ -10,7 +10,7 @@ Transmuter is an autonomous and modular price stability module for decentralized
 - It is conceived as a basket of different assets (normally stablecoins) backing a stablecoin and comes with guarantees on the maximum exposure the stablecoin can have to each asset in the basket.
 - A stablecoin issued through the Transmuter system can be minted at oracle value from any of the assets with adaptive fees, and it can be burnt for any of the assets in the backing with variable fees as well. It can also be redeemed at any time against a proportional amount of each asset in the backing.
 
-Transmuter is compatible with other common mechanisms often used to issue stablecoins like collateralized-debt position models. It should notably be used as a standalone module within the Angle Protocol for agEUR in parallel with the Borrowing module.
+Transmuter is compatible with other common mechanisms often used to issue stablecoins like collateralized-debt position models. It is notably used as a standalone module within the Angle Protocol for EURA in parallel with the Borrowing module.
 
 ---
 
@@ -69,7 +69,8 @@ For contracts deployed for the Angle Protocol, a bug bounty is open on [Immunefi
 
 ## Deployment Addresses 🚦
 
-- Transmuter for agEUR on Ethereum: [0x00253582b2a3FE112feEC532221d9708c64cEFAb](https://etherscan.io/address/0x00253582b2a3FE112feEC532221d9708c64cEFAb)
+- Transmuter for EURA on Ethereum: [0x00253582b2a3FE112feEC532221d9708c64cEFAb](https://etherscan.io/address/0x00253582b2a3FE112feEC532221d9708c64cEFAb)
+- Transmuter for USDA on Ethereum: [0x222222fD79264BBE280b4986F6FEfBC3524d0137](https://etherscan.io/address/0x222222fD79264BBE280b4986F6FEfBC3524d0137)
 
 ---
 

@@ -10,7 +10,7 @@ import { AccessControl, IAccessControlManager } from "contracts/utils/AccessCont
 import { MockTokenPermit } from "test/mock/MockTokenPermit.sol";
 import "oz/interfaces/IERC20.sol";
 import "oz-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-import "borrow/external/ProxyAdmin.sol";
+import "oz/proxy/transparent/ProxyAdmin.sol";
 
 contract DeploySavingsGnosis is Utils {
     using strings for *;
