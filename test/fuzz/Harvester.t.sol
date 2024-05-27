@@ -169,14 +169,14 @@ contract HarvesterTest is Fixture, FunctionUtils {
             targetExposure + 10,
             minExposureYieldAsset - 1,
             maxExposureYieldAsset + 1,
-            1
+            0
         );
         (address vault, uint64 target, uint64 maxi, uint64 mini, uint64 overrideExp) = harvester.collateralData(collat);
         assertEq(vault, address(_saving));
         assertEq(target, targetExposure + 10);
         assertEq(maxi, maxExposureYieldAsset + 1);
         assertEq(mini, minExposureYieldAsset - 1);
-        assertEq(overrideExp, 1);
+        assertEq(overrideExp, 2);
 
         harvester.setCollateralData(
             address(_saving),
@@ -190,7 +190,7 @@ contract HarvesterTest is Fixture, FunctionUtils {
         assertEq(target, targetExposure + 10);
         assertEq(maxi, 1e9);
         assertEq(mini, 0);
-        assertEq(overrideExp, 0);
+        assertEq(overrideExp, 2);
 
         vm.stopPrank();
     }

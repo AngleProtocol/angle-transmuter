@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.23;
 
 import { IERC20 } from "oz/interfaces/IERC20.sol";
 import { IERC4626 } from "interfaces/external/IERC4626.sol";
@@ -25,6 +25,7 @@ struct CollatParams {
     // Minimum exposure within the Transmuter to the vault asset
     uint64 minExposureYieldAsset;
     // Whether limit exposures should be overriden or read onchain through the Transmuter
+    // This value should be 1 to override exposures or 2 if these shouldn't be overriden
     uint64 overrideExposures;
 }
 
@@ -139,7 +140,7 @@ contract Harvester is AccessControl {
 
     function updateLimitExposuresYieldAsset(address collateral) external {
         CollatParams storage collatInfo = collateralData[collateral];
-        if (collatInfo.overrideExposures == 0) _updateLimitExposuresYieldAsset(collatInfo);
+        if (collatInfo.overrideExposures == 2) _updateLimitExposuresYieldAsset(collatInfo);
     }
 
     function _setMaxSlippage(uint96 _maxSlippage) internal {
@@ -165,6 +166,7 @@ contract Harvester is AccessControl {
             collatInfo.maxExposureYieldAsset = maxExposureYieldAsset;
             collatInfo.minExposureYieldAsset = minExposureYieldAsset;
         } else {
+            collatInfo.overrideExposures = 2;
             _updateLimitExposuresYieldAsset(collatInfo);
         }
     }
