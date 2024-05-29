@@ -82,6 +82,7 @@ contract HarvesterUSDATest is Test {
         assertGt(fromSTEAK, fromSTEAK2);
         assertGt(total, total2);
         assertApproxEqRel((fromUSDC2 * 1e9) / total2, targetExposure, 100 * BPS);
+        assertApproxEqRel(fromUSDC2 * 1e9, targetExposure * total, 100 * BPS);
 
         harvester.harvest(USDC);
         (uint256 fromUSDC3, uint256 total3) = transmuter.getIssuedByCollateral(address(USDC));
@@ -90,6 +91,7 @@ contract HarvesterUSDATest is Test {
         assertGt(fromSTEAK2, fromSTEAK3);
         assertGt(total2, total3);
         assertGt((fromUSDC3 * 1e9) / total3, (fromUSDC2 * 1e9) / total2);
+        assertApproxEqRel((fromUSDC3 * 1e9) / total3, (fromUSDC2 * 1e9) / total2, 10 * BPS);
         assertGt(targetExposure, (fromUSDC3 * 1e9) / total3);
     }
 

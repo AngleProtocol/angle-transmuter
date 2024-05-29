@@ -10,8 +10,8 @@ import { IERC20Metadata } from "oz/interfaces/IERC20Metadata.sol";
 import { TransparentUpgradeableProxy } from "oz/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 contract SavingsNameableUpgradeTest is Test, Helper {
-    uint256 constant CHAIN = CHAIN_ETHEREUM;
-    string constant CHAIN_NAME = "mainnet";
+    uint256 constant CHAIN = CHAIN_POLYGONZKEVM;
+    string constant CHAIN_NAME = "polygonzkevm";
 
     address public savings;
     address public savingsImpl;
@@ -42,13 +42,14 @@ contract SavingsNameableUpgradeTest is Test, Helper {
         guardian = _chainToContract(CHAIN, ContractType.GuardianMultisig);
 
         // TODO: to be removed when chainToContract works
-        savings = 0x0022228a2cc5E7eF0274A7Baa600d44da5aB5776;
+        // savings = 0x0022228a2cc5E7eF0274A7Baa600d44da5aB5776;
+        savings = 0x004626A008B1aCdC4c74ab51644093b155e59A23;
         proxyAdmin = ProxyAdmin(0x1D941EF0D3Bba4ad67DBfBCeE5262F4CEE53A32b);
-        governor = 0xdC4e6DFe07EFCa50a197DF15D9200883eF4Eb1c8;
-        guardian = 0x0C2553e4B9dFA9f83b1A6D3EAB96c4bAaB42d430;
+        governor = 0x2a42Aeec7519883713272ec10FE44461a2Dfe354;
+        guardian = 0x10DeF8a92c51C8082087356186a1485301078DCd;
 
-        assertEq(IERC20Metadata(savings).name(), "Staked USDA");
-        assertEq(IERC20Metadata(savings).symbol(), "stUSD");
+        assertEq(IERC20Metadata(savings).name(), "Staked EURA");
+        assertEq(IERC20Metadata(savings).symbol(), "stEUR");
         rate = SavingsNameable(savings).rate();
         lastUpdate = SavingsNameable(savings).lastUpdate();
         paused = SavingsNameable(savings).paused();
@@ -60,19 +61,19 @@ contract SavingsNameableUpgradeTest is Test, Helper {
         previewWithdraw = SavingsNameable(savings).previewWithdraw(BASE_18);
         previewRedeem = SavingsNameable(savings).previewRedeem(BASE_18);
 
-        savingsImpl = address(new SavingsNameable());
-        _upgradeContract("Staked USDA", "stUSD");
+        // savingsImpl = address(new SavingsNameable());
+        savingsImpl = 0x2C28Bd22aB59341892e85aD76d159d127c4B03FA;
     }
 
     function _upgradeContract(string memory name, string memory symbol) internal {
-        if (CHAIN == CHAIN_BASE || CHAIN == CHAIN_POLYGONZKEVM) vm.prank(guardian, guardian);
-        else vm.prank(governor, governor);
+        vm.prank(governor, governor);
         proxyAdmin.upgrade(TransparentUpgradeableProxy(payable(savings)), savingsImpl);
         vm.prank(governor, governor);
         SavingsNameable(savings).setNameAndSymbol(name, symbol);
     }
 
     function test_UpdatedValues() public {
+        _upgradeContract("Staked USDA", "stUSD");
         assertEq(IERC20Metadata(savings).name(), "Staked USDA");
         assertEq(IERC20Metadata(savings).symbol(), "stUSD");
         assertEq(SavingsNameable(savings).previewRedeem(BASE_18), previewRedeem);

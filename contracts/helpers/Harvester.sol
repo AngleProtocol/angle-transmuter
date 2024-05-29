@@ -71,11 +71,14 @@ contract Harvester is AccessControl {
                                                         HARVEST                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Invests or divests from the yield asset associated to `collateral`
+    /// @notice Invests or divests from the yield asset associated to `collateral` based on the current exposure to this
+    /// collateral
     /// @dev This transaction either reduces the exposure to `collateral` in the Transmuter or frees up some collateral
-    /// that can then be used for people looking to burn
+    /// that can then be used for people looking to burn stablecoins
     /// @dev Due to potential transaction fees within the Transmuter, this function doesn't exactly bring `collateral`
     /// to the target exposure
+    /// @dev The `harvest` possibility shouldn't be implemented for assets with a manipulable price (like ERC4626)
+    /// contracts on which the `previewRedeem` values can be easily moved by creating a loss or a profit
     function harvest(address collateral) external {
         (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) = TRANSMUTER.getIssuedByCollateral(collateral);
         CollatParams memory collatInfo = collateralData[collateral];
@@ -124,6 +127,8 @@ contract Harvester is AccessControl {
         rebalancer = RebalancerFlashloan(_newRebalancer);
     }
 
+    /// @dev This function shouldn't be called for a vault (e.g an ERC4626 token) which price can be easily moved
+    /// by creating a loss or a profit, at the risk of depleting the reserves available in the Rebalancer
     function setCollateralData(
         address vault,
         uint64 targetExposure,

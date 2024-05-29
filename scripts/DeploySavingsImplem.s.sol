@@ -35,10 +35,9 @@ contract DeploySavingsImplem is Utils {
         address computedAddress = create2Factory.findCreate2Address(salt, initCode);
         console.log("Supposed to deploy: %s", computedAddress);
         if (computedAddress != 0x2C28Bd22aB59341892e85aD76d159d127c4B03FA) revert();
-        /*
+
         address saving = create2Factory.safeCreate2(salt, initCode);
         console.log("Savings implementation deployed at: ", address(saving));
-        */
 
         vm.stopBroadcast();
     }
