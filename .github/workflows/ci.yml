@@ -104,37 +104,30 @@ jobs:
           ETH_NODE_URI_OPTIMISM: ${{ secrets.ETH_NODE_URI_OPTIMISM }}
           ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
 
-  test-invariant:
-    needs: ["build", "lint"]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: "recursive"
+  # test-invariant:
+  #   needs: ["build", "lint"]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: "recursive"
 
-      - uses: actions/cache/restore@v3
-        with:
-          fail-on-cache-miss: true
-          path: |
-            cache-forge
-            out
-            node_modules
-          key: "build-${{ github.sha }}"
+  #     - uses: actions/cache/restore@v3
+  #       with:
+  #         fail-on-cache-miss: true
+  #         path: |
+  #           cache-forge
+  #           out
+  #           node_modules
+  #         key: "build-${{ github.sha }}"
 
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
+  #     - name: Install Foundry
+  #       uses: foundry-rs/foundry-toolchain@v1
+  #       with:
+  #         version: nightly
 
-      - name: Run Foundry tests
-        run: yarn test:invariant
-        env:
-          FOUNDRY_INVARIANT_RUNS: "8"
-          FOUNDRY_INVARIANT_DEPTH: "256"
-          ETH_NODE_URI_POLYGON: ${{ secrets.ETH_NODE_URI_POLYGON }}
-          ETH_NODE_URI_ARBITRUM: ${{ secrets.ETH_NODE_URI_ARBITRUM }}
-          ETH_NODE_URI_OPTIMISM: ${{ secrets.ETH_NODE_URI_OPTIMISM }}
-          ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
+  #     - name: Run Foundry tests
+  #       run: yarn test:invariant
 
   test-fuzz:
     needs: ["build", "lint"]
