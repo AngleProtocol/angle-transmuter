@@ -10,8 +10,8 @@ import { IERC20Metadata } from "oz/interfaces/IERC20Metadata.sol";
 import { TransparentUpgradeableProxy } from "oz/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 contract SavingsNameableUpgradeTest is Test, Helper {
-    uint256 constant CHAIN = CHAIN_BASE;
-    string constant CHAIN_NAME = "base";
+    uint256 constant CHAIN = CHAIN_ETHEREUM;
+    string constant CHAIN_NAME = "mainnet";
 
     address public savings;
     address public savingsImpl;
@@ -44,9 +44,9 @@ contract SavingsNameableUpgradeTest is Test, Helper {
         // TODO: to be removed when chainToContract works
         // savings = 0x0022228a2cc5E7eF0274A7Baa600d44da5aB5776;
         savings = 0x004626A008B1aCdC4c74ab51644093b155e59A23;
-        proxyAdmin = ProxyAdmin(0x31429d1856aD1377A8A0079410B297e1a9e214c2);
-        governor = 0x7DF37fc774843b678f586D55483819605228a0ae;
-        guardian = 0xe4BB74804edf5280c9203f034036f7CB15196078;
+        proxyAdmin = ProxyAdmin(0x1D941EF0D3Bba4ad67DBfBCeE5262F4CEE53A32b);
+        governor = 0xdC4e6DFe07EFCa50a197DF15D9200883eF4Eb1c8;
+        guardian = 0x0C2553e4B9dFA9f83b1A6D3EAB96c4bAaB42d430;
 
         assertEq(IERC20Metadata(savings).name(), "Staked EURA");
         assertEq(IERC20Metadata(savings).symbol(), "stEUR");
