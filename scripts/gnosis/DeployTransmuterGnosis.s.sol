@@ -10,7 +10,7 @@ import { CollateralSetupProd, FakeGnosis } from "contracts/transmuter/configs/Fa
 import "contracts/transmuter/Storage.sol" as Storage;
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 import { MockTokenPermit } from "test/mock/MockTokenPermit.sol";
-import { MockCoreBorrow } from "borrow/mock/MockCoreBorrow.sol";
+import { MockAccessControlManager } from "test/mock/MockAccessControlManager.sol";
 import { DummyDiamondImplementation } from "../generated/DummyDiamondImplementation.sol";
 import { MockChainlinkOracle } from "test/mock/MockChainlinkOracle.sol";
 
@@ -30,7 +30,7 @@ contract DeployTransmuterGnosis is TransmuterDeploymentHelper {
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
         // Deploy fakes Core borrow, agEUR, and collaterals
 
-        MockCoreBorrow coreBorrow = new MockCoreBorrow();
+        MockAccessControlManager coreBorrow = new MockAccessControlManager();
         console.log("CoreBorrow deployed at: %s", address(coreBorrow));
         coreBorrow.toggleGovernor(deployer);
 

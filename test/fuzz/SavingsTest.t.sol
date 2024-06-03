@@ -16,6 +16,7 @@ contract SavingsTest is Fixture, FunctionUtils {
 
     event MaxRateUpdated(uint256 newMaxRate);
     event RateUpdated(uint256 newRate);
+    event ToggledTrusted(address indexed trustedAddress, uint256 trustedStatus);
 
     uint256 internal constant _initDeposit = 1e12;
     uint256 internal constant _minAmount = 10 ** 10;
@@ -157,6 +158,28 @@ contract SavingsTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
+    function test_ToggleTrusted() public {
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        _saving.toggleTrusted(alice);
+        vm.startPrank(governor);
+        vm.expectEmit(address(_saving));
+        emit ToggledTrusted(alice, 1);
+        _saving.toggleTrusted(alice);
+        assertEq(_saving.isTrustedUpdater(alice), 1);
+
+        vm.expectEmit(address(_saving));
+        emit ToggledTrusted(address(_saving), 1);
+        _saving.toggleTrusted(address(_saving));
+        assertEq(_saving.isTrustedUpdater(address(_saving)), 1);
+
+        vm.expectEmit(address(_saving));
+        emit ToggledTrusted(alice, 0);
+        _saving.toggleTrusted(alice);
+        assertEq(_saving.isTrustedUpdater(alice), 0);
+        assertEq(_saving.isTrustedUpdater(address(_saving)), 1);
+        vm.stopPrank();
+    }
+
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                          APRS                                                       
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
@@ -184,6 +207,46 @@ contract SavingsTest is Fixture, FunctionUtils {
         );
     }
 
+    function testFuzz_SetRateWithTrusted(uint256 rate) public {
+        // we need to decrease to a smaller maxRate = 37% otherwise the approximation is way off
+        // even currently we can not achieve a 0.1% precision
+        rate = bound(rate, _minRate, _maxRate / 10);
+        vm.prank(governor);
+        vm.expectEmit(address(_saving));
+        emit ToggledTrusted(alice, 1);
+        _saving.toggleTrusted(alice);
+        vm.stopPrank();
+
+        vm.prank(alice);
+        vm.expectEmit(address(_saving));
+        emit RateUpdated(rate);
+        _saving.setRate(uint208(rate));
+
+        assertEq(_saving.rate(), rate);
+        uint256 estimatedAPR = (BASE_18 * unwrap(powu(ud(BASE_18 + rate / BASE_9), 365 days))) /
+            unwrap(powu(ud(BASE_18), 365 days)) -
+            BASE_18;
+
+        _assertApproxEqRelDecimalWithTolerance(
+            _saving.estimatedAPR(),
+            estimatedAPR,
+            estimatedAPR,
+            _MAX_PERCENTAGE_DEVIATION * 5000,
+            18
+        );
+
+        vm.prank(governor);
+        vm.expectEmit(address(_saving));
+        emit ToggledTrusted(alice, 0);
+        _saving.toggleTrusted(alice);
+        vm.stopPrank();
+
+        vm.prank(alice);
+        vm.expectRevert(Errors.NotTrusted.selector);
+        _saving.setRate(uint208(rate));
+        vm.stopPrank();
+    }
+
     function testFuzz_SetMaxRate(uint256 rate) public {
         rate = bound(rate, _minRate, _maxRate);
         vm.prank(governor);
@@ -208,17 +271,17 @@ contract SavingsTest is Fixture, FunctionUtils {
         _saving.setMaxRate(uint208(rate - 1));
     }
 
-    function test_RevertWhen_SetRateNotGovernorOrGuardian(uint256 rate) public {
+    function test_RevertWhen_SetRateNotTrusted(uint256 rate) public {
         rate = bound(rate, _minRate, _maxRate / 10 - 1);
         vm.prank(governor);
         _saving.setRate(uint208(rate));
 
         assertEq(_saving.rate(), rate);
 
-        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        vm.expectRevert(Errors.NotTrusted.selector);
         _saving.setRate(uint208(rate + 1));
 
-        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        vm.expectRevert(Errors.NotTrusted.selector);
         _saving.setRate(uint208(rate - 1));
 
         vm.prank(guardian);
@@ -226,7 +289,7 @@ contract SavingsTest is Fixture, FunctionUtils {
 
         assertEq(_saving.rate(), rate - 1);
 
-        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        vm.expectRevert(Errors.NotTrusted.selector);
         _saving.setRate(uint208(0));
 
         vm.prank(guardian);

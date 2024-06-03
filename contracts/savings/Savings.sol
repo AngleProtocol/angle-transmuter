@@ -29,7 +29,10 @@ contract Savings is BaseSavings {
     /// to a level inferior to the current rate
     uint256 public maxRate;
 
-    uint256[49] private __gap;
+    /// @notice Checks whether the address is trusted to set the rate
+    mapping(address => uint256) public isTrustedUpdater;
+
+    uint256[48] private __gap;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         EVENTS                                                      
@@ -38,6 +41,7 @@ contract Savings is BaseSavings {
     event Accrued(uint256 interest);
     event MaxRateUpdated(uint256 newMaxRate);
     event ToggledPause(uint128 pauseStatus);
+    event ToggledTrusted(address indexed trustedAddress, uint256 trustedStatus);
     event RateUpdated(uint256 newRate);
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -64,6 +68,7 @@ contract Savings is BaseSavings {
         if (address(_accessControlManager) == address(0)) revert ZeroAddress();
         __ERC4626_init(asset_);
         __ERC20_init(name_, symbol_);
+        _setNameAndSymbol(name_, symbol_);
         accessControlManager = _accessControlManager;
         _deposit(msg.sender, address(this), 10 ** (asset_.decimals()) / divizer, BASE_18 / divizer);
     }
@@ -75,6 +80,13 @@ contract Savings is BaseSavings {
     /// @notice Checks whether the whole contract is paused or not
     modifier whenNotPaused() {
         if (paused > 0) revert Paused();
+        _;
+    }
+
+    /// @notice Checks whether the sender is allowed to update the rate
+    modifier onlyTrustedOrGuardian() {
+        if (isTrustedUpdater[msg.sender] == 0 && !accessControlManager.isGovernorOrGuardian(msg.sender))
+            revert NotTrusted();
         _;
     }
 
@@ -203,6 +215,8 @@ contract Savings is BaseSavings {
                 : shares.mulDiv(newTotalAssets, supply, rounding);
     }
 
+    function _setNameAndSymbol(string memory newName, string memory newSymbol) internal virtual {}
+
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         HELPERS                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
@@ -229,10 +243,17 @@ contract Savings is BaseSavings {
         emit ToggledPause(pauseStatus);
     }
 
+    /// @notice Toggles an address
+    function toggleTrusted(address trustedAddress) external onlyGuardian {
+        uint256 trustedStatus = 1 - isTrustedUpdater[trustedAddress];
+        isTrustedUpdater[trustedAddress] = trustedStatus;
+        emit ToggledTrusted(trustedAddress, trustedStatus);
+    }
+
     /// @notice Updates the inflation rate for depositing `asset` in this contract
-    /// @dev Any `rate` can be set by the guardian provided that it is inferior to the `maxRate` settable
-    /// by a governor address
-    function setRate(uint208 newRate) external onlyGuardian {
+    /// @dev Any `rate` can be set by the guardian or by a trusted address provided that it is inferior to
+    ///the `maxRate` settable by a governor address
+    function setRate(uint208 newRate) external onlyTrustedOrGuardian {
         if (newRate > maxRate) revert InvalidRate();
         _accrue();
         rate = newRate;

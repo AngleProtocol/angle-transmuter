@@ -103,6 +103,7 @@ jobs:
           ETH_NODE_URI_ARBITRUM: ${{ secrets.ETH_NODE_URI_ARBITRUM }}
           ETH_NODE_URI_OPTIMISM: ${{ secrets.ETH_NODE_URI_OPTIMISM }}
           ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
+          ETH_NODE_URI_BASE: ${{ secrets.ETH_NODE_URI_BASE }}
 
   # test-invariant:
   #   needs: ["build", "lint"]
@@ -128,6 +129,7 @@ jobs:
 
   #     - name: Run Foundry tests
   #       run: yarn test:invariant
+  #      TODO: when uncommenting: add env back
 
   test-fuzz:
     needs: ["build", "lint"]
@@ -159,6 +161,7 @@ jobs:
           ETH_NODE_URI_ARBITRUM: ${{ secrets.ETH_NODE_URI_ARBITRUM }}
           ETH_NODE_URI_OPTIMISM: ${{ secrets.ETH_NODE_URI_OPTIMISM }}
           ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
+          ETH_NODE_URI_BASE: ${{ secrets.ETH_NODE_URI_BASE }}
 
   coverage:
     needs: ["build", "lint"]
@@ -190,6 +193,7 @@ jobs:
           ETH_NODE_URI_ARBITRUM: ${{ secrets.ETH_NODE_URI_ARBITRUM }}
           ETH_NODE_URI_OPTIMISM: ${{ secrets.ETH_NODE_URI_OPTIMISM }}
           ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
+          ETH_NODE_URI_BASE: ${{ secrets.ETH_NODE_URI_BASE }}
 
       - name: "Upload coverage report to Codecov"
         uses: "codecov/codecov-action@v3"
