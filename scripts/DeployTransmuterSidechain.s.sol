@@ -32,10 +32,9 @@ contract DeployTransmuterSidechain is TransmuterDeploymentHelper, Helpers {
         vm.startBroadcast(deployerPrivateKey);
 
         // TODO
-        uint256 chain = CHAIN_ARBITRUM;
+        uint256 chain = CHAIN_BASE;
         uint256 hardCap = 1000 ether;
-        // address core = _chainToContract(chain, ContractType.CoreBorrow);
-        address core = 0xb38Ba207d02f07653a37b53C1C0a250B04F97e82;
+        address core = _chainToContract(chain, ContractType.CoreBorrow);
         address agToken = _chainToContract(chain, ContractType.AgUSD);
         StablecoinType fiat = StablecoinType.USD;
 

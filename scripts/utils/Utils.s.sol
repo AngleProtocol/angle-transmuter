@@ -6,7 +6,7 @@ import { StdAssertions } from "forge-std/Test.sol";
 import "stringutils/strings.sol";
 
 import { CommonUtils } from "utils/src/CommonUtils.sol";
-import { ContractType, StablecoinType } from "utils/src/Constants.sol";
+import { ContractType } from "utils/src/Constants.sol";
 
 contract Utils is Script, CommonUtils {
     using strings for *;
