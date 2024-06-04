@@ -96,7 +96,6 @@ contract TransmuterDeploymentHelper is Utils {
         }
 
         bytes memory initCode = abi.encodePacked(type(DiamondProxy).creationCode, abi.encode(cut, _init, _calldata));
-        console.logBytes(initCode);
 
         // Deploy diamond
         string memory jsonVanity = vm.readFile(JSON_VANITY_PATH);

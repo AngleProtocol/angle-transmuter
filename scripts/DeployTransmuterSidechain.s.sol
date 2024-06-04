@@ -33,7 +33,10 @@ contract DeployTransmuterSidechain is TransmuterDeploymentHelper, Helpers {
 
         // TODO
         uint256 chain = CHAIN_ARBITRUM;
-        uint256 hardCap = 2_000_000 ether;
+        uint256 hardCap = 1000 ether;
+        // address core = _chainToContract(chain, ContractType.CoreBorrow);
+        address core = 0xb38Ba207d02f07653a37b53C1C0a250B04F97e82;
+        address agToken = _chainToContract(chain, ContractType.AgUSD);
         StablecoinType fiat = StablecoinType.USD;
 
         // Config
@@ -45,8 +48,8 @@ contract DeployTransmuterSidechain is TransmuterDeploymentHelper, Helpers {
             config,
             abi.encodeWithSelector(
                 ProductionSidechain.initialize.selector,
-                _chainToContract(chain, ContractType.CoreBorrow),
-                _chainToContract(chain, ContractType.AgEUR),
+                core,
+                agToken,
                 liquidStablecoin,
                 oracleLiquidStablecoin,
                 hardCap,
@@ -54,7 +57,7 @@ contract DeployTransmuterSidechain is TransmuterDeploymentHelper, Helpers {
             )
         );
 
-        console.log("Transmuter deployed at: %s", address(transmuter));
+        console.log("Transmuter on chain %s deployed at: %s", chain, address(transmuter));
         vm.stopBroadcast();
     }
 }

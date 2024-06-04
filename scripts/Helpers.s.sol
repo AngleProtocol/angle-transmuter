@@ -118,8 +118,8 @@ contract Helpers is Utils {
         }
         if (chain == CHAIN_GNOSIS) {
             if (fiat == StablecoinType.USD)
-                revert("chain not supported");
-                // EURe
+                return (0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83, 0x26C31ac71010aF62E6B486D1132E266D6298857D);
+            // EURe
             else return (address(0xcB444e90D8198415266c6a2724b7900fb12FC56E), address(0));
         }
         if (chain == CHAIN_OPTIMISM) {
