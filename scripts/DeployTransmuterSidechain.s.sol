@@ -19,7 +19,7 @@ import { Redeemer } from "contracts/transmuter/facets/Redeemer.sol";
 import { RewardHandler } from "contracts/transmuter/facets/RewardHandler.sol";
 import { SettersGovernor } from "contracts/transmuter/facets/SettersGovernor.sol";
 import { SettersGuardian } from "contracts/transmuter/facets/SettersGuardian.sol";
-import { DummyDiamondImplementation } from "./generated/DummyDiamondImplementation.sol";
+import { DummyDiamondImplementation } from "./generated/DummyDiamondImplementationSidechain.sol";
 import { Swapper } from "contracts/transmuter/facets/Swapper.sol";
 import { ITransmuter } from "interfaces/ITransmuter.sol";
 import { Helpers } from "./Helpers.s.sol";
