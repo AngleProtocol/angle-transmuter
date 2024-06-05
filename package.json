@@ -14,7 +14,7 @@
     "gas": "FOUNDRY_PROFILE=dev yarn test --gas-report",
     "fork": "bash helpers/fork.sh",
     "run": "docker run -it --rm -v $(pwd):/app -w /app ghcr.io/foundry-rs/foundry sh",
-    "script:fork": "FOUNDRY_PROFILE=dev forge script --skip test --fork-url fork --broadcast -vvvv",
+    "script:fork": "forge script --skip test --fork-url fork --broadcast -vvvv",
     "test:unit": "forge test -vvvv --gas-report --match-path \"test/units/**/*.sol\"",
     "test:invariant": "forge test -vvv --gas-report --match-path \"test/invariants/**/*.sol\"",
     "test:fuzz": "forge test -vvv --gas-report --match-path \"test/fuzz/**/*.sol\"",
@@ -45,6 +45,6 @@
     "solhint-plugin-prettier": "^0.0.5"
   },
   "dependencies": {
-    "@angleprotocol/sdk": "^0.37.1"
+    "@angleprotocol/sdk": "^2.9.0"
   }
 }
