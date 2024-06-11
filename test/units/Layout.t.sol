@@ -63,6 +63,7 @@ contract Test_Layout is Fixture {
             uint216 normalizedStables,
             bytes memory oracleConfig,
             bytes memory whitelistData,
+            ,
 
         ) = layout.collaterals(collateralList[0]);
 

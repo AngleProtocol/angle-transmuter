@@ -83,6 +83,10 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
         addFacetNames.push("SettersGovernor");
         addFacetAddressList.push(settersGovernor);
 
+        addFacetNames.push("SettersGuardian");
+        address settersGuardian = address(new SettersGuardian());
+        addFacetAddressList.push(settersGuardian);
+
         string memory jsonReplace = vm.readFile(JSON_SELECTOR_PATH_REPLACE);
         {
             // Build appropriate payload
@@ -307,6 +311,11 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
 
         transmuter.toggleTrusted(NEW_DEPLOYER, Storage.TrustedType.Seller);
         transmuter.toggleTrusted(NEW_KEEPER, Storage.TrustedType.Seller);
+
+        // Set no hard limits on stablecoin minting per collateral
+        transmuter.setStablecoinCap(USDC, type(uint256).max);
+        transmuter.setStablecoinCap(BIB01, type(uint256).max);
+        transmuter.setStablecoinCap(STEAK_USDC, type(uint256).max);
 
         vm.stopPrank();
     }

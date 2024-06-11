@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 /**
  * This is a generated dummy diamond implementation for compatibility with
  * etherscan. For full contract implementation, check out the diamond on louper:
- * https://louper.dev/diamond/0x222222fD79264BBE280b4986F6FEfBC3524d0137?network=mainnet
+ * https://louper.dev/diamond/0xD253b62108d1831aEd298Fc2434A5A8e4E418053?network=arbitrum
  */
 
 contract DummyDiamondImplementation {
@@ -19,7 +19,7 @@ contract DummyDiamondImplementation {
         bytes4[] functionSelectors;
     }
 
-    struct Tuple3550792 {
+    struct Tuple522902 {
         uint8 isManaged;
         uint8 isMintLive;
         uint8 isBurnLive;
@@ -33,6 +33,7 @@ contract DummyDiamondImplementation {
         bytes oracleConfig;
         bytes whitelistData;
         Tuple5479340 managerData;
+        uint256 stablecoinCap;
     }
 
     struct Tuple5479340 {
@@ -64,7 +65,7 @@ contract DummyDiamondImplementation {
 
     function getCollateralDecimals(address collateral) external view returns (uint8) {}
 
-    function getCollateralInfo(address collateral) external view returns (Tuple3550792 memory) {}
+    function getCollateralInfo(address collateral) external view returns (Tuple522902 memory) {}
 
     function getCollateralList() external view returns (address[] memory) {}
 
@@ -105,6 +106,8 @@ contract DummyDiamondImplementation {
         view
         returns (uint64[] memory xRedemptionCurve, int64[] memory yRedemptionCurve)
     {}
+
+    function getStablecoinCap(address collateral) external view returns (uint256) {}
 
     function getTotalIssued() external view returns (uint256) {}
 
@@ -149,6 +152,8 @@ contract DummyDiamondImplementation {
     function setFees(address collateral, uint64[] memory xFee, int64[] memory yFee, bool mint) external {}
 
     function setRedemptionCurveParams(uint64[] memory xFee, int64[] memory yFee) external {}
+
+    function setStablecoinCap(address collateral, uint256 stablecoinCap) external {}
 
     function togglePause(address collateral, uint8 pausedType) external {}
 

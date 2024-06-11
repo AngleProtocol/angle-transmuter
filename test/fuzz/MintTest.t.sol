@@ -26,6 +26,7 @@ contract MintTest is Fixture, FunctionUtils {
     address[] internal _collaterals;
     AggregatorV3Interface[] internal _oracles;
     uint256[] internal _maxTokenAmount;
+    uint256 internal _maxAgTokenAmount;
 
     function setUp() public override {
         super.setUp();
@@ -62,6 +63,7 @@ contract MintTest is Fixture, FunctionUtils {
         _maxTokenAmount.push(_maxAmountWithoutDecimals * 10 ** IERC20Metadata(_collaterals[0]).decimals());
         _maxTokenAmount.push(_maxAmountWithoutDecimals * 10 ** IERC20Metadata(_collaterals[1]).decimals());
         _maxTokenAmount.push(_maxAmountWithoutDecimals * 10 ** IERC20Metadata(_collaterals[2]).decimals());
+        _maxAgTokenAmount = _maxAmountWithoutDecimals * 10 ** 18;
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -102,6 +104,55 @@ contract MintTest is Fixture, FunctionUtils {
             sweeper,
             amounts,
             transferProportions[1]
+        );
+        for (uint256 i; i < collateralMintedStables2.length; i++) {
+            computedTotalStable += collateralMintedStables2[i];
+            (uint256 stablecoinsFromCollateral, ) = transmuter.getIssuedByCollateral(address(_collaterals[i]));
+            assertEq(collateralMintedStables[i] + collateralMintedStables2[i], stablecoinsFromCollateral);
+        }
+
+        assertEq(computedTotalStable, agToken.totalSupply());
+        assertEq(mintedStables + mintedStables2, agToken.totalSupply());
+
+        (, totalStablecoins) = transmuter.getIssuedByCollateral(address(_collaterals[0]));
+        assertEq(computedTotalStable, totalStablecoins);
+    }
+
+    function testFuzz_MintCapReached(
+        uint256[3] memory initialAmounts,
+        uint256[2] memory transferProportions,
+        uint256[3] memory amounts,
+        uint256[3] memory latestOracleValue,
+        uint256[3] memory stablecoinCaps
+    ) public {
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables, uint256[] memory collateralMintedStables) = _loadReserves(
+            charlie,
+            sweeper,
+            initialAmounts,
+            transferProportions[0]
+        );
+
+        uint256 computedTotalStable;
+        for (uint256 i; i < collateralMintedStables.length; i++) {
+            computedTotalStable += collateralMintedStables[i];
+            (uint256 stablecoinsFromCollateral, ) = transmuter.getIssuedByCollateral(address(_collaterals[i]));
+            assertEq(collateralMintedStables[i], stablecoinsFromCollateral);
+        }
+
+        assertEq(computedTotalStable, agToken.totalSupply());
+        assertEq(mintedStables, agToken.totalSupply());
+        (, uint256 totalStablecoins) = transmuter.getIssuedByCollateral(address(_collaterals[0]));
+        assertEq(computedTotalStable, totalStablecoins);
+
+        _updateOracles(latestOracleValue);
+        _setStablecoinCaps(stablecoinCaps);
+        // let's first load the reserves of the protocol
+        (uint256 mintedStables2, uint256[] memory collateralMintedStables2) = _loadReservesWithCap(
+            charlie,
+            sweeper,
+            amounts,
+            collateralMintedStables
         );
         for (uint256 i; i < collateralMintedStables2.length; i++) {
             computedTotalStable += collateralMintedStables2[i];
@@ -805,6 +856,52 @@ contract MintTest is Fixture, FunctionUtils {
         vm.stopPrank();
     }
 
+    function _loadReservesWithCap(
+        address owner,
+        address receiver,
+        uint256[3] memory initialAmounts,
+        uint256[] memory collateralPreviouslyMintedStables
+    ) internal returns (uint256 mintedStables, uint256[] memory collateralMintedStables) {
+        collateralMintedStables = new uint256[](_collaterals.length);
+
+        vm.startPrank(owner);
+        for (uint256 i; i < _collaterals.length; i++) {
+            initialAmounts[i] = bound(initialAmounts[i], 1, _maxAgTokenAmount);
+            uint256 capStablecoin = transmuter.getStablecoinCap(_collaterals[i]);
+            // (uint256 stablecoinsFromCollateral, ) = transmuter.getIssuedByCollateral(_collaterals[i]);
+            // There may be some rounding issues here as collateralPreviouslyMintedStables is not computed exactly the same as capStablecoin
+            if (
+                capStablecoin < type(uint256).max &&
+                capStablecoin != 0 &&
+                collateralPreviouslyMintedStables[i] + initialAmounts[i] < capStablecoin + 1 &&
+                collateralPreviouslyMintedStables[i] + initialAmounts[i] > capStablecoin - 1
+            ) {
+                // do nothing as there may be rounding errors
+            } else if (collateralPreviouslyMintedStables[i] + initialAmounts[i] > capStablecoin) {
+                vm.expectRevert(Errors.InvalidSwap.selector);
+                uint256 collateralNeeded = transmuter.quoteOut(initialAmounts[i], _collaterals[i], address(agToken));
+            } else {
+                uint256 collateralNeeded = transmuter.quoteOut(initialAmounts[i], _collaterals[i], address(agToken));
+                deal(_collaterals[i], owner, collateralNeeded);
+                IERC20(_collaterals[i]).approve(address(transmuter), type(uint256).max);
+
+                collateralNeeded = transmuter.swapExactOutput(
+                    initialAmounts[i],
+                    type(uint256).max,
+                    _collaterals[i],
+                    address(agToken),
+                    owner,
+                    block.timestamp * 2
+                );
+                if (collateralNeeded > 0) {
+                    collateralMintedStables[i] = initialAmounts[i];
+                    mintedStables += initialAmounts[i];
+                }
+            }
+        }
+        vm.stopPrank();
+    }
+
     function _getExposures(
         uint256 mintedStables,
         uint256[] memory collateralMintedStables
@@ -840,6 +937,14 @@ contract MintTest is Fixture, FunctionUtils {
             latestOracleValue[i] = bound(latestOracleValue[i], _minOracleValue, BASE_18);
             MockChainlinkOracle(address(_oracles[i])).setLatestAnswer(int256(latestOracleValue[i]));
         }
+    }
+
+    function _setStablecoinCaps(uint256[3] memory stablecoinCaps) internal {
+        vm.startPrank(governor);
+        for (uint256 i; i < _collaterals.length; i++) {
+            transmuter.setStablecoinCap(_collaterals[i], stablecoinCaps[i]);
+        }
+        vm.stopPrank();
     }
 
     function _randomMintFees(

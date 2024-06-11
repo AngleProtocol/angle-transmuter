@@ -1352,3 +1352,49 @@ contract Test_Setters_DiamondEtherscan is Fixture {
         assertEq(transmuter.implementation(), address(alice));
     }
 }
+
+contract Test_Setters_SetStablecoinCap is Fixture {
+    event StablecoinCapSet(address indexed collateral, uint256 stablecoinCap);
+
+    function test_RevertWhen_NotGuardian() public {
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        transmuter.setStablecoinCap(address(eurA), 1 ether);
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        transmuter.setStablecoinCap(address(eurB), 1 ether);
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        transmuter.setStablecoinCap(address(eurY), 1 ether);
+
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        hoax(alice);
+        transmuter.setStablecoinCap(address(eurA), 1 ether);
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        hoax(alice);
+        transmuter.setStablecoinCap(address(eurB), 1 ether);
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        hoax(alice);
+        transmuter.setStablecoinCap(address(eurY), 1 ether);
+    }
+
+    function test_RevertWhen_NotCollateral() public {
+        vm.expectRevert(Errors.NotCollateral.selector);
+        hoax(guardian);
+        transmuter.setStablecoinCap(address(agToken), 1 ether);
+
+        vm.expectRevert(Errors.NotCollateral.selector);
+        hoax(guardian);
+        transmuter.setStablecoinCap(address(this), 1 ether);
+    }
+
+    function test_SetStablecoinCap_Success() public {
+        hoax(guardian);
+        transmuter.setStablecoinCap(address(eurA), 1 ether);
+        hoax(governor);
+        transmuter.setStablecoinCap(address(eurB), 1 ether);
+        hoax(guardian);
+        transmuter.setStablecoinCap(address(eurY), 1 ether);
+
+        assertEq(transmuter.getStablecoinCap(address(eurA)), 1 ether);
+        assertEq(transmuter.getStablecoinCap(address(eurB)), 1 ether);
+        assertEq(transmuter.getStablecoinCap(address(eurY)), 1 ether);
+    }
+}

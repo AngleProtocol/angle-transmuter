@@ -397,7 +397,8 @@ contract SavingsVestTest is Fixture, FunctionUtils {
         uint256 elapseTimestamps
     ) public {
         protocolSafetyFee = uint64(bound(protocolSafetyFee, 0, BASE_9));
-        elapseTimestamps = bound(elapseTimestamps, 0, _maxElapseTime);
+        vm.warp(block.timestamp + 10);
+        vm.roll(1);
 
         bytes32 what = "PF";
         vm.prank(governor);

@@ -96,7 +96,6 @@ contract TransmuterDeploymentHelper is Utils {
         }
 
         bytes memory initCode = abi.encodePacked(type(DiamondProxy).creationCode, abi.encode(cut, _init, _calldata));
-        console.logBytes(initCode);
 
         // Deploy diamond
         string memory jsonVanity = vm.readFile(JSON_VANITY_PATH);
@@ -106,7 +105,7 @@ contract TransmuterDeploymentHelper is Utils {
 
         address computedAddress = create2Factory.findCreate2Address(salt, initCode);
         console.log("Supposed to deploy: %s", address(computedAddress));
-        if (computedAddress != 0x002535d40c962646418E26E00Bf810A4b77560C2) revert InvalidVanityAddress();
+        if (computedAddress != 0x222222880e079445Df703c0604706E71a538Fd4f) revert InvalidVanityAddress();
 
         transmuter = ITransmuter(create2Factory.safeCreate2(salt, initCode));
     }

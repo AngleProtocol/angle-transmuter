@@ -8,18 +8,18 @@
     "compile": "forge build",
     "compile:dev": "FOUNDRY_PROFILE=dev forge build",
     "deploy": "forge script --skip test --broadcast --verify --slow -vvvv --rpc-url",
-    "deploy:fork": "forge script --skip test  --slow --fork-url fork --broadcast -vvvv",
+    "deploy:fork": "forge script --skip test --slow --fork-url fork --broadcast -vvvv",
     "generate": "FOUNDRY_PROFILE=dev forge script scripts/utils/GenerateSelectors.s.sol",
     "deploy:check": "FOUNDRY_PROFILE=dev forge script --fork-url fork scripts/test/CheckTransmuter.s.sol",
     "gas": "FOUNDRY_PROFILE=dev yarn test --gas-report",
     "fork": "bash helpers/fork.sh",
     "run": "docker run -it --rm -v $(pwd):/app -w /app ghcr.io/foundry-rs/foundry sh",
-    "script:fork": "FOUNDRY_PROFILE=dev forge script --skip test --fork-url fork --broadcast -vvvv",
+    "script:fork": "forge script --skip test --fork-url fork --broadcast -vvvv",
     "test:unit": "forge test -vvvv --gas-report --match-path \"test/units/**/*.sol\"",
     "test:invariant": "forge test -vvv --gas-report --match-path \"test/invariants/**/*.sol\"",
     "test:fuzz": "forge test -vvv --gas-report --match-path \"test/fuzz/**/*.sol\"",
     "slither": "chmod +x ./slither.sh && ./slither.sh",
-    "test": "forge test -vvvv",
+    "test": "forge test -vvv",
     "lcov:clean": "lcov --remove lcov.info -o lcov.info 'test/**' 'scripts/**' 'contracts/transmuter/configs/**' 'contracts/utils/**'",
     "lcov:generate-html": "genhtml lcov.info --output=coverage",
     "size": "forge build --skip test --sizes",
@@ -45,6 +45,6 @@
     "solhint-plugin-prettier": "^0.0.5"
   },
   "dependencies": {
-    "@angleprotocol/sdk": "^0.37.1"
+    "@angleprotocol/sdk": "^2.9.0"
   }
 }

@@ -116,6 +116,7 @@ struct Collateral {
     bytes oracleConfig; // Data about the oracle used for the collateral
     bytes whitelistData; // For whitelisted collateral, data used to verify whitelists
     ManagerStorage managerData; // For managed collateral, data used to handle the strategies
+    uint256 stablecoinCap; // Cap on the amount of stablecoins that can be issued from this collateral
 }
 
 struct TransmuterStorage {
