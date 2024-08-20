@@ -42,3 +42,5 @@ error TooLate();
 error TooSmallAmountOut();
 error ZeroAddress();
 error ZeroAmount();
+error SwapError();
+error SlippageTooHigh();

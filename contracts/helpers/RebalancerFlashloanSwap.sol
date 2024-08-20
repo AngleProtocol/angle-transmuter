@@ -1,0 +1,171 @@
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity ^0.8.19;
+
+import "./Rebalancer.sol";
+import { IERC3156FlashBorrower } from "oz/interfaces/IERC3156FlashBorrower.sol";
+import { IERC3156FlashLender } from "oz/interfaces/IERC3156FlashLender.sol";
+
+/// @title RebalancerFlashloan
+/// @author Angle Labs, Inc.
+/// @dev Rebalancer contract for a Transmuter with as collaterals a liquid stablecoin and an yield bearing asset
+/// using this liquid stablecoin as an asset
+contract RebalancerFlashloanSwap is Rebalancer, IERC3156FlashBorrower {
+    using SafeERC20 for IERC20;
+    using SafeCast for uint256;
+    bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
+
+    /// @notice Angle stablecoin flashloan contract
+    IERC3156FlashLender public immutable FLASHLOAN;
+
+    address public swapRouter;
+    address public tokenTransferAddress;
+    uint32 public maxSlippage;
+
+    constructor(
+        IAccessControlManager _accessControlManager,
+        ITransmuter _transmuter,
+        IERC3156FlashLender _flashloan,
+        address _swapRouter,
+        address _tokenTransferAddress,
+        uint32 _maxSlippage
+    ) Rebalancer(_accessControlManager, _transmuter) {
+        if (address(_flashloan) == address(0)) revert ZeroAddress();
+        FLASHLOAN = _flashloan;
+        IERC20(AGTOKEN).safeApprove(address(_flashloan), type(uint256).max);
+
+        swapRouter = _swapRouter;
+        tokenTransferAddress = _tokenTransferAddress;
+        maxSlippage = _maxSlippage;
+    }
+
+    /// @notice Burns `amountStablecoins` for one collateral asset, swap for asset then mints stablecoins from the proceeds of the
+    /// swap
+    /// @dev If `increase` is 1, then the system tries to increase its exposure to the yield bearing asset which means
+    /// burning stablecoin for the liquid asset, swapping for the yield bearing asset, then minting the stablecoin
+    /// @dev This function reverts if the second stablecoin mint gives less than `minAmountOut` of stablecoins
+    /// @dev This function reverts if the swap slippage is higher than `maxSlippage`
+    function adjustYieldExposure(
+        uint256 amountStablecoins,
+        uint8 increase,
+        address collateral,
+        address asset,
+        uint256 minAmountOut,
+        bytes calldata swapCallData
+    ) external {
+        if (!TRANSMUTER.isTrustedSeller(msg.sender)) revert NotTrusted();
+        FLASHLOAN.flashLoan(
+            IERC3156FlashBorrower(address(this)),
+            address(AGTOKEN),
+            amountStablecoins,
+            abi.encode(increase, collateral, asset, minAmountOut, swapCallData)
+        );
+    }
+
+    /**
+     * @notice Set the token transfer address
+     * @param _tokenTransferAddress address of the token transfer contract
+     */
+    function setTokenTransferAddress(address _tokenTransferAddress) external onlyGuardian {
+        tokenTransferAddress = _tokenTransferAddress;
+    }
+
+    /**
+     * @notice Set the swap router
+     * @param _swapRouter address of the swap router
+     */
+    function setSwapRouter(address _swapRouter) external onlyGuardian {
+        swapRouter = _swapRouter;
+    }
+
+    /**
+     * @notice Set the max slippage
+     * @param _maxSlippage max slippage in BPS
+     */
+    function setMaxSlippage(uint32 _maxSlippage) external onlyGuardian {
+        maxSlippage = _maxSlippage;
+    }
+
+    /**
+     * @notice Perform the swap using the router/aggregator
+     * @param callData bytes to call the router/aggregator
+     */
+    function _performRouterSwap(bytes memory callData) internal {
+        (bool success, bytes memory retData) = swapRouter.call(callData);
+
+        if (!success) {
+            if (retData.length != 0) {
+                assembly {
+                    revert(add(32, retData), mload(retData))
+                }
+            }
+            revert SwapError();
+        }
+    }
+
+    /**
+     * @notice Swap token using the router/aggregator
+     * @param tokenIn address of the token to swap
+     * @param tokenOut address of the token to receive
+     * @param callData bytes to call the router/aggregator
+     * @param amount amount of token to swap
+     */
+    function _swap(
+        address tokenIn,
+        address tokenOut,
+        bytes memory callData,
+        uint256 amount
+    ) internal returns (uint256) {
+        uint256 balance = IERC20(tokenOut).balanceOf(address(this));
+        _adjustAllowance(tokenIn, tokenTransferAddress, amount);
+        _performRouterSwap(callData);
+        uint256 amountOut = IERC20(tokenOut).balanceOf(address(this)) - balance;
+        if (amountOut < (amount * (BPS - maxSlippage)) / BPS) {
+            revert SlippageTooHigh();
+        }
+        return amountOut;
+    }
+
+    /// @inheritdoc IERC3156FlashBorrower
+    function onFlashLoan(
+        address initiator,
+        address,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
+    ) external returns (bytes32) {
+        if (msg.sender != address(FLASHLOAN) || initiator != address(this) || fee != 0) revert NotTrusted();
+        (uint256 typeAction, address collateral, address asset, uint256 minAmountOut, bytes memory swapCallData) = abi
+            .decode(data, (uint256, address, address, uint256, bytes));
+        address tokenOut;
+        address tokenIn;
+        if (typeAction == 1) {
+            // Increase yield exposure action: we bring in the yield bearing asset
+            tokenOut = collateral;
+            tokenIn = asset;
+        } else {
+            // Decrease yield exposure action: we bring in the liquid asset
+            tokenIn = collateral;
+            tokenOut = asset;
+        }
+        uint256 amountOut = TRANSMUTER.swapExactInput(amount, 0, AGTOKEN, tokenOut, address(this), block.timestamp);
+        amountOut = _swap(tokenOut, tokenIn, swapCallData, amountOut);
+
+        _adjustAllowance(tokenIn, address(TRANSMUTER), amountOut);
+        uint256 amountStableOut = TRANSMUTER.swapExactInput(
+            amountOut,
+            minAmountOut,
+            tokenIn,
+            AGTOKEN,
+            address(this),
+            block.timestamp
+        );
+        if (amount > amountStableOut) {
+            uint256 subsidy = amount - amountStableOut;
+            orders[tokenIn][tokenOut].subsidyBudget -= subsidy.toUint112();
+            budget -= subsidy;
+            emit SubsidyPaid(tokenIn, tokenOut, subsidy);
+        }
+        return CALLBACK_SUCCESS;
+    }
+}
