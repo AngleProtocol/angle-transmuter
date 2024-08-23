@@ -5,12 +5,13 @@ pragma solidity ^0.8.19;
 import "./Rebalancer.sol";
 import { IERC3156FlashBorrower } from "oz/interfaces/IERC3156FlashBorrower.sol";
 import { IERC3156FlashLender } from "oz/interfaces/IERC3156FlashLender.sol";
+import { Swapper } from "utils/src/Swapper.sol";
 
 /// @title RebalancerFlashloan
 /// @author Angle Labs, Inc.
 /// @dev Rebalancer contract for a Transmuter with as collaterals a liquid stablecoin and an yield bearing asset
 /// using this liquid stablecoin as an asset
-contract RebalancerFlashloanSwap is Rebalancer, IERC3156FlashBorrower {
+contract RebalancerFlashloanSwap is Rebalancer, IERC3156FlashBorrower, Swapper {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
     bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
@@ -18,8 +19,6 @@ contract RebalancerFlashloanSwap is Rebalancer, IERC3156FlashBorrower {
     /// @notice Angle stablecoin flashloan contract
     IERC3156FlashLender public immutable FLASHLOAN;
 
-    address public swapRouter;
-    address public tokenTransferAddress;
     uint32 public maxSlippage;
 
     constructor(
@@ -29,13 +28,11 @@ contract RebalancerFlashloanSwap is Rebalancer, IERC3156FlashBorrower {
         address _swapRouter,
         address _tokenTransferAddress,
         uint32 _maxSlippage
-    ) Rebalancer(_accessControlManager, _transmuter) {
+    ) Rebalancer(_accessControlManager, _transmuter) Swapper(_swapRouter, _tokenTransferAddress) {
         if (address(_flashloan) == address(0)) revert ZeroAddress();
         FLASHLOAN = _flashloan;
         IERC20(AGTOKEN).safeApprove(address(_flashloan), type(uint256).max);
 
-        swapRouter = _swapRouter;
-        tokenTransferAddress = _tokenTransferAddress;
         maxSlippage = _maxSlippage;
     }
 
@@ -64,18 +61,18 @@ contract RebalancerFlashloanSwap is Rebalancer, IERC3156FlashBorrower {
 
     /**
      * @notice Set the token transfer address
-     * @param _tokenTransferAddress address of the token transfer contract
+     * @param newTokenTransferAddress address of the token transfer contract
      */
-    function setTokenTransferAddress(address _tokenTransferAddress) external onlyGuardian {
-        tokenTransferAddress = _tokenTransferAddress;
+    function setTokenTransferAddress(address newTokenTransferAddress) public override onlyGuardian {
+        super.setTokenTransferAddress(newTokenTransferAddress);
     }
 
     /**
      * @notice Set the swap router
-     * @param _swapRouter address of the swap router
+     * @param newSwapRouter address of the swap router
      */
-    function setSwapRouter(address _swapRouter) external onlyGuardian {
-        swapRouter = _swapRouter;
+    function setSwapRouter(address newSwapRouter) public override onlyGuardian {
+        super.setSwapRouter(newSwapRouter);
     }
 
     /**
@@ -84,23 +81,6 @@ contract RebalancerFlashloanSwap is Rebalancer, IERC3156FlashBorrower {
      */
     function setMaxSlippage(uint32 _maxSlippage) external onlyGuardian {
         maxSlippage = _maxSlippage;
-    }
-
-    /**
-     * @notice Perform the swap using the router/aggregator
-     * @param callData bytes to call the router/aggregator
-     */
-    function _performRouterSwap(bytes memory callData) internal {
-        (bool success, bytes memory retData) = swapRouter.call(callData);
-
-        if (!success) {
-            if (retData.length != 0) {
-                assembly {
-                    revert(add(32, retData), mload(retData))
-                }
-            }
-            revert SwapError();
-        }
     }
 
     /**
@@ -117,8 +97,15 @@ contract RebalancerFlashloanSwap is Rebalancer, IERC3156FlashBorrower {
         uint256 amount
     ) internal returns (uint256) {
         uint256 balance = IERC20(tokenOut).balanceOf(address(this));
-        _adjustAllowance(tokenIn, tokenTransferAddress, amount);
-        _performRouterSwap(callData);
+
+        address[] memory tokens = new address[](1);
+        tokens[0] = tokenIn;
+        bytes[] memory callDatas = new bytes[](1);
+        callDatas[0] = callData;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = amount;
+        _swap(tokens, callDatas, amounts);
+
         uint256 amountOut = IERC20(tokenOut).balanceOf(address(this)) - balance;
         if (amountOut < (amount * (BPS - maxSlippage)) / BPS) {
             revert SlippageTooHigh();
