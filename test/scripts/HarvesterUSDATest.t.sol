@@ -84,7 +84,7 @@ contract HarvesterUSDATest is Test {
         // At current block: USDC exposure = 7.63%, steakUSDC = 75.26%, bIB01 = 17.11%
         (uint256 fromUSDC, uint256 total) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
-        harvester.harvest(USDC, new bytes(0));
+        harvester.harvest(USDC, 1e9, new bytes(0));
         (uint256 fromUSDC2, uint256 total2) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK2, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
         assertGt(fromUSDC2, fromUSDC);
@@ -93,7 +93,7 @@ contract HarvesterUSDATest is Test {
         assertApproxEqRel((fromUSDC2 * 1e9) / total2, targetExposure, 100 * BPS);
         assertApproxEqRel(fromUSDC2 * 1e9, targetExposure * total, 100 * BPS);
 
-        harvester.harvest(USDC, new bytes(0));
+        harvester.harvest(USDC, 1e9, new bytes(0));
         (uint256 fromUSDC3, uint256 total3) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK3, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
         assertGt(fromUSDC3, fromUSDC2);
@@ -112,14 +112,14 @@ contract HarvesterUSDATest is Test {
         vm.stopPrank();
         (uint256 fromUSDC, uint256 total) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
-        harvester.harvest(USDC, new bytes(0));
+        harvester.harvest(USDC, 1e9, new bytes(0));
         (uint256 fromUSDC2, uint256 total2) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK2, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
         assertEq(fromUSDC2, fromUSDC);
         assertEq(fromSTEAK, fromSTEAK2);
         assertEq(total, total2);
 
-        harvester.harvest(USDC, new bytes(0));
+        harvester.harvest(USDC, 1e9, new bytes(0));
         (uint256 fromUSDC3, uint256 total3) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK3, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
         assertEq(fromUSDC3, fromUSDC2);
@@ -136,7 +136,7 @@ contract HarvesterUSDATest is Test {
 
         (uint256 fromUSDC, uint256 total) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
-        harvester.harvest(USDC, new bytes(0));
+        harvester.harvest(USDC, 1e9, new bytes(0));
         (uint256 fromUSDC2, uint256 total2) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK2, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
         assertGt(fromUSDC2, fromUSDC);
@@ -144,7 +144,7 @@ contract HarvesterUSDATest is Test {
         assertGt(total, total2);
         assertApproxEqRel((fromSTEAK2 * 1e9) / total2, (73 * 1e9) / 100, 100 * BPS);
 
-        harvester.harvest(USDC, new bytes(0));
+        harvester.harvest(USDC, 1e9, new bytes(0));
         (uint256 fromUSDC3, uint256 total3) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK3, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
         assertGt(fromUSDC3, fromUSDC2);
@@ -162,7 +162,7 @@ contract HarvesterUSDATest is Test {
         (uint256 fromUSDC, uint256 total) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
 
-        harvester.harvest(USDC, new bytes(0));
+        harvester.harvest(USDC, 1e9, new bytes(0));
 
         (uint256 fromUSDC2, uint256 total2) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK2, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
@@ -171,7 +171,7 @@ contract HarvesterUSDATest is Test {
         assertGt(total, total2);
         assertApproxEqRel((fromUSDC2 * 1e9) / total2, (5 * 1e9) / 100, 100 * BPS);
 
-        harvester.harvest(USDC, new bytes(0));
+        harvester.harvest(USDC, 1e9, new bytes(0));
         (uint256 fromUSDC3, uint256 total3) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK3, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
         assertGt(fromUSDC2, fromUSDC3);
@@ -190,7 +190,7 @@ contract HarvesterUSDATest is Test {
         (uint256 fromUSDC, uint256 total) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
 
-        harvester.harvest(USDC, new bytes(0));
+        harvester.harvest(USDC, 1e9, new bytes(0));
 
         (uint256 fromUSDC2, uint256 total2) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK2, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
@@ -198,7 +198,7 @@ contract HarvesterUSDATest is Test {
         assertEq(fromSTEAK2, fromSTEAK);
         assertEq(total, total2);
 
-        harvester.harvest(USDC, new bytes(0));
+        harvester.harvest(USDC, 1e9, new bytes(0));
         (uint256 fromUSDC3, uint256 total3) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK3, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
         assertEq(fromUSDC2, fromUSDC3);
@@ -215,7 +215,7 @@ contract HarvesterUSDATest is Test {
         (uint256 fromUSDC, uint256 total) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
 
-        harvester.harvest(USDC, new bytes(0));
+        harvester.harvest(USDC, 1e9, new bytes(0));
 
         (uint256 fromUSDC2, uint256 total2) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK2, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));
@@ -225,7 +225,7 @@ contract HarvesterUSDATest is Test {
         assertLe((fromSTEAK2 * 1e9) / total2, (755 * 1e9) / 1000);
         assertApproxEqRel((fromSTEAK2 * 1e9) / total2, (755 * 1e9) / 1000, 100 * BPS);
 
-        harvester.harvest(USDC, new bytes(0));
+        harvester.harvest(USDC, 1e9, new bytes(0));
 
         (uint256 fromUSDC3, uint256 total3) = transmuter.getIssuedByCollateral(address(USDC));
         (uint256 fromSTEAK3, ) = transmuter.getIssuedByCollateral(address(STEAK_USDC));

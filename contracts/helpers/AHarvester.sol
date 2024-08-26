@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.23;
 
-import { IERC20 } from "oz/interfaces/IERC20.sol";
-import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { SafeCast } from "oz/utils/math/SafeCast.sol";
 
 import { ITransmuter } from "interfaces/ITransmuter.sol";
@@ -32,7 +30,6 @@ struct CollatParams {
 /// @author Angle Labs, Inc.
 /// @dev Generic contract for anyone to permissionlessly adjust the reserves of Angle Transmuter through
 contract AHarvester is AccessControl {
-    using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
     /// @notice Reference to the `transmuter` implementation this contract aims at rebalancing
@@ -83,7 +80,8 @@ contract AHarvester is AccessControl {
     /// that can then be used for people looking to burn stablecoins
     /// @dev Due to potential transaction fees within the Transmuter, this function doesn't exactly bring `collateral`
     /// to the target exposure
-    function harvest(address collateral, bytes calldata extraData) public virtual {
+    function harvest(address collateral, uint256 scale, bytes calldata extraData) public virtual {
+        if (scale > 1e9) revert InvalidParam();
         (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) = TRANSMUTER.getIssuedByCollateral(collateral);
         CollatParams memory collatInfo = collateralData[collateral];
         (uint256 stablecoinsFromAsset, ) = TRANSMUTER.getIssuedByCollateral(collatInfo.asset);
@@ -109,6 +107,7 @@ contract AHarvester is AccessControl {
             else if (stablecoinsFromAsset * 1e9 < minValueScaled + amount * 1e9)
                 amount = stablecoinsFromAsset - minValueScaled / 1e9;
         }
+        amount = (amount * scale) / 1e9;
         if (amount > 0) {
             try TRANSMUTER.updateOracle(collatInfo.asset) {} catch {}
 

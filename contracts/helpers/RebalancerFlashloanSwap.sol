@@ -3,6 +3,7 @@
 pragma solidity ^0.8.19;
 
 import "./ARebalancerFlashloan.sol";
+import { IERC20Metadata } from "oz/interfaces/IERC20Metadata.sol";
 import { ASwapper } from "utils/src/Swapper.sol";
 
 /// @title RebalancerFlashloanSwap
@@ -80,11 +81,11 @@ contract RebalancerFlashloanSwap is ARebalancerFlashloan, ASwapper {
         uint256 decimalsTokenOut = IERC20Metadata(tokenOut).decimals();
 
         if (decimalsTokenIn > decimalsTokenOut) {
-            amountOut /= 10**(decimalsTokenIn - decimalsTokenOut);
+            amountOut /= 10 ** (decimalsTokenIn - decimalsTokenOut);
         } else if (decimalsTokenIn < decimalsTokenOut) {
-            amountOut *= 10**(decimalsTokenOut - decimalsTokenIn);
+            amountOut *= 10 ** (decimalsTokenOut - decimalsTokenIn);
         }
-        if (amountOut  < (amount * (BPS - maxSlippage)) / BPS) {
+        if (amountOut < (amount * (BPS - maxSlippage)) / BPS) {
             revert SlippageTooHigh();
         }
         return amountOut;
