@@ -76,7 +76,15 @@ contract RebalancerFlashloanSwap is ARebalancerFlashloan, ASwapper {
         _swap(tokens, callDatas, amounts);
 
         uint256 amountOut = IERC20(tokenOut).balanceOf(address(this)) - balance;
-        if (amountOut < (amount * (BPS - maxSlippage)) / BPS) {
+        uint256 decimalsTokenIn = IERC20Metadata(tokenIn).decimals();
+        uint256 decimalsTokenOut = IERC20Metadata(tokenOut).decimals();
+
+        if (decimalsTokenIn > decimalsTokenOut) {
+            amountOut /= 10**(decimalsTokenIn - decimalsTokenOut);
+        } else if (decimalsTokenIn < decimalsTokenOut) {
+            amountOut *= 10**(decimalsTokenOut - decimalsTokenIn);
+        }
+        if (amountOut  < (amount * (BPS - maxSlippage)) / BPS) {
             revert SlippageTooHigh();
         }
         return amountOut;
