@@ -21,8 +21,8 @@ contract HarvesterVault is AHarvester {
     )
         AHarvester(
             _rebalancer,
-            vault,
             address(IERC4626(vault).asset()),
+            vault,
             targetExposure,
             overrideExposures,
             maxExposureYieldAsset,
@@ -39,8 +39,8 @@ contract HarvesterVault is AHarvester {
         uint64 overrideExposures
     ) public virtual onlyGuardian {
         _setCollateralData(
-            vault,
             address(IERC4626(vault).asset()),
+            vault,
             targetExposure,
             minExposureYieldAsset,
             maxExposureYieldAsset,

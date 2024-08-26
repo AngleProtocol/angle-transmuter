@@ -48,7 +48,13 @@ contract HarvesterUSDATest is Test {
         FLASHLOAN = IFlashAngle(0x4A2FF9bC686A0A23DA13B6194C69939189506F7F);
         treasuryUSDA = IAgToken(0xf8588520E760BB0b3bDD62Ecb25186A28b0830ee);
         governor = 0xdC4e6DFe07EFCa50a197DF15D9200883eF4Eb1c8;
-        rebalancer = RebalancerFlashloanVault(0x22604C0E5633A9810E01c9cb469B23Eee17AC411);
+        // Setup rebalancer
+        rebalancer = new RebalancerFlashloanVault(
+            // Mock access control manager for USDA
+            IAccessControlManager(0x3fc5a1bd4d0A435c55374208A6A81535A1923039),
+            transmuter,
+            IERC3156FlashLender(address(FLASHLOAN))
+        );
         targetExposure = uint64((15 * 1e9) / 100);
         maxExposureYieldAsset = uint64((80 * 1e9) / 100);
         minExposureYieldAsset = uint64((5 * 1e9) / 100);
@@ -64,6 +70,9 @@ contract HarvesterUSDATest is Test {
         );
 
         vm.startPrank(governor);
+        deal(address(USDA), address(rebalancer), BASE_18 * 1000);
+        rebalancer.setOrder(address(STEAK_USDC), address(USDC), BASE_18 * 500, 0);
+        rebalancer.setOrder(address(USDC), address(STEAK_USDC), BASE_18 * 500, 0);
         transmuter.toggleWhitelist(Storage.WhitelistType.BACKED, NEW_DEPLOYER);
         transmuter.toggleTrusted(governor, Storage.TrustedType.Seller);
         transmuter.toggleTrusted(address(harvester), Storage.TrustedType.Seller);
