@@ -3,10 +3,10 @@ pragma solidity ^0.8.19;
 
 import "./utils/Utils.s.sol";
 import { console } from "forge-std/console.sol";
-import { Harvester } from "contracts/helpers/Harvester.sol";
+import { HarvesterVault } from "contracts/helpers/HarvesterVault.sol";
 import "./Constants.s.sol";
 
-contract DeployHarvester is Utils {
+contract DeployHarvesterVault is Utils {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
@@ -18,8 +18,16 @@ contract DeployHarvester is Utils {
         uint64 targetExposure = (13 * 1e9) / 100;
         uint64 overrideExposures = 0;
         uint96 maxSlippage = 1e9 / 100;
-        Harvester harvester = new Harvester(rebalancer, vault, targetExposure, overrideExposures, 0, 0, maxSlippage);
-        console.log("Harvester deployed at: ", address(harvester));
+        HarvesterVault harvester = new HarvesterVault(
+            rebalancer,
+            vault,
+            targetExposure,
+            overrideExposures,
+            0,
+            0,
+            maxSlippage
+        );
+        console.log("HarvesterVault deployed at: ", address(harvester));
 
         vm.stopBroadcast();
     }

@@ -13,12 +13,12 @@ import "../utils/FunctionUtils.sol";
 
 import "contracts/savings/Savings.sol";
 import "../mock/MockTokenPermit.sol";
-import "contracts/helpers/RebalancerFlashloan.sol";
+import "contracts/helpers/RebalancerFlashloanVault.sol";
 
-contract RebalancerFlashloanTest is Fixture, FunctionUtils {
+contract RebalancerFlashloanVaultTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
 
-    RebalancerFlashloan public rebalancer;
+    RebalancerFlashloanVault public rebalancer;
     Savings internal _saving;
     string internal _name;
     string internal _symbol;
@@ -42,7 +42,7 @@ contract RebalancerFlashloanTest is Fixture, FunctionUtils {
         _saving.initialize(accessControlManager, IERC20MetadataUpgradeable(address(token)), _name, _symbol, BASE_6);
         vm.stopPrank();
 
-        rebalancer = new RebalancerFlashloan(accessControlManager, transmuter, IERC3156FlashLender(governor));
+        rebalancer = new RebalancerFlashloanVault(accessControlManager, transmuter, IERC3156FlashLender(governor));
     }
 
     function test_RebalancerInitialization() public {
@@ -56,12 +56,12 @@ contract RebalancerFlashloanTest is Fixture, FunctionUtils {
 
     function test_Constructor_RevertWhen_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new RebalancerFlashloan(accessControlManager, transmuter, IERC3156FlashLender(address(0)));
+        new RebalancerFlashloanVault(accessControlManager, transmuter, IERC3156FlashLender(address(0)));
     }
 
     function test_adjustYieldExposure_RevertWhen_NotTrusted() public {
         vm.expectRevert(Errors.NotTrusted.selector);
-        rebalancer.adjustYieldExposure(1, 1, address(0), address(0), 0);
+        rebalancer.adjustYieldExposure(1, 1, address(0), address(0), 0, new bytes(0));
     }
 
     function test_onFlashLoan_RevertWhen_NotTrusted() public {

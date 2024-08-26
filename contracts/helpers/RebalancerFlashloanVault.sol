@@ -2,53 +2,21 @@
 
 pragma solidity ^0.8.19;
 
-import "./Rebalancer.sol";
+import "./ARebalancerFlashloan.sol";
 import { IERC4626 } from "interfaces/external/IERC4626.sol";
-import { IERC3156FlashBorrower } from "oz/interfaces/IERC3156FlashBorrower.sol";
-import { IERC3156FlashLender } from "oz/interfaces/IERC3156FlashLender.sol";
 
-/// @title RebalancerFlashloan
+/// @title RebalancerFlashloanVault
 /// @author Angle Labs, Inc.
 /// @dev Rebalancer contract for a Transmuter with as collaterals a liquid stablecoin and an ERC4626 token
 /// using this liquid stablecoin as an asset
-contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
-    using SafeERC20 for IERC20;
+contract RebalancerFlashloanVault is ARebalancerFlashloan {
     using SafeCast for uint256;
-    bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
-
-    /// @notice Angle stablecoin flashloan contract
-    IERC3156FlashLender public immutable FLASHLOAN;
 
     constructor(
         IAccessControlManager _accessControlManager,
         ITransmuter _transmuter,
         IERC3156FlashLender _flashloan
-    ) Rebalancer(_accessControlManager, _transmuter) {
-        if (address(_flashloan) == address(0)) revert ZeroAddress();
-        FLASHLOAN = _flashloan;
-        IERC20(AGTOKEN).safeApprove(address(_flashloan), type(uint256).max);
-    }
-
-    /// @notice Burns `amountStablecoins` for one collateral asset and mints stablecoins from the proceeds of the
-    /// first burn
-    /// @dev If `increase` is 1, then the system tries to increase its exposure to the yield bearing asset which means
-    /// burning stablecoin for the liquid asset, depositing into the ERC4626 vault, then minting the stablecoin
-    /// @dev This function reverts if the second stablecoin mint gives less than `minAmountOut` of stablecoins
-    function adjustYieldExposure(
-        uint256 amountStablecoins,
-        uint8 increase,
-        address collateral,
-        address vault,
-        uint256 minAmountOut
-    ) external {
-        if (!TRANSMUTER.isTrustedSeller(msg.sender)) revert NotTrusted();
-        FLASHLOAN.flashLoan(
-            IERC3156FlashBorrower(address(this)),
-            address(AGTOKEN),
-            amountStablecoins,
-            abi.encode(increase, collateral, vault, minAmountOut)
-        );
-    }
+    ) ARebalancerFlashloan(_accessControlManager, _transmuter, _flashloan) {}
 
     /// @inheritdoc IERC3156FlashBorrower
     function onFlashLoan(
@@ -57,11 +25,11 @@ contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
         uint256 amount,
         uint256 fee,
         bytes calldata data
-    ) external returns (bytes32) {
+    ) public override returns (bytes32) {
         if (msg.sender != address(FLASHLOAN) || initiator != address(this) || fee != 0) revert NotTrusted();
-        (uint256 typeAction, address collateral, address vault, uint256 minAmountOut) = abi.decode(
+        (uint256 typeAction, address collateral, address vault, uint256 minAmountOut, ) = abi.decode(
             data,
-            (uint256, address, address, uint256)
+            (uint256, address, address, uint256, bytes)
         );
         address tokenOut;
         address tokenIn;

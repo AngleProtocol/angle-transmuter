@@ -2,22 +2,15 @@
 
 pragma solidity ^0.8.19;
 
-import "./Rebalancer.sol";
-import { IERC3156FlashBorrower } from "oz/interfaces/IERC3156FlashBorrower.sol";
-import { IERC3156FlashLender } from "oz/interfaces/IERC3156FlashLender.sol";
-import { Swapper } from "utils/src/Swapper.sol";
+import "./ARebalancerFlashloan.sol";
+import { ASwapper } from "utils/src/Swapper.sol";
 
-/// @title RebalancerFlashloan
+/// @title RebalancerFlashloanSwap
 /// @author Angle Labs, Inc.
 /// @dev Rebalancer contract for a Transmuter with as collaterals a liquid stablecoin and an yield bearing asset
 /// using this liquid stablecoin as an asset
-contract RebalancerFlashloanSwap is Rebalancer, IERC3156FlashBorrower, Swapper {
-    using SafeERC20 for IERC20;
+contract RebalancerFlashloanSwap is ARebalancerFlashloan, ASwapper {
     using SafeCast for uint256;
-    bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
-
-    /// @notice Angle stablecoin flashloan contract
-    IERC3156FlashLender public immutable FLASHLOAN;
 
     uint32 public maxSlippage;
 
@@ -28,35 +21,11 @@ contract RebalancerFlashloanSwap is Rebalancer, IERC3156FlashBorrower, Swapper {
         address _swapRouter,
         address _tokenTransferAddress,
         uint32 _maxSlippage
-    ) Rebalancer(_accessControlManager, _transmuter) Swapper(_swapRouter, _tokenTransferAddress) {
-        if (address(_flashloan) == address(0)) revert ZeroAddress();
-        FLASHLOAN = _flashloan;
-        IERC20(AGTOKEN).safeApprove(address(_flashloan), type(uint256).max);
-
+    )
+        ARebalancerFlashloan(_accessControlManager, _transmuter, _flashloan)
+        ASwapper(_swapRouter, _tokenTransferAddress)
+    {
         maxSlippage = _maxSlippage;
-    }
-
-    /// @notice Burns `amountStablecoins` for one collateral asset, swap for asset then mints stablecoins from the proceeds of the
-    /// swap
-    /// @dev If `increase` is 1, then the system tries to increase its exposure to the yield bearing asset which means
-    /// burning stablecoin for the liquid asset, swapping for the yield bearing asset, then minting the stablecoin
-    /// @dev This function reverts if the second stablecoin mint gives less than `minAmountOut` of stablecoins
-    /// @dev This function reverts if the swap slippage is higher than `maxSlippage`
-    function adjustYieldExposure(
-        uint256 amountStablecoins,
-        uint8 increase,
-        address collateral,
-        address asset,
-        uint256 minAmountOut,
-        bytes calldata swapCallData
-    ) external {
-        if (!TRANSMUTER.isTrustedSeller(msg.sender)) revert NotTrusted();
-        FLASHLOAN.flashLoan(
-            IERC3156FlashBorrower(address(this)),
-            address(AGTOKEN),
-            amountStablecoins,
-            abi.encode(increase, collateral, asset, minAmountOut, swapCallData)
-        );
     }
 
     /**
@@ -120,7 +89,7 @@ contract RebalancerFlashloanSwap is Rebalancer, IERC3156FlashBorrower, Swapper {
         uint256 amount,
         uint256 fee,
         bytes calldata data
-    ) external returns (bytes32) {
+    ) public override returns (bytes32) {
         if (msg.sender != address(FLASHLOAN) || initiator != address(this) || fee != 0) revert NotTrusted();
         (uint256 typeAction, address collateral, address asset, uint256 minAmountOut, bytes memory swapCallData) = abi
             .decode(data, (uint256, address, address, uint256, bytes));
