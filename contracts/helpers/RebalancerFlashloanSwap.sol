@@ -4,13 +4,13 @@ pragma solidity ^0.8.19;
 
 import "./ARebalancerFlashloan.sol";
 import { IERC20Metadata } from "oz/interfaces/IERC20Metadata.sol";
-import { ASwapper } from "utils/src/Swapper.sol";
+import { RouterSwapper } from "utils/src/RouterSwapper.sol";
 
 /// @title RebalancerFlashloanSwap
 /// @author Angle Labs, Inc.
 /// @dev Rebalancer contract for a Transmuter with as collaterals a liquid stablecoin and an yield bearing asset
 /// using this liquid stablecoin as an asset
-contract RebalancerFlashloanSwap is ARebalancerFlashloan, ASwapper {
+contract RebalancerFlashloanSwap is ARebalancerFlashloan, RouterSwapper {
     using SafeCast for uint256;
 
     uint32 public maxSlippage;
@@ -24,7 +24,7 @@ contract RebalancerFlashloanSwap is ARebalancerFlashloan, ASwapper {
         uint32 _maxSlippage
     )
         ARebalancerFlashloan(_accessControlManager, _transmuter, _flashloan)
-        ASwapper(_swapRouter, _tokenTransferAddress)
+        RouterSwapper(_swapRouter, _tokenTransferAddress)
     {
         maxSlippage = _maxSlippage;
     }
@@ -81,9 +81,9 @@ contract RebalancerFlashloanSwap is ARebalancerFlashloan, ASwapper {
         uint256 decimalsTokenOut = IERC20Metadata(tokenOut).decimals();
 
         if (decimalsTokenIn > decimalsTokenOut) {
-            amountOut /= 10 ** (decimalsTokenIn - decimalsTokenOut);
+            amount /= 10 ** (decimalsTokenIn - decimalsTokenOut);
         } else if (decimalsTokenIn < decimalsTokenOut) {
-            amountOut *= 10 ** (decimalsTokenOut - decimalsTokenIn);
+            amount *= 10 ** (decimalsTokenOut - decimalsTokenIn);
         }
         if (amountOut < (amount * (BPS - maxSlippage)) / BPS) {
             revert SlippageTooHigh();
