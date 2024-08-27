@@ -27,8 +27,8 @@ contract ARebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
         IERC20(AGTOKEN).safeApprove(address(_flashloan), type(uint256).max);
     }
 
-    /// @notice Burns `amountStablecoins` for one collateral asset, swap for asset then mints stablecoins from the proceeds of the
-    /// swap
+    /// @notice Burns `amountStablecoins` for one collateral asset, swap for asset then mints stablecoins
+    /// from the proceeds of the swap.
     /// @dev If `increase` is 1, then the system tries to increase its exposure to the yield bearing asset which means
     /// burning stablecoin for the liquid asset, swapping for the yield bearing asset, then minting the stablecoin
     /// @dev This function reverts if the second stablecoin mint gives less than `minAmountOut` of stablecoins
