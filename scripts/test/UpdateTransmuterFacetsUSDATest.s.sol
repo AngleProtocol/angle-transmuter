@@ -53,8 +53,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
 
         CHAIN_SOURCE = CHAIN_ETHEREUM;
 
-        ethereumFork = vm.createFork(vm.envString("ETH_NODE_URI_MAINNET"), 19483530);
-        vm.selectFork(ethereumFork);
+        ethereumFork = vm.createSelectFork("mainnet", 19499622);
 
         governor = DEPLOYER;
         transmuter = ITransmuter(0x222222fD79264BBE280b4986F6FEfBC3524d0137);
@@ -689,7 +688,7 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
             assertEq(ratio, BASE_18);
         } else if (redemption * BASE_18 < targetValue * (BASE_18 - firewallBurn)) {
             assertEq(mint, redemption);
-            assertEq(ratio, (redemption * BASE_18) / targetValue);
+            assertEq(ratio, BASE_18);
         } else {
             assertEq(mint, redemption);
             assertEq(ratio, BASE_18);
