@@ -13,14 +13,14 @@ import "../utils/FunctionUtils.sol";
 
 import "contracts/savings/Savings.sol";
 import "../mock/MockTokenPermit.sol";
-import "contracts/helpers/RebalancerFlashloan.sol";
-import "contracts/helpers/Harvester.sol";
+import "contracts/helpers/RebalancerFlashloanVault.sol";
+import "contracts/helpers/HarvesterVault.sol";
 
 contract HarvesterTest is Fixture, FunctionUtils {
     using SafeERC20 for IERC20;
 
-    RebalancerFlashloan public rebalancer;
-    Harvester public harvester;
+    RebalancerFlashloanVault public rebalancer;
+    HarvesterVault public harvester;
     Savings internal _saving;
     address internal _savingImplementation;
     string internal _name;
@@ -50,8 +50,8 @@ contract HarvesterTest is Fixture, FunctionUtils {
         targetExposure = uint64((15 * 1e9) / 100);
         maxExposureYieldAsset = uint64((80 * 1e9) / 100);
         minExposureYieldAsset = uint64((5 * 1e9) / 100);
-        rebalancer = new RebalancerFlashloan(accessControlManager, transmuter, IERC3156FlashLender(governor));
-        harvester = new Harvester(
+        rebalancer = new RebalancerFlashloanVault(accessControlManager, transmuter, IERC3156FlashLender(governor));
+        harvester = new HarvesterVault(
             address(rebalancer),
             address(_saving),
             targetExposure,
@@ -76,7 +76,7 @@ contract HarvesterTest is Fixture, FunctionUtils {
 
     function test_Constructor_RevertWhen_InvalidParams() public {
         vm.expectRevert();
-        new Harvester(
+        new HarvesterVault(
             address(0),
             address(_saving),
             targetExposure,
@@ -87,7 +87,7 @@ contract HarvesterTest is Fixture, FunctionUtils {
         );
 
         vm.expectRevert();
-        new Harvester(
+        new HarvesterVault(
             address(rebalancer),
             address(0),
             targetExposure,
@@ -98,7 +98,7 @@ contract HarvesterTest is Fixture, FunctionUtils {
         );
 
         vm.expectRevert(Errors.InvalidParam.selector);
-        harvester = new Harvester(
+        harvester = new HarvesterVault(
             address(rebalancer),
             address(_saving),
             1e10,
@@ -109,7 +109,7 @@ contract HarvesterTest is Fixture, FunctionUtils {
         );
 
         vm.expectRevert(Errors.InvalidParam.selector);
-        harvester = new Harvester(
+        harvester = new HarvesterVault(
             address(rebalancer),
             address(_saving),
             1e10,
@@ -120,13 +120,21 @@ contract HarvesterTest is Fixture, FunctionUtils {
         );
 
         vm.expectRevert(Errors.InvalidParam.selector);
-        harvester = new Harvester(address(rebalancer), address(_saving), 1e9 / 10, 1, 1e10, minExposureYieldAsset, 1e8);
+        harvester = new HarvesterVault(
+            address(rebalancer),
+            address(_saving),
+            1e9 / 10,
+            1,
+            1e10,
+            minExposureYieldAsset,
+            1e8
+        );
 
         vm.expectRevert(Errors.InvalidParam.selector);
-        harvester = new Harvester(address(rebalancer), address(_saving), 1e9 / 10, 1, 1e8, 2e8, 1e8);
+        harvester = new HarvesterVault(address(rebalancer), address(_saving), 1e9 / 10, 1, 1e8, 2e8, 1e8);
 
         vm.expectRevert(Errors.InvalidParam.selector);
-        harvester = new Harvester(
+        harvester = new HarvesterVault(
             address(rebalancer),
             address(_saving),
             targetExposure,

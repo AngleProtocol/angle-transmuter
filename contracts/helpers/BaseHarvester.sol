@@ -2,9 +2,6 @@
 
 pragma solidity ^0.8.23;
 
-import { IERC20 } from "oz/interfaces/IERC20.sol";
-import { IERC4626 } from "interfaces/external/IERC4626.sol";
-import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { SafeCast } from "oz/utils/math/SafeCast.sol";
 
 import { ITransmuter } from "interfaces/ITransmuter.sol";
@@ -13,34 +10,32 @@ import { AccessControl, IAccessControlManager } from "../utils/AccessControl.sol
 import "../utils/Constants.sol";
 import "../utils/Errors.sol";
 
-import { RebalancerFlashloan } from "./RebalancerFlashloan.sol";
+import { IRebalancerFlashloan } from "../interfaces/IRebalancerFlashloan.sol";
 
 struct CollatParams {
-    // Vault associated to the collateral
-    address vault;
-    // Target exposure to the collateral asset used in the vault
+    // Yield bearing asset associated to the collateral
+    address asset;
+    // Target exposure to the collateral asset used
     uint64 targetExposure;
-    // Maximum exposure within the Transmuter to the vault asset
+    // Maximum exposure within the Transmuter to the asset
     uint64 maxExposureYieldAsset;
-    // Minimum exposure within the Transmuter to the vault asset
+    // Minimum exposure within the Transmuter to the asset
     uint64 minExposureYieldAsset;
     // Whether limit exposures should be overriden or read onchain through the Transmuter
     // This value should be 1 to override exposures or 2 if these shouldn't be overriden
     uint64 overrideExposures;
 }
 
-/// @title Harvester
+/// @title BaseHarvester
 /// @author Angle Labs, Inc.
-/// @dev Contract for anyone to permissionlessly adjust the reserves of Angle Transmuter through
-/// the RebalancerFlashloan contract
-contract Harvester is AccessControl {
-    using SafeERC20 for IERC20;
+/// @dev Generic contract for anyone to permissionlessly adjust the reserves of Angle Transmuter through
+contract BaseHarvester is AccessControl {
     using SafeCast for uint256;
 
     /// @notice Reference to the `transmuter` implementation this contract aims at rebalancing
     ITransmuter public immutable TRANSMUTER;
     /// @notice Permissioned rebalancer contract
-    RebalancerFlashloan public rebalancer;
+    IRebalancerFlashloan public rebalancer;
     /// @notice Max slippage when dealing with the Transmuter
     uint96 public maxSlippage;
     /// @notice Data associated to a collateral
@@ -52,18 +47,26 @@ contract Harvester is AccessControl {
 
     constructor(
         address _rebalancer,
-        address vault,
+        address collateral,
+        address asset,
         uint64 targetExposure,
         uint64 overrideExposures,
         uint64 maxExposureYieldAsset,
         uint64 minExposureYieldAsset,
         uint96 _maxSlippage
     ) {
-        ITransmuter transmuter = RebalancerFlashloan(_rebalancer).TRANSMUTER();
+        ITransmuter transmuter = IRebalancerFlashloan(_rebalancer).TRANSMUTER();
         TRANSMUTER = transmuter;
-        rebalancer = RebalancerFlashloan(_rebalancer);
+        rebalancer = IRebalancerFlashloan(_rebalancer);
         accessControlManager = IAccessControlManager(transmuter.accessControlManager());
-        _setCollateralData(vault, targetExposure, minExposureYieldAsset, maxExposureYieldAsset, overrideExposures);
+        _setCollateralData(
+            collateral,
+            asset,
+            targetExposure,
+            minExposureYieldAsset,
+            maxExposureYieldAsset,
+            overrideExposures
+        );
         _setMaxSlippage(_maxSlippage);
     }
 
@@ -77,12 +80,11 @@ contract Harvester is AccessControl {
     /// that can then be used for people looking to burn stablecoins
     /// @dev Due to potential transaction fees within the Transmuter, this function doesn't exactly bring `collateral`
     /// to the target exposure
-    /// @dev The `harvest` possibility shouldn't be implemented for assets with a manipulable price (like ERC4626)
-    /// contracts on which the `previewRedeem` values can be easily moved by creating a loss or a profit
-    function harvest(address collateral) external {
+    function harvest(address collateral, uint256 scale, bytes calldata extraData) public virtual {
+        if (scale > 1e9) revert InvalidParam();
         (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) = TRANSMUTER.getIssuedByCollateral(collateral);
         CollatParams memory collatInfo = collateralData[collateral];
-        (uint256 stablecoinsFromVault, ) = TRANSMUTER.getIssuedByCollateral(collatInfo.vault);
+        (uint256 stablecoinsFromAsset, ) = TRANSMUTER.getIssuedByCollateral(collatInfo.asset);
         uint8 increase;
         uint256 amount;
         uint256 targetExposureScaled = collatInfo.targetExposure * stablecoinsIssued;
@@ -93,27 +95,29 @@ contract Harvester is AccessControl {
             uint256 maxValueScaled = collatInfo.maxExposureYieldAsset * stablecoinsIssued;
             // These checks assume that there are no transaction fees on the stablecoin->collateral conversion and so
             // it's still possible that exposure goes above the max exposure in some rare cases
-            if (stablecoinsFromVault * 1e9 > maxValueScaled) amount = 0;
-            else if ((stablecoinsFromVault + amount) * 1e9 > maxValueScaled)
-                amount = maxValueScaled / 1e9 - stablecoinsFromVault;
+            if (stablecoinsFromAsset * 1e9 > maxValueScaled) amount = 0;
+            else if ((stablecoinsFromAsset + amount) * 1e9 > maxValueScaled)
+                amount = maxValueScaled / 1e9 - stablecoinsFromAsset;
         } else {
             // In this case, exposure after the operation might remain slightly below the targetExposure as less
             // collateral may be obtained by burning stablecoins for the yield asset and unwrapping it
             amount = targetExposureScaled / 1e9 - stablecoinsFromCollateral;
             uint256 minValueScaled = collatInfo.minExposureYieldAsset * stablecoinsIssued;
-            if (stablecoinsFromVault * 1e9 < minValueScaled) amount = 0;
-            else if (stablecoinsFromVault * 1e9 < minValueScaled + amount * 1e9)
-                amount = stablecoinsFromVault - minValueScaled / 1e9;
+            if (stablecoinsFromAsset * 1e9 < minValueScaled) amount = 0;
+            else if (stablecoinsFromAsset * 1e9 < minValueScaled + amount * 1e9)
+                amount = stablecoinsFromAsset - minValueScaled / 1e9;
         }
+        amount = (amount * scale) / 1e9;
         if (amount > 0) {
-            try TRANSMUTER.updateOracle(collatInfo.vault) {} catch {}
+            try TRANSMUTER.updateOracle(collatInfo.asset) {} catch {}
 
             rebalancer.adjustYieldExposure(
                 amount,
                 increase,
                 collateral,
-                collatInfo.vault,
-                (amount * (1e9 - maxSlippage)) / 1e9
+                collatInfo.asset,
+                (amount * (1e9 - maxSlippage)) / 1e9,
+                extraData
             );
         }
     }
@@ -122,47 +126,53 @@ contract Harvester is AccessControl {
                                                         SETTERS                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function setRebalancer(address _newRebalancer) external onlyGuardian {
+    function setRebalancer(address _newRebalancer) public virtual onlyGuardian {
         if (_newRebalancer == address(0)) revert ZeroAddress();
-        rebalancer = RebalancerFlashloan(_newRebalancer);
+        rebalancer = IRebalancerFlashloan(_newRebalancer);
     }
 
-    /// @dev This function shouldn't be called for a vault (e.g an ERC4626 token) which price can be easily moved
-    /// by creating a loss or a profit, at the risk of depleting the reserves available in the Rebalancer
     function setCollateralData(
-        address vault,
+        address collateral,
+        address asset,
         uint64 targetExposure,
         uint64 minExposureYieldAsset,
         uint64 maxExposureYieldAsset,
         uint64 overrideExposures
-    ) external onlyGuardian {
-        _setCollateralData(vault, targetExposure, minExposureYieldAsset, maxExposureYieldAsset, overrideExposures);
+    ) public virtual onlyGuardian {
+        _setCollateralData(
+            collateral,
+            asset,
+            targetExposure,
+            minExposureYieldAsset,
+            maxExposureYieldAsset,
+            overrideExposures
+        );
     }
 
-    function setMaxSlippage(uint96 _maxSlippage) external onlyGuardian {
+    function setMaxSlippage(uint96 _maxSlippage) public virtual onlyGuardian {
         _setMaxSlippage(_maxSlippage);
     }
 
-    function updateLimitExposuresYieldAsset(address collateral) external {
+    function updateLimitExposuresYieldAsset(address collateral) public virtual {
         CollatParams storage collatInfo = collateralData[collateral];
         if (collatInfo.overrideExposures == 2) _updateLimitExposuresYieldAsset(collatInfo);
     }
 
-    function _setMaxSlippage(uint96 _maxSlippage) internal {
+    function _setMaxSlippage(uint96 _maxSlippage) internal virtual {
         if (_maxSlippage > 1e9) revert InvalidParam();
         maxSlippage = _maxSlippage;
     }
 
     function _setCollateralData(
-        address vault,
+        address collateral,
+        address asset,
         uint64 targetExposure,
         uint64 minExposureYieldAsset,
         uint64 maxExposureYieldAsset,
         uint64 overrideExposures
-    ) internal {
-        address collateral = address(IERC4626(vault).asset());
+    ) internal virtual {
         CollatParams storage collatInfo = collateralData[collateral];
-        collatInfo.vault = vault;
+        collatInfo.asset = asset;
         if (targetExposure >= 1e9) revert InvalidParam();
         collatInfo.targetExposure = targetExposure;
         collatInfo.overrideExposures = overrideExposures;
@@ -176,15 +186,15 @@ contract Harvester is AccessControl {
         }
     }
 
-    function _updateLimitExposuresYieldAsset(CollatParams storage collatInfo) internal {
+    function _updateLimitExposuresYieldAsset(CollatParams storage collatInfo) internal virtual {
         uint64[] memory xFeeMint;
-        (xFeeMint, ) = TRANSMUTER.getCollateralMintFees(collatInfo.vault);
+        (xFeeMint, ) = TRANSMUTER.getCollateralMintFees(collatInfo.asset);
         uint256 length = xFeeMint.length;
         if (length <= 1) collatInfo.maxExposureYieldAsset = 1e9;
         else collatInfo.maxExposureYieldAsset = xFeeMint[length - 2];
 
         uint64[] memory xFeeBurn;
-        (xFeeBurn, ) = TRANSMUTER.getCollateralBurnFees(collatInfo.vault);
+        (xFeeBurn, ) = TRANSMUTER.getCollateralBurnFees(collatInfo.asset);
         length = xFeeBurn.length;
         if (length <= 1) collatInfo.minExposureYieldAsset = 0;
         else collatInfo.minExposureYieldAsset = xFeeBurn[length - 2];

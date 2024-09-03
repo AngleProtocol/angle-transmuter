@@ -12,7 +12,7 @@
   },
   "slither.solcPath": "",
   "slither.hiddenDetectors": [],
-  "solidity.compileUsingRemoteVersion": "v0.8.22",
+  "solidity.compileUsingRemoteVersion": "v0.8.23",
   "files.insertFinalNewline": true,
   "solidity.remappings": [
     "ds-test/=lib/forge-std/lib/ds-test/src/",

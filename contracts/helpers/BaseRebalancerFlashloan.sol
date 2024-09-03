@@ -3,15 +3,13 @@
 pragma solidity ^0.8.19;
 
 import "./Rebalancer.sol";
-import { IERC4626 } from "interfaces/external/IERC4626.sol";
 import { IERC3156FlashBorrower } from "oz/interfaces/IERC3156FlashBorrower.sol";
 import { IERC3156FlashLender } from "oz/interfaces/IERC3156FlashLender.sol";
 
-/// @title RebalancerFlashloan
+/// @title BaseRebalancerFlashloan
 /// @author Angle Labs, Inc.
-/// @dev Rebalancer contract for a Transmuter with as collaterals a liquid stablecoin and an ERC4626 token
-/// using this liquid stablecoin as an asset
-contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
+/// @dev General rebalancer contract with flashloan capabilities
+contract BaseRebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
     bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
@@ -29,24 +27,26 @@ contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
         IERC20(AGTOKEN).safeApprove(address(_flashloan), type(uint256).max);
     }
 
-    /// @notice Burns `amountStablecoins` for one collateral asset and mints stablecoins from the proceeds of the
-    /// first burn
+    /// @notice Burns `amountStablecoins` for one collateral asset, swap for asset then mints stablecoins
+    /// from the proceeds of the swap.
     /// @dev If `increase` is 1, then the system tries to increase its exposure to the yield bearing asset which means
-    /// burning stablecoin for the liquid asset, depositing into the ERC4626 vault, then minting the stablecoin
+    /// burning stablecoin for the liquid asset, swapping for the yield bearing asset, then minting the stablecoin
     /// @dev This function reverts if the second stablecoin mint gives less than `minAmountOut` of stablecoins
+    /// @dev This function reverts if the swap slippage is higher than `maxSlippage`
     function adjustYieldExposure(
         uint256 amountStablecoins,
         uint8 increase,
         address collateral,
-        address vault,
-        uint256 minAmountOut
-    ) external {
+        address asset,
+        uint256 minAmountOut,
+        bytes calldata extraData
+    ) public virtual {
         if (!TRANSMUTER.isTrustedSeller(msg.sender)) revert NotTrusted();
         FLASHLOAN.flashLoan(
             IERC3156FlashBorrower(address(this)),
             address(AGTOKEN),
             amountStablecoins,
-            abi.encode(increase, collateral, vault, minAmountOut)
+            abi.encode(increase, collateral, asset, minAmountOut, extraData)
         );
     }
 
@@ -57,29 +57,26 @@ contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
         uint256 amount,
         uint256 fee,
         bytes calldata data
-    ) external returns (bytes32) {
+    ) public virtual returns (bytes32) {
         if (msg.sender != address(FLASHLOAN) || initiator != address(this) || fee != 0) revert NotTrusted();
-        (uint256 typeAction, address collateral, address vault, uint256 minAmountOut) = abi.decode(
-            data,
-            (uint256, address, address, uint256)
-        );
+        (uint256 typeAction, address collateral, address asset, uint256 minAmountOut, bytes memory callData) = abi
+            .decode(data, (uint256, address, address, uint256, bytes));
         address tokenOut;
         address tokenIn;
         if (typeAction == 1) {
-            // Increase yield exposure action: we bring in the ERC4626 token
+            // Increase yield exposure action: we bring in the yield bearing asset
             tokenOut = collateral;
-            tokenIn = vault;
+            tokenIn = asset;
         } else {
             // Decrease yield exposure action: we bring in the liquid asset
             tokenIn = collateral;
-            tokenOut = vault;
+            tokenOut = asset;
         }
         uint256 amountOut = TRANSMUTER.swapExactInput(amount, 0, AGTOKEN, tokenOut, address(this), block.timestamp);
-        if (typeAction == 1) {
-            // Granting allowance with the collateral for the vault asset
-            _adjustAllowance(collateral, vault, amountOut);
-            amountOut = IERC4626(vault).deposit(amountOut, address(this));
-        } else amountOut = IERC4626(vault).redeem(amountOut, address(this), address(this));
+
+        // Swap to tokenIn
+        amountOut = _swapToTokenIn(typeAction, tokenIn, tokenOut, amountOut, callData);
+
         _adjustAllowance(tokenIn, address(TRANSMUTER), amountOut);
         uint256 amountStableOut = TRANSMUTER.swapExactInput(
             amountOut,
@@ -97,4 +94,20 @@ contract RebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
         }
         return CALLBACK_SUCCESS;
     }
+
+    /**
+     * @dev hook to swap from tokenOut to tokenIn
+     * @param typeAction 1 for deposit, 2 for redeem
+     * @param tokenIn address of the token to swap
+     * @param tokenOut address of the token to receive
+     * @param amount amount of token to swap
+     * @param callData extra call data (if needed)
+     */
+    function _swapToTokenIn(
+        uint256 typeAction,
+        address tokenIn,
+        address tokenOut,
+        uint256 amount,
+        bytes memory callData
+    ) internal virtual returns (uint256) {}
 }

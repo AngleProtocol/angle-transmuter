@@ -2,6 +2,8 @@
 
 pragma solidity >=0.5.0;
 
+import "./ITransmuter.sol";
+
 struct Order {
     // Total agToken budget allocated to subsidize the swaps between the tokens associated to the order
     uint112 subsidyBudget;
@@ -52,4 +54,6 @@ interface IRebalancer {
     /// @notice Recovers `amount` of `token` to the `to` address
     /// @dev This function checks if too much is not being recovered with respect to currently available budgets
     function recover(address token, uint256 amount, address to) external;
+
+    function TRANSMUTER() external view returns (ITransmuter);
 }
