@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.23;
 
-import "./AHarvester.sol";
+import "./BaseHarvester.sol";
 
 /// @title HarvesterSwap
 /// @author Angle Labs, Inc.
 /// @dev Contract for anyone to permissionlessly adjust the reserves of Angle Transmuter through
 /// the RebalancerFlashloanSwap contract
-contract HarvesterSwap is AHarvester {
+contract HarvesterSwap is BaseHarvester {
     constructor(
         address _rebalancer,
         address collateral,
@@ -19,7 +19,7 @@ contract HarvesterSwap is AHarvester {
         uint64 minExposureYieldAsset,
         uint96 _maxSlippage
     )
-        AHarvester(
+        BaseHarvester(
             _rebalancer,
             collateral,
             asset,

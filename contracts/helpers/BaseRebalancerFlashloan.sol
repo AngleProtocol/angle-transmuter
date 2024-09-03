@@ -6,10 +6,10 @@ import "./Rebalancer.sol";
 import { IERC3156FlashBorrower } from "oz/interfaces/IERC3156FlashBorrower.sol";
 import { IERC3156FlashLender } from "oz/interfaces/IERC3156FlashLender.sol";
 
-/// @title ARebalancerFlashloan
+/// @title BaseRebalancerFlashloan
 /// @author Angle Labs, Inc.
 /// @dev General rebalancer contract with flashloan capabilities
-contract ARebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
+contract BaseRebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
     bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
@@ -57,5 +57,57 @@ contract ARebalancerFlashloan is Rebalancer, IERC3156FlashBorrower {
         uint256 amount,
         uint256 fee,
         bytes calldata data
-    ) public virtual returns (bytes32) {}
+    ) public virtual returns (bytes32) {
+        if (msg.sender != address(FLASHLOAN) || initiator != address(this) || fee != 0) revert NotTrusted();
+        (uint256 typeAction, address collateral, address asset, uint256 minAmountOut, bytes memory callData) = abi
+            .decode(data, (uint256, address, address, uint256, bytes));
+        address tokenOut;
+        address tokenIn;
+        if (typeAction == 1) {
+            // Increase yield exposure action: we bring in the yield bearing asset
+            tokenOut = collateral;
+            tokenIn = asset;
+        } else {
+            // Decrease yield exposure action: we bring in the liquid asset
+            tokenIn = collateral;
+            tokenOut = asset;
+        }
+        uint256 amountOut = TRANSMUTER.swapExactInput(amount, 0, AGTOKEN, tokenOut, address(this), block.timestamp);
+
+        // Swap to tokenIn
+        amountOut = _swapToTokenIn(typeAction, tokenIn, tokenOut, amountOut, callData);
+
+        _adjustAllowance(tokenIn, address(TRANSMUTER), amountOut);
+        uint256 amountStableOut = TRANSMUTER.swapExactInput(
+            amountOut,
+            minAmountOut,
+            tokenIn,
+            AGTOKEN,
+            address(this),
+            block.timestamp
+        );
+        if (amount > amountStableOut) {
+            uint256 subsidy = amount - amountStableOut;
+            orders[tokenIn][tokenOut].subsidyBudget -= subsidy.toUint112();
+            budget -= subsidy;
+            emit SubsidyPaid(tokenIn, tokenOut, subsidy);
+        }
+        return CALLBACK_SUCCESS;
+    }
+
+    /**
+     * @dev hook to swap from tokenOut to tokenIn
+     * @param typeAction 1 for deposit, 2 for redeem
+     * @param tokenIn address of the token to swap
+     * @param tokenOut address of the token to receive
+     * @param amount amount of token to swap
+     * @param callData extra call data (if needed)
+     */
+    function _swapToTokenIn(
+        uint256 typeAction,
+        address tokenIn,
+        address tokenOut,
+        uint256 amount,
+        bytes memory callData
+    ) internal virtual returns (uint256) {}
 }

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.19;
 
-import "./ARebalancerFlashloan.sol";
+import "./BaseRebalancerFlashloan.sol";
 import { IERC20Metadata } from "oz/interfaces/IERC20Metadata.sol";
 import { RouterSwapper } from "utils/src/RouterSwapper.sol";
 
@@ -10,7 +10,7 @@ import { RouterSwapper } from "utils/src/RouterSwapper.sol";
 /// @author Angle Labs, Inc.
 /// @dev Rebalancer contract for a Transmuter with as collaterals a liquid stablecoin and an yield bearing asset
 /// using this liquid stablecoin as an asset
-contract RebalancerFlashloanSwap is ARebalancerFlashloan, RouterSwapper {
+contract RebalancerFlashloanSwap is BaseRebalancerFlashloan, RouterSwapper {
     using SafeCast for uint256;
 
     uint32 public maxSlippage;
@@ -23,7 +23,7 @@ contract RebalancerFlashloanSwap is ARebalancerFlashloan, RouterSwapper {
         address _tokenTransferAddress,
         uint32 _maxSlippage
     )
-        ARebalancerFlashloan(_accessControlManager, _transmuter, _flashloan)
+        BaseRebalancerFlashloan(_accessControlManager, _transmuter, _flashloan)
         RouterSwapper(_swapRouter, _tokenTransferAddress)
     {
         maxSlippage = _maxSlippage;
@@ -57,80 +57,38 @@ contract RebalancerFlashloanSwap is ARebalancerFlashloan, RouterSwapper {
      * @notice Swap token using the router/aggregator
      * @param tokenIn address of the token to swap
      * @param tokenOut address of the token to receive
-     * @param callData bytes to call the router/aggregator
      * @param amount amount of token to swap
+     * @param callData bytes to call the router/aggregator
      */
-    function _swap(
+    function _swapToTokenIn(
+        uint256,
         address tokenIn,
         address tokenOut,
-        bytes memory callData,
-        uint256 amount
-    ) internal returns (uint256) {
-        uint256 balance = IERC20(tokenOut).balanceOf(address(this));
+        uint256 amount,
+        bytes memory callData
+    ) internal override returns (uint256) {
+        uint256 balance = IERC20(tokenIn).balanceOf(address(this));
 
         address[] memory tokens = new address[](1);
-        tokens[0] = tokenIn;
+        tokens[0] = tokenOut;
         bytes[] memory callDatas = new bytes[](1);
         callDatas[0] = callData;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = amount;
         _swap(tokens, callDatas, amounts);
 
-        uint256 amountOut = IERC20(tokenOut).balanceOf(address(this)) - balance;
-        uint256 decimalsTokenIn = IERC20Metadata(tokenIn).decimals();
+        uint256 amountOut = IERC20(tokenIn).balanceOf(address(this)) - balance;
         uint256 decimalsTokenOut = IERC20Metadata(tokenOut).decimals();
+        uint256 decimalsTokenIn = IERC20Metadata(tokenIn).decimals();
 
-        if (decimalsTokenIn > decimalsTokenOut) {
-            amount /= 10 ** (decimalsTokenIn - decimalsTokenOut);
-        } else if (decimalsTokenIn < decimalsTokenOut) {
-            amount *= 10 ** (decimalsTokenOut - decimalsTokenIn);
+        if (decimalsTokenOut > decimalsTokenIn) {
+            amount /= 10 ** (decimalsTokenOut - decimalsTokenIn);
+        } else if (decimalsTokenOut < decimalsTokenIn) {
+            amount *= 10 ** (decimalsTokenIn - decimalsTokenOut);
         }
         if (amountOut < (amount * (BPS - maxSlippage)) / BPS) {
             revert SlippageTooHigh();
         }
         return amountOut;
-    }
-
-    /// @inheritdoc IERC3156FlashBorrower
-    function onFlashLoan(
-        address initiator,
-        address,
-        uint256 amount,
-        uint256 fee,
-        bytes calldata data
-    ) public override returns (bytes32) {
-        if (msg.sender != address(FLASHLOAN) || initiator != address(this) || fee != 0) revert NotTrusted();
-        (uint256 typeAction, address collateral, address asset, uint256 minAmountOut, bytes memory swapCallData) = abi
-            .decode(data, (uint256, address, address, uint256, bytes));
-        address tokenOut;
-        address tokenIn;
-        if (typeAction == 1) {
-            // Increase yield exposure action: we bring in the yield bearing asset
-            tokenOut = collateral;
-            tokenIn = asset;
-        } else {
-            // Decrease yield exposure action: we bring in the liquid asset
-            tokenIn = collateral;
-            tokenOut = asset;
-        }
-        uint256 amountOut = TRANSMUTER.swapExactInput(amount, 0, AGTOKEN, tokenOut, address(this), block.timestamp);
-        amountOut = _swap(tokenOut, tokenIn, swapCallData, amountOut);
-
-        _adjustAllowance(tokenIn, address(TRANSMUTER), amountOut);
-        uint256 amountStableOut = TRANSMUTER.swapExactInput(
-            amountOut,
-            minAmountOut,
-            tokenIn,
-            AGTOKEN,
-            address(this),
-            block.timestamp
-        );
-        if (amount > amountStableOut) {
-            uint256 subsidy = amount - amountStableOut;
-            orders[tokenIn][tokenOut].subsidyBudget -= subsidy.toUint112();
-            budget -= subsidy;
-            emit SubsidyPaid(tokenIn, tokenOut, subsidy);
-        }
-        return CALLBACK_SUCCESS;
     }
 }

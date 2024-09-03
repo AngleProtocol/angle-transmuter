@@ -27,7 +27,7 @@ interface IFlashAngle {
     function setFlashLoanParameters(address stablecoin, uint64 _flashLoanFee, uint256 _maxBorrowable) external;
 }
 
-contract HarvesterUSDASwapTest is Test, CommonUtils {
+contract HarvesterSwapUSDATest is Test, CommonUtils {
     using stdJson for string;
 
     ITransmuter transmuter;

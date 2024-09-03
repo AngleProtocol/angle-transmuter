@@ -26,10 +26,10 @@ struct CollatParams {
     uint64 overrideExposures;
 }
 
-/// @title AHarvester
+/// @title BaseHarvester
 /// @author Angle Labs, Inc.
 /// @dev Generic contract for anyone to permissionlessly adjust the reserves of Angle Transmuter through
-contract AHarvester is AccessControl {
+contract BaseHarvester is AccessControl {
     using SafeCast for uint256;
 
     /// @notice Reference to the `transmuter` implementation this contract aims at rebalancing

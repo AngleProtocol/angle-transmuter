@@ -2,14 +2,14 @@
 
 pragma solidity ^0.8.23;
 
-import "./AHarvester.sol";
+import "./BaseHarvester.sol";
 import { IERC4626 } from "interfaces/external/IERC4626.sol";
 
 /// @title HarvesterVault
 /// @author Angle Labs, Inc.
 /// @dev Contract for anyone to permissionlessly adjust the reserves of Angle Transmuter through
 /// the RebalancerFlashloanVault contract
-contract HarvesterVault is AHarvester {
+contract HarvesterVault is BaseHarvester {
     constructor(
         address _rebalancer,
         address vault,
@@ -19,7 +19,7 @@ contract HarvesterVault is AHarvester {
         uint64 minExposureYieldAsset,
         uint96 _maxSlippage
     )
-        AHarvester(
+        BaseHarvester(
             _rebalancer,
             address(IERC4626(vault).asset()),
             vault,
