@@ -102,7 +102,6 @@ contract GenericHarvester is AccessControl, IERC3156FlashBorrower {
         uint256 minAmountOut,
         bytes calldata extraData
     ) public virtual {
-        if (!TRANSMUTER.isTrustedSeller(msg.sender)) revert NotTrusted();
         FLASHLOAN.flashLoan(
             IERC3156FlashBorrower(address(this)),
             address(AGTOKEN),
