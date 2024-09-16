@@ -5,8 +5,10 @@ pragma solidity ^0.8.23;
 import { SafeCast } from "oz/utils/math/SafeCast.sol";
 import { SafeERC20 } from "oz/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "oz/interfaces/IERC20.sol";
+import { IERC20Metadata } from "oz/interfaces/IERC20Metadata.sol";
 
 import { ITransmuter } from "interfaces/ITransmuter.sol";
+import { RouterSwapper } from "utils/src/RouterSwapper.sol";
 
 import { AccessControl, IAccessControlManager } from "../utils/AccessControl.sol";
 import "../utils/Constants.sol";
@@ -14,6 +16,7 @@ import "../utils/Errors.sol";
 
 import { IERC3156FlashBorrower } from "oz/interfaces/IERC3156FlashBorrower.sol";
 import { IERC3156FlashLender } from "oz/interfaces/IERC3156FlashLender.sol";
+import { IERC4626 } from "interfaces/external/IERC4626.sol";
 
 struct CollatParams {
     // Yield bearing asset associated to the collateral
@@ -29,13 +32,20 @@ struct CollatParams {
     uint64 overrideExposures;
 }
 
+enum SwapType {
+    VAULT,
+    SWAP
+}
+
 /// @title GenericHarvester
 /// @author Angle Labs, Inc.
 /// @dev Generic contract for anyone to permissionlessly adjust the reserves of Angle Transmuter
-contract GenericHarvester is AccessControl, IERC3156FlashBorrower {
+contract GenericHarvester is AccessControl, IERC3156FlashBorrower, RouterSwapper {
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
     bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
+
+    uint32 public maxSwapSlippage;
 
     /// @notice Angle stablecoin flashloan contract
     IERC3156FlashLender public immutable FLASHLOAN;
@@ -64,8 +74,11 @@ contract GenericHarvester is AccessControl, IERC3156FlashBorrower {
         uint64 overrideExposures,
         uint64 maxExposureYieldAsset,
         uint64 minExposureYieldAsset,
-        uint96 _maxSlippage
-    ) {
+        uint96 _maxSlippage,
+        address _tokenTransferAddress,
+        address _swapRouter,
+        uint32 _maxSwapSlippage
+    ) RouterSwapper(_swapRouter, _tokenTransferAddress) {
         if (flashloan == address(0)) revert ZeroAddress();
         FLASHLOAN = IERC3156FlashLender(flashloan);
         TRANSMUTER = ITransmuter(transmuter);
@@ -81,6 +94,7 @@ contract GenericHarvester is AccessControl, IERC3156FlashBorrower {
             maxExposureYieldAsset,
             overrideExposures
         );
+        maxSwapSlippage = _maxSwapSlippage;
         _setMaxSlippage(_maxSlippage);
     }
 
@@ -100,13 +114,14 @@ contract GenericHarvester is AccessControl, IERC3156FlashBorrower {
         address collateral,
         address asset,
         uint256 minAmountOut,
+        SwapType swapType,
         bytes calldata extraData
     ) public virtual {
         FLASHLOAN.flashLoan(
             IERC3156FlashBorrower(address(this)),
             address(AGTOKEN),
             amountStablecoins,
-            abi.encode(msg.sender, increase, collateral, asset, minAmountOut, extraData)
+            abi.encode(msg.sender, increase, collateral, asset, minAmountOut, swapType, extraData)
         );
     }
 
@@ -119,29 +134,34 @@ contract GenericHarvester is AccessControl, IERC3156FlashBorrower {
         bytes calldata data
     ) public virtual returns (bytes32) {
         if (msg.sender != address(FLASHLOAN) || initiator != address(this) || fee != 0) revert NotTrusted();
-        (
-            address sender,
-            uint256 typeAction,
-            address collateral,
-            address asset,
-            uint256 minAmountOut,
-            bytes memory callData
-        ) = abi.decode(data, (address, uint256, address, address, uint256, bytes));
+        address sender;
+        uint256 typeAction;
+        uint256 minAmountOut;
+        SwapType swapType;
+        bytes memory callData;
         address tokenOut;
         address tokenIn;
-        if (typeAction == 1) {
-            // Increase yield exposure action: we bring in the yield bearing asset
-            tokenOut = collateral;
-            tokenIn = asset;
-        } else {
-            // Decrease yield exposure action: we bring in the liquid asset
-            tokenIn = collateral;
-            tokenOut = asset;
+        {
+            address collateral;
+            address asset;
+            (sender, typeAction, collateral, asset, minAmountOut, swapType, callData) = abi.decode(
+                data,
+                (address, uint256, address, address, uint256, SwapType, bytes)
+            );
+            if (typeAction == 1) {
+                // Increase yield exposure action: we bring in the yield bearing asset
+                tokenOut = collateral;
+                tokenIn = asset;
+            } else {
+                // Decrease yield exposure action: we bring in the liquid asset
+                tokenIn = collateral;
+                tokenOut = asset;
+            }
         }
         uint256 amountOut = TRANSMUTER.swapExactInput(amount, 0, AGTOKEN, tokenOut, address(this), block.timestamp);
 
         // Swap to tokenIn
-        amountOut = _swapToTokenIn(typeAction, tokenIn, tokenOut, amountOut, callData);
+        amountOut = _swapToTokenIn(typeAction, tokenIn, tokenOut, amountOut, swapType, callData);
 
         _adjustAllowance(tokenIn, address(TRANSMUTER), amountOut);
         uint256 amountStableOut = TRANSMUTER.swapExactInput(
@@ -183,21 +203,78 @@ contract GenericHarvester is AccessControl, IERC3156FlashBorrower {
         IERC20(AGTOKEN).safeTransfer(receiver, amount);
     }
 
-    /**
-     * @dev hook to swap from tokenOut to tokenIn
-     * @param typeAction 1 for deposit, 2 for redeem
-     * @param tokenIn address of the token to swap
-     * @param tokenOut address of the token to receive
-     * @param amount amount of token to swap
-     * @param callData extra call data (if needed)
-     */
     function _swapToTokenIn(
         uint256 typeAction,
         address tokenIn,
         address tokenOut,
         uint256 amount,
+        SwapType swapType,
         bytes memory callData
-    ) internal virtual returns (uint256) {}
+    ) internal returns (uint256) {
+        if (swapType == SwapType.SWAP) {
+            return _swapToTokenInSwap(tokenIn, tokenOut, amount, callData);
+        } else if (swapType == SwapType.VAULT) {
+            return _swapToTokenInVault(typeAction, tokenIn, tokenOut, amount);
+        }
+    }
+
+    /**
+     * @notice Swap token using the router/aggregator
+     * @param tokenIn address of the token to swap
+     * @param tokenOut address of the token to receive
+     * @param amount amount of token to swap
+     * @param callData bytes to call the router/aggregator
+     */
+    function _swapToTokenInSwap(
+        address tokenIn,
+        address tokenOut,
+        uint256 amount,
+        bytes memory callData
+    ) internal returns (uint256) {
+        uint256 balance = IERC20(tokenIn).balanceOf(address(this));
+
+        address[] memory tokens = new address[](1);
+        tokens[0] = tokenOut;
+        bytes[] memory callDatas = new bytes[](1);
+        callDatas[0] = callData;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = amount;
+        _swap(tokens, callDatas, amounts);
+
+        uint256 amountOut = IERC20(tokenIn).balanceOf(address(this)) - balance;
+        uint256 decimalsTokenOut = IERC20Metadata(tokenOut).decimals();
+        uint256 decimalsTokenIn = IERC20Metadata(tokenIn).decimals();
+
+        if (decimalsTokenOut > decimalsTokenIn) {
+            amount /= 10 ** (decimalsTokenOut - decimalsTokenIn);
+        } else if (decimalsTokenOut < decimalsTokenIn) {
+            amount *= 10 ** (decimalsTokenIn - decimalsTokenOut);
+        }
+        if (amountOut < (amount * (BPS - maxSwapSlippage)) / BPS) {
+            revert SlippageTooHigh();
+        }
+        return amountOut;
+    }
+
+    /**
+     * @dev Deposit or redeem the vault asset
+     * @param typeAction 1 for deposit, 2 for redeem
+     * @param tokenIn address of the token to swap
+     * @param tokenOut address of the token to receive
+     * @param amount amount of token to swap
+     */
+    function _swapToTokenInVault(
+        uint256 typeAction,
+        address tokenIn,
+        address tokenOut,
+        uint256 amount
+    ) internal returns (uint256 amountOut) {
+        if (typeAction == 1) {
+            // Granting allowance with the collateral for the vault asset
+            _adjustAllowance(tokenOut, tokenIn, amount);
+            amountOut = IERC4626(tokenIn).deposit(amount, address(this));
+        } else amountOut = IERC4626(tokenOut).redeem(amount, address(this), address(this));
+    }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         HARVEST                                                     
@@ -209,7 +286,7 @@ contract GenericHarvester is AccessControl, IERC3156FlashBorrower {
     /// that can then be used for people looking to burn stablecoins
     /// @dev Due to potential transaction fees within the Transmuter, this function doesn't exactly bring `collateral`
     /// to the target exposure
-    function harvest(address collateral, uint256 scale, bytes calldata extraData) public virtual {
+    function harvest(address collateral, uint256 scale, SwapType swapType, bytes calldata extraData) public virtual {
         if (scale > 1e9) revert InvalidParam();
         (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) = TRANSMUTER.getIssuedByCollateral(collateral);
         CollatParams memory collatInfo = collateralData[collateral];
@@ -246,6 +323,7 @@ contract GenericHarvester is AccessControl, IERC3156FlashBorrower {
                 collateral,
                 collatInfo.asset,
                 (amount * (1e9 - maxSlippage)) / 1e9,
+                swapType,
                 extraData
             );
         }
@@ -277,7 +355,31 @@ contract GenericHarvester is AccessControl, IERC3156FlashBorrower {
         _setMaxSlippage(_maxSlippage);
     }
 
-    function updateLimitExposuresYieldAsset(address collateral) public virtual {
+    /**
+     * @notice Set the token transfer address
+     * @param newTokenTransferAddress address of the token transfer contract
+     */
+    function setTokenTransferAddress(address newTokenTransferAddress) public override onlyGuardian {
+        super.setTokenTransferAddress(newTokenTransferAddress);
+    }
+
+    /**
+     * @notice Set the swap router
+     * @param newSwapRouter address of the swap router
+     */
+    function setSwapRouter(address newSwapRouter) public override onlyGuardian {
+        super.setSwapRouter(newSwapRouter);
+    }
+
+    /**
+     * @notice Set the max swap slippage
+     * @param _maxSwapSlippage max slippage in BPS
+     */
+    function setMaxSwapSlippage(uint32 _maxSwapSlippage) external onlyGuardian {
+        maxSwapSlippage = _maxSwapSlippage;
+    }
+
+    function updateLimitExposuresYieldAsset(address collateral) public virtual onlyGuardian {
         CollatParams storage collatInfo = collateralData[collateral];
         if (collatInfo.overrideExposures == 2) _updateLimitExposuresYieldAsset(collatInfo);
     }
