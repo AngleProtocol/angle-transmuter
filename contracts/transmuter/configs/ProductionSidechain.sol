@@ -11,7 +11,8 @@ contract ProductionSidechain {
         address _agToken,
         // USDC like tokens
         address liquidStablecoin,
-        address oracleLiquidStablecoin,
+        address[] memory oracleLiquidStablecoin,
+        uint8[] memory oracleIsMultiplied,
         uint256 hardCap,
         address dummyImplementation
     ) external {
@@ -19,32 +20,26 @@ contract ProductionSidechain {
         CollateralSetupProd[] memory collaterals = new CollateralSetupProd[](1);
         // Liquid stablecoin
         {
-            uint64[] memory xMintFee = new uint64[](1);
-            xMintFee[0] = uint64(0);
-
-            int64[] memory yMintFee = new int64[](1);
-            yMintFee[0] = int64(0);
-
-            uint64[] memory xBurnFee = new uint64[](1);
-            xBurnFee[0] = uint64(BASE_9);
-
-            int64[] memory yBurnFee = new int64[](1);
-            yBurnFee[0] = int64(0);
-
             bytes memory oracleConfig;
             {
                 bytes memory readData;
                 {
-                    AggregatorV3Interface[] memory circuitChainlink = new AggregatorV3Interface[](1);
-                    uint32[] memory stalePeriods = new uint32[](1);
-                    uint8[] memory circuitChainIsMultiplied = new uint8[](1);
-                    uint8[] memory chainlinkDecimals = new uint8[](1);
+                    uint256 oracleLength = oracleLiquidStablecoin.length;
+                    if (oracleLength != oracleIsMultiplied.length) {
+                        revert("ProductionSidechain: oracles length not equal");
+                    }
+                    AggregatorV3Interface[] memory circuitChainlink = new AggregatorV3Interface[](oracleLength);
+                    uint32[] memory stalePeriods = new uint32[](oracleLength);
+                    uint8[] memory circuitChainIsMultiplied = new uint8[](oracleLength);
+                    uint8[] memory chainlinkDecimals = new uint8[](oracleLength);
 
                     // Oracle between liquid stablecoin and the fiat it is peg to
-                    circuitChainlink[0] = AggregatorV3Interface(oracleLiquidStablecoin);
-                    stalePeriods[0] = 1 days;
-                    circuitChainIsMultiplied[0] = 1;
-                    chainlinkDecimals[0] = 8;
+                    for (uint256 i; i < oracleLiquidStablecoin.length; i++) {
+                        circuitChainlink[i] = AggregatorV3Interface(oracleLiquidStablecoin[i]);
+                        stalePeriods[i] = 1 days;
+                        circuitChainIsMultiplied[i] = oracleIsMultiplied[i];
+                        chainlinkDecimals[i] = 8;
+                    }
                     OracleQuoteType quoteType = OracleQuoteType.UNIT;
                     readData = abi.encode(
                         circuitChainlink,
@@ -63,6 +58,19 @@ contract ProductionSidechain {
                     abi.encode(uint128(0), uint128(50 * BPS))
                 );
             }
+
+            uint64[] memory xMintFee = new uint64[](1);
+            xMintFee[0] = uint64(0);
+
+            int64[] memory yMintFee = new int64[](1);
+            yMintFee[0] = int64(0);
+
+            uint64[] memory xBurnFee = new uint64[](1);
+            xBurnFee[0] = uint64(BASE_9);
+
+            int64[] memory yBurnFee = new int64[](1);
+            yBurnFee[0] = int64(0);
+
             collaterals[0] = CollateralSetupProd(
                 liquidStablecoin,
                 oracleConfig,
