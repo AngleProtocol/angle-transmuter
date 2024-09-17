@@ -13,8 +13,6 @@ import "../utils/Errors.sol";
 import "../utils/Constants.sol";
 
 struct CollatParams {
-    // Yield bearing asset associated to the collateral
-    address asset;
     // Target exposure to the collateral asset used
     uint64 targetExposure;
     // Maximum exposure within the Transmuter to the asset
@@ -29,13 +27,34 @@ struct CollatParams {
 contract MultiBlockRebalancer is AccessControl {
     using SafeERC20 for IERC20;
 
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                       MODIFIERS
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    modifier onlyTrusted() {
+        if (!isTrusted[msg.sender]) revert NotTrusted();
+        _;
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                       VARIABLES
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    /// @notice address to deposit to receive collateral
     mapping(address => address) public collateralToDepositAddress;
     /// @notice Data associated to a collateral
     mapping(address => CollatParams) public collateralData;
+    /// @notice trusted addresses
+    mapping(address => bool) public isTrusted;
 
+    /// @notice Maximum amount of stablecoins that can be minted in a single transaction
     uint256 public maxMintAmount;
     ITransmuter public transmuter;
     IAgToken public agToken;
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                       CONSTRUCTOR
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     constructor(
         uint256 initialMaxMintAmount,
@@ -43,6 +62,7 @@ contract MultiBlockRebalancer is AccessControl {
         IAgToken definitiveAgToken,
         ITransmuter definitivetransmuter
     ) {
+        maxMintAmount = initialMaxMintAmount;
         accessControlManager = definitiveAccessControlManager;
         agToken = definitiveAgToken;
         transmuter = definitivetransmuter;
@@ -52,6 +72,10 @@ contract MultiBlockRebalancer is AccessControl {
                                                         GOVERNOR FUNCTIONS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Set the maximum amount of stablecoins that can be minted in a single transaction
+     * @param newMaxMintAmount new maximum amount of stablecoins that can be minted in a single transaction
+     */
     function setMaxMintAmount(uint256 newMaxMintAmount) external onlyGovernor {
         maxMintAmount = newMaxMintAmount;
     }
@@ -60,16 +84,23 @@ contract MultiBlockRebalancer is AccessControl {
                                                         GUARDIAN FUNCTIONS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function SetCollateralData(
+    /**
+     * @notice Set the collateral data
+     * @param collateral address of the collateral
+     * @param targetExposure target exposure to the collateral asset used
+     * @param minExposureYieldAsset minimum exposure within the Transmuter to the asset
+     * @param maxExposureYieldAsset maximum exposure within the Transmuter to the asset
+     * @param overrideExposures whether limit exposures should be overriden or read onchain through the Transmuter
+     * This value should be 1 to override exposures or 2 if these shouldn't be overriden
+     */
+    function setCollateralData(
         address collateral,
-        address asset,
         uint64 targetExposure,
         uint64 minExposureYieldAsset,
         uint64 maxExposureYieldAsset,
         uint64 overrideExposures
     ) external onlyGuardian {
         CollatParams storage collatInfo = collateralData[collateral];
-        collatInfo.asset = asset;
         if (targetExposure >= 1e9) revert InvalidParam();
         collatInfo.targetExposure = targetExposure;
         collatInfo.overrideExposures = overrideExposures;
@@ -79,38 +110,55 @@ contract MultiBlockRebalancer is AccessControl {
             collatInfo.minExposureYieldAsset = minExposureYieldAsset;
         } else {
             collatInfo.overrideExposures = 2;
-            _updateLimitExposuresYieldAsset(collatInfo);
+            _updateLimitExposuresYieldAsset(collateral, collatInfo);
         }
     }
 
+    /**
+     * @notice Set the deposit address for a collateral
+     * @param collateral address of the collateral
+     * @param newDepositAddress address to deposit to receive collateral
+     */
     function setCollateralToDepositAddress(address collateral, address newDepositAddress) external onlyGuardian {
         collateralToDepositAddress[collateral] = newDepositAddress;
     }
 
-    function initiateRebalance(uint256 scale, address collateral) external onlyGuardian {
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                        TRUSTED FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Initiate a rebalance
+     * @param scale scale to apply to the rebalance amount
+     * @param collateral address of the collateral
+     */
+    function initiateRebalance(uint256 scale, address collateral) external onlyTrusted {
         if (scale > 1e9) revert InvalidParam();
         (uint8 increase, uint256 amount) = _computeRebalanceAmount(collateral);
         amount = (amount * scale) / 1e9;
 
+        try transmuter.updateOracle(collateral) {} catch {}
         _rebalance(increase, collateral, amount);
     }
 
-    function finalizeRebalance(address collateral) external onlyGuardian {
-        // TODO handle increase rebalance for USDM
+    /**
+     * @notice Finalize a rebalance
+     * @param collateral address of the collateral
+     */
+    function finalizeRebalance(address collateral) external onlyTrusted {
         uint256 balance = IERC20(collateral).balanceOf(address(this));
 
-        if (collateral == USDM) {
-            _adjustAllowance(address(agToken), address(transmuter), balance);
-            uint256 amountOut = transmuter.swapExactInput(
-                balance,
-                0,
-                collateral,
-                address(agToken),
-                address(this),
-                block.timestamp
-            );
-            agToken.burnSelf(amountOut, address(this));
-        }
+        try transmuter.updateOracle(collateral) {} catch {}
+        _adjustAllowance(address(agToken), address(transmuter), balance);
+        uint256 amountOut = transmuter.swapExactInput(
+            balance,
+            0,
+            collateral,
+            address(agToken),
+            address(this),
+            block.timestamp
+        );
+        agToken.burnSelf(amountOut, address(this));
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,7 +168,7 @@ contract MultiBlockRebalancer is AccessControl {
     function _computeRebalanceAmount(address collateral) internal view returns (uint8 increase, uint256 amount) {
         (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) = transmuter.getIssuedByCollateral(collateral);
         CollatParams memory collatInfo = collateralData[collateral];
-        (uint256 stablecoinsFromAsset, ) = transmuter.getIssuedByCollateral(collatInfo.asset);
+        (uint256 stablecoinsFromAsset, ) = transmuter.getIssuedByCollateral(collateral);
         uint256 targetExposureScaled = collatInfo.targetExposure * stablecoinsIssued;
         if (stablecoinsFromCollateral * 1e9 > targetExposureScaled) {
             // Need to increase exposure to yield bearing asset
@@ -160,7 +208,7 @@ contract MultiBlockRebalancer is AccessControl {
                     block.timestamp
                 );
                 _adjustAllowance(collateral, address(depositAddresss), amountOut);
-                (uint256 shares, ) = IPool(depositAddresss).deposit(amountOut, address(this)); // TODO update lender address
+                (uint256 shares, ) = IPool(depositAddresss).deposit(amountOut, address(this));
                 amountOut = transmuter.swapExactInput(
                     shares,
                     0,
@@ -202,15 +250,15 @@ contract MultiBlockRebalancer is AccessControl {
         }
     }
 
-    function _updateLimitExposuresYieldAsset(CollatParams storage collatInfo) internal virtual {
+    function _updateLimitExposuresYieldAsset(address collateral, CollatParams storage collatInfo) internal virtual {
         uint64[] memory xFeeMint;
-        (xFeeMint, ) = transmuter.getCollateralMintFees(collatInfo.asset);
+        (xFeeMint, ) = transmuter.getCollateralMintFees(collateral);
         uint256 length = xFeeMint.length;
         if (length <= 1) collatInfo.maxExposureYieldAsset = 1e9;
         else collatInfo.maxExposureYieldAsset = xFeeMint[length - 2];
 
         uint64[] memory xFeeBurn;
-        (xFeeBurn, ) = transmuter.getCollateralBurnFees(collatInfo.asset);
+        (xFeeBurn, ) = transmuter.getCollateralBurnFees(collateral);
         length = xFeeBurn.length;
         if (length <= 1) collatInfo.minExposureYieldAsset = 0;
         else collatInfo.minExposureYieldAsset = xFeeBurn[length - 2];
