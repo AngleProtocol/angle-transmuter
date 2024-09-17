@@ -49,6 +49,8 @@ contract MultiBlockRebalancer is AccessControl {
 
     /// @notice Maximum amount of stablecoins that can be minted in a single transaction
     uint256 public maxMintAmount;
+    /// @notice Max slippage when dealing with the Transmuter
+    uint96 public maxSlippage;
     ITransmuter public transmuter;
     IAgToken public agToken;
 
@@ -58,10 +60,12 @@ contract MultiBlockRebalancer is AccessControl {
 
     constructor(
         uint256 initialMaxMintAmount,
+        uint96 initialMaxSlippage,
         IAccessControlManager definitiveAccessControlManager,
         IAgToken definitiveAgToken,
         ITransmuter definitivetransmuter
     ) {
+        _setMaxSlippage(initialMaxSlippage);
         maxMintAmount = initialMaxMintAmount;
         accessControlManager = definitiveAccessControlManager;
         agToken = definitiveAgToken;
@@ -115,6 +119,14 @@ contract MultiBlockRebalancer is AccessControl {
     }
 
     /**
+     * @notice Set the max allowed slippage
+     * @param newMaxSlippage new max allowed slippage
+     */
+    function setMaxSlippage(uint96 newMaxSlippage) external onlyGuardian {
+        _setMaxSlippage(newMaxSlippage);
+    }
+
+    /**
      * @notice Set the deposit address for a collateral
      * @param collateral address of the collateral
      * @param newDepositAddress address to deposit to receive collateral
@@ -158,6 +170,8 @@ contract MultiBlockRebalancer is AccessControl {
             address(this),
             block.timestamp
         );
+        address depositAddress = collateral == XEVT ? collateralToDepositAddress[collateral] : address(0);
+        _checkSlippage(balance, amountOut, collateral, depositAddress);
         agToken.burnSelf(amountOut, address(this));
     }
 
@@ -194,9 +208,9 @@ contract MultiBlockRebalancer is AccessControl {
     function _rebalance(uint8 typeAction, address collateral, uint256 amount) internal {
         if (amount > maxMintAmount) revert TooBigAmountIn();
         agToken.mint(address(this), amount);
+        _adjustAllowance(address(agToken), address(transmuter), amount);
         if (typeAction == 1) {
-            _adjustAllowance(address(agToken), address(transmuter), amount);
-            address depositAddresss = collateralToDepositAddress[collateral];
+            address depositAddress = collateralToDepositAddress[collateral];
 
             if (collateral == XEVT) {
                 uint256 amountOut = transmuter.swapExactInput(
@@ -207,8 +221,10 @@ contract MultiBlockRebalancer is AccessControl {
                     address(this),
                     block.timestamp
                 );
-                _adjustAllowance(collateral, address(depositAddresss), amountOut);
-                (uint256 shares, ) = IPool(depositAddresss).deposit(amountOut, address(this));
+                _checkSlippage(amount, amountOut, collateral, depositAddress);
+                _adjustAllowance(collateral, address(depositAddress), amountOut);
+                (uint256 shares, ) = IPool(depositAddress).deposit(amountOut, address(this));
+                _adjustAllowance(collateral, address(transmuter), shares);
                 amountOut = transmuter.swapExactInput(
                     shares,
                     0,
@@ -227,11 +243,10 @@ contract MultiBlockRebalancer is AccessControl {
                     address(this),
                     block.timestamp
                 );
-                _adjustAllowance(collateral, address(depositAddresss), amountOut);
-                IERC20(collateral).transfer(depositAddresss, amountOut);
+                _checkSlippage(amount, amountOut, collateral, depositAddress);
+                IERC20(collateral).transfer(depositAddress, amountOut);
             }
         } else {
-            _adjustAllowance(address(agToken), address(transmuter), amount);
             uint256 amountOut = transmuter.swapExactInput(
                 amount,
                 0,
@@ -240,12 +255,13 @@ contract MultiBlockRebalancer is AccessControl {
                 address(this),
                 block.timestamp
             );
-            address depositAddresss = collateralToDepositAddress[collateral];
+            address depositAddress = collateralToDepositAddress[collateral];
+            _checkSlippage(amount, amountOut, collateral, depositAddress);
 
             if (collateral == XEVT) {
-                IPool(depositAddresss).requestRedeem(amountOut);
+                IPool(depositAddress).requestRedeem(amountOut);
             } else if (collateral == USDM) {
-                IERC20(collateral).transfer(depositAddresss, amountOut);
+                IERC20(collateral).transfer(depositAddress, amountOut);
             }
         }
     }
@@ -264,6 +280,11 @@ contract MultiBlockRebalancer is AccessControl {
         else collatInfo.minExposureYieldAsset = xFeeBurn[length - 2];
     }
 
+    function _setMaxSlippage(uint96 newMaxSlippage) internal virtual {
+        if (newMaxSlippage > 1e9) revert InvalidParam();
+        maxSlippage = newMaxSlippage;
+    }
+
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         HELPER                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
@@ -271,5 +292,22 @@ contract MultiBlockRebalancer is AccessControl {
     function _adjustAllowance(address token, address sender, uint256 amountIn) internal {
         uint256 allowance = IERC20(token).allowance(address(this), sender);
         if (allowance < amountIn) IERC20(token).safeIncreaseAllowance(sender, type(uint256).max - allowance);
+    }
+
+    function _checkSlippage(
+        uint256 amountIn,
+        uint256 amountOut,
+        address collateral,
+        address depositAddress
+    ) internal view {
+        if (collateral == USDC || collateral == USDM) {
+            // Assume 1:1 ratio between stablecoins
+            uint256 slippage = ((amountIn - amountOut) * 1e9) / amountIn;
+            if (slippage > maxSlippage) revert SlippageTooHigh();
+        } else if (collateral == XEVT) {
+            // Assumer 1:1 ratio between the underlying asset of the vault
+            uint256 slippage = ((IPool(depositAddress).convertToAssets(amountOut) - amountIn) * 1e9) / amountIn;
+            if (slippage > maxSlippage) revert SlippageTooHigh();
+        } else revert InvalidParam();
     }
 }
