@@ -306,7 +306,7 @@ contract MultiBlockRebalancer is AccessControl {
             if (slippage > maxSlippage) revert SlippageTooHigh();
         } else if (collateral == XEVT) {
             // Assumer 1:1 ratio between the underlying asset of the vault
-            uint256 slippage = ((IPool(depositAddress).convertToAssets(amountOut) - amountIn) * 1e9) / amountIn;
+            uint256 slippage = ((amountIn - IPool(depositAddress).convertToAssets(amountOut)) * 1e9) / amountIn;
             if (slippage > maxSlippage) revert SlippageTooHigh();
         } else revert InvalidParam();
     }
