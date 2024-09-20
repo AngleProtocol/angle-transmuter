@@ -135,7 +135,7 @@ contract GenericHarvester is BaseRebalancer, IERC3156FlashBorrower, RouterSwappe
         );
 
         // Swap to tokenIn
-        amountOut = _swapToTokenIn(typeAction, tokenIn, tokenOut, amountOut, swapType, callData);
+        amountOut = _swapToTokenOut(typeAction, tokenOut, tokenIn, amountOut, swapType, callData);
 
         _adjustAllowance(tokenIn, address(transmuter), amountOut);
         uint256 amountStableOut = transmuter.swapExactInput(
@@ -176,7 +176,7 @@ contract GenericHarvester is BaseRebalancer, IERC3156FlashBorrower, RouterSwappe
         IERC20(agToken).safeTransfer(receiver, amount);
     }
 
-    function _swapToTokenIn(
+    function _swapToTokenOut(
         uint256 typeAction,
         address tokenIn,
         address tokenOut,
@@ -198,30 +198,30 @@ contract GenericHarvester is BaseRebalancer, IERC3156FlashBorrower, RouterSwappe
      * @param amount amount of token to swap
      * @param callData bytes to call the router/aggregator
      */
-    function _swapToTokenInSwap(
+    function _swapToTokenOutSwap(
         address tokenIn,
         address tokenOut,
         uint256 amount,
         bytes memory callData
     ) internal returns (uint256) {
-        uint256 balance = IERC20(tokenIn).balanceOf(address(this));
+        uint256 balance = IERC20(tokenOut).balanceOf(address(this));
 
         address[] memory tokens = new address[](1);
-        tokens[0] = tokenOut;
+        tokens[0] = tokenIn;
         bytes[] memory callDatas = new bytes[](1);
         callDatas[0] = callData;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = amount;
         _swap(tokens, callDatas, amounts);
 
-        uint256 amountOut = IERC20(tokenIn).balanceOf(address(this)) - balance;
-        uint256 decimalsTokenOut = IERC20Metadata(tokenOut).decimals();
+        uint256 amountOut = IERC20(tokenOut).balanceOf(address(this)) - balance;
         uint256 decimalsTokenIn = IERC20Metadata(tokenIn).decimals();
+        uint256 decimalsTokenOut = IERC20Metadata(tokenOut).decimals();
 
-        if (decimalsTokenOut > decimalsTokenIn) {
-            amount /= 10 ** (decimalsTokenOut - decimalsTokenIn);
-        } else if (decimalsTokenOut < decimalsTokenIn) {
-            amount *= 10 ** (decimalsTokenIn - decimalsTokenOut);
+        if (decimalsTokenIn > decimalsTokenOut) {
+            amount /= 10 ** (decimalsTokenIn - decimalsTokenOut);
+        } else if (decimalsTokenIn < decimalsTokenOut) {
+            amount *= 10 ** (decimalsTokenOut - decimalsTokenIn);
         }
         if (amountOut < (amount * (BPS - maxSwapSlippage)) / BPS) {
             revert SlippageTooHigh();
@@ -236,7 +236,7 @@ contract GenericHarvester is BaseRebalancer, IERC3156FlashBorrower, RouterSwappe
      * @param tokenOut address of the token to receive
      * @param amount amount of token to swap
      */
-    function _swapToTokenInVault(
+    function _swapToTokenOutVault(
         uint256 typeAction,
         address tokenIn,
         address tokenOut,
@@ -244,8 +244,8 @@ contract GenericHarvester is BaseRebalancer, IERC3156FlashBorrower, RouterSwappe
     ) internal returns (uint256 amountOut) {
         if (typeAction == 1) {
             // Granting allowance with the collateral for the vault asset
-            _adjustAllowance(tokenOut, tokenIn, amount);
-            amountOut = IERC4626(tokenIn).deposit(amount, address(this));
+            _adjustAllowance(tokenOut, tokenOut, amount);
+            amountOut = IERC4626(tokenOut).deposit(amount, address(this));
         } else amountOut = IERC4626(tokenOut).redeem(amount, address(this), address(this));
     }
 
