@@ -7,7 +7,7 @@ import { stdJson } from "forge-std/StdJson.sol";
 import "stringutils/strings.sol";
 import "./Constants.s.sol";
 
-import { RebalancerFlashloanVault } from "contracts/helpers/RebalancerFlashloanVault.sol";
+import { GenericHarvester, SwapType } from "contracts/helpers/GenericHarvester.sol";
 
 contract AdjustYieldExposure is Utils {
     function run() external {
@@ -17,8 +17,16 @@ contract AdjustYieldExposure is Utils {
         console.log(deployer.balance);
         vm.startBroadcast(deployerPrivateKey);
 
-        RebalancerFlashloanVault rebalancer = RebalancerFlashloanVault(0x22604C0E5633A9810E01c9cb469B23Eee17AC411);
-        rebalancer.adjustYieldExposure(1300000 * 1 ether, 0, USDC, STEAK_USDC, 1200000 * 1 ether, new bytes(0));
+        GenericHarvester rebalancer = GenericHarvester(0x22604C0E5633A9810E01c9cb469B23Eee17AC411);
+        rebalancer.adjustYieldExposure(
+            1300000 * 1 ether,
+            0,
+            USDC,
+            STEAK_USDC,
+            1200000 * 1 ether,
+            SwapType.VAULT,
+            new bytes(0)
+        );
 
         vm.stopBroadcast();
     }
