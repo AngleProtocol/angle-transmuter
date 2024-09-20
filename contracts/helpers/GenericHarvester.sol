@@ -147,7 +147,6 @@ contract GenericHarvester is BaseRebalancer, IERC3156FlashBorrower, RouterSwappe
             block.timestamp
         );
         if (amount > amountStableOut) {
-            // TODO temporary fix for for subsidy as stack too deep
             if (budget[sender] < amount - amountStableOut) revert InsufficientFunds();
             budget[sender] -= amount - amountStableOut;
         }
