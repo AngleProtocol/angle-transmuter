@@ -99,9 +99,7 @@ contract MultiBlockRebalancer is BaseRebalancer {
      * @notice Finalize a rebalance
      * @param collateral address of the collateral
      */
-    function finalizeRebalance(address collateral) external onlyTrusted {
-        uint256 balance = IERC20(collateral).balanceOf(address(this));
-
+    function finalizeRebalance(address collateral, uint256 balance) external onlyTrusted {
         try transmuter.updateOracle(collateral) {} catch {}
         _adjustAllowance(address(agToken), address(transmuter), balance);
         uint256 amountOut = transmuter.swapExactInput(
