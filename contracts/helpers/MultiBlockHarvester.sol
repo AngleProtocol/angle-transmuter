@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.23;
 
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { AccessControl, IAccessControlManager } from "../utils/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -198,7 +199,7 @@ contract MultiBlockHarvester is BaseHarvester {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function _checkSlippage(uint256 amountIn, uint256 amountOut, address asset, address depositAddress) internal view {
-        uint256 decimalsAsset = IERC20(asset).decimals();
+        uint256 decimalsAsset = IERC20Metadata(asset).decimals();
         // Divide or multiply the amountIn to match the decimals of the asset
         if (decimalsAsset > 18) {
             amountIn /= 10 ** (decimalsAsset - 18);
