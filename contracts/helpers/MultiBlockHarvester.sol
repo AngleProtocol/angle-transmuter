@@ -5,7 +5,7 @@ pragma solidity ^0.8.23;
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { AccessControl, IAccessControlManager } from "../utils/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { BaseRebalancer, CollatParams } from "./BaseRebalancer.sol";
+import { BaseHarvester, YieldBearingParams } from "./BaseHarvester.sol";
 import { ITransmuter } from "../interfaces/ITransmuter.sol";
 import { IAgToken } from "../interfaces/IAgToken.sol";
 import { IPool } from "../interfaces/IPool.sol";
@@ -13,7 +13,10 @@ import { IPool } from "../interfaces/IPool.sol";
 import "../utils/Errors.sol";
 import "../utils/Constants.sol";
 
-contract MultiBlockRebalancer is BaseRebalancer {
+/// @title MultiBlockHarvester
+/// @author Angle Labs, Inc.
+/// @dev Contract to harvest yield from multiple yield bearing assets in multiple blocks transactions
+contract MultiBlockHarvester is BaseHarvester {
     using SafeERC20 for IERC20;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -29,8 +32,8 @@ contract MultiBlockRebalancer is BaseRebalancer {
                                                        VARIABLES
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice address to deposit to receive collateral
-    mapping(address => address) public collateralToDepositAddress;
+    /// @notice address to deposit to receive yieldBearingAsset
+    mapping(address => address) public yieldBearingToDepositAddress;
     /// @notice trusted addresses
     mapping(address => bool) public isTrusted;
 
@@ -47,7 +50,7 @@ contract MultiBlockRebalancer is BaseRebalancer {
         IAccessControlManager definitiveAccessControlManager,
         IAgToken definitiveAgToken,
         ITransmuter definitiveTransmuter
-    ) BaseRebalancer(initialMaxSlippage, definitiveAccessControlManager, definitiveAgToken, definitiveTransmuter) {
+    ) BaseHarvester(initialMaxSlippage, definitiveAccessControlManager, definitiveAgToken, definitiveTransmuter) {
         maxMintAmount = initialMaxMintAmount;
     }
 
@@ -68,12 +71,15 @@ contract MultiBlockRebalancer is BaseRebalancer {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Set the deposit address for a collateral
-     * @param collateral address of the collateral
-     * @param newDepositAddress address to deposit to receive collateral
+     * @notice Set the deposit address for a yieldBearingAsset
+     * @param yieldBearingAsset address of the yieldBearingAsset
+     * @param newDepositAddress address to deposit to receive yieldBearingAsset
      */
-    function setCollateralToDepositAddress(address collateral, address newDepositAddress) external onlyGuardian {
-        collateralToDepositAddress[collateral] = newDepositAddress;
+    function setYieldBearingToDepositAddress(
+        address yieldBearingAsset,
+        address newDepositAddress
+    ) external onlyGuardian {
+        yieldBearingToDepositAddress[yieldBearingAsset] = newDepositAddress;
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -83,35 +89,37 @@ contract MultiBlockRebalancer is BaseRebalancer {
     /**
      * @notice Initiate a rebalance
      * @param scale scale to apply to the rebalance amount
-     * @param collateral address of the collateral
+     * @param yieldBearingAsset address of the yieldBearingAsset
      */
-    function initiateRebalance(uint256 scale, address collateral) external onlyTrusted {
+    function initiateRebalance(uint256 scale, address yieldBearingAsset) external onlyTrusted {
         if (scale > 1e9) revert InvalidParam();
-        CollatParams memory collatInfo = collateralData[collateral];
-        (uint8 increase, uint256 amount) = _computeRebalanceAmount(collateral, collatInfo);
+        YieldBearingParams memory yieldBearingInfo = yieldBearingData[yieldBearingAsset];
+        (uint8 increase, uint256 amount) = _computeRebalanceAmount(yieldBearingAsset, yieldBearingInfo);
         amount = (amount * scale) / 1e9;
 
-        try transmuter.updateOracle(collateral) {} catch {}
-        _rebalance(increase, collateral, amount);
+        try transmuter.updateOracle(yieldBearingAsset) {} catch {}
+        _rebalance(increase, yieldBearingAsset, yieldBearingInfo, amount);
     }
 
     /**
      * @notice Finalize a rebalance
-     * @param collateral address of the collateral
+     * @param yieldBearingAsset address of the yieldBearingAsset
      */
-    function finalizeRebalance(address collateral, uint256 balance) external onlyTrusted {
-        try transmuter.updateOracle(collateral) {} catch {}
+    function finalizeRebalance(address yieldBearingAsset, uint256 balance) external onlyTrusted {
+        try transmuter.updateOracle(yieldBearingAsset) {} catch {}
         _adjustAllowance(address(agToken), address(transmuter), balance);
         uint256 amountOut = transmuter.swapExactInput(
             balance,
             0,
-            collateral,
+            yieldBearingAsset,
             address(agToken),
             address(this),
             block.timestamp
         );
-        address depositAddress = collateral == XEVT ? collateralToDepositAddress[collateral] : address(0);
-        _checkSlippage(balance, amountOut, collateral, depositAddress);
+        address depositAddress = yieldBearingAsset == XEVT
+            ? yieldBearingToDepositAddress[yieldBearingAsset]
+            : address(0);
+        _checkSlippage(balance, amountOut, yieldBearingAsset, depositAddress);
         agToken.burnSelf(amountOut, address(this));
     }
 
@@ -119,63 +127,68 @@ contract MultiBlockRebalancer is BaseRebalancer {
                                                         INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function _rebalance(uint8 typeAction, address collateral, uint256 amount) internal {
+    function _rebalance(
+        uint8 typeAction,
+        address yieldBearingAsset,
+        YieldBearingParams memory yieldBearingInfo,
+        uint256 amount
+    ) internal {
         if (amount > maxMintAmount) revert TooBigAmountIn();
         agToken.mint(address(this), amount);
         _adjustAllowance(address(agToken), address(transmuter), amount);
         if (typeAction == 1) {
-            address depositAddress = collateralToDepositAddress[collateral];
+            address depositAddress = yieldBearingToDepositAddress[yieldBearingAsset];
 
-            if (collateral == XEVT) {
+            if (yieldBearingAsset == XEVT) {
                 uint256 amountOut = transmuter.swapExactInput(
                     amount,
                     0,
                     address(agToken),
-                    EURC,
+                    yieldBearingInfo.stablecoin,
                     address(this),
                     block.timestamp
                 );
-                _checkSlippage(amount, amountOut, collateral, depositAddress);
-                _adjustAllowance(collateral, address(depositAddress), amountOut);
+                _checkSlippage(amount, amountOut, yieldBearingInfo.stablecoin, depositAddress);
+                _adjustAllowance(yieldBearingInfo.stablecoin, address(depositAddress), amountOut);
                 (uint256 shares, ) = IPool(depositAddress).deposit(amountOut, address(this));
-                _adjustAllowance(collateral, address(transmuter), shares);
+                _adjustAllowance(yieldBearingAsset, address(transmuter), shares);
                 amountOut = transmuter.swapExactInput(
                     shares,
                     0,
-                    collateral,
+                    yieldBearingAsset,
                     address(agToken),
                     address(this),
                     block.timestamp
                 );
                 agToken.burnSelf(amountOut, address(this));
-            } else if (collateral == USDM) {
+            } else if (yieldBearingAsset == USDM) {
                 uint256 amountOut = transmuter.swapExactInput(
                     amount,
                     0,
                     address(agToken),
-                    USDC,
+                    yieldBearingInfo.stablecoin,
                     address(this),
                     block.timestamp
                 );
-                _checkSlippage(amount, amountOut, collateral, depositAddress);
-                IERC20(collateral).safeTransfer(depositAddress, amountOut);
+                _checkSlippage(amount, amountOut, yieldBearingInfo.stablecoin, depositAddress);
+                IERC20(yieldBearingInfo.stablecoin).safeTransfer(depositAddress, amountOut);
             }
         } else {
             uint256 amountOut = transmuter.swapExactInput(
                 amount,
                 0,
                 address(agToken),
-                collateral,
+                yieldBearingAsset,
                 address(this),
                 block.timestamp
             );
-            address depositAddress = collateralToDepositAddress[collateral];
-            _checkSlippage(amount, amountOut, collateral, depositAddress);
+            address depositAddress = yieldBearingToDepositAddress[yieldBearingAsset];
+            _checkSlippage(amount, amountOut, yieldBearingAsset, depositAddress);
 
-            if (collateral == XEVT) {
+            if (yieldBearingAsset == XEVT) {
                 IPool(depositAddress).requestRedeem(amountOut);
-            } else if (collateral == USDM) {
-                IERC20(collateral).safeTransfer(depositAddress, amountOut);
+            } else if (yieldBearingAsset == USDM) {
+                IERC20(yieldBearingAsset).safeTransfer(depositAddress, amountOut);
             }
         }
     }
@@ -184,17 +197,12 @@ contract MultiBlockRebalancer is BaseRebalancer {
                                                         HELPER                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function _checkSlippage(
-        uint256 amountIn,
-        uint256 amountOut,
-        address collateral,
-        address depositAddress
-    ) internal view {
-        if (collateral == USDC || collateral == USDM) {
+    function _checkSlippage(uint256 amountIn, uint256 amountOut, address asset, address depositAddress) internal view {
+        if (asset == USDC || asset == USDM) {
             // Assume 1:1 ratio between stablecoins
             uint256 slippage = ((amountIn - amountOut) * 1e9) / amountIn;
             if (slippage > maxSlippage) revert SlippageTooHigh();
-        } else if (collateral == XEVT) {
+        } else if (asset == XEVT) {
             // Assumer 1:1 ratio between the underlying asset of the vault
             uint256 slippage = ((IPool(depositAddress).convertToAssets(amountIn) - amountOut) * 1e9) / amountIn;
             if (slippage > maxSlippage) revert SlippageTooHigh();

@@ -3,13 +3,13 @@ pragma solidity ^0.8.19;
 
 import "./utils/Utils.s.sol";
 import { console } from "forge-std/console.sol";
-import { MultiBlockRebalancer } from "contracts/helpers/MultiBlockRebalancer.sol";
+import { MultiBlockHarvester } from "contracts/helpers/MultiBlockHarvester.sol";
 import { IAccessControlManager } from "contracts/utils/AccessControl.sol";
 import { IAgToken } from "contracts/interfaces/IAgToken.sol";
 import { ITransmuter } from "contracts/interfaces/ITransmuter.sol";
 import "./Constants.s.sol";
 
-contract DeployMultiBlockRebalancer is Utils {
+contract DeployMultiBlockHarvester is Utils {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
@@ -22,7 +22,7 @@ contract DeployMultiBlockRebalancer is Utils {
         address transmuter = _chainToContract(CHAIN_SOURCE, ContractType.TransmuterAgEUR);
         IAccessControlManager accessControlManager = ITransmuter(transmuter).accessControlManager();
 
-        MultiBlockRebalancer harvester = new MultiBlockRebalancer(
+        MultiBlockHarvester harvester = new MultiBlockHarvester(
             maxMintAmount,
             maxSlippage,
             accessControlManager,

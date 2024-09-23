@@ -18,7 +18,7 @@ import "../utils/Errors.sol";
 import { IERC3156FlashBorrower } from "oz/interfaces/IERC3156FlashBorrower.sol";
 import { IERC3156FlashLender } from "oz/interfaces/IERC3156FlashLender.sol";
 import { IERC4626 } from "interfaces/external/IERC4626.sol";
-import { BaseRebalancer, CollatParams } from "./BaseRebalancer.sol";
+import { BaseHarvester, YieldBearingParams } from "./BaseHarvester.sol";
 
 enum SwapType {
     VAULT,
@@ -28,7 +28,7 @@ enum SwapType {
 /// @title GenericHarvester
 /// @author Angle Labs, Inc.
 /// @dev Generic contract for anyone to permissionlessly adjust the reserves of Angle Transmuter
-contract GenericHarvester is BaseRebalancer, IERC3156FlashBorrower, RouterSwapper {
+contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper {
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
 
@@ -56,7 +56,7 @@ contract GenericHarvester is BaseRebalancer, IERC3156FlashBorrower, RouterSwappe
         IERC3156FlashLender definitiveFlashloan
     )
         RouterSwapper(initialSwapRouter, initialTokenTransferAddress)
-        BaseRebalancer(initialMaxSlippage, definitiveAccessControlManager, definitiveAgToken, definitiveTransmuter)
+        BaseHarvester(initialMaxSlippage, definitiveAccessControlManager, definitiveAgToken, definitiveTransmuter)
     {
         if (address(definitiveFlashloan) == address(0)) revert ZeroAddress();
         flashloan = definitiveFlashloan;
@@ -69,17 +69,17 @@ contract GenericHarvester is BaseRebalancer, IERC3156FlashBorrower, RouterSwappe
                                                         REBALANCE                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Burns `amountStablecoins` for one collateral asset, swap for asset then mints stablecoins
+    /// @notice Burns `amountStablecoins` for one yieldBearing asset, swap for asset then mints stablecoins
     /// from the proceeds of the swap.
     /// @dev If `increase` is 1, then the system tries to increase its exposure to the yield bearing asset which means
-    /// burning stablecoin for the liquid asset, swapping for the yield bearing asset, then minting the stablecoin
+    /// burning stablecoin for the liquid stablecoin, swapping for the yield bearing asset, then minting the stablecoin
     /// @dev This function reverts if the second stablecoin mint gives less than `minAmountOut` of stablecoins
     /// @dev This function reverts if the swap slippage is higher than `maxSlippage`
     function adjustYieldExposure(
         uint256 amountStablecoins,
         uint8 increase,
-        address collateral,
-        address asset,
+        address yieldBearingAsset,
+        address stablecoin,
         uint256 minAmountOut,
         SwapType swapType,
         bytes calldata extraData
@@ -88,7 +88,7 @@ contract GenericHarvester is BaseRebalancer, IERC3156FlashBorrower, RouterSwappe
             IERC3156FlashBorrower(address(this)),
             address(agToken),
             amountStablecoins,
-            abi.encode(msg.sender, increase, collateral, asset, minAmountOut, swapType, extraData)
+            abi.encode(msg.sender, increase, yieldBearingAsset, stablecoin, minAmountOut, swapType, extraData)
         );
     }
 
@@ -109,20 +109,20 @@ contract GenericHarvester is BaseRebalancer, IERC3156FlashBorrower, RouterSwappe
         address tokenOut;
         address tokenIn;
         {
-            address collateral;
-            address asset;
-            (sender, typeAction, collateral, asset, minAmountOut, swapType, callData) = abi.decode(
+            address yieldBearingAsset;
+            address stablecoin;
+            (sender, typeAction, yieldBearingAsset, stablecoin, minAmountOut, swapType, callData) = abi.decode(
                 data,
                 (address, uint256, address, address, uint256, SwapType, bytes)
             );
             if (typeAction == 1) {
                 // Increase yield exposure action: we bring in the yield bearing asset
-                tokenOut = collateral;
-                tokenIn = asset;
+                tokenOut = yieldBearingAsset;
+                tokenIn = stablecoin;
             } else {
-                // Decrease yield exposure action: we bring in the liquid asset
-                tokenIn = collateral;
-                tokenOut = asset;
+                // Decrease yield exposure action: we bring in the liquid stablecoin
+                tokenIn = yieldBearingAsset;
+                tokenOut = stablecoin;
             }
         }
         uint256 amountOut = transmuter.swapExactInput(
@@ -185,9 +185,9 @@ contract GenericHarvester is BaseRebalancer, IERC3156FlashBorrower, RouterSwappe
         bytes memory callData
     ) internal returns (uint256 amountOut) {
         if (swapType == SwapType.SWAP) {
-            amountOut = _swapToTokenInSwap(tokenIn, tokenOut, amount, callData);
+            amountOut = _swapToTokenOutSwap(tokenIn, tokenOut, amount, callData);
         } else if (swapType == SwapType.VAULT) {
-            amountOut = _swapToTokenInVault(typeAction, tokenIn, tokenOut, amount);
+            amountOut = _swapToTokenOutVault(typeAction, tokenOut, amount);
         }
     }
 
@@ -232,18 +232,16 @@ contract GenericHarvester is BaseRebalancer, IERC3156FlashBorrower, RouterSwappe
     /**
      * @dev Deposit or redeem the vault asset
      * @param typeAction 1 for deposit, 2 for redeem
-     * @param tokenIn address of the token to swap
      * @param tokenOut address of the token to receive
      * @param amount amount of token to swap
      */
     function _swapToTokenOutVault(
         uint256 typeAction,
-        address tokenIn,
         address tokenOut,
         uint256 amount
     ) internal returns (uint256 amountOut) {
         if (typeAction == 1) {
-            // Granting allowance with the collateral for the vault asset
+            // Granting allowance with the yieldBearingAsset for the vault asset
             _adjustAllowance(tokenOut, tokenOut, amount);
             amountOut = IERC4626(tokenOut).deposit(amount, address(this));
         } else amountOut = IERC4626(tokenOut).redeem(amount, address(this), address(this));
@@ -253,26 +251,31 @@ contract GenericHarvester is BaseRebalancer, IERC3156FlashBorrower, RouterSwappe
                                                         HARVEST                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Invests or divests from the yield asset associated to `collateral` based on the current exposure to this
-    /// collateral
-    /// @dev This transaction either reduces the exposure to `collateral` in the Transmuter or frees up some collateral
+    /// @notice Invests or divests from the yield asset associated to `yieldBearingAsset` based on the current exposure to this
+    /// yieldBearingAsset
+    /// @dev This transaction either reduces the exposure to `yieldBearingAsset` in the Transmuter or frees up some yieldBearingAsset
     /// that can then be used for people looking to burn stablecoins
-    /// @dev Due to potential transaction fees within the Transmuter, this function doesn't exactly bring `collateral`
+    /// @dev Due to potential transaction fees within the Transmuter, this function doesn't exactly bring `yieldBearingAsset`
     /// to the target exposure
-    function harvest(address collateral, uint256 scale, SwapType swapType, bytes calldata extraData) public virtual {
+    function harvest(
+        address yieldBearingAsset,
+        uint256 scale,
+        SwapType swapType,
+        bytes calldata extraData
+    ) public virtual {
         if (scale > 1e9) revert InvalidParam();
-        CollatParams memory collatInfo = collateralData[collateral];
-        (uint8 increase, uint256 amount) = _computeRebalanceAmount(collateral, collatInfo);
+        YieldBearingParams memory yieldBearingInfo = yieldBearingData[yieldBearingAsset];
+        (uint8 increase, uint256 amount) = _computeRebalanceAmount(yieldBearingAsset, yieldBearingInfo);
         amount = (amount * scale) / 1e9;
 
         if (amount > 0) {
-            try transmuter.updateOracle(collatInfo.asset) {} catch {}
+            try transmuter.updateOracle(yieldBearingInfo.stablecoin) {} catch {}
 
             adjustYieldExposure(
                 amount,
                 increase,
-                collateral,
-                collatInfo.asset,
+                yieldBearingAsset,
+                yieldBearingInfo.stablecoin,
                 (amount * (1e9 - maxSlippage)) / 1e9,
                 swapType,
                 extraData

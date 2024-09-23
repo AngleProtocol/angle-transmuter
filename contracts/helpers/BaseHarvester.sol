@@ -10,21 +10,24 @@ import { IAgToken } from "../interfaces/IAgToken.sol";
 
 import "../utils/Errors.sol";
 
-struct CollatParams {
-    // Address of the collateral
-    address asset;
-    // Target exposure to the collateral asset used
+struct YieldBearingParams {
+    // Address of the stablecoin (ex: USDC)
+    address stablecoin;
+    // Target exposure to the collateral yield bearing asset used
     uint64 targetExposure;
-    // Maximum exposure within the Transmuter to the asset
+    // Maximum exposure within the Transmuter to the yield bearing asset
     uint64 maxExposureYieldAsset;
-    // Minimum exposure within the Transmuter to the asset
+    // Minimum exposure within the Transmuter to the yield bearing asset
     uint64 minExposureYieldAsset;
     // Whether limit exposures should be overriden or read onchain through the Transmuter
     // This value should be 1 to override exposures or 2 if these shouldn't be overriden
     uint64 overrideExposures;
 }
 
-abstract contract BaseRebalancer is AccessControl {
+/// @title BaseHarvester
+/// @author Angle Labs, Inc.
+/// @dev Abstract contract for a harvester that aims at rebalancing a Transmuter
+abstract contract BaseHarvester is AccessControl {
     using SafeERC20 for IERC20;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -37,8 +40,8 @@ abstract contract BaseRebalancer is AccessControl {
     IAgToken public immutable agToken;
     /// @notice Max slippage when dealing with the Transmuter
     uint96 public maxSlippage;
-    /// @notice Data associated to a collateral
-    mapping(address => CollatParams) public collateralData;
+    /// @notice Data associated to a yield bearing asset
+    mapping(address => YieldBearingParams) public yieldBearingData;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                        CONSTRUCTOR
@@ -61,24 +64,24 @@ abstract contract BaseRebalancer is AccessControl {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Set the collateral data
-     * @param collateral address of the collateral
-     * @param targetExposure target exposure to the collateral asset used
+     * @notice Set the yieldBearingAsset data
+     * @param yieldBearingAsset address of the yieldBearingAsset
+     * @param targetExposure target exposure to the yieldBearingAsset asset used
      * @param minExposureYieldAsset minimum exposure within the Transmuter to the asset
      * @param maxExposureYieldAsset maximum exposure within the Transmuter to the asset
      * @param overrideExposures whether limit exposures should be overriden or read onchain through the Transmuter
      * This value should be 1 to override exposures or 2 if these shouldn't be overriden
      */
-    function setCollateralData(
-        address collateral,
+    function setYieldBearingAssetData(
+        address yieldBearingAsset,
         uint64 targetExposure,
         uint64 minExposureYieldAsset,
         uint64 maxExposureYieldAsset,
         uint64 overrideExposures
     ) external onlyGuardian {
-        _setCollateralData(
-            collateral,
-            collateral,
+        _setYieldBearingAssetData(
+            yieldBearingAsset,
+            yieldBearingAsset,
             targetExposure,
             minExposureYieldAsset,
             maxExposureYieldAsset,
@@ -87,25 +90,25 @@ abstract contract BaseRebalancer is AccessControl {
     }
 
     /**
-     * @notice Set the collateral data
-     * @param collateral address of the collateral
-     * @param asset address of the asset
-     * @param targetExposure target exposure to the collateral asset used
+     * @notice Set the yieldBearingAsset data
+     * @param yieldBearingAsset address of the yieldBearingAsset
+     * @param stablecoin address of the stablecoin
+     * @param targetExposure target exposure to the yieldBearingAsset asset used
      * @param minExposureYieldAsset minimum exposure within the Transmuter to the asset
      * @param maxExposureYieldAsset maximum exposure within the Transmuter to the asset
      * @param overrideExposures whether limit exposures should be overriden or read onchain through the Transmuter
      */
-    function setCollateralData(
-        address collateral,
-        address asset,
+    function setYieldBearingAssetData(
+        address yieldBearingAsset,
+        address stablecoin,
         uint64 targetExposure,
         uint64 minExposureYieldAsset,
         uint64 maxExposureYieldAsset,
         uint64 overrideExposures
     ) external onlyGuardian {
-        _setCollateralData(
-            collateral,
-            asset,
+        _setYieldBearingAssetData(
+            yieldBearingAsset,
+            stablecoin,
             targetExposure,
             minExposureYieldAsset,
             maxExposureYieldAsset,
@@ -115,11 +118,12 @@ abstract contract BaseRebalancer is AccessControl {
 
     /**
      * @notice Set the limit exposures to the yield bearing asset
-     * @param collateral address of the collateral
+     * @param yieldBearingAsset address of the yield bearing asset
      */
-    function updateLimitExposuresYieldAsset(address collateral) public virtual onlyGuardian {
-        CollatParams storage collatInfo = collateralData[collateral];
-        if (collatInfo.overrideExposures == 2) _updateLimitExposuresYieldAsset(collatInfo);
+    function updateLimitExposuresYieldAsset(address yieldBearingAsset) public virtual onlyGuardian {
+        YieldBearingParams storage yieldBearingInfo = yieldBearingData[yieldBearingAsset];
+        if (yieldBearingInfo.overrideExposures == 2)
+            _updateLimitExposuresYieldAsset(yieldBearingAsset, yieldBearingInfo);
     }
 
     /**
@@ -135,68 +139,73 @@ abstract contract BaseRebalancer is AccessControl {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function _computeRebalanceAmount(
-        address collateral,
-        CollatParams memory collatInfo
+        address yieldBearingAsset,
+        YieldBearingParams memory yieldBearingInfo
     ) internal view returns (uint8 increase, uint256 amount) {
-        (uint256 stablecoinsFromCollateral, uint256 stablecoinsIssued) = transmuter.getIssuedByCollateral(collateral);
-        (uint256 stablecoinsFromAsset, ) = transmuter.getIssuedByCollateral(collatInfo.asset);
-        uint256 targetExposureScaled = collatInfo.targetExposure * stablecoinsIssued;
-        if (stablecoinsFromCollateral * 1e9 > targetExposureScaled) {
+        (uint256 stablecoinsFromYieldBearingAsset, uint256 stablecoinsIssued) = transmuter.getIssuedByCollateral(
+            yieldBearingAsset
+        );
+        (uint256 stablecoinsFromStablecoin, ) = transmuter.getIssuedByCollateral(yieldBearingInfo.stablecoin);
+        uint256 targetExposureScaled = yieldBearingInfo.targetExposure * stablecoinsIssued;
+        if (stablecoinsFromYieldBearingAsset * 1e9 > targetExposureScaled) {
             // Need to increase exposure to yield bearing asset
             increase = 1;
-            amount = stablecoinsFromCollateral - targetExposureScaled / 1e9;
-            uint256 maxValueScaled = collatInfo.maxExposureYieldAsset * stablecoinsIssued;
+            amount = stablecoinsFromYieldBearingAsset - targetExposureScaled / 1e9;
+            uint256 maxValueScaled = yieldBearingInfo.maxExposureYieldAsset * stablecoinsIssued;
             // These checks assume that there are no transaction fees on the stablecoin->collateral conversion and so
             // it's still possible that exposure goes above the max exposure in some rare cases
-            if (stablecoinsFromAsset * 1e9 > maxValueScaled) amount = 0;
-            else if ((stablecoinsFromAsset + amount) * 1e9 > maxValueScaled)
-                amount = maxValueScaled / 1e9 - stablecoinsFromAsset;
+            if (stablecoinsFromStablecoin * 1e9 > maxValueScaled) amount = 0;
+            else if ((stablecoinsFromStablecoin + amount) * 1e9 > maxValueScaled)
+                amount = maxValueScaled / 1e9 - stablecoinsFromStablecoin;
         } else {
             // In this case, exposure after the operation might remain slightly below the targetExposure as less
             // collateral may be obtained by burning stablecoins for the yield asset and unwrapping it
-            amount = targetExposureScaled / 1e9 - stablecoinsFromCollateral;
-            uint256 minValueScaled = collatInfo.minExposureYieldAsset * stablecoinsIssued;
-            if (stablecoinsFromAsset * 1e9 < minValueScaled) amount = 0;
-            else if (stablecoinsFromAsset * 1e9 < minValueScaled + amount * 1e9)
-                amount = stablecoinsFromAsset - minValueScaled / 1e9;
+            amount = targetExposureScaled / 1e9 - stablecoinsFromYieldBearingAsset;
+            uint256 minValueScaled = yieldBearingInfo.minExposureYieldAsset * stablecoinsIssued;
+            if (stablecoinsFromStablecoin * 1e9 < minValueScaled) amount = 0;
+            else if (stablecoinsFromStablecoin * 1e9 < minValueScaled + amount * 1e9)
+                amount = stablecoinsFromStablecoin - minValueScaled / 1e9;
         }
     }
 
-    function _setCollateralData(
-        address collateral,
-        address asset,
+    function _setYieldBearingAssetData(
+        address yieldBearingAsset,
+        address stablecoin,
         uint64 targetExposure,
         uint64 minExposureYieldAsset,
         uint64 maxExposureYieldAsset,
         uint64 overrideExposures
     ) internal virtual {
-        CollatParams storage collatInfo = collateralData[collateral];
-        collatInfo.asset = asset;
+        YieldBearingParams storage yieldBearingInfo = yieldBearingData[yieldBearingAsset];
+        yieldBearingInfo.stablecoin = stablecoin;
         if (targetExposure >= 1e9) revert InvalidParam();
-        collatInfo.targetExposure = targetExposure;
-        collatInfo.overrideExposures = overrideExposures;
+        yieldBearingInfo.targetExposure = targetExposure;
+        yieldBearingInfo.overrideExposures = overrideExposures;
         if (overrideExposures == 1) {
             if (maxExposureYieldAsset >= 1e9 || minExposureYieldAsset >= maxExposureYieldAsset) revert InvalidParam();
-            collatInfo.maxExposureYieldAsset = maxExposureYieldAsset;
-            collatInfo.minExposureYieldAsset = minExposureYieldAsset;
+            yieldBearingInfo.maxExposureYieldAsset = maxExposureYieldAsset;
+            yieldBearingInfo.minExposureYieldAsset = minExposureYieldAsset;
         } else {
-            collatInfo.overrideExposures = 2;
-            _updateLimitExposuresYieldAsset(collatInfo);
+            yieldBearingInfo.overrideExposures = 2;
+            _updateLimitExposuresYieldAsset(yieldBearingAsset, yieldBearingInfo);
         }
     }
 
-    function _updateLimitExposuresYieldAsset(CollatParams storage collatInfo) internal virtual {
+    function _updateLimitExposuresYieldAsset(
+        address yieldBearingAsset,
+        YieldBearingParams storage yieldBearingInfo
+    ) internal virtual {
         uint64[] memory xFeeMint;
-        (xFeeMint, ) = transmuter.getCollateralMintFees(collatInfo.asset);
+        (xFeeMint, ) = transmuter.getCollateralMintFees(yieldBearingAsset);
         uint256 length = xFeeMint.length;
-        if (length <= 1) collatInfo.maxExposureYieldAsset = 1e9;
-        else collatInfo.maxExposureYieldAsset = xFeeMint[length - 2];
+        if (length <= 1) yieldBearingInfo.maxExposureYieldAsset = 1e9;
+        else yieldBearingInfo.maxExposureYieldAsset = xFeeMint[length - 2];
 
         uint64[] memory xFeeBurn;
-        (xFeeBurn, ) = transmuter.getCollateralBurnFees(collatInfo.asset);
+        (xFeeBurn, ) = transmuter.getCollateralBurnFees(yieldBearingAsset);
         length = xFeeBurn.length;
-        if (length <= 1) collatInfo.minExposureYieldAsset = 0;
-        else collatInfo.minExposureYieldAsset = xFeeBurn[length - 2];
+        if (length <= 1) yieldBearingInfo.minExposureYieldAsset = 0;
+        else yieldBearingInfo.minExposureYieldAsset = xFeeBurn[length - 2];
     }
 
     function _setMaxSlippage(uint96 newMaxSlippage) internal virtual {
