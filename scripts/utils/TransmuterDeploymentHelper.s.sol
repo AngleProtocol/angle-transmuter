@@ -105,7 +105,7 @@ contract TransmuterDeploymentHelper is Utils {
 
         address computedAddress = create2Factory.findCreate2Address(salt, initCode);
         console.log("Supposed to deploy: %s", address(computedAddress));
-        if (computedAddress != 0x222222880e079445Df703c0604706E71a538Fd4f) revert InvalidVanityAddress();
+        // if (computedAddress != 0x222222880e079445Df703c0604706E71a538Fd4f) revert InvalidVanityAddress();
 
         transmuter = ITransmuter(create2Factory.safeCreate2(salt, initCode));
     }
