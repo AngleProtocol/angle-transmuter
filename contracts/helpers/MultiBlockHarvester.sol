@@ -198,6 +198,14 @@ contract MultiBlockHarvester is BaseHarvester {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function _checkSlippage(uint256 amountIn, uint256 amountOut, address asset, address depositAddress) internal view {
+        uint256 decimalsAsset = IERC20(asset).decimals();
+        // Divide or multiply the amountIn to match the decimals of the asset
+        if (decimalsAsset > 18) {
+            amountIn /= 10 ** (decimalsAsset - 18);
+        } else if (decimalsAsset < 18) {
+            amountIn *= 10 ** (18 - decimalsAsset);
+        }
+
         if (asset == USDC || asset == USDM) {
             // Assume 1:1 ratio between stablecoins
             uint256 slippage = ((amountIn - amountOut) * 1e9) / amountIn;
