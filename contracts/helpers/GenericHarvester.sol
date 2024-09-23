@@ -11,7 +11,7 @@ import { ITransmuter } from "interfaces/ITransmuter.sol";
 import { IAgToken } from "interfaces/IAgToken.sol";
 import { RouterSwapper } from "utils/src/RouterSwapper.sol";
 
-import { AccessControl, IAccessControlManager } from "../utils/AccessControl.sol";
+import { IAccessControlManager } from "../utils/AccessControl.sol";
 import "../utils/Constants.sol";
 import "../utils/Errors.sol";
 
@@ -251,12 +251,12 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
                                                         HARVEST                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Invests or divests from the yield asset associated to `yieldBearingAsset` based on the current exposure to this
-    /// yieldBearingAsset
-    /// @dev This transaction either reduces the exposure to `yieldBearingAsset` in the Transmuter or frees up some yieldBearingAsset
-    /// that can then be used for people looking to burn stablecoins
-    /// @dev Due to potential transaction fees within the Transmuter, this function doesn't exactly bring `yieldBearingAsset`
-    /// to the target exposure
+    /// @notice Invests or divests from the yield asset associated to `yieldBearingAsset` based on the current exposure
+    ///  to this yieldBearingAsset
+    /// @dev This transaction either reduces the exposure to `yieldBearingAsset` in the Transmuter or frees up
+    /// some yieldBearingAsset that can then be used for people looking to burn stablecoins
+    /// @dev Due to potential transaction fees within the Transmuter, this function doesn't exactly bring
+    /// `yieldBearingAsset` to the target exposure
     function harvest(address yieldBearingAsset, uint256 scale, bytes calldata extraData) public virtual {
         if (scale > 1e9) revert InvalidParam();
         YieldBearingParams memory yieldBearingInfo = yieldBearingData[yieldBearingAsset];
