@@ -91,7 +91,7 @@ contract MultiBlockHarvester is BaseHarvester {
      * @param scale scale to apply to the rebalance amount
      * @param yieldBearingAsset address of the yieldBearingAsset
      */
-    function initiateRebalance(uint256 scale, address yieldBearingAsset) external onlyTrusted {
+    function harvest(address yieldBearingAsset, uint256 scale, bytes calldata) external onlyTrusted {
         if (scale > 1e9) revert InvalidParam();
         YieldBearingParams memory yieldBearingInfo = yieldBearingData[yieldBearingAsset];
         (uint8 increase, uint256 amount) = _computeRebalanceAmount(yieldBearingAsset, yieldBearingInfo);

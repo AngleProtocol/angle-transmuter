@@ -82,7 +82,7 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         address stablecoin,
         uint256 minAmountOut,
         SwapType swapType,
-        bytes calldata extraData
+        bytes memory extraData
     ) public virtual {
         flashloan.flashLoan(
             IERC3156FlashBorrower(address(this)),
@@ -257,16 +257,13 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
     /// that can then be used for people looking to burn stablecoins
     /// @dev Due to potential transaction fees within the Transmuter, this function doesn't exactly bring `yieldBearingAsset`
     /// to the target exposure
-    function harvest(
-        address yieldBearingAsset,
-        uint256 scale,
-        SwapType swapType,
-        bytes calldata extraData
-    ) public virtual {
+    function harvest(address yieldBearingAsset, uint256 scale, bytes calldata extraData) public virtual {
         if (scale > 1e9) revert InvalidParam();
         YieldBearingParams memory yieldBearingInfo = yieldBearingData[yieldBearingAsset];
         (uint8 increase, uint256 amount) = _computeRebalanceAmount(yieldBearingAsset, yieldBearingInfo);
         amount = (amount * scale) / 1e9;
+
+        (SwapType swapType, bytes memory data) = abi.decode(extraData, (SwapType, bytes));
 
         if (amount > 0) {
             try transmuter.updateOracle(yieldBearingInfo.stablecoin) {} catch {}
@@ -278,7 +275,7 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
                 yieldBearingInfo.stablecoin,
                 (amount * (1e9 - maxSlippage)) / 1e9,
                 swapType,
-                extraData
+                data
             );
         }
     }

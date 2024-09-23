@@ -9,6 +9,7 @@ import { ITransmuter } from "../interfaces/ITransmuter.sol";
 import { IAgToken } from "../interfaces/IAgToken.sol";
 
 import "../utils/Errors.sol";
+import "../interfaces/IHarvester.sol";
 
 struct YieldBearingParams {
     // Address of the stablecoin (ex: USDC)
@@ -27,7 +28,7 @@ struct YieldBearingParams {
 /// @title BaseHarvester
 /// @author Angle Labs, Inc.
 /// @dev Abstract contract for a harvester that aims at rebalancing a Transmuter
-abstract contract BaseHarvester is AccessControl {
+abstract contract BaseHarvester is IHarvester, AccessControl {
     using SafeERC20 for IERC20;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
