@@ -55,7 +55,7 @@ contract ProductionSidechain {
                     Storage.OracleReadType.STABLE,
                     readData,
                     targetData,
-                    abi.encode(uint128(20 * BPS), uint128(0))
+                    abi.encode(uint128(30 * BPS), uint128(0))
                 );
             }
 

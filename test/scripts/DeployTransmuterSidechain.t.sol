@@ -38,7 +38,7 @@ contract DeployTransmuterSidechainTest is Test, CommonUtils {
         uint256 chain = CHAIN_BASE;
         agToken = IERC20(_chainToContract(chain, ContractType.AgEUR));
         treasury = ITreasury(_chainToContract(chain, ContractType.TreasuryAgEUR));
-        transmuter = ITransmuter(0x9DB174139C2f5a187492b762E36B6d61aB036Bb2);
+        transmuter = ITransmuter(0xBA0e73218a80C3deC1213d64873aF83B02cE0455);
 
         vm.prank(governor);
         treasury.addMinter(address(transmuter));

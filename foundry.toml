@@ -42,10 +42,19 @@ base = "${ETH_NODE_URI_BASE}"
 linea = "${ETH_NODE_URI_LINEA}"
 
 [etherscan]
-
+arbitrum = { key = "${ARBITRUM_ETHERSCAN_API_KEY}" }
+gnosis = { key = "${GNOSIS_ETHERSCAN_API_KEY}" , url = "https://api.gnosisscan.io/api"}
+mainnet = { key = "${MAINNET_ETHERSCAN_API_KEY}" }
+optimism = { key = "${OPTIMISM_ETHERSCAN_API_KEY}" }
+polygon = { key = "${POLYGON_ETHERSCAN_API_KEY}" }
+avalanche = { key = "${AVALANCHE_ETHERSCAN_API_KEY}" }
+celo = { key = "${CELO_ETHERSCAN_API_KEY}", url = "https://api.celoscan.io/api" }
+base = { key = "${BASE_ETHERSCAN_API_KEY}", url = "https://api.basescan.org/api" }
+polygon-zkevm = { key = "${POLYGONZKEVM_ETHERSCAN_API_KEY}", url = "https://api-zkevm.polygonscan.com/api" }
+bsc = { key = "${BSC_ETHERSCAN_API_KEY}"}
+linea = { key = "${LINEA_ETHERSCAN_API_KEY}"}
 
 [profile.dev]
-optimizer = true
 via_ir = false
 src = 'contracts'
 gas_reports = ["*"]
