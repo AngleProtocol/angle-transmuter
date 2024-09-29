@@ -5,14 +5,6 @@ pragma solidity >=0.5.0;
 interface IHarvester {
     function setYieldBearingAssetData(
         address yieldBearingAsset,
-        uint64 targetExposure,
-        uint64 minExposureYieldAsset,
-        uint64 maxExposureYieldAsset,
-        uint64 overrideExposures
-    ) external;
-
-    function setYieldBearingAssetData(
-        address yieldBearingAsset,
         address stablecoin,
         uint64 targetExposure,
         uint64 minExposureYieldAsset,

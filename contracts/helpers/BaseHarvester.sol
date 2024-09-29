@@ -67,32 +67,6 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
     /**
      * @notice Set the yieldBearingAsset data
      * @param yieldBearingAsset address of the yieldBearingAsset
-     * @param targetExposure target exposure to the yieldBearingAsset asset used
-     * @param minExposureYieldAsset minimum exposure within the Transmuter to the asset
-     * @param maxExposureYieldAsset maximum exposure within the Transmuter to the asset
-     * @param overrideExposures whether limit exposures should be overriden or read onchain through the Transmuter
-     * This value should be 1 to override exposures or 2 if these shouldn't be overriden
-     */
-    function setYieldBearingAssetData(
-        address yieldBearingAsset,
-        uint64 targetExposure,
-        uint64 minExposureYieldAsset,
-        uint64 maxExposureYieldAsset,
-        uint64 overrideExposures
-    ) external onlyGuardian {
-        _setYieldBearingAssetData(
-            yieldBearingAsset,
-            yieldBearingAsset,
-            targetExposure,
-            minExposureYieldAsset,
-            maxExposureYieldAsset,
-            overrideExposures
-        );
-    }
-
-    /**
-     * @notice Set the yieldBearingAsset data
-     * @param yieldBearingAsset address of the yieldBearingAsset
      * @param stablecoin address of the stablecoin
      * @param targetExposure target exposure to the yieldBearingAsset asset used
      * @param minExposureYieldAsset minimum exposure within the Transmuter to the asset
