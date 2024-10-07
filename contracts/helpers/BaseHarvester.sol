@@ -123,8 +123,7 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
         (uint256 stablecoinsFromStablecoin, ) = transmuter.getIssuedByCollateral(yieldBearingInfo.stablecoin);
         uint256 targetExposureScaled = yieldBearingInfo.targetExposure * stablecoinsIssued;
         if (stablecoinsFromYieldBearingAsset * 1e9 > targetExposureScaled) {
-            // Need to increase exposure to yield bearing asset
-            increase = 1;
+            // Need to decrease exposure to yield bearing asset
             amount = stablecoinsFromYieldBearingAsset - targetExposureScaled / 1e9;
             uint256 maxValueScaled = yieldBearingInfo.maxExposureYieldAsset * stablecoinsIssued;
             // These checks assume that there are no transaction fees on the stablecoin->collateral conversion and so
@@ -135,6 +134,7 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
         } else {
             // In this case, exposure after the operation might remain slightly below the targetExposure as less
             // collateral may be obtained by burning stablecoins for the yield asset and unwrapping it
+            increase = 1;
             amount = targetExposureScaled / 1e9 - stablecoinsFromYieldBearingAsset;
             uint256 minValueScaled = yieldBearingInfo.minExposureYieldAsset * stablecoinsIssued;
             if (stablecoinsFromStablecoin * 1e9 < minValueScaled) amount = 0;
