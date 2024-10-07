@@ -83,6 +83,14 @@ contract MultiBlockHarvester is BaseHarvester {
         yieldBearingToDepositAddress[yieldBearingAsset] = newDepositAddress;
     }
 
+    /**
+     * @notice Toggle the trusted status of an address
+     * @param trusted address to toggle the trusted status
+     */
+    function toggleTrusted(address trusted) external onlyGuardian {
+        isTrusted[trusted] = !isTrusted[trusted];
+    }
+
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         TRUSTED FUNCTIONS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
@@ -97,6 +105,7 @@ contract MultiBlockHarvester is BaseHarvester {
         YieldBearingParams memory yieldBearingInfo = yieldBearingData[yieldBearingAsset];
         (uint8 increase, uint256 amount) = _computeRebalanceAmount(yieldBearingAsset, yieldBearingInfo);
         amount = (amount * scale) / 1e9;
+        if (amount == 0) revert ZeroAmount();
 
         try transmuter.updateOracle(yieldBearingAsset) {} catch {}
         _rebalance(increase, yieldBearingAsset, yieldBearingInfo, amount);
@@ -108,7 +117,7 @@ contract MultiBlockHarvester is BaseHarvester {
      */
     function finalizeRebalance(address yieldBearingAsset, uint256 balance) external onlyTrusted {
         try transmuter.updateOracle(yieldBearingAsset) {} catch {}
-        _adjustAllowance(address(agToken), address(transmuter), balance);
+        _adjustAllowance(yieldBearingAsset, address(transmuter), balance);
         uint256 amountOut = transmuter.swapExactInput(
             balance,
             0,
@@ -120,7 +129,7 @@ contract MultiBlockHarvester is BaseHarvester {
         address depositAddress = yieldBearingAsset == XEVT
             ? yieldBearingToDepositAddress[yieldBearingAsset]
             : address(0);
-        _checkSlippage(balance, amountOut, yieldBearingAsset, depositAddress);
+        _checkSlippage(balance, amountOut, yieldBearingAsset, depositAddress, true);
         agToken.burnSelf(amountOut, address(this));
     }
 
@@ -149,7 +158,7 @@ contract MultiBlockHarvester is BaseHarvester {
                     address(this),
                     block.timestamp
                 );
-                _checkSlippage(amount, amountOut, yieldBearingInfo.stablecoin, depositAddress);
+                _checkSlippage(amount, amountOut, yieldBearingInfo.stablecoin, depositAddress, false);
                 _adjustAllowance(yieldBearingInfo.stablecoin, address(depositAddress), amountOut);
                 (uint256 shares, ) = IPool(depositAddress).deposit(amountOut, address(this));
                 _adjustAllowance(yieldBearingAsset, address(transmuter), shares);
@@ -171,7 +180,7 @@ contract MultiBlockHarvester is BaseHarvester {
                     address(this),
                     block.timestamp
                 );
-                _checkSlippage(amount, amountOut, yieldBearingInfo.stablecoin, depositAddress);
+                _checkSlippage(amount, amountOut, yieldBearingInfo.stablecoin, depositAddress, false);
                 IERC20(yieldBearingInfo.stablecoin).safeTransfer(depositAddress, amountOut);
             }
         } else {
@@ -184,7 +193,7 @@ contract MultiBlockHarvester is BaseHarvester {
                 block.timestamp
             );
             address depositAddress = yieldBearingToDepositAddress[yieldBearingAsset];
-            _checkSlippage(amount, amountOut, yieldBearingAsset, depositAddress);
+            _checkSlippage(amount, amountOut, yieldBearingAsset, depositAddress, false);
 
             if (yieldBearingAsset == XEVT) {
                 IPool(depositAddress).requestRedeem(amountOut);
@@ -198,16 +207,31 @@ contract MultiBlockHarvester is BaseHarvester {
                                                         HELPER                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function _checkSlippage(uint256 amountIn, uint256 amountOut, address asset, address depositAddress) internal view {
+    function _checkSlippage(
+        uint256 amountIn,
+        uint256 amountOut,
+        address asset,
+        address depositAddress,
+        bool assetIn
+    ) internal view {
         uint256 decimalsAsset = IERC20Metadata(asset).decimals();
+
         // Divide or multiply the amountIn to match the decimals of the asset
         if (decimalsAsset > 18) {
-            amountIn /= 10 ** (decimalsAsset - 18);
+            if (assetIn) {
+                amountIn /= 10 ** (decimalsAsset - 18);
+            } else {
+                amountIn *= 10 ** (decimalsAsset - 18);
+            }
         } else if (decimalsAsset < 18) {
-            amountIn *= 10 ** (18 - decimalsAsset);
+            if (assetIn) {
+                amountIn *= 10 ** (18 - decimalsAsset);
+            } else {
+                amountIn /= 10 ** (18 - decimalsAsset);
+            }
         }
 
-        if (asset == USDC || asset == USDM) {
+        if (asset == USDC || asset == USDM || asset == EURC) {
             // Assume 1:1 ratio between stablecoins
             uint256 slippage = ((amountIn - amountOut) * 1e9) / amountIn;
             if (slippage > maxSlippage) revert SlippageTooHigh();
