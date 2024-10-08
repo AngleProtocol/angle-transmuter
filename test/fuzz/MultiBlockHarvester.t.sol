@@ -108,7 +108,7 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         oracleXEVT = AggregatorV3Interface(address(new MockChainlinkOracle()));
         circuitChainlink[0] = AggregatorV3Interface(oracleXEVT);
         readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals, quoteType);
-        MockChainlinkOracle(address(oracleXEVT)).setLatestAnswer(int256(IERC4626(XEVT).convertToAssets(BASE_8)));
+        MockChainlinkOracle(address(oracleXEVT)).setLatestAnswer(int256(BASE_8));
         transmuter.setOracle(
             XEVT,
             abi.encode(
@@ -148,7 +148,7 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         transmuter.togglePause(USDC, ActionType.Burn);
         transmuter.setStablecoinCap(USDC, type(uint256).max);
 
-        // mock isAllowed(address) returns (bool)
+        // mock isAllowed(address) returns (bool) to transfer XEVT
         vm.mockCall(
             0x9019Fd383E490B4B045130707C9A1227F36F4636,
             abi.encodeWithSelector(Wow.isAllowed.selector),
@@ -167,7 +167,7 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         vm.stopPrank();
 
         targetExposure = uint64((15 * 1e9) / 100);
-        maxExposureYieldAsset = uint64((80 * 1e9) / 100);
+        maxExposureYieldAsset = uint64((90 * 1e9) / 100);
         minExposureYieldAsset = uint64((5 * 1e9) / 100);
 
         harvester = new MultiBlockHarvester(100_000e18, 1e8, accessControlManager, agToken, transmuter);
@@ -211,6 +211,9 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
 
         vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
         harvester.updateLimitExposuresYieldAsset(address(XEVT));
+
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        harvester.toggleTrusted(alice);
     }
 
     function test_SettersHarvester() public {
@@ -257,19 +260,6 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
     }
 
     function test_UpdateLimitExposuresYieldAsset() public {
-        bytes memory data;
-        address _savingImplementation = address(new Savings());
-        Savings newVault = Savings(_deployUpgradeable(address(proxyAdmin), _savingImplementation, data));
-        string memory _name = "savingAgEUR";
-        string memory _symbol = "SAGEUR";
-
-        vm.startPrank(governor);
-        MockTokenPermit(address(eurA)).mint(governor, 1e12);
-        eurA.approve(address(newVault), 1e12);
-        newVault.initialize(accessControlManager, IERC20MetadataUpgradeable(address(eurA)), _name, _symbol, BASE_6);
-        transmuter.addCollateral(address(newVault));
-        vm.stopPrank();
-
         uint64[] memory xFeeMint = new uint64[](3);
         int64[] memory yFeeMint = new int64[](3);
 
@@ -293,46 +283,33 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         yFeeBurn[2] = int64(uint64(BASE_9 / 10));
 
         vm.startPrank(governor);
-        transmuter.setFees(address(newVault), xFeeBurn, yFeeBurn, false);
-        transmuter.setFees(address(newVault), xFeeMint, yFeeMint, true);
+        transmuter.setFees(address(EURC), xFeeBurn, yFeeBurn, false);
+        transmuter.setFees(address(EURC), xFeeMint, yFeeMint, true);
         harvester.setYieldBearingAssetData(
-            address(newVault),
-            address(eurA),
+            address(XEVT),
+            address(EURC),
             targetExposure,
             minExposureYieldAsset,
             maxExposureYieldAsset,
             0
         );
-        harvester.updateLimitExposuresYieldAsset(address(newVault));
+        harvester.updateLimitExposuresYieldAsset(address(XEVT));
 
-        (, , uint64 maxi, uint64 mini, ) = harvester.yieldBearingData(address(newVault));
+        (, , uint64 maxi, uint64 mini, ) = harvester.yieldBearingData(address(XEVT));
         assertEq(maxi, (15 * BASE_9) / 100);
         assertEq(mini, BASE_9 / 10);
         vm.stopPrank();
     }
 
-    function test_FinalizeRebalance_IncreaseExposureXEVT(uint256 amount) external {
-        _loadReserve(XEVT, 1e26);
-        amount = bound(amount, 1e18, 1e24);
-        deal(XEVT, address(harvester), amount);
+    function test_ToggleTrusted() public {
+        vm.startPrank(governor);
+        harvester.toggleTrusted(bob);
+        assertEq(harvester.isTrusted(bob), true);
 
-        vm.prank(alice);
-        harvester.finalizeRebalance(XEVT, amount);
+        harvester.toggleTrusted(bob);
+        assertEq(harvester.isTrusted(bob), false);
 
-        assertEq(agToken.balanceOf(address(harvester)), 0);
-        assertEq(IERC20(XEVT).balanceOf(address(harvester)), 0);
-    }
-
-    function test_FinalizeRebalance_DecreaseExposureEURC(uint256 amount) external {
-        _loadReserve(EURC, 1e26);
-        amount = bound(amount, 1e18, 1e24);
-        deal(EURC, address(harvester), amount);
-
-        vm.prank(alice);
-        harvester.finalizeRebalance(EURC, amount);
-
-        assertEq(agToken.balanceOf(address(harvester)), 0);
-        assertEq(IERC20(EURC).balanceOf(address(harvester)), 0);
+        vm.stopPrank();
     }
 
     function test_harvest_TooBigMintedAmount() external {
@@ -346,42 +323,211 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
     }
 
     function test_harvest_IncreaseExposureXEVT(uint256 amount) external {
-        _loadReserve(EURC, 1e11);
-        _loadReserve(XEVT, 1e6);
+        amount = bound(amount, 1e3, 1e11);
+        _loadReserve(EURC, amount);
         _setYieldBearingData(XEVT, EURC);
+
+        (uint256 issuedFromYieldBearingAssetBefore, ) = transmuter.getIssuedByCollateral(XEVT);
+        (uint256 issuedFromStablecoinBefore, uint256 totalIssuedBefore) = transmuter.getIssuedByCollateral(EURC);
+        (uint8 expectedIncrease, uint256 expectedAmount) = harvester.computeRebalanceAmount(XEVT);
+
+        assertEq(expectedIncrease, 1);
+        assertEq(expectedAmount, (amount * 1e12 * targetExposure) / 1e9);
+        assertEq(issuedFromStablecoinBefore, amount * 1e12);
+        assertEq(issuedFromYieldBearingAssetBefore, 0);
+        assertEq(totalIssuedBefore, issuedFromStablecoinBefore);
 
         vm.prank(alice);
         harvester.harvest(XEVT, 1e9, new bytes(0));
+
+        assertEq(IERC20(XEVT).balanceOf(address(harvester)), 0);
+        assertEq(IERC20(EURC).balanceOf(address(harvester)), 0);
+        assertEq(agToken.balanceOf(address(harvester)), 0);
+
+        (uint256 issuedFromYieldBearingAsset, uint256 totalIssued) = transmuter.getIssuedByCollateral(XEVT);
+        (uint256 issuedFromStablecoin, ) = transmuter.getIssuedByCollateral(EURC);
+        assertEq(totalIssued, issuedFromStablecoin + issuedFromYieldBearingAsset);
+        assertApproxEqRel(issuedFromStablecoin, (totalIssued * (1e9 - targetExposure)) / 1e9, 1e18);
+        assertApproxEqRel(issuedFromYieldBearingAsset, (totalIssued * targetExposure) / 1e9, 1e18);
+
+        (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(XEVT);
+        assertEq(increase, 1); // There is still a small amount to mint because of the transmuter fees and slippage
     }
 
     function test_harvest_DecreaseExposureXEVT(uint256 amount) external {
-        _loadReserve(EURC, 1e11);
-        _loadReserve(XEVT, 1e8);
+        amount = bound(amount, 1e3, 1e11);
+        _loadReserve(XEVT, amount);
         _setYieldBearingData(XEVT, EURC);
+
+        (uint256 issuedFromYieldBearingAssetBefore, ) = transmuter.getIssuedByCollateral(XEVT);
+        (uint256 issuedFromStablecoinBefore, uint256 totalIssuedBefore) = transmuter.getIssuedByCollateral(EURC);
+        (uint8 expectedIncrease, uint256 expectedAmount) = harvester.computeRebalanceAmount(XEVT);
+
+        assertEq(expectedIncrease, 0);
+        assertEq(issuedFromStablecoinBefore, 0);
+        assertEq(issuedFromYieldBearingAssetBefore, amount * 1e12);
+        assertEq(totalIssuedBefore, issuedFromYieldBearingAssetBefore);
+        assertEq(expectedAmount, issuedFromYieldBearingAssetBefore - ((targetExposure * totalIssuedBefore) / 1e9));
 
         vm.prank(alice);
         harvester.harvest(XEVT, 1e9, new bytes(0));
+
+        assertEq(IERC20(EURC).balanceOf(address(harvester)), 0);
+        assertApproxEqRel(IERC20(XEVT).balanceOf(address(harvester)), expectedAmount / 1e12, 1e18); // XEVT is stored in the harvester while the redemption is in progress
+        assertEq(agToken.balanceOf(address(harvester)), 0);
+
+        // fake semd EURC to harvester
+        deal(EURC, address(harvester), amount);
+
+        vm.prank(alice);
+        harvester.finalizeRebalance(EURC, amount);
+
+        assertEq(agToken.balanceOf(address(harvester)), 0);
+        assertEq(IERC20(EURC).balanceOf(address(harvester)), 0);
+
+        (uint256 issuedFromYieldBearingAsset, uint256 totalIssued) = transmuter.getIssuedByCollateral(XEVT);
+        (uint256 issuedFromStablecoin, ) = transmuter.getIssuedByCollateral(EURC);
+        assertEq(totalIssued, issuedFromStablecoin + issuedFromYieldBearingAsset);
+        assertApproxEqRel(issuedFromStablecoin, (totalIssued * (1e9 - targetExposure)) / 1e9, 1e18);
+        assertApproxEqRel(issuedFromYieldBearingAsset, (totalIssued * targetExposure) / 1e9, 1e18);
+
+        (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(XEVT);
+        assertEq(increase, 1); // There is still a small amount to mint because of the transmuter fees and slippage
     }
 
     function test_harvest_IncreaseExposureUSDM(uint256 amount) external {
-        _loadReserve(USDC, 1e11);
-        _loadReserve(USDM, 1e6);
+        amount = bound(amount, 1e3, 1e11);
+        _loadReserve(USDC, amount);
         _setYieldBearingData(USDM, USDC);
+
+        (uint256 issuedFromYieldBearingAssetBefore, ) = transmuter.getIssuedByCollateral(USDM);
+        (uint256 issuedFromStablecoinBefore, uint256 totalIssuedBefore) = transmuter.getIssuedByCollateral(USDC);
+        (uint8 expectedIncrease, uint256 expectedAmount) = harvester.computeRebalanceAmount(USDM);
+
+        assertEq(expectedIncrease, 1);
+        assertEq(issuedFromStablecoinBefore, amount * 1e12);
+        assertEq(issuedFromYieldBearingAssetBefore, 0);
+        assertEq(totalIssuedBefore, issuedFromStablecoinBefore);
+        assertEq(expectedAmount, (amount * 1e12 * targetExposure) / 1e9);
 
         vm.prank(alice);
         harvester.harvest(USDM, 1e9, new bytes(0));
+
+        assertEq(IERC20(USDC).balanceOf(address(harvester)), 0);
+        assertEq(IERC20(USDM).balanceOf(address(harvester)), 0);
+        assertApproxEqRel(IERC20(USDM).balanceOf(address(receiver)), expectedAmount, 1e18);
+        assertEq(agToken.balanceOf(address(harvester)), 0);
+
+        // fake semd USDC to harvester
+        deal(USDC, address(harvester), amount);
+
+        vm.prank(alice);
+        harvester.finalizeRebalance(USDC, amount);
+
+        assertEq(agToken.balanceOf(address(harvester)), 0);
+        assertEq(IERC20(USDC).balanceOf(address(harvester)), 0);
+
+        (uint256 issuedFromYieldBearingAsset, uint256 totalIssued) = transmuter.getIssuedByCollateral(USDM);
+        (uint256 issuedFromStablecoin, ) = transmuter.getIssuedByCollateral(USDC);
+        assertEq(totalIssued, issuedFromStablecoin + issuedFromYieldBearingAsset);
+        assertApproxEqRel(issuedFromStablecoin, (totalIssued * (1e9 - targetExposure)) / 1e9, 1e18);
+        assertApproxEqRel(issuedFromYieldBearingAsset, (totalIssued * targetExposure) / 1e9, 1e18);
+
+        (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(USDM);
+        assertEq(increase, 1); // There is still a small amount to mint because of the transmuter fees and slippage
     }
 
     function test_harvest_DecreaseExposureUSDM(uint256 amount) external {
-        _loadReserve(USDC, 1e11);
-        _loadReserve(USDM, 1e8);
+        amount = bound(amount, 1e15, 1e23);
+        _loadReserve(USDM, amount);
         _setYieldBearingData(USDM, USDC);
+
+        (uint256 issuedFromYieldBearingAssetBefore, ) = transmuter.getIssuedByCollateral(USDM);
+        (uint256 issuedFromStablecoinBefore, uint256 totalIssuedBefore) = transmuter.getIssuedByCollateral(USDC);
+        (uint8 expectedIncrease, uint256 expectedAmount) = harvester.computeRebalanceAmount(USDM);
+
+        assertEq(expectedIncrease, 0);
+        assertEq(issuedFromStablecoinBefore, 0);
+        assertEq(issuedFromYieldBearingAssetBefore, amount);
+        assertEq(totalIssuedBefore, issuedFromYieldBearingAssetBefore);
+        assertEq(expectedAmount, issuedFromYieldBearingAssetBefore - ((targetExposure * totalIssuedBefore) / 1e9));
 
         vm.prank(alice);
         harvester.harvest(USDM, 1e9, new bytes(0));
+
+        assertEq(IERC20(USDC).balanceOf(address(harvester)), 0);
+        assertEq(IERC20(USDM).balanceOf(address(harvester)), 0);
+        assertApproxEqRel(IERC20(USDM).balanceOf(address(receiver)), expectedAmount, 1e18);
+        assertEq(agToken.balanceOf(address(harvester)), 0);
+
+        // fake semd USDC to harvester
+        deal(USDC, address(harvester), amount);
+
+        vm.prank(alice);
+        harvester.finalizeRebalance(USDC, amount);
+
+        assertEq(agToken.balanceOf(address(harvester)), 0);
+        assertEq(IERC20(USDC).balanceOf(address(harvester)), 0);
+
+        (uint256 issuedFromYieldBearingAsset, uint256 totalIssued) = transmuter.getIssuedByCollateral(USDM);
+        (uint256 issuedFromStablecoin, ) = transmuter.getIssuedByCollateral(USDC);
+        assertEq(totalIssued, issuedFromStablecoin + issuedFromYieldBearingAsset);
+        assertApproxEqRel(issuedFromStablecoin, (totalIssued * (1e9 - targetExposure)) / 1e9, 1e18);
+        assertApproxEqRel(issuedFromYieldBearingAsset, (totalIssued * targetExposure) / 1e9, 1e18);
+
+        (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(USDM);
+        assertEq(increase, 1); // There is still a small amount to mint because of the transmuter fees and slippage
     }
 
-    function test_FinalizeRebalance_SlippageTooHigh(uint256 amount) external {
+    function test_ComputeRebalanceAmount_HigherThanMax() external {
+        _loadReserve(XEVT, 1e11);
+        _loadReserve(EURC, 1e11);
+        uint64 minExposure = uint64((15 * 1e9) / 100);
+        uint64 maxExposure = uint64((40 * 1e9) / 100);
+        _setYieldBearingData(XEVT, EURC, minExposure, maxExposure);
+
+        (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(XEVT);
+        assertEq(amount, 0);
+        assertEq(increase, 0);
+    }
+
+    function test_ComputeRebalanceAmount_HigherThanMaxWithHarvest() external {
+        _loadReserve(XEVT, 1e11);
+        _loadReserve(EURC, 1e11);
+        uint64 minExposure = uint64((15 * 1e9) / 100);
+        uint64 maxExposure = uint64((60 * 1e9) / 100);
+        _setYieldBearingData(XEVT, EURC, minExposure, maxExposure);
+
+        (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(XEVT);
+        assertEq(amount, (2e23 * uint256(maxExposure)) / 1e9 - 1e23);
+        assertEq(increase, 0);
+    }
+
+    function test_ComputeRebalanceAmount_LowerThanMin() external {
+        _loadReserve(EURC, 9e10);
+        _loadReserve(XEVT, 1e10);
+        uint64 minExposure = uint64((99 * 1e9) / 100);
+        uint64 maxExposure = uint64((999 * 1e9) / 1000);
+        _setYieldBearingData(XEVT, EURC, minExposure, maxExposure);
+
+        (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(XEVT);
+        assertEq(amount, 0);
+        assertEq(increase, 1);
+    }
+
+    function test_ComputeRebalanceAmount_LowerThanMinAfterHarvest() external {
+        _loadReserve(EURC, 9e10);
+        _loadReserve(XEVT, 1e10);
+        uint64 minExposure = uint64((89 * 1e9) / 100);
+        uint64 maxExposure = uint64((999 * 1e9) / 1000);
+        _setYieldBearingData(XEVT, EURC, minExposure, maxExposure);
+
+        (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(XEVT);
+        assertEq(amount, 9e22 - (1e23 * uint256(minExposure)) / 1e9);
+        assertEq(increase, 1);
+    }
+
+    function test_SlippageTooHighStablecoin(uint256 amount) external {
         // TODO
     }
 
@@ -409,6 +555,16 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
             maxExposureYieldAsset,
             1
         );
+    }
+
+    function _setYieldBearingData(
+        address yieldBearingAsset,
+        address stablecoin,
+        uint64 minExposure,
+        uint64 maxExposure
+    ) internal {
+        vm.prank(governor);
+        harvester.setYieldBearingAssetData(yieldBearingAsset, stablecoin, targetExposure, minExposure, maxExposure, 1);
     }
 }
 
