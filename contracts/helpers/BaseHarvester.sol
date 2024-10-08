@@ -110,6 +110,20 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                        VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Compute the amount needed to rebalance the Transmuter
+     * @param yieldBearingAsset address of the yield bearing asset
+     * @return increase whether the exposure should be increased
+     * @return amount amount to be rebalanced
+     */
+    function computeRebalanceAmount(address yieldBearingAsset) external view returns (uint8 increase, uint256 amount) {
+        return _computeRebalanceAmount(yieldBearingAsset, yieldBearingData[yieldBearingAsset]);
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
