@@ -16,9 +16,9 @@ struct YieldBearingParams {
     address stablecoin;
     // Target exposure to the collateral yield bearing asset used
     uint64 targetExposure;
-    // Maximum exposure within the Transmuter to the yield bearing asset
+    // Maximum exposure within the Transmuter to the stablecoin asset
     uint64 maxExposureYieldAsset;
-    // Minimum exposure within the Transmuter to the yield bearing asset
+    // Minimum exposure within the Transmuter to the stablecoin asset
     uint64 minExposureYieldAsset;
     // Whether limit exposures should be overriden or read onchain through the Transmuter
     // This value should be 1 to override exposures or 2 if these shouldn't be overriden
@@ -69,8 +69,8 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
      * @param yieldBearingAsset address of the yieldBearingAsset
      * @param stablecoin address of the stablecoin
      * @param targetExposure target exposure to the yieldBearingAsset asset used
-     * @param minExposureYieldAsset minimum exposure within the Transmuter to the asset
-     * @param maxExposureYieldAsset maximum exposure within the Transmuter to the asset
+     * @param minExposureYieldAsset minimum exposure within the Transmuter to the stablecoin
+     * @param maxExposureYieldAsset maximum exposure within the Transmuter to the stablecoin
      * @param overrideExposures whether limit exposures should be overriden or read onchain through the Transmuter
      */
     function setYieldBearingAssetData(
@@ -92,13 +92,13 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
     }
 
     /**
-     * @notice Set the limit exposures to the yield bearing asset
+     * @notice Set the limit exposures to the stablecoin linked to the yield bearing asset
      * @param yieldBearingAsset address of the yield bearing asset
      */
     function updateLimitExposuresYieldAsset(address yieldBearingAsset) public virtual onlyGuardian {
         YieldBearingParams storage yieldBearingInfo = yieldBearingData[yieldBearingAsset];
         if (yieldBearingInfo.overrideExposures == 2)
-            _updateLimitExposuresYieldAsset(yieldBearingAsset, yieldBearingInfo);
+            _updateLimitExposuresYieldAsset(yieldBearingInfo.stablecoin, yieldBearingInfo);
     }
 
     /**
@@ -176,22 +176,22 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
             yieldBearingInfo.minExposureYieldAsset = minExposureYieldAsset;
         } else {
             yieldBearingInfo.overrideExposures = 2;
-            _updateLimitExposuresYieldAsset(yieldBearingAsset, yieldBearingInfo);
+            _updateLimitExposuresYieldAsset(yieldBearingInfo.stablecoin, yieldBearingInfo);
         }
     }
 
     function _updateLimitExposuresYieldAsset(
-        address yieldBearingAsset,
+        address stablecoin,
         YieldBearingParams storage yieldBearingInfo
     ) internal virtual {
         uint64[] memory xFeeMint;
-        (xFeeMint, ) = transmuter.getCollateralMintFees(yieldBearingAsset);
+        (xFeeMint, ) = transmuter.getCollateralMintFees(stablecoin);
         uint256 length = xFeeMint.length;
         if (length <= 1) yieldBearingInfo.maxExposureYieldAsset = 1e9;
         else yieldBearingInfo.maxExposureYieldAsset = xFeeMint[length - 2];
 
         uint64[] memory xFeeBurn;
-        (xFeeBurn, ) = transmuter.getCollateralBurnFees(yieldBearingAsset);
+        (xFeeBurn, ) = transmuter.getCollateralBurnFees(stablecoin);
         length = xFeeBurn.length;
         if (length <= 1) yieldBearingInfo.minExposureYieldAsset = 0;
         else yieldBearingInfo.minExposureYieldAsset = xFeeBurn[length - 2];
