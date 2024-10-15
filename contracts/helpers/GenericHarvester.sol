@@ -170,8 +170,8 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
      * @param receiver address of the receiver
      */
     function removeBudget(uint256 amount, address receiver) public virtual {
-        if (budget[receiver] < amount) revert InsufficientFunds();
-        budget[receiver] -= amount;
+        if (budget[msg.sender] < amount) revert InsufficientFunds();
+        budget[msg.sender] -= amount;
 
         IERC20(agToken).safeTransfer(receiver, amount);
     }
