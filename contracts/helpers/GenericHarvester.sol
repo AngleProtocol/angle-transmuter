@@ -147,8 +147,7 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
             block.timestamp
         );
         if (amount > amountStableOut) {
-            if (budget[sender] < amount - amountStableOut) revert InsufficientFunds();
-            budget[sender] -= amount - amountStableOut;
+            budget[sender] -= amount - amountStableOut; // Will revert if not enough funds
         }
         return CALLBACK_SUCCESS;
     }
@@ -170,8 +169,7 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
      * @param receiver address of the receiver
      */
     function removeBudget(uint256 amount, address receiver) public virtual {
-        if (budget[msg.sender] < amount) revert InsufficientFunds();
-        budget[msg.sender] -= amount;
+        budget[msg.sender] -= amount; // Will revert if not enough funds
 
         IERC20(agToken).safeTransfer(receiver, amount);
     }
