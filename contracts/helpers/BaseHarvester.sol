@@ -32,6 +32,15 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
     using SafeERC20 for IERC20;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                       MODIFIERS
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    modifier onlyAllowed() {
+        if (!isAllowed[msg.sender]) revert NotTrusted();
+        _;
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                        VARIABLES
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
@@ -43,6 +52,8 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
     uint96 public maxSlippage;
     /// @notice Data associated to a yield bearing asset
     mapping(address => YieldBearingParams) public yieldBearingData;
+    /// @notice Whether an address is allowed to update the target exposure of a yield bearing asset
+    mapping(address => bool) public isAllowed;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                        CONSTRUCTOR
@@ -107,6 +118,27 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
      */
     function setMaxSlippage(uint96 newMaxSlippage) external onlyGuardian {
         _setMaxSlippage(newMaxSlippage);
+    }
+
+    /**
+     * @notice add an address to the allowed list
+     * @param account address to be added
+     */
+    function toggleAllowed(address account) external onlyGuardian {
+        isAllowed[account] = !isAllowed[account];
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                        ALLOWED FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Set the target exposure of a yield bearing asset
+     * @param yieldBearingAsset address of the yield bearing asset
+     * @param targetExposure target exposure to the yield bearing asset used
+     */
+    function setTargetExposure(address yieldBearingAsset, uint64 targetExposure) external onlyAllowed {
+        yieldBearingData[yieldBearingAsset].targetExposure = targetExposure;
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
