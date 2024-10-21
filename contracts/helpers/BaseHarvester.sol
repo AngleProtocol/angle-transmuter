@@ -106,7 +106,7 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
      * @notice Set the limit exposures to the stablecoin linked to the yield bearing asset
      * @param yieldBearingAsset address of the yield bearing asset
      */
-    function updateLimitExposuresYieldAsset(address yieldBearingAsset) public virtual onlyGuardian {
+    function updateLimitExposuresYieldAsset(address yieldBearingAsset) public virtual {
         YieldBearingParams storage yieldBearingInfo = yieldBearingData[yieldBearingAsset];
         if (yieldBearingInfo.overrideExposures == 2)
             _updateLimitExposuresYieldAsset(yieldBearingInfo.stablecoin, yieldBearingInfo);
