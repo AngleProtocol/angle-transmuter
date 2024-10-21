@@ -35,8 +35,8 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
                                                        MODIFIERS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    modifier onlyAllowed() {
-        if (!isAllowed[msg.sender]) revert NotTrusted();
+    modifier onlyAllowedOrGuardian() {
+        if (!isAllowed[msg.sender] && !accessControlManager.isGovernorOrGuardian(msg.sender)) revert NotTrusted();
         _;
     }
 
@@ -137,7 +137,7 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
      * @param yieldBearingAsset address of the yield bearing asset
      * @param targetExposure target exposure to the yield bearing asset used
      */
-    function setTargetExposure(address yieldBearingAsset, uint64 targetExposure) external onlyAllowed {
+    function setTargetExposure(address yieldBearingAsset, uint64 targetExposure) external onlyAllowedOrGuardian {
         yieldBearingData[yieldBearingAsset].targetExposure = targetExposure;
     }
 
