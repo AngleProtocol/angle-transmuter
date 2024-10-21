@@ -258,7 +258,7 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
     /// @dev Due to potential transaction fees within the Transmuter, this function doesn't exactly bring
     /// `yieldBearingAsset` to the target exposure
     /// @dev scale is a number between 0 and 1e9 that represents the proportion of the agToken to harvest,
-    /// it is used to lower the amount of the asset to harvest for exemple to have a lower slippage
+    /// it is used to lower the amount of the asset to harvest for example to have a lower slippage
     function harvest(address yieldBearingAsset, uint256 scale, bytes calldata extraData) public virtual {
         if (scale > 1e9) revert InvalidParam();
         YieldBearingParams memory yieldBearingInfo = yieldBearingData[yieldBearingAsset];
