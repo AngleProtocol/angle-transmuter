@@ -217,19 +217,7 @@ contract MultiBlockHarvester is BaseHarvester {
         uint256 decimalsAsset = IERC20Metadata(asset).decimals();
 
         // Divide or multiply the amountIn to match the decimals of the asset
-        if (decimalsAsset > 18) {
-            if (assetIn) {
-                amountIn /= 10 ** (decimalsAsset - 18);
-            } else {
-                amountIn *= 10 ** (decimalsAsset - 18);
-            }
-        } else if (decimalsAsset < 18) {
-            if (assetIn) {
-                amountIn *= 10 ** (18 - decimalsAsset);
-            } else {
-                amountIn /= 10 ** (18 - decimalsAsset);
-            }
-        }
+        amountIn = _scaleAmountBasedOnDecimals(decimalsAsset, 18, amountIn, assetIn);
 
         if (asset == USDC || asset == USDM || asset == EURC) {
             // Assume 1:1 ratio between stablecoins

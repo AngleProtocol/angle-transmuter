@@ -234,6 +234,28 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
         maxSlippage = newMaxSlippage;
     }
 
+    function _scaleAmountBasedOnDecimals(
+        uint256 decimalsTokenIn,
+        uint256 decimalsTokenOut,
+        uint256 amountIn,
+        bool assetIn
+    ) internal pure returns (uint256) {
+        if (decimalsTokenIn > decimalsTokenOut) {
+            if (assetIn) {
+                amountIn /= 10 ** (decimalsTokenIn - decimalsTokenOut);
+            } else {
+                amountIn *= 10 ** (decimalsTokenIn - decimalsTokenOut);
+            }
+        } else if (decimalsTokenIn < decimalsTokenOut) {
+            if (assetIn) {
+                amountIn *= 10 ** (decimalsTokenOut - decimalsTokenIn);
+            } else {
+                amountIn /= 10 ** (decimalsTokenOut - decimalsTokenIn);
+            }
+        }
+        return amountIn;
+    }
+
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         HELPER                                                      
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/

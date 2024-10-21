@@ -216,11 +216,7 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         uint256 decimalsTokenIn = IERC20Metadata(tokenIn).decimals();
         uint256 decimalsTokenOut = IERC20Metadata(tokenOut).decimals();
 
-        if (decimalsTokenIn > decimalsTokenOut) {
-            amount /= 10 ** (decimalsTokenIn - decimalsTokenOut);
-        } else if (decimalsTokenIn < decimalsTokenOut) {
-            amount *= 10 ** (decimalsTokenOut - decimalsTokenIn);
-        }
+        amount = _scaleAmountBasedOnDecimals(decimalsTokenIn, decimalsTokenOut, amount, true);
         if (amountOut < (amount * (BPS - maxSwapSlippage)) / BPS) {
             revert SlippageTooHigh();
         }
