@@ -17,6 +17,8 @@ import "contracts/helpers/MultiBlockHarvester.sol";
 
 import "contracts/transmuter/Storage.sol";
 
+import { IXEVT } from "interfaces/IXEVT.sol";
+
 import { IERC4626 } from "oz/token/ERC20/extensions/ERC4626.sol";
 import { IAccessControl } from "oz/access/IAccessControl.sol";
 
@@ -151,7 +153,7 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         // mock isAllowed(address) returns (bool) to transfer XEVT
         vm.mockCall(
             0x9019Fd383E490B4B045130707C9A1227F36F4636,
-            abi.encodeWithSelector(Wow.isAllowed.selector),
+            abi.encodeWithSelector(IXEVT.isAllowed.selector),
             abi.encode(true)
         );
 
@@ -566,8 +568,4 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         vm.prank(governor);
         harvester.setYieldBearingAssetData(yieldBearingAsset, stablecoin, targetExposure, minExposure, maxExposure, 1);
     }
-}
-
-interface Wow {
-    function isAllowed(address) external returns (bool);
 }
