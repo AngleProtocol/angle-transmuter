@@ -158,9 +158,9 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
      * @param receiver address of the receiver
      */
     function addBudget(uint256 amount, address receiver) public virtual {
-        IERC20(agToken).safeTransferFrom(msg.sender, address(this), amount);
-
         budget[receiver] += amount;
+
+        IERC20(agToken).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     /**
