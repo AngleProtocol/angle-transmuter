@@ -212,10 +212,18 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         harvester.setMaxSlippage(1e9);
 
         vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
-        harvester.updateLimitExposuresYieldAsset(address(XEVT));
-
-        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
         harvester.toggleTrusted(alice);
+    }
+
+    function test_OnlyTrusted_RevertWhen_NotTrusted() public {
+        vm.expectRevert(Errors.NotTrustedOrGuardian.selector);
+        harvester.setTargetExposure(address(EURC), targetExposure);
+
+        vm.expectRevert(Errors.NotTrusted.selector);
+        harvester.harvest(XEVT, 1e9, new bytes(0));
+
+        vm.expectRevert(Errors.NotTrusted.selector);
+        harvester.finalizeRebalance(EURC, 1e6);
     }
 
     function test_SettersHarvester() public {
@@ -312,6 +320,13 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         assertEq(harvester.isTrusted(bob), false);
 
         vm.stopPrank();
+    }
+
+    function test_SetTargetExposure() public {
+        vm.prank(governor);
+        harvester.setTargetExposure(address(EURC), targetExposure + 1);
+        (, uint64 currentTargetExposure, , , ) = harvester.yieldBearingData(address(EURC));
+        assertEq(currentTargetExposure, targetExposure + 1);
     }
 
     function test_harvest_TooBigMintedAmount() external {
