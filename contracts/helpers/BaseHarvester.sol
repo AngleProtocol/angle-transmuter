@@ -36,7 +36,8 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Checks whether the `msg.sender` is trusted to update target exposure and do others non critical operations
+     * @notice Checks whether the `msg.sender` is trusted to update
+     * target exposure and do others non critical operations
      */
     modifier onlyTrusted() {
         if (!isTrusted[msg.sender]) revert NotTrusted();
@@ -44,7 +45,8 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
     }
 
     /**
-     * @notice Checks whether the `msg.sender` is trusted or guardian to update target exposure and do others non critical operations
+     * @notice Checks whether the `msg.sender` is trusted or guardian to update
+     * target exposure and do others non critical operations
      */
     modifier onlyTrustedOrGuardian() {
         if (!isTrusted[msg.sender] && !accessControlManager.isGovernorOrGuardian(msg.sender))

@@ -66,7 +66,7 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        BUDGET HANDLING                                                     
+                                                        BUDGET HANDLING
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /**
@@ -92,7 +92,7 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        HARVEST                                                     
+                                                        HARVEST
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Invests or divests from the yield asset associated to `yieldBearingAsset` based on the current exposure
