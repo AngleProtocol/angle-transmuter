@@ -31,6 +31,7 @@ error NotCollateral();
 error NotGovernor();
 error NotGovernorOrGuardian();
 error NotTrusted();
+error NotTrustedOrGuardian();
 error NotWhitelisted();
 error OneInchSwapFailed();
 error OracleUpdateFailed();

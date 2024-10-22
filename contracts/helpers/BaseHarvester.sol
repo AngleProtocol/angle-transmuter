@@ -35,8 +35,20 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
                                                        MODIFIERS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    modifier onlyAllowedOrGuardian() {
-        if (!isAllowed[msg.sender] && !accessControlManager.isGovernorOrGuardian(msg.sender)) revert NotTrusted();
+    /**
+     * @notice Checks whether the `msg.sender` is trusted to update target exposure and do others non critical operations
+     */
+    modifier onlyTrusted() {
+        if (!isTrusted[msg.sender]) revert NotTrusted();
+        _;
+    }
+
+    /**
+     * @notice Checks whether the `msg.sender` is trusted or guardian to update target exposure and do others non critical operations
+     */
+    modifier onlyTrustedOrGuardian() {
+        if (!isTrusted[msg.sender] && !accessControlManager.isGovernorOrGuardian(msg.sender))
+            revert NotTrustedOrGuardian();
         _;
     }
 
@@ -52,8 +64,8 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
     uint96 public maxSlippage;
     /// @notice Data associated to a yield bearing asset
     mapping(address => YieldBearingParams) public yieldBearingData;
-    /// @notice Whether an address is allowed to update the target exposure of a yield bearing asset
-    mapping(address => bool) public isAllowed;
+    /// @notice trusted addresses that can update target exposure and do others non critical operations
+    mapping(address => bool) public isTrusted;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                        CONSTRUCTOR
@@ -121,15 +133,15 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
     }
 
     /**
-     * @notice add an address to the allowed list
-     * @param account address to be added
+     * @notice Toggle the trusted status of an address
+     * @param trusted address to toggle the trusted status
      */
-    function toggleAllowed(address account) external onlyGuardian {
-        isAllowed[account] = !isAllowed[account];
+    function toggleTrusted(address trusted) external onlyGuardian {
+        isTrusted[trusted] = !isTrusted[trusted];
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        ALLOWED FUNCTIONS
+                                                        TRUSTED FUNCTIONS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /**
@@ -137,7 +149,7 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
      * @param yieldBearingAsset address of the yield bearing asset
      * @param targetExposure target exposure to the yield bearing asset used
      */
-    function setTargetExposure(address yieldBearingAsset, uint64 targetExposure) external onlyAllowedOrGuardian {
+    function setTargetExposure(address yieldBearingAsset, uint64 targetExposure) external onlyTrustedOrGuardian {
         yieldBearingData[yieldBearingAsset].targetExposure = targetExposure;
     }
 

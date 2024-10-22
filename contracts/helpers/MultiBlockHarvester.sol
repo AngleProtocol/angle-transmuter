@@ -21,22 +21,11 @@ contract MultiBlockHarvester is BaseHarvester {
     using SafeERC20 for IERC20;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                       MODIFIERS
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    modifier onlyTrusted() {
-        if (!isTrusted[msg.sender]) revert NotTrusted();
-        _;
-    }
-
-    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                        VARIABLES
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /// @notice address to deposit to receive yieldBearingAsset
     mapping(address => address) public yieldBearingToDepositAddress;
-    /// @notice trusted addresses
-    mapping(address => bool) public isTrusted;
 
     /// @notice Maximum amount of stablecoins that can be minted in a single transaction
     uint256 public maxMintAmount;
@@ -81,14 +70,6 @@ contract MultiBlockHarvester is BaseHarvester {
         address newDepositAddress
     ) external onlyGuardian {
         yieldBearingToDepositAddress[yieldBearingAsset] = newDepositAddress;
-    }
-
-    /**
-     * @notice Toggle the trusted status of an address
-     * @param trusted address to toggle the trusted status
-     */
-    function toggleTrusted(address trusted) external onlyGuardian {
-        isTrusted[trusted] = !isTrusted[trusted];
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
