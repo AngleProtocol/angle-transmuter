@@ -32,8 +32,6 @@ interface OldTransmuter {
 contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
     using stdJson for string;
 
-    uint256 public CHAIN_SOURCE;
-
     address constant WHALE_USDA = 0xA9DdD91249DFdd450E81E1c56Ab60E1A62651701;
 
     string[] replaceFacetNames;
@@ -50,8 +48,6 @@ contract UpdateTransmuterFacetsUSDATest is Helpers, Test {
 
     function setUp() public override {
         super.setUp();
-
-        CHAIN_SOURCE = CHAIN_ETHEREUM;
 
         ethereumFork = vm.createSelectFork("mainnet", 19499622);
 
