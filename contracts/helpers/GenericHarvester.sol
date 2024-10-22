@@ -252,7 +252,15 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         if (swapType == SwapType.SWAP) {
             amountOut = _swapToTokenOutSwap(tokenIn, tokenOut, amount, callData);
         } else if (swapType == SwapType.VAULT) {
-            amountOut = _swapToTokenOutVault(typeAction, tokenOut, amount);
+            amountOut = _swapToTokenOutVault(typeAction, tokenIn, tokenOut, amount);
+        }
+
+        // Check for slippage
+        uint256 decimalsTokenIn = IERC20Metadata(tokenIn).decimals();
+        uint256 decimalsTokenOut = IERC20Metadata(tokenOut).decimals();
+        amount = _scaleAmountBasedOnDecimals(decimalsTokenIn, decimalsTokenOut, amount, true);
+        if (amountOut < (amount * (BPS - maxSwapSlippage)) / BPS) {
+            revert SlippageTooHigh();
         }
     }
 
@@ -279,32 +287,26 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         amounts[0] = amount;
         _swap(tokens, callDatas, amounts);
 
-        uint256 amountOut = IERC20(tokenOut).balanceOf(address(this)) - balance;
-        uint256 decimalsTokenIn = IERC20Metadata(tokenIn).decimals();
-        uint256 decimalsTokenOut = IERC20Metadata(tokenOut).decimals();
-
-        amount = _scaleAmountBasedOnDecimals(decimalsTokenIn, decimalsTokenOut, amount, true);
-        if (amountOut < (amount * (BPS - maxSwapSlippage)) / BPS) {
-            revert SlippageTooHigh();
-        }
-        return amountOut;
+        return IERC20(tokenOut).balanceOf(address(this)) - balance;
     }
 
     /**
      * @dev Deposit or redeem the vault asset
      * @param typeAction 1 for deposit, 2 for redeem
+     * @param tokenIn address of the token to swap
      * @param tokenOut address of the token to receive
      * @param amount amount of token to swap
      */
     function _swapToTokenOutVault(
         uint256 typeAction,
+        address tokenIn,
         address tokenOut,
         uint256 amount
     ) internal returns (uint256 amountOut) {
         if (typeAction == 1) {
             // Granting allowance with the yieldBearingAsset for the vault asset
-            _adjustAllowance(tokenOut, tokenOut, amount);
-            amountOut = IERC4626(tokenOut).deposit(amount, address(this));
+            _adjustAllowance(tokenOut, tokenIn, amount);
+            amountOut = IERC4626(tokenIn).deposit(amount, address(this));
         } else amountOut = IERC4626(tokenOut).redeem(amount, address(this), address(this));
     }
 }
