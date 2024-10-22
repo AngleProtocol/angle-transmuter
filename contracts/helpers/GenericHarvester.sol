@@ -66,8 +66,65 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        REBALANCE                                                     
+                                                        BUDGET HANDLING                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Add budget to be spent by the receiver during the flashloan
+     * @param amount amount of AGToken to add to the budget
+     * @param receiver address of the receiver
+     */
+    function addBudget(uint256 amount, address receiver) public virtual {
+        budget[receiver] += amount;
+
+        IERC20(agToken).safeTransferFrom(msg.sender, address(this), amount);
+    }
+
+    /**
+     * @notice Remove budget from the owner and send it to the receiver
+     * @param amount amount of AGToken to remove from the budget
+     * @param receiver address of the receiver
+     */
+    function removeBudget(uint256 amount, address receiver) public virtual {
+        budget[msg.sender] -= amount; // Will revert if not enough funds
+
+        IERC20(agToken).safeTransfer(receiver, amount);
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                        HARVEST                                                     
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    /// @notice Invests or divests from the yield asset associated to `yieldBearingAsset` based on the current exposure
+    ///  to this yieldBearingAsset
+    /// @dev This transaction either reduces the exposure to `yieldBearingAsset` in the Transmuter or frees up
+    /// some yieldBearingAsset that can then be used for people looking to burn stablecoins
+    /// @dev Due to potential transaction fees within the Transmuter, this function doesn't exactly bring
+    /// `yieldBearingAsset` to the target exposure
+    /// @dev scale is a number between 0 and 1e9 that represents the proportion of the agToken to harvest,
+    /// it is used to lower the amount of the asset to harvest for example to have a lower slippage
+    function harvest(address yieldBearingAsset, uint256 scale, bytes calldata extraData) public virtual {
+        if (scale > 1e9) revert InvalidParam();
+        YieldBearingParams memory yieldBearingInfo = yieldBearingData[yieldBearingAsset];
+        (uint8 increase, uint256 amount) = _computeRebalanceAmount(yieldBearingAsset, yieldBearingInfo);
+        amount = (amount * scale) / 1e9;
+
+        (SwapType swapType, bytes memory data) = abi.decode(extraData, (SwapType, bytes));
+
+        if (amount > 0) {
+            try transmuter.updateOracle(yieldBearingInfo.stablecoin) {} catch {}
+
+            adjustYieldExposure(
+                amount,
+                increase,
+                yieldBearingAsset,
+                yieldBearingInfo.stablecoin,
+                (amount * (1e9 - maxSlippage)) / 1e9,
+                swapType,
+                data
+            );
+        }
+    }
 
     /// @notice Burns `amountStablecoins` for one yieldBearing asset, swap for asset then mints stablecoins
     /// from the proceeds of the swap.
@@ -152,27 +209,37 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         return CALLBACK_SUCCESS;
     }
 
-    /**
-     * @notice Add budget to a receiver
-     * @param amount amount of AGToken to add to the budget
-     * @param receiver address of the receiver
-     */
-    function addBudget(uint256 amount, address receiver) public virtual {
-        budget[receiver] += amount;
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                        SETTERS                                                     
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-        IERC20(agToken).safeTransferFrom(msg.sender, address(this), amount);
+    /**
+     * @notice Set the token transfer address
+     * @param newTokenTransferAddress address of the token transfer contract
+     */
+    function setTokenTransferAddress(address newTokenTransferAddress) public override onlyGuardian {
+        super.setTokenTransferAddress(newTokenTransferAddress);
     }
 
     /**
-     * @notice Remove budget from a receiver
-     * @param amount amount of AGToken to remove from the budget
-     * @param receiver address of the receiver
+     * @notice Set the swap router
+     * @param newSwapRouter address of the swap router
      */
-    function removeBudget(uint256 amount, address receiver) public virtual {
-        budget[msg.sender] -= amount; // Will revert if not enough funds
-
-        IERC20(agToken).safeTransfer(receiver, amount);
+    function setSwapRouter(address newSwapRouter) public override onlyGuardian {
+        super.setSwapRouter(newSwapRouter);
     }
+
+    /**
+     * @notice Set the max swap slippage
+     * @param newMaxSwapSlippage max slippage in BPS
+     */
+    function setMaxSwapSlippage(uint32 newMaxSwapSlippage) external onlyGuardian {
+        maxSwapSlippage = newMaxSwapSlippage;
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                        INTERNALS                                                     
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     function _swapToTokenOut(
         uint256 typeAction,
@@ -239,68 +306,5 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
             _adjustAllowance(tokenOut, tokenOut, amount);
             amountOut = IERC4626(tokenOut).deposit(amount, address(this));
         } else amountOut = IERC4626(tokenOut).redeem(amount, address(this), address(this));
-    }
-
-    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        HARVEST                                                     
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    /// @notice Invests or divests from the yield asset associated to `yieldBearingAsset` based on the current exposure
-    ///  to this yieldBearingAsset
-    /// @dev This transaction either reduces the exposure to `yieldBearingAsset` in the Transmuter or frees up
-    /// some yieldBearingAsset that can then be used for people looking to burn stablecoins
-    /// @dev Due to potential transaction fees within the Transmuter, this function doesn't exactly bring
-    /// `yieldBearingAsset` to the target exposure
-    /// @dev scale is a number between 0 and 1e9 that represents the proportion of the agToken to harvest,
-    /// it is used to lower the amount of the asset to harvest for example to have a lower slippage
-    function harvest(address yieldBearingAsset, uint256 scale, bytes calldata extraData) public virtual {
-        if (scale > 1e9) revert InvalidParam();
-        YieldBearingParams memory yieldBearingInfo = yieldBearingData[yieldBearingAsset];
-        (uint8 increase, uint256 amount) = _computeRebalanceAmount(yieldBearingAsset, yieldBearingInfo);
-        amount = (amount * scale) / 1e9;
-
-        (SwapType swapType, bytes memory data) = abi.decode(extraData, (SwapType, bytes));
-
-        if (amount > 0) {
-            try transmuter.updateOracle(yieldBearingInfo.stablecoin) {} catch {}
-
-            adjustYieldExposure(
-                amount,
-                increase,
-                yieldBearingAsset,
-                yieldBearingInfo.stablecoin,
-                (amount * (1e9 - maxSlippage)) / 1e9,
-                swapType,
-                data
-            );
-        }
-    }
-
-    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        SETTERS                                                     
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    /**
-     * @notice Set the token transfer address
-     * @param newTokenTransferAddress address of the token transfer contract
-     */
-    function setTokenTransferAddress(address newTokenTransferAddress) public override onlyGuardian {
-        super.setTokenTransferAddress(newTokenTransferAddress);
-    }
-
-    /**
-     * @notice Set the swap router
-     * @param newSwapRouter address of the swap router
-     */
-    function setSwapRouter(address newSwapRouter) public override onlyGuardian {
-        super.setSwapRouter(newSwapRouter);
-    }
-
-    /**
-     * @notice Set the max swap slippage
-     * @param newMaxSwapSlippage max slippage in BPS
-     */
-    function setMaxSwapSlippage(uint32 newMaxSwapSlippage) external onlyGuardian {
-        maxSwapSlippage = newMaxSwapSlippage;
     }
 }
