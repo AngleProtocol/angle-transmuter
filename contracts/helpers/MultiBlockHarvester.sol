@@ -187,12 +187,16 @@ contract MultiBlockHarvester is BaseHarvester {
 
         if (asset == USDC || asset == USDM || asset == EURC) {
             // Assume 1:1 ratio between stablecoins
-            uint256 slippage = ((amountIn - amountOut) * 1e9) / amountIn;
-            if (slippage > maxSlippage) revert SlippageTooHigh();
+            unchecked {
+                uint256 slippage = ((amountIn - amountOut) * 1e9) / amountIn;
+                if (slippage > maxSlippage) revert SlippageTooHigh();
+            }
         } else if (asset == XEVT) {
             // Assume 1:1 ratio between the underlying asset of the vault
-            uint256 slippage = ((IPool(depositAddress).convertToAssets(amountIn) - amountOut) * 1e9) / amountIn;
-            if (slippage > maxSlippage) revert SlippageTooHigh();
+            unchecked {
+                uint256 slippage = ((IPool(depositAddress).convertToAssets(amountIn) - amountOut) * 1e9) / amountIn;
+                if (slippage > maxSlippage) revert SlippageTooHigh();
+            }
         } else revert InvalidParam();
     }
 }
