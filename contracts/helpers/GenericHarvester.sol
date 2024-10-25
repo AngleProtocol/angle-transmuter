@@ -112,13 +112,13 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         (SwapType swapType, bytes memory data) = abi.decode(extraData, (SwapType, bytes));
 
         if (amount > 0) {
-            try transmuter.updateOracle(yieldBearingInfo.depositAsset) {} catch {}
+            try transmuter.updateOracle(yieldBearingInfo.asset) {} catch {}
 
             adjustYieldExposure(
                 amount,
                 increase,
                 yieldBearingAsset,
-                yieldBearingInfo.depositAsset,
+                yieldBearingInfo.asset,
                 (amount * (1e9 - maxSlippage)) / 1e9,
                 swapType,
                 data
@@ -136,7 +136,7 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         uint256 amountStablecoins,
         uint8 increase,
         address yieldBearingAsset,
-        address depositAsset,
+        address asset,
         uint256 minAmountOut,
         SwapType swapType,
         bytes memory extraData
@@ -145,7 +145,7 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
             IERC3156FlashBorrower(address(this)),
             address(agToken),
             amountStablecoins,
-            abi.encode(msg.sender, increase, yieldBearingAsset, depositAsset, minAmountOut, swapType, extraData)
+            abi.encode(msg.sender, increase, yieldBearingAsset, asset, minAmountOut, swapType, extraData)
         );
     }
 
@@ -167,19 +167,19 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         address tokenIn;
         {
             address yieldBearingAsset;
-            address depositAsset;
-            (sender, typeAction, yieldBearingAsset, depositAsset, minAmountOut, swapType, callData) = abi.decode(
+            address asset;
+            (sender, typeAction, yieldBearingAsset, asset, minAmountOut, swapType, callData) = abi.decode(
                 data,
                 (address, uint256, address, address, uint256, SwapType, bytes)
             );
             if (typeAction == 1) {
                 // Increase yield exposure action: we bring in the yield bearing asset
                 tokenOut = yieldBearingAsset;
-                tokenIn = depositAsset;
+                tokenIn = asset;
             } else {
                 // Decrease yield exposure action: we bring in the deposit asset
                 tokenIn = yieldBearingAsset;
-                tokenOut = depositAsset;
+                tokenOut = asset;
             }
         }
         uint256 amountOut = transmuter.swapExactInput(
