@@ -202,7 +202,7 @@ contract MultiBlockHarvester is BaseHarvester {
             uint256 slippage = ((amountIn - amountOut) * 1e9) / amountIn;
             if (slippage > maxSlippage) revert SlippageTooHigh();
         } else if (asset == XEVT) {
-            // Assumer 1:1 ratio between the underlying asset of the vault
+            // Assume 1:1 ratio between the underlying asset of the vault
             uint256 slippage = ((IPool(depositAddress).convertToAssets(amountIn) - amountOut) * 1e9) / amountIn;
             if (slippage > maxSlippage) revert SlippageTooHigh();
         } else revert InvalidParam();
