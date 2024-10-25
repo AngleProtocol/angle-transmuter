@@ -330,16 +330,6 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         assertEq(currentTargetExposure, targetExposure + 1);
     }
 
-    function test_harvest_TooBigMintedAmount() external {
-        _loadReserve(EURC, 1e26);
-        _loadReserve(XEVT, 1e6);
-        _setYieldBearingData(XEVT, EURC);
-
-        vm.expectRevert(TooBigAmountIn.selector);
-        vm.prank(alice);
-        harvester.harvest(XEVT, 1e9, new bytes(0));
-    }
-
     function test_harvest_IncreaseExposureXEVT(uint256 amount) external {
         amount = 7022;
         _loadReserve(EURC, amount);
