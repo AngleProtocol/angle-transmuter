@@ -144,9 +144,14 @@ contract GenericHarvestertTest is Test, FunctionUtils, CommonUtils {
         assertEq(agToken.balanceOf(alice), amount);
     }
 
-    function test_IncreaseExposure_STEAK_USDC() public {}
+    function test_Harvest_ZeroAmount() public {
+        vm.expectRevert(Errors.ZeroAmount.selector);
+        harvester.harvest(STEAK_USDC, 1e9, abi.encode(uint8(SwapType.VAULT), new bytes(0)));
+    }
 
-    function test_DecreaseExposure_STEAK_USDC() public {}
+    function test_Harvest_IncreaseExposureSTEAK_USDC() public {}
+
+    function test_Harvest_DecreaseExposureSTEAK_USDC() public {}
 
     function _loadReserve(address token, uint256 amount) internal {
         if (token == USDM) {

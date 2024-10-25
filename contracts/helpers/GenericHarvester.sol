@@ -108,22 +108,19 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         YieldBearingParams memory yieldBearingInfo = yieldBearingData[yieldBearingAsset];
         (uint8 increase, uint256 amount) = _computeRebalanceAmount(yieldBearingAsset, yieldBearingInfo);
         amount = (amount * scale) / 1e9;
+        if (amount == 0) revert ZeroAmount();
 
         (SwapType swapType, bytes memory data) = abi.decode(extraData, (SwapType, bytes));
-
-        if (amount > 0) {
-            try transmuter.updateOracle(yieldBearingInfo.asset) {} catch {}
-
-            adjustYieldExposure(
-                amount,
-                increase,
-                yieldBearingAsset,
-                yieldBearingInfo.asset,
-                (amount * (1e9 - maxSlippage)) / 1e9,
-                swapType,
-                data
-            );
-        }
+        try transmuter.updateOracle(yieldBearingInfo.asset) {} catch {}
+        adjustYieldExposure(
+            amount,
+            increase,
+            yieldBearingAsset,
+            yieldBearingInfo.asset,
+            (amount * (1e9 - maxSlippage)) / 1e9,
+            swapType,
+            data
+        );
     }
 
     /// @notice Burns `amountStablecoins` for one yieldBearing asset, swap for asset then mints deposit tokens
