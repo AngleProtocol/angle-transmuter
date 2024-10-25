@@ -180,6 +180,8 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
 
         transmuter.toggleTrusted(address(harvester), TrustedType.Seller);
 
+        agToken.mint(address(harvester), 1_000_000e18);
+
         vm.stopPrank();
 
         vm.label(XEVT, "XEVT");
@@ -191,7 +193,7 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
 
     function test_Initialization() public {
         assertEq(harvester.maxSlippage(), 1e8);
-        assertEq(harvester.maxMintAmount(), 100_000e18);
+        assertEq(harvester.maxOrderAmount(), 100_000e18);
         assertEq(address(harvester.accessControlManager()), address(accessControlManager));
         assertEq(address(harvester.agToken()), address(agToken));
         assertEq(address(harvester.transmuter()), address(transmuter));
@@ -233,6 +235,9 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
 
         harvester.setMaxSlippage(123456);
         assertEq(harvester.maxSlippage(), 123456);
+
+        harvester.setMaxOrderAmount(123456);
+        assertEq(harvester.maxOrderAmount(), 123456);
 
         harvester.setYieldBearingAssetData(
             address(XEVT),
@@ -359,7 +364,6 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
 
         assertEq(IERC20(XEVT).balanceOf(address(harvester)), 0);
         assertEq(IERC20(EURC).balanceOf(address(harvester)), 0);
-        assertEq(agToken.balanceOf(address(harvester)), 0);
 
         (uint256 issuedFromYieldBearingAsset, uint256 totalIssued) = transmuter.getIssuedByCollateral(XEVT);
         (uint256 issuedFromStablecoin, ) = transmuter.getIssuedByCollateral(EURC);
@@ -391,7 +395,6 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
 
         assertEq(IERC20(EURC).balanceOf(address(harvester)), 0);
         assertApproxEqRel(IERC20(XEVT).balanceOf(address(harvester)), expectedAmount / 1e12, 1e18); // XEVT is stored in the harvester while the redemption is in progress
-        assertEq(agToken.balanceOf(address(harvester)), 0);
 
         // fake semd EURC to harvester
         deal(EURC, address(harvester), amount);
@@ -399,7 +402,6 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         vm.prank(alice);
         harvester.finalizeRebalance(EURC, amount);
 
-        assertEq(agToken.balanceOf(address(harvester)), 0);
         assertEq(IERC20(EURC).balanceOf(address(harvester)), 0);
 
         (uint256 issuedFromYieldBearingAsset, uint256 totalIssued) = transmuter.getIssuedByCollateral(XEVT);
@@ -433,7 +435,6 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         assertEq(IERC20(USDC).balanceOf(address(harvester)), 0);
         assertEq(IERC20(USDM).balanceOf(address(harvester)), 0);
         assertApproxEqRel(IERC20(USDM).balanceOf(address(receiver)), expectedAmount, 1e18);
-        assertEq(agToken.balanceOf(address(harvester)), 0);
 
         // fake semd USDC to harvester
         deal(USDC, address(harvester), amount);
@@ -441,7 +442,6 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         vm.prank(alice);
         harvester.finalizeRebalance(USDC, amount);
 
-        assertEq(agToken.balanceOf(address(harvester)), 0);
         assertEq(IERC20(USDC).balanceOf(address(harvester)), 0);
 
         (uint256 issuedFromYieldBearingAsset, uint256 totalIssued) = transmuter.getIssuedByCollateral(USDM);
@@ -475,7 +475,6 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         assertEq(IERC20(USDC).balanceOf(address(harvester)), 0);
         assertEq(IERC20(USDM).balanceOf(address(harvester)), 0);
         assertApproxEqRel(IERC20(USDM).balanceOf(address(receiver)), expectedAmount, 1e18);
-        assertEq(agToken.balanceOf(address(harvester)), 0);
 
         // fake semd USDC to harvester
         deal(USDC, address(harvester), amount);
@@ -483,7 +482,6 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         vm.prank(alice);
         harvester.finalizeRebalance(USDC, amount);
 
-        assertEq(agToken.balanceOf(address(harvester)), 0);
         assertEq(IERC20(USDC).balanceOf(address(harvester)), 0);
 
         (uint256 issuedFromYieldBearingAsset, uint256 totalIssued) = transmuter.getIssuedByCollateral(USDM);

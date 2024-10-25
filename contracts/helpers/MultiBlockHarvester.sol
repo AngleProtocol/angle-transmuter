@@ -27,21 +27,21 @@ contract MultiBlockHarvester is BaseHarvester {
     /// @notice address to deposit to receive yieldBearingAsset
     mapping(address => address) public yieldBearingToDepositAddress;
 
-    /// @notice Maximum amount of stablecoins that can be minted in a single transaction
-    uint256 public maxMintAmount;
+    /// @notice Maximum amount of stablecoins that can be used in a single transaction
+    uint256 public maxOrderAmount;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                        CONSTRUCTOR
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     constructor(
-        uint256 initialMaxMintAmount,
+        uint256 initialOrderMintAmount,
         uint96 initialMaxSlippage,
         IAccessControlManager definitiveAccessControlManager,
         IAgToken definitiveAgToken,
         ITransmuter definitiveTransmuter
     ) BaseHarvester(initialMaxSlippage, definitiveAccessControlManager, definitiveAgToken, definitiveTransmuter) {
-        maxMintAmount = initialMaxMintAmount;
+        maxOrderAmount = initialOrderMintAmount;
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,11 +49,11 @@ contract MultiBlockHarvester is BaseHarvester {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Set the maximum amount of stablecoins that can be minted in a single transaction
-     * @param newMaxMintAmount new maximum amount of stablecoins that can be minted in a single transaction
+     * @notice Set the maximum amount of stablecoins that can be used in a single transaction
+     * @param newMaxOrderAmount new maximum amount of stablecoins that can be used in a single transaction
      */
-    function setMaxMintAmount(uint256 newMaxMintAmount) external onlyGovernor {
-        maxMintAmount = newMaxMintAmount;
+    function setMaxOrderAmount(uint256 newMaxOrderAmount) external onlyGovernor {
+        maxOrderAmount = newMaxOrderAmount;
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -111,7 +111,6 @@ contract MultiBlockHarvester is BaseHarvester {
             ? yieldBearingToDepositAddress[yieldBearingAsset]
             : address(0);
         _checkSlippage(balance, amountOut, yieldBearingAsset, depositAddress, true);
-        agToken.burnSelf(amountOut, address(this));
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -124,8 +123,7 @@ contract MultiBlockHarvester is BaseHarvester {
         YieldBearingParams memory yieldBearingInfo,
         uint256 amount
     ) internal {
-        if (amount > maxMintAmount) revert TooBigAmountIn();
-        agToken.mint(address(this), amount);
+        if (amount > maxOrderAmount) revert TooBigAmountIn();
         _adjustAllowance(address(agToken), address(transmuter), amount);
         if (typeAction == 1) {
             address depositAddress = yieldBearingToDepositAddress[yieldBearingAsset];
@@ -151,7 +149,6 @@ contract MultiBlockHarvester is BaseHarvester {
                     address(this),
                     block.timestamp
                 );
-                agToken.burnSelf(amountOut, address(this));
             } else if (yieldBearingAsset == USDM) {
                 uint256 amountOut = transmuter.swapExactInput(
                     amount,
