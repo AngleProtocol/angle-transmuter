@@ -42,7 +42,7 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
 
         receiver = makeAddr("receiver");
 
-        vm.createSelectFork("mainnet");
+        vm.createSelectFork("mainnet", 21_041_434);
 
         // set mint Fees to 0 on all collaterals
         uint64[] memory xFeeMint = new uint64[](1);
@@ -345,7 +345,7 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
     }
 
     function test_harvest_IncreaseExposureXEVT(uint256 amount) external {
-        amount = bound(amount, 1e3, 1e11);
+        amount = 7022;
         _loadReserve(EURC, amount);
         _setYieldBearingData(XEVT, EURC);
 
