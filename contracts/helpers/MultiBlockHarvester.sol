@@ -131,13 +131,13 @@ contract MultiBlockHarvester is BaseHarvester {
                 amount,
                 0,
                 address(agToken),
-                yieldBearingInfo.stablecoin,
+                yieldBearingInfo.depositAsset,
                 address(this),
                 block.timestamp
             );
-            _checkSlippage(amount, amountOut, yieldBearingInfo.stablecoin, depositAddress, false);
+            _checkSlippage(amount, amountOut, yieldBearingInfo.depositAsset, depositAddress, false);
             if (yieldBearingAsset == XEVT) {
-                _adjustAllowance(yieldBearingInfo.stablecoin, address(depositAddress), amountOut);
+                _adjustAllowance(yieldBearingInfo.depositAsset, address(depositAddress), amountOut);
                 (uint256 shares, ) = IPool(depositAddress).deposit(amountOut, address(this));
                 _adjustAllowance(yieldBearingAsset, address(transmuter), shares);
                 amountOut = transmuter.swapExactInput(
@@ -149,7 +149,7 @@ contract MultiBlockHarvester is BaseHarvester {
                     block.timestamp
                 );
             } else if (yieldBearingAsset == USDM) {
-                IERC20(yieldBearingInfo.stablecoin).safeTransfer(depositAddress, amountOut);
+                IERC20(yieldBearingInfo.depositAsset).safeTransfer(depositAddress, amountOut);
             }
         } else {
             uint256 amountOut = transmuter.swapExactInput(

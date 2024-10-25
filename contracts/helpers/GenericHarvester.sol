@@ -98,7 +98,7 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
     /// @notice Invests or divests from the yield asset associated to `yieldBearingAsset` based on the current exposure
     ///  to this yieldBearingAsset
     /// @dev This transaction either reduces the exposure to `yieldBearingAsset` in the Transmuter or frees up
-    /// some yieldBearingAsset that can then be used for people looking to burn stablecoins
+    /// some yieldBearingAsset that can then be used for people looking to burn deposit tokens
     /// @dev Due to potential transaction fees within the Transmuter, this function doesn't exactly bring
     /// `yieldBearingAsset` to the target exposure
     /// @dev scale is a number between 0 and 1e9 that represents the proportion of the agToken to harvest,
@@ -112,13 +112,13 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         (SwapType swapType, bytes memory data) = abi.decode(extraData, (SwapType, bytes));
 
         if (amount > 0) {
-            try transmuter.updateOracle(yieldBearingInfo.stablecoin) {} catch {}
+            try transmuter.updateOracle(yieldBearingInfo.depositAsset) {} catch {}
 
             adjustYieldExposure(
                 amount,
                 increase,
                 yieldBearingAsset,
-                yieldBearingInfo.stablecoin,
+                yieldBearingInfo.depositAsset,
                 (amount * (1e9 - maxSlippage)) / 1e9,
                 swapType,
                 data
@@ -126,17 +126,17 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         }
     }
 
-    /// @notice Burns `amountStablecoins` for one yieldBearing asset, swap for asset then mints stablecoins
+    /// @notice Burns `amountStablecoins` for one yieldBearing asset, swap for asset then mints deposit tokens
     /// from the proceeds of the swap.
     /// @dev If `increase` is 1, then the system tries to increase its exposure to the yield bearing asset which means
-    /// burning stablecoin for the liquid stablecoin, swapping for the yield bearing asset, then minting the stablecoin
-    /// @dev This function reverts if the second stablecoin mint gives less than `minAmountOut` of stablecoins
+    /// burning agToken for the deposit asset, swapping for the yield bearing asset, then minting the agToken
+    /// @dev This function reverts if the second agToken mint gives less than `minAmountOut` of ag tokens
     /// @dev This function reverts if the swap slippage is higher than `maxSlippage`
     function adjustYieldExposure(
         uint256 amountStablecoins,
         uint8 increase,
         address yieldBearingAsset,
-        address stablecoin,
+        address depositAsset,
         uint256 minAmountOut,
         SwapType swapType,
         bytes memory extraData
@@ -145,7 +145,7 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
             IERC3156FlashBorrower(address(this)),
             address(agToken),
             amountStablecoins,
-            abi.encode(msg.sender, increase, yieldBearingAsset, stablecoin, minAmountOut, swapType, extraData)
+            abi.encode(msg.sender, increase, yieldBearingAsset, depositAsset, minAmountOut, swapType, extraData)
         );
     }
 
@@ -167,19 +167,19 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         address tokenIn;
         {
             address yieldBearingAsset;
-            address stablecoin;
-            (sender, typeAction, yieldBearingAsset, stablecoin, minAmountOut, swapType, callData) = abi.decode(
+            address depositAsset;
+            (sender, typeAction, yieldBearingAsset, depositAsset, minAmountOut, swapType, callData) = abi.decode(
                 data,
                 (address, uint256, address, address, uint256, SwapType, bytes)
             );
             if (typeAction == 1) {
                 // Increase yield exposure action: we bring in the yield bearing asset
                 tokenOut = yieldBearingAsset;
-                tokenIn = stablecoin;
+                tokenIn = depositAsset;
             } else {
-                // Decrease yield exposure action: we bring in the liquid stablecoin
+                // Decrease yield exposure action: we bring in the deposit asset
                 tokenIn = yieldBearingAsset;
-                tokenOut = stablecoin;
+                tokenOut = depositAsset;
             }
         }
         uint256 amountOut = transmuter.swapExactInput(
