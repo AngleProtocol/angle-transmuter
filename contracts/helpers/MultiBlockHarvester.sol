@@ -125,9 +125,8 @@ contract MultiBlockHarvester is BaseHarvester {
     ) internal {
         if (amount > maxOrderAmount) revert TooBigAmountIn();
         _adjustAllowance(address(agToken), address(transmuter), amount);
+        address depositAddress = yieldBearingToDepositAddress[yieldBearingAsset];
         if (typeAction == 1) {
-            address depositAddress = yieldBearingToDepositAddress[yieldBearingAsset];
-
             if (yieldBearingAsset == XEVT) {
                 uint256 amountOut = transmuter.swapExactInput(
                     amount,
@@ -170,9 +169,7 @@ contract MultiBlockHarvester is BaseHarvester {
                 address(this),
                 block.timestamp
             );
-            address depositAddress = yieldBearingToDepositAddress[yieldBearingAsset];
             _checkSlippage(amount, amountOut, yieldBearingAsset, depositAddress, false);
-
             if (yieldBearingAsset == XEVT) {
                 IPool(depositAddress).requestRedeem(amountOut);
             } else if (yieldBearingAsset == USDM) {
