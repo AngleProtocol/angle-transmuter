@@ -27,34 +27,16 @@ contract MultiBlockHarvester is BaseHarvester {
     /// @notice address to deposit to receive yieldBearingAsset
     mapping(address => address) public yieldBearingToDepositAddress;
 
-    /// @notice Maximum amount of stablecoins that can be used in a single transaction
-    uint256 public maxOrderAmount;
-
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                        CONSTRUCTOR
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     constructor(
-        uint256 initialOrderMintAmount,
         uint96 initialMaxSlippage,
         IAccessControlManager definitiveAccessControlManager,
         IAgToken definitiveAgToken,
         ITransmuter definitiveTransmuter
-    ) BaseHarvester(initialMaxSlippage, definitiveAccessControlManager, definitiveAgToken, definitiveTransmuter) {
-        maxOrderAmount = initialOrderMintAmount;
-    }
-
-    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                        GOVERNOR FUNCTIONS
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-    /**
-     * @notice Set the maximum amount of stablecoins that can be used in a single transaction
-     * @param newMaxOrderAmount new maximum amount of stablecoins that can be used in a single transaction
-     */
-    function setMaxOrderAmount(uint256 newMaxOrderAmount) external onlyGovernor {
-        maxOrderAmount = newMaxOrderAmount;
-    }
+    ) BaseHarvester(initialMaxSlippage, definitiveAccessControlManager, definitiveAgToken, definitiveTransmuter) {}
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         GUARDIAN FUNCTIONS
@@ -123,7 +105,6 @@ contract MultiBlockHarvester is BaseHarvester {
         YieldBearingParams memory yieldBearingInfo,
         uint256 amount
     ) internal {
-        if (amount > maxOrderAmount) revert TooBigAmountIn();
         _adjustAllowance(address(agToken), address(transmuter), amount);
         address depositAddress = yieldBearingToDepositAddress[yieldBearingAsset];
         if (typeAction == 1) {

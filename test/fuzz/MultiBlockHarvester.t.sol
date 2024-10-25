@@ -172,7 +172,7 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         maxExposureYieldAsset = uint64((90 * 1e9) / 100);
         minExposureYieldAsset = uint64((5 * 1e9) / 100);
 
-        harvester = new MultiBlockHarvester(100_000e18, 1e8, accessControlManager, agToken, transmuter);
+        harvester = new MultiBlockHarvester(1e8, accessControlManager, agToken, transmuter);
         vm.startPrank(governor);
         harvester.toggleTrusted(alice);
         harvester.setYieldBearingToDepositAddress(XEVT, XEVT);
@@ -193,7 +193,6 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
 
     function test_Initialization() public {
         assertEq(harvester.maxSlippage(), 1e8);
-        assertEq(harvester.maxOrderAmount(), 100_000e18);
         assertEq(address(harvester.accessControlManager()), address(accessControlManager));
         assertEq(address(harvester.agToken()), address(agToken));
         assertEq(address(harvester.transmuter()), address(transmuter));
@@ -235,9 +234,6 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
 
         harvester.setMaxSlippage(123456);
         assertEq(harvester.maxSlippage(), 123456);
-
-        harvester.setMaxOrderAmount(123456);
-        assertEq(harvester.maxOrderAmount(), 123456);
 
         harvester.setYieldBearingAssetData(
             address(XEVT),
