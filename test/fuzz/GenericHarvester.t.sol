@@ -83,6 +83,32 @@ contract GenericHarvestertTest is Test, FunctionUtils, CommonUtils {
         assertEq(harvester.swapRouter(), ONEINCH_ROUTER);
     }
 
+    function test_Setters() public {
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        harvester.setTokenTransferAddress(alice);
+
+        vm.startPrank(governor);
+        harvester.setTokenTransferAddress(alice);
+        assertEq(harvester.tokenTransferAddress(), alice);
+        vm.stopPrank();
+
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        harvester.setSwapRouter(alice);
+
+        vm.startPrank(governor);
+        harvester.setSwapRouter(alice);
+        assertEq(harvester.swapRouter(), alice);
+        vm.stopPrank();
+
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        harvester.setMaxSlippage(1e9);
+
+        vm.startPrank(governor);
+        harvester.setMaxSlippage(1e9);
+        assertEq(harvester.maxSlippage(), 1e9);
+        vm.stopPrank();
+    }
+
     function test_AddBudget(uint256 amount, address receiver) public {
         vm.assume(receiver != address(0));
         amount = bound(amount, 1e18, 1e21);
