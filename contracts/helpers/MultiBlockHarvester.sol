@@ -127,16 +127,16 @@ contract MultiBlockHarvester is BaseHarvester {
         _adjustAllowance(address(agToken), address(transmuter), amount);
         address depositAddress = yieldBearingToDepositAddress[yieldBearingAsset];
         if (typeAction == 1) {
+            uint256 amountOut = transmuter.swapExactInput(
+                amount,
+                0,
+                address(agToken),
+                yieldBearingInfo.stablecoin,
+                address(this),
+                block.timestamp
+            );
+            _checkSlippage(amount, amountOut, yieldBearingInfo.stablecoin, depositAddress, false);
             if (yieldBearingAsset == XEVT) {
-                uint256 amountOut = transmuter.swapExactInput(
-                    amount,
-                    0,
-                    address(agToken),
-                    yieldBearingInfo.stablecoin,
-                    address(this),
-                    block.timestamp
-                );
-                _checkSlippage(amount, amountOut, yieldBearingInfo.stablecoin, depositAddress, false);
                 _adjustAllowance(yieldBearingInfo.stablecoin, address(depositAddress), amountOut);
                 (uint256 shares, ) = IPool(depositAddress).deposit(amountOut, address(this));
                 _adjustAllowance(yieldBearingAsset, address(transmuter), shares);
@@ -149,15 +149,6 @@ contract MultiBlockHarvester is BaseHarvester {
                     block.timestamp
                 );
             } else if (yieldBearingAsset == USDM) {
-                uint256 amountOut = transmuter.swapExactInput(
-                    amount,
-                    0,
-                    address(agToken),
-                    yieldBearingInfo.stablecoin,
-                    address(this),
-                    block.timestamp
-                );
-                _checkSlippage(amount, amountOut, yieldBearingInfo.stablecoin, depositAddress, false);
                 IERC20(yieldBearingInfo.stablecoin).safeTransfer(depositAddress, amountOut);
             }
         } else {
