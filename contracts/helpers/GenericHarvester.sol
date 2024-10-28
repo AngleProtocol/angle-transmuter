@@ -36,8 +36,6 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
 
     /// @notice Angle stablecoin flashloan contract
     IERC3156FlashLender public immutable flashloan;
-    /// @notice Maximum slippage for swaps
-    uint32 public maxSwapSlippage;
     /// @notice Budget of AGToken available for each users
     mapping(address => uint256) public budget;
 

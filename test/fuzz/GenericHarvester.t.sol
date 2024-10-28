@@ -77,7 +77,6 @@ contract GenericHarvestertTest is Test, FunctionUtils, CommonUtils {
         assertEq(address(harvester.agToken()), address(agToken));
         assertEq(address(harvester.transmuter()), address(transmuter));
         assertEq(address(harvester.flashloan()), address(flashloan));
-        assertEq(harvester.maxSwapSlippage(), 100);
         assertEq(harvester.tokenTransferAddress(), ONEINCH_ROUTER);
         assertEq(harvester.swapRouter(), ONEINCH_ROUTER);
     }
