@@ -55,7 +55,6 @@ contract GenericHarvestertTest is Test, FunctionUtils, CommonUtils {
             1e8,
             ONEINCH_ROUTER,
             ONEINCH_ROUTER,
-            100,
             agToken,
             transmuter,
             accessControlManager,
@@ -156,21 +155,57 @@ contract GenericHarvestertTest is Test, FunctionUtils, CommonUtils {
         harvester.harvest(STEAK_USDC, 1e3, abi.encode(uint8(SwapType.VAULT), new bytes(0)));
     }
 
-    function test_Harvest_DecreaseExposureSTEAK_USDC() public {}
+    function test_Harvest_DecreaseExposureSTEAK_USDC() public {
+        _setYieldBearingData(STEAK_USDC, USDC);
+        _addBudget(1e30, alice);
 
-    function test_Harvest_IncreaseExposureSTEAK_USDC() public {}
+        uint256 beforeBudget = harvester.budget(alice);
 
-    function _loadReserve(address token, uint256 amount) internal {
-        if (token == USDM) {
-            vm.prank(0x48AEB395FB0E4ff8433e9f2fa6E0579838d33B62);
-            IAgToken(USDM).mint(alice, amount);
-        } else {
-            deal(token, alice, amount);
-        }
+        (uint8 expectedIncrease, uint256 expectedAmount) = harvester.computeRebalanceAmount(STEAK_USDC);
+        assertEq(expectedIncrease, 0);
 
-        vm.startPrank(alice);
-        IERC20(token).approve(address(transmuter), type(uint256).max);
-        transmuter.swapExactInput(amount, 0, token, address(agToken), alice, block.timestamp + 1);
+        vm.prank(alice);
+        harvester.harvest(STEAK_USDC, 1e3, abi.encode(uint8(SwapType.VAULT), new bytes(0)));
+
+        assertEq(IERC20(STEAK_USDC).balanceOf(address(harvester)), 0);
+        assertEq(IERC20(USDC).balanceOf(address(harvester)), 0);
+
+        (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(STEAK_USDC);
+        assertEq(increase, 0); // There is still a small amount to mint because of the transmuter fees and slippage
+        assertLt(amount, expectedAmount);
+
+        uint256 afterBudget = harvester.budget(alice);
+        assertLt(afterBudget, beforeBudget);
+    }
+
+    function test_Harvest_IncreaseExposureSTEAK_USDC() public {
+        _setYieldBearingData(STEAK_USDC, USDC, uint64((50 * 1e9) / 100));
+        _addBudget(1e30, alice);
+
+        uint256 beforeBudget = harvester.budget(alice);
+
+        (uint8 expectedIncrease, uint256 expectedAmount) = harvester.computeRebalanceAmount(STEAK_USDC);
+        assertEq(expectedIncrease, 1);
+
+        vm.prank(alice);
+        harvester.harvest(STEAK_USDC, 1e9, abi.encode(uint8(SwapType.VAULT), new bytes(0)));
+
+        assertEq(IERC20(STEAK_USDC).balanceOf(address(harvester)), 0);
+        assertEq(IERC20(USDC).balanceOf(address(harvester)), 0);
+
+        (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(STEAK_USDC);
+        assertEq(increase, 1); // There is still a small amount to mint because of the transmuter fees and slippage
+        assertLt(amount, expectedAmount);
+
+        uint256 afterBudget = harvester.budget(alice);
+        assertLt(afterBudget, beforeBudget);
+    }
+
+    function _addBudget(uint256 amount, address owner) internal {
+        deal(address(agToken), owner, amount);
+        vm.startPrank(owner);
+        agToken.approve(address(harvester), amount);
+        harvester.addBudget(amount, owner);
         vm.stopPrank();
     }
 
@@ -186,13 +221,15 @@ contract GenericHarvestertTest is Test, FunctionUtils, CommonUtils {
         );
     }
 
-    function _setYieldBearingData(
-        address yieldBearingAsset,
-        address stablecoin,
-        uint64 minExposure,
-        uint64 maxExposure
-    ) internal {
+    function _setYieldBearingData(address yieldBearingAsset, address stablecoin, uint64 newTargetExposure) internal {
         vm.prank(governor);
-        harvester.setYieldBearingAssetData(yieldBearingAsset, stablecoin, targetExposure, minExposure, maxExposure, 1);
+        harvester.setYieldBearingAssetData(
+            yieldBearingAsset,
+            stablecoin,
+            newTargetExposure,
+            minExposureYieldAsset,
+            maxExposureYieldAsset,
+            1
+        );
     }
 }
