@@ -49,7 +49,6 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         uint96 initialMaxSlippage,
         address initialTokenTransferAddress,
         address initialSwapRouter,
-        uint32 initialMaxSwapSlippage,
         IAgToken definitiveAgToken,
         ITransmuter definitiveTransmuter,
         IAccessControlManager definitiveAccessControlManager,
@@ -62,7 +61,6 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         flashloan = definitiveFlashloan;
 
         IERC20(agToken).safeApprove(address(definitiveFlashloan), type(uint256).max);
-        maxSwapSlippage = initialMaxSwapSlippage;
     }
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -226,14 +224,6 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         super.setSwapRouter(newSwapRouter);
     }
 
-    /**
-     * @notice Set the max swap slippage
-     * @param newMaxSwapSlippage max slippage in BPS
-     */
-    function setMaxSwapSlippage(uint32 newMaxSwapSlippage) external onlyGuardian {
-        maxSwapSlippage = newMaxSwapSlippage;
-    }
-
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         INTERNALS                                                     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
@@ -250,15 +240,6 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
             amountOut = _swapToTokenOutSwap(tokenIn, tokenOut, amount, callData);
         } else if (swapType == SwapType.VAULT) {
             amountOut = _swapToTokenOutVault(typeAction, tokenIn, tokenOut, amount);
-        }
-
-        // Check for slippage
-        uint256 decimalsTokenIn = IERC20Metadata(tokenIn).decimals();
-        uint256 decimalsTokenOut = IERC20Metadata(tokenOut).decimals();
-        amount = _scaleAmountBasedOnDecimals(decimalsTokenIn, decimalsTokenOut, amount, true);
-        // TODO fix slippage
-        if (amountOut < (amount * (BPS - maxSwapSlippage)) / BPS) {
-            revert SlippageTooHigh();
         }
     }
 
