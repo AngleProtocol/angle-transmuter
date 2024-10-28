@@ -183,19 +183,19 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
             amount,
             0,
             address(agToken),
-            tokenOut,
+            tokenIn,
             address(this),
             block.timestamp
         );
 
         // Swap to tokenIn
-        amountOut = _swapToTokenOut(typeAction, tokenOut, tokenIn, amountOut, swapType, callData);
+        amountOut = _swapToTokenOut(typeAction, tokenIn, tokenOut, amountOut, swapType, callData);
 
-        _adjustAllowance(tokenIn, address(transmuter), amountOut);
+        _adjustAllowance(tokenOut, address(transmuter), amountOut);
         uint256 amountStableOut = transmuter.swapExactInput(
             amountOut,
             minAmountOut,
-            tokenIn,
+            tokenOut,
             address(agToken),
             address(this),
             block.timestamp
@@ -256,6 +256,7 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
         uint256 decimalsTokenIn = IERC20Metadata(tokenIn).decimals();
         uint256 decimalsTokenOut = IERC20Metadata(tokenOut).decimals();
         amount = _scaleAmountBasedOnDecimals(decimalsTokenIn, decimalsTokenOut, amount, true);
+        // TODO fix slippage
         if (amountOut < (amount * (BPS - maxSwapSlippage)) / BPS) {
             revert SlippageTooHigh();
         }
@@ -302,8 +303,8 @@ contract GenericHarvester is BaseHarvester, IERC3156FlashBorrower, RouterSwapper
     ) internal returns (uint256 amountOut) {
         if (typeAction == 1) {
             // Granting allowance with the yieldBearingAsset for the vault asset
-            _adjustAllowance(tokenOut, tokenIn, amount);
-            amountOut = IERC4626(tokenIn).deposit(amount, address(this));
-        } else amountOut = IERC4626(tokenOut).redeem(amount, address(this), address(this));
+            _adjustAllowance(tokenIn, tokenOut, amount);
+            amountOut = IERC4626(tokenOut).deposit(amount, address(this));
+        } else amountOut = IERC4626(tokenIn).redeem(amount, address(this), address(this));
     }
 }
