@@ -149,9 +149,16 @@ contract GenericHarvestertTest is Test, FunctionUtils, CommonUtils {
         harvester.harvest(STEAK_USDC, 1e9, abi.encode(uint8(SwapType.VAULT), new bytes(0)));
     }
 
-    function test_Harvest_IncreaseExposureSTEAK_USDC() public {}
+    function test_Harvest_NotEnoughBudget() public {
+        _setYieldBearingData(STEAK_USDC, USDC);
+
+        vm.expectRevert(stdError.arithmeticError);
+        harvester.harvest(STEAK_USDC, 1e3, abi.encode(uint8(SwapType.VAULT), new bytes(0)));
+    }
 
     function test_Harvest_DecreaseExposureSTEAK_USDC() public {}
+
+    function test_Harvest_IncreaseExposureSTEAK_USDC() public {}
 
     function _loadReserve(address token, uint256 amount) internal {
         if (token == USDM) {
