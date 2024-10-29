@@ -107,6 +107,9 @@ contract GenericHarvestertTest is Test, FunctionUtils, CommonUtils {
         harvester.setMaxSlippage(1e9);
         assertEq(harvester.maxSlippage(), 1e9);
         vm.stopPrank();
+
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        harvester.recoverERC20(USDC, 1e12, alice);
     }
 
     function test_AddBudget(uint256 amount, address receiver) public {
@@ -142,6 +145,15 @@ contract GenericHarvestertTest is Test, FunctionUtils, CommonUtils {
         assertEq(harvester.budget(alice), 0);
         assertEq(agToken.balanceOf(address(harvester)), 0);
         assertEq(agToken.balanceOf(alice), amount);
+    }
+
+    function test_harvest_RecoverERC20() external {
+        deal(USDC, address(harvester), 1e12);
+        vm.startPrank(governor);
+        harvester.recoverERC20(USDC, 1e12, alice);
+
+        assertEq(IERC20(USDC).balanceOf(address(harvester)), 0);
+        assertEq(IERC20(USDC).balanceOf(alice), 1e12);
     }
 
     function test_Harvest_ZeroAmount() public {

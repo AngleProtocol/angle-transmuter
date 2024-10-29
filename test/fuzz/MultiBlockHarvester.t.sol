@@ -213,6 +213,9 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
 
         vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
         harvester.toggleTrusted(alice);
+
+        vm.expectRevert(Errors.NotGovernorOrGuardian.selector);
+        harvester.recoverERC20(USDC, 1e12, alice);
     }
 
     function test_OnlyTrusted_RevertWhen_NotTrusted() public {
@@ -320,6 +323,15 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         assertEq(harvester.isTrusted(bob), false);
 
         vm.stopPrank();
+    }
+
+    function test_harvest_RecoverERC20() external {
+        deal(USDC, address(harvester), 1e12);
+        vm.startPrank(governor);
+        harvester.recoverERC20(USDC, 1e12, alice);
+
+        assertEq(IERC20(USDC).balanceOf(address(harvester)), 0);
+        assertEq(IERC20(USDC).balanceOf(alice), 1e12);
     }
 
     function test_SetTargetExposure() public {
@@ -453,15 +465,6 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
 
         (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(USDM);
         assertEq(increase, 1); // There is still a small amount to mint because of the transmuter fees and slippage
-    }
-
-    function test_harvest_RecoverERC20() external {
-        deal(USDC, address(harvester), 1e12);
-        vm.startPrank(governor);
-        harvester.recoverERC20(USDC, 1e12, alice);
-
-        assertEq(IERC20(USDC).balanceOf(address(harvester)), 0);
-        assertEq(IERC20(USDC).balanceOf(alice), 1e12);
     }
 
     function test_harvest_DecreaseExposureUSDM(uint256 amount) external {

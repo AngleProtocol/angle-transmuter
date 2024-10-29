@@ -70,6 +70,13 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
     mapping(address => bool) public isTrusted;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                        EVENTS                                                      
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    event Recovered(address token, uint256 amount, address to);
+    event TrustedToggled(address trusted, bool status);
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                        CONSTRUCTOR
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
@@ -139,6 +146,7 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
      * @param trusted address to toggle the trusted status
      */
     function toggleTrusted(address trusted) external onlyGuardian {
+        emit TrustedToggled(trusted, isTrusted[trusted]);
         isTrusted[trusted] = !isTrusted[trusted];
     }
 
@@ -149,6 +157,7 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
      * @param to address to send the recovered tokens
      */
     function recoverERC20(address tokenAddress, uint256 amountToRecover, address to) external onlyGuardian {
+        emit Recovered(tokenAddress, amountToRecover, to);
         IERC20(tokenAddress).safeTransfer(to, amountToRecover);
     }
 
