@@ -17,6 +17,8 @@ import "contracts/helpers/GenericHarvester.sol";
 import "contracts/transmuter/Storage.sol";
 import "contracts/utils/Constants.sol";
 
+import "../mock/MockRouter.sol";
+
 import { IAccessControl } from "oz/access/IAccessControl.sol";
 
 import { ContractType, CommonUtils, CHAIN_ETHEREUM } from "utils/src/CommonUtils.sol";
@@ -152,6 +154,43 @@ contract GenericHarvestertTest is Test, FunctionUtils, CommonUtils {
 
         vm.expectRevert(stdError.arithmeticError);
         harvester.harvest(STEAK_USDC, 1e3, abi.encode(uint8(SwapType.VAULT), new bytes(0)));
+    }
+
+    function test_Harvest_Aggregator() public {
+        _addBudget(1e30, alice);
+        _setYieldBearingData(STEAK_USDC, USDC);
+
+        uint256 beforeBudget = harvester.budget(alice);
+
+        (uint8 expectedIncrease, uint256 expectedAmount) = harvester.computeRebalanceAmount(STEAK_USDC);
+        assertEq(expectedIncrease, 0);
+
+        MockRouter router = new MockRouter();
+        vm.startPrank(governor);
+        harvester.setTokenTransferAddress(address(router));
+        harvester.setSwapRouter(address(router));
+        vm.stopPrank();
+        deal(USDC, address(router), 1e6);
+
+        vm.prank(alice);
+        harvester.adjustYieldExposure(
+            1e18,
+            0,
+            STEAK_USDC,
+            USDC,
+            0,
+            SwapType.SWAP,
+            abi.encodeWithSelector(MockRouter.swap.selector, 9e17, STEAK_USDC, 1e6, USDC)
+        );
+
+        assertEq(IERC20(USDC).balanceOf(address(harvester)), 0);
+
+        (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(STEAK_USDC);
+        assertEq(increase, 0); // There is still a small amount to mint because of the transmuter fees and slippage
+        assertLt(amount, expectedAmount);
+
+        uint256 afterBudget = harvester.budget(alice);
+        assertEq(afterBudget, beforeBudget); // positive slippage
     }
 
     function test_Harvest_DecreaseExposureSTEAK_USDC() public {
