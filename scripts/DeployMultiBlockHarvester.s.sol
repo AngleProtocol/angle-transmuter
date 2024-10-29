@@ -16,7 +16,7 @@ contract DeployMultiBlockHarvester is Utils {
 
         address deployer = vm.addr(deployerPrivateKey);
         console.log("Deployer address: ", deployer);
-        uint96 maxSlippage = 1e9 / 100;
+        uint96 maxSlippage = 0.3e7; // 0.3%
         address agToken = _chainToContract(CHAIN_SOURCE, ContractType.AgEUR);
         address transmuter = _chainToContract(CHAIN_SOURCE, ContractType.TransmuterAgEUR);
         IAccessControlManager accessControlManager = ITransmuter(transmuter).accessControlManager();

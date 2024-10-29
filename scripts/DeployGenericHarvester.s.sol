@@ -17,7 +17,7 @@ contract DeployGenericHarvester is Utils {
 
         address deployer = vm.addr(deployerPrivateKey);
         console.log("Deployer address: ", deployer);
-        uint96 maxSlippage = 1e9 / 100; // 1%
+        uint96 maxSlippage = 0.3e7; // 0.3%
         IERC3156FlashLender flashloan = IERC3156FlashLender(_chainToContract(CHAIN_SOURCE, ContractType.FlashLoan));
         IAgToken agToken = IAgToken(_chainToContract(CHAIN_SOURCE, ContractType.AgUSD));
         ITransmuter transmuter = ITransmuter(_chainToContract(CHAIN_SOURCE, ContractType.TransmuterAgUSD));
