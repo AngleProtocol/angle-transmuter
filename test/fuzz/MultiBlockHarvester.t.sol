@@ -13,6 +13,7 @@ import "../utils/FunctionUtils.sol";
 
 import "contracts/savings/Savings.sol";
 import "../mock/MockTokenPermit.sol";
+import "../mock/MockScaleDecimals.sol";
 import "contracts/helpers/MultiBlockHarvester.sol";
 
 import "contracts/transmuter/Storage.sol";
@@ -328,6 +329,22 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         harvester.setTargetExposure(address(EURC), targetExposure + 1);
         (, uint64 currentTargetExposure, , , ) = harvester.yieldBearingData(address(EURC));
         assertEq(currentTargetExposure, targetExposure + 1);
+    }
+
+    function test_ScaleDecimals() public {
+        MockScaleDecimals decimals = new MockScaleDecimals(1e8, accessControlManager, agToken, transmuter);
+
+        uint256 amount = decimals.scaleDecimals(18, 20, 1e18, true);
+        assertEq(amount, 1e20);
+
+        amount = decimals.scaleDecimals(20, 18, 1e18, false);
+        assertEq(amount, 1e20);
+
+        amount = decimals.scaleDecimals(18, 20, 1e18, false);
+        assertEq(amount, 1e16);
+
+        amount = decimals.scaleDecimals(20, 18, 1e18, true);
+        assertEq(amount, 1e16);
     }
 
     function test_harvest_IncreaseExposureXEVT(uint256 amount) external {
