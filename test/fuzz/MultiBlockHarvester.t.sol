@@ -179,8 +179,6 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         harvester.setYieldBearingToDepositAddress(XEVT, XEVT);
         harvester.setYieldBearingToDepositAddress(USDM, receiver);
 
-        transmuter.toggleTrusted(address(harvester), TrustedType.Seller);
-
         agToken.mint(address(harvester), 1_000_000e18);
 
         vm.stopPrank();
@@ -455,6 +453,15 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
 
         (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(USDM);
         assertEq(increase, 1); // There is still a small amount to mint because of the transmuter fees and slippage
+    }
+
+    function test_harvest_RecoverERC20() external {
+        deal(USDC, address(harvester), 1e12);
+        vm.startPrank(governor);
+        harvester.recoverERC20(USDC, 1e12, alice);
+
+        assertEq(IERC20(USDC).balanceOf(address(harvester)), 0);
+        assertEq(IERC20(USDC).balanceOf(alice), 1e12);
     }
 
     function test_harvest_DecreaseExposureUSDM(uint256 amount) external {

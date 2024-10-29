@@ -142,6 +142,16 @@ abstract contract BaseHarvester is IHarvester, AccessControl {
         isTrusted[trusted] = !isTrusted[trusted];
     }
 
+    /**
+     * @notice Recover ERC20 tokens
+     * @param tokenAddress address of the token to recover
+     * @param amountToRecover amount to recover
+     * @param to address to send the recovered tokens
+     */
+    function recoverERC20(address tokenAddress, uint256 amountToRecover, address to) external onlyGuardian {
+        IERC20(tokenAddress).safeTransfer(to, amountToRecover);
+    }
+
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                         TRUSTED FUNCTIONS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
