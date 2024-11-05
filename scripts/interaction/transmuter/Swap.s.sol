@@ -32,7 +32,7 @@ contract SwapTransmuter is Utils, Helpers {
             uint256 chain = CHAIN_GNOSIS;
             StablecoinType fiat = StablecoinType.USD;
             address agToken = _chainToContract(chain, ContractType.AgUSD);
-            (address liquidStablecoin, ) = _chainToLiquidStablecoinAndOracle(chain, fiat);
+            (address liquidStablecoin, , ) = _chainToLiquidStablecoinAndOracle(chain, fiat);
             transmuter = ITransmuter(_chainToContract(chain, ContractType.TransmuterAgUSD));
             tokenIn = agToken;
             decimalsIn = IERC20Metadata(agToken).decimals();

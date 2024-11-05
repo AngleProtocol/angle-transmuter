@@ -33,16 +33,25 @@ contract DeployTransmuterSidechain is TransmuterDeploymentHelper, Helpers {
 
         // TODO
         uint256 chain = CHAIN_BASE;
-        uint256 hardCap = 1000 ether;
+        uint256 hardCap = 2_000_000 ether;
         address core = _chainToContract(chain, ContractType.CoreBorrow);
-        address agToken = _chainToContract(chain, ContractType.AgUSD);
-        StablecoinType fiat = StablecoinType.USD;
+        address agToken = _chainToContract(chain, ContractType.AgEUR);
+        address liquidStablecoin;
+        address[] memory oracleLiquidStablecoin;
+        uint8[] memory oracleIsMultiplied;
+        {
+            StablecoinType fiat = StablecoinType.EUR;
+            (liquidStablecoin, oracleLiquidStablecoin, oracleIsMultiplied) = _chainToLiquidStablecoinAndOracle(
+                chain,
+                fiat
+            );
+        }
 
         // Config
         config = address(new ProductionSidechain());
 
         address dummyImplementation = address(new DummyDiamondImplementation());
-        (address liquidStablecoin, address oracleLiquidStablecoin) = _chainToLiquidStablecoinAndOracle(chain, fiat);
+
         ITransmuter transmuter = _deployTransmuter(
             config,
             abi.encodeWithSelector(
@@ -51,6 +60,7 @@ contract DeployTransmuterSidechain is TransmuterDeploymentHelper, Helpers {
                 agToken,
                 liquidStablecoin,
                 oracleLiquidStablecoin,
+                oracleIsMultiplied,
                 hardCap,
                 dummyImplementation
             )
