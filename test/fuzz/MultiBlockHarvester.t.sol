@@ -358,7 +358,7 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
     }
 
     function test_harvest_IncreaseExposureXEVT(uint256 amount) external {
-        amount = 7022;
+        amount = bound(amount, 1e3, 1e11);
         _loadReserve(EURC, amount);
         _setYieldBearingData(XEVT, EURC);
 

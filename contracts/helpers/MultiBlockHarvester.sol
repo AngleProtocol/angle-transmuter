@@ -10,6 +10,7 @@ import { BaseHarvester, YieldBearingParams } from "./BaseHarvester.sol";
 import { ITransmuter } from "../interfaces/ITransmuter.sol";
 import { IAgToken } from "../interfaces/IAgToken.sol";
 import { IPool } from "../interfaces/IPool.sol";
+import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "../utils/Errors.sol";
 import "../utils/Constants.sol";
@@ -19,6 +20,7 @@ import "../utils/Constants.sol";
 /// @dev Contract to harvest yield from multiple yield bearing assets in multiple blocks transactions
 contract MultiBlockHarvester is BaseHarvester {
     using SafeERC20 for IERC20;
+    using SafeMath for uint256;
 
     /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                        VARIABLES
@@ -129,6 +131,7 @@ contract MultiBlockHarvester is BaseHarvester {
                     address(this),
                     block.timestamp
                 );
+                _checkSlippage(shares, amountOut, yieldBearingAsset, depositAddress, true);
             } else if (yieldBearingAsset == USDM) {
                 IERC20(yieldBearingInfo.asset).safeTransfer(depositAddress, amountOut);
             }
@@ -161,23 +164,23 @@ contract MultiBlockHarvester is BaseHarvester {
         address depositAddress,
         bool assetIn
     ) internal view {
-        uint256 decimalsAsset = IERC20Metadata(asset).decimals();
-
         // Divide or multiply the amountIn to match the decimals of the asset
-        amountIn = _scaleAmountBasedOnDecimals(decimalsAsset, 18, amountIn, assetIn);
+        amountIn = _scaleAmountBasedOnDecimals(IERC20Metadata(asset).decimals(), 18, amountIn, assetIn);
 
+        uint256 result;
         if (asset == USDC || asset == USDM || asset == EURC) {
             // Assume 1:1 ratio between stablecoins
-            unchecked {
-                uint256 slippage = ((amountIn - amountOut) * 1e9) / amountIn;
-                if (slippage > maxSlippage) revert SlippageTooHigh();
-            }
+            (, result) = amountIn.trySub(amountOut);
         } else if (asset == XEVT) {
             // Assume 1:1 ratio between the underlying asset of the vault
-            unchecked {
-                uint256 slippage = ((IPool(depositAddress).convertToAssets(amountIn) - amountOut) * 1e9) / amountIn;
-                if (slippage > maxSlippage) revert SlippageTooHigh();
+            if (assetIn) {
+                (, result) = IPool(depositAddress).convertToAssets(amountIn).trySub(amountOut);
+            } else {
+                (, result) = amountIn.trySub(IPool(depositAddress).convertToAssets(amountOut));
             }
         } else revert InvalidParam();
+
+        uint256 slippage = (result * 1e9) / amountIn;
+        if (slippage > maxSlippage) revert SlippageTooHigh();
     }
 }
