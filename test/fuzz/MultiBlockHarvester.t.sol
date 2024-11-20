@@ -108,20 +108,22 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
             )
         );
 
-        address oracle = 0x6B102047A4bB943DE39233E44487F2d57bDCb33e;
-        uint256 normalizationFactor = 1e18; // price == 36 decimals
-        readData = bytes("");
-        targetData = abi.encode(oracle, normalizationFactor);
-        transmuter.setOracle(
-            XEVT,
-            abi.encode(
-                OracleReadType.NO_ORACLE,
-                OracleReadType.MORPHO_ORACLE,
-                readData,
-                targetData,
-                abi.encode(uint128(0), uint128(0))
-            )
-        );
+        {
+            address oracle = 0x6B102047A4bB943DE39233E44487F2d57bDCb33e;
+            uint256 normalizationFactor = 1e18; // price == 36 decimals
+            readData = bytes("");
+            targetData = abi.encode(oracle, normalizationFactor);
+            transmuter.setOracle(
+                XEVT,
+                abi.encode(
+                    OracleReadType.NO_ORACLE,
+                    OracleReadType.MORPHO_ORACLE,
+                    readData,
+                    targetData,
+                    abi.encode(uint128(0), uint128(0))
+                )
+            );
+        }
 
         oracleUSDM = AggregatorV3Interface(address(new MockChainlinkOracle()));
         circuitChainlink[0] = AggregatorV3Interface(oracleUSDM);
