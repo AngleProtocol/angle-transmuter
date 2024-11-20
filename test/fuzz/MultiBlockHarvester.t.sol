@@ -108,20 +108,22 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
             )
         );
 
-        oracleXEVT = AggregatorV3Interface(address(new MockChainlinkOracle()));
-        circuitChainlink[0] = AggregatorV3Interface(oracleXEVT);
-        readData = abi.encode(circuitChainlink, stalePeriods, circuitChainIsMultiplied, chainlinkDecimals, quoteType);
-        MockChainlinkOracle(address(oracleXEVT)).setLatestAnswer(int256(BASE_8));
-        transmuter.setOracle(
-            XEVT,
-            abi.encode(
-                OracleReadType.CHAINLINK_FEEDS,
-                OracleReadType.STABLE,
-                readData,
-                targetData,
-                abi.encode(uint128(0), uint128(0))
-            )
-        );
+        {
+            address oracle = 0x6B102047A4bB943DE39233E44487F2d57bDCb33e;
+            uint256 normalizationFactor = 1e18; // price == 36 decimals
+            readData = bytes("");
+            targetData = abi.encode(oracle, normalizationFactor);
+            transmuter.setOracle(
+                XEVT,
+                abi.encode(
+                    OracleReadType.NO_ORACLE,
+                    OracleReadType.MORPHO_ORACLE,
+                    readData,
+                    targetData,
+                    abi.encode(uint128(0), uint128(0))
+                )
+            );
+        }
 
         oracleUSDM = AggregatorV3Interface(address(new MockChainlinkOracle()));
         circuitChainlink[0] = AggregatorV3Interface(oracleUSDM);
@@ -178,6 +180,8 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
         harvester.toggleTrusted(alice);
         harvester.setYieldBearingToDepositAddress(XEVT, XEVT);
         harvester.setYieldBearingToDepositAddress(USDM, receiver);
+
+        transmuter.toggleTrusted(address(harvester), TrustedType.Seller);
 
         agToken.mint(address(harvester), 1_000_000e18);
 
@@ -358,7 +362,7 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
     }
 
     function test_harvest_IncreaseExposureXEVT(uint256 amount) external {
-        amount = 7022;
+        amount = bound(amount, 1e3, 1e11);
         _loadReserve(EURC, amount);
         _setYieldBearingData(XEVT, EURC);
 
@@ -399,7 +403,6 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
 
         assertEq(expectedIncrease, 0);
         assertEq(issuedFromStablecoinBefore, 0);
-        assertEq(issuedFromYieldBearingAssetBefore, amount * 1e12);
         assertEq(totalIssuedBefore, issuedFromYieldBearingAssetBefore);
         assertEq(expectedAmount, issuedFromYieldBearingAssetBefore - ((targetExposure * totalIssuedBefore) / 1e9));
 
@@ -520,13 +523,13 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
     }
 
     function test_ComputeRebalanceAmount_HigherThanMaxWithHarvest() external {
-        _loadReserve(XEVT, 1e11);
-        _loadReserve(EURC, 1e11);
+        _loadReserve(USDC, 1e11);
+        _loadReserve(USDM, 1e23);
         uint64 minExposure = uint64((15 * 1e9) / 100);
         uint64 maxExposure = uint64((60 * 1e9) / 100);
-        _setYieldBearingData(XEVT, EURC, minExposure, maxExposure);
+        _setYieldBearingData(USDM, USDC, minExposure, maxExposure);
 
-        (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(XEVT);
+        (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(USDM);
         assertEq(amount, (2e23 * uint256(maxExposure)) / 1e9 - 1e23);
         assertEq(increase, 0);
     }
@@ -544,13 +547,13 @@ contract MultiBlockHarvestertTest is Fixture, FunctionUtils {
     }
 
     function test_ComputeRebalanceAmount_LowerThanMinAfterHarvest() external {
-        _loadReserve(EURC, 9e10);
-        _loadReserve(XEVT, 1e10);
+        _loadReserve(USDC, 9e10);
+        _loadReserve(USDM, 1e22);
         uint64 minExposure = uint64((89 * 1e9) / 100);
         uint64 maxExposure = uint64((999 * 1e9) / 1000);
-        _setYieldBearingData(XEVT, EURC, minExposure, maxExposure);
+        _setYieldBearingData(USDM, USDC, minExposure, maxExposure);
 
-        (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(XEVT);
+        (uint8 increase, uint256 amount) = harvester.computeRebalanceAmount(USDM);
         assertEq(amount, 9e22 - (1e23 * uint256(minExposure)) / 1e9);
         assertEq(increase, 1);
     }
