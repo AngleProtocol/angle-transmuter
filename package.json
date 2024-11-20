@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "ci:coverage": "forge coverage --report lcov && yarn lcov:clean",
+    "ci:coverage": "forge coverage --report lcov --no-match-path 'test/scripts/*'  && yarn lcov:clean",
     "coverage": "FOUNDRY_PROFILE=dev forge coverage --report lcov && yarn lcov:clean && yarn lcov:generate-html",
     "compile": "forge build",
     "compile:dev": "FOUNDRY_PROFILE=dev forge build",
