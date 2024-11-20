@@ -118,7 +118,6 @@ contract MultiBlockHarvester is BaseHarvester {
                 address(this),
                 block.timestamp
             );
-            _checkSlippage(amount, amountOut, yieldBearingInfo.asset, depositAddress, false);
             if (yieldBearingAsset == XEVT) {
                 _adjustAllowance(yieldBearingInfo.asset, address(depositAddress), amountOut);
                 (uint256 shares, ) = IPool(depositAddress).deposit(amountOut, address(this));
@@ -131,9 +130,10 @@ contract MultiBlockHarvester is BaseHarvester {
                     address(this),
                     block.timestamp
                 );
-                _checkSlippage(shares, amountOut, yieldBearingAsset, depositAddress, true);
+                _checkSlippage(amount, amountOut, address(agToken), depositAddress, false);
             } else if (yieldBearingAsset == USDM) {
                 IERC20(yieldBearingInfo.asset).safeTransfer(depositAddress, amountOut);
+                _checkSlippage(amount, amountOut, yieldBearingInfo.asset, depositAddress, false);
             }
         } else {
             uint256 amountOut = transmuter.swapExactInput(
@@ -168,7 +168,7 @@ contract MultiBlockHarvester is BaseHarvester {
         amountIn = _scaleAmountBasedOnDecimals(IERC20Metadata(asset).decimals(), 18, amountIn, assetIn);
 
         uint256 result;
-        if (asset == USDC || asset == USDM || asset == EURC) {
+        if (asset == USDC || asset == USDM || asset == EURC || asset == address(agToken)) {
             // Assume 1:1 ratio between stablecoins
             (, result) = amountIn.trySub(amountOut);
         } else if (asset == XEVT) {
